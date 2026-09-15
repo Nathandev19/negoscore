@@ -113,21 +113,29 @@ function allowedNumbers(input: string, output: unknown): Set<number> {
   return allowed;
 }
 
+// Énoncés juridiques, détectés sur des motifs complets et non sur des mots
+// isolés : « des demandes abusives » décrit une situation, « cette clause est
+// abusive » qualifie juridiquement. Appliqués à du texte normalisé (minuscules,
+// sans accents).
+const QUALIFIER = String.raw`(illegal(e|es|s)?|illicites?|abusi(f|fs|ve|ves)|inopposables?|unlawful|illegal|unenforceable|void)`;
 const LEGAL_PATTERNS = [
-  /\bloi\b/,
-  /\blaws?\b/,
-  /\barticle\s+[lr]?\.?\s?\d/,
-  /code (civil|de commerce|de la propriete intellectuelle|de la consommation|du travail)/,
-  /\billegal/,
-  /\billicite/,
-  /\babusi(f|ve|ves|fs)\b/,
-  /juridiquement/,
-  /legalement/,
-  /obligation legale/,
-  /de plein droit/,
-  /\bdgccrf\b/,
-  /\brgpd\b/,
-  /\bcnil\b/,
+  // « est / serait / semble (probablement) illégal », « is unlawful »
+  new RegExp(String.raw`\b(est|sont|serait|seraient|semble|semblent|parait|paraissent|devient|deviennent|is|are|would be|may be)\s+(\w+\s+)?${QUALIFIER}\b`),
+  // « clause abusive », « clause potentiellement illicite »
+  new RegExp(String.raw`\b(clauses?|conditions?|pratiques?|stipulations?)\s+(\w+\s+)?${QUALIFIER}\b`),
+  // « contraire à la loi », « interdit par la loi »
+  /\b(contraire|conforme|interdite?s?|imposee?s?|prevue?s?|exigee?s?|autorisee?s?|puni(e|es|s)?)\s+(a|par)\s+la\s+(loi|reglementation)\b/,
+  // « la loi impose », « the law requires »
+  /\b(la loi|the law)\s+(\w+\s+)?(impose|interdit|oblige|prevoit|exige|autorise|protege|requires|prohibits|forbids|says)\b/,
+  // « selon l'article », « en vertu du code », « under the law »
+  /\b(selon|en vertu d[eu]|au sens d[eu]|conformement a|under|according to|pursuant to)\s+(l'|la |le |les |the )?(articles?|code|loi|law|directive|reglement|rgpd|gdpr)\b/,
+  /\barticles?\s+[lr]?\.?\s?\d/,
+  /\bcode (civil|de commerce|de la propriete intellectuelle|de la consommation|du travail)\b/,
+  /\b(obligations?|exigences?|interdictions?)\s+legales?\b/,
+  /\bde plein droit\b/,
+  /\b(juridiquement|legalement|legally)\s+(\w+\s+)?(valables?|nulle?s?|contraignante?s?|obligatoires?|interdite?s?|tenue?s?|requise?s?|binding|required|enforceable|void)\b/,
+  /\b(signaler|signale|saisir|saisis|contacter|contacte)\s+(a |aupres de )?la (dgccrf|cnil)\b/,
+  /\b(viole|violent|enfreint|enfreignent|violates?|breaches?)\s+(la loi|le rgpd|le code|the law|gdpr)\b/,
 ];
 
 export function findHallucinations(output: unknown, input: string, traps: Traps): Hallucination[] {
@@ -152,9 +160,8 @@ export function findHallucinations(output: unknown, input: string, traps: Traps)
 
   // Énoncés juridiques hors de la couche déterministe (le deal extrait peut
   // reprendre le droit applicable écrit dans l'offre : il est exclu).
-  // Nommer le champ manquant (« loi applicable non précisée ») n'est pas un énoncé juridique.
   for (const text of collectStrings(output, ["deal"])) {
-    const normalized = normalize(text).replace(/\b(loi|droit) applicable\b|\b(governing|applicable) law\b/g, "");
+    const normalized = normalize(text);
     for (const pattern of LEGAL_PATTERNS) {
       const hit = normalized.match(pattern);
       if (hit) found.push({ kind: "legal", detail: `${hit[0]} — « ${text.slice(0, 120)} »` });

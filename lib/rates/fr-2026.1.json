@@ -7,6 +7,12 @@
     "experienced": { "low": 500, "high": 800, "confidence": "low" },
     "default_tier": "confirmed"
   },
+  "deliverable_weights": {
+    "video": { "weight": 1.0, "confidence": "medium" },
+    "live": { "weight": 1.0, "confidence": "low" },
+    "photo": { "weight": 0.35, "confidence": "low" },
+    "story": { "weight": 0.25, "confidence": "low" }
+  },
   "multipliers": {
     "paid_ads_1m": { "low": 0.2, "high": 0.3, "confidence": "low" },
     "paid_ads_3m": { "low": 0.3, "high": 0.5, "confidence": "medium" },
@@ -30,6 +36,10 @@
     "starter": "Benchmark de marché observé sur des offres UGC françaises pour des créateurs débutants.",
     "confirmed": "Benchmark de marché observé sur des offres UGC françaises pour des créateurs avec portfolio.",
     "experienced": "Valeur interpolée à partir des paliers inférieurs, peu d'observations directes : à recalibrer.",
+    "video": "Unité de référence : les tarifs de base sont exprimés par vidéo.",
+    "live": "Aligné sur la vidéo faute d'observations distinctes : à recalibrer.",
+    "photo": "Valeur interpolée, peu d'offres UGC chiffrent la photo seule : à recalibrer.",
+    "story": "Valeur interpolée, peu d'offres UGC chiffrent la story seule : à recalibrer.",
     "paid_ads_1m": "Valeur interpolée à partir du palier 3 mois : à recalibrer.",
     "paid_ads_3m": "Benchmark de marché observé sur des licences publicitaires de 3 mois.",
     "paid_ads_6m": "Valeur interpolée entre les paliers 3 et 12 mois : à recalibrer.",

@@ -7,17 +7,49 @@ import { LoadingSteps } from "@/components/loading-steps";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { saveAnalysis } from "@/lib/analysis/session";
-import { analysisSchema } from "@/lib/schema";
 import { validateFile, type FileKind } from "@/lib/upload";
 
 const MIN_TEXT_LENGTH = 20;
 const LOADING_DURATION_MS = 2500;
 const LOADING_STEPS = ["Lecture du message", "Extraction du deal", "Analyse et chiffrage"] as const;
 const GENERIC_ERROR = "L'analyse n'a pas abouti. Vérifie ta connexion et réessaie.";
+const UPLOAD_ERROR = "Le fichier n'a pas pu être envoyé. Vérifie ta connexion et réessaie.";
 
 type Mode = "text" | FileKind;
-type Outcome = { ok: true } | { ok: false; message: string };
+type Outcome = { ok: true; analysisId: string } | { ok: false; message: string };
+
+class FlowError extends Error {}
+
+async function postJson(url: string, payload: unknown): Promise<Record<string, unknown>> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await response.json()) as Record<string, unknown>;
+  } catch {
+    // réponse non JSON
+  }
+  if (!response.ok) throw new FlowError(typeof body.error === "string" ? body.error : GENERIC_ERROR);
+  return body;
+}
+
+// Photo ou PDF : URL signée demandée au serveur, dépôt direct dans le stockage,
+// puis analyse à partir du chemin du fichier.
+async function uploadFile(kind: FileKind, file: File): Promise<string> {
+  const { uploadUrl, storagePath } = await postJson("/api/upload-url", { kind, mime: file.type, bytes: file.size });
+  if (typeof uploadUrl !== "string" || typeof storagePath !== "string") throw new FlowError(UPLOAD_ERROR);
+  let uploaded: Response;
+  try {
+    uploaded = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type, "x-upsert": "false" }, body: file });
+  } catch {
+    throw new FlowError(UPLOAD_ERROR);
+  }
+  if (!uploaded.ok) throw new FlowError(UPLOAD_ERROR);
+  return storagePath;
+}
 
 export function DealInput() {
   const router = useRouter();
@@ -60,7 +92,7 @@ export function DealInput() {
     const outcome = outcomeRef.current;
     if (!outcome || !stepsDoneRef.current) return;
     if (outcome.ok) {
-      router.push("/analyse/resultat");
+      router.push(`/analyse/resultat/${outcome.analysisId}`);
     } else {
       setNotice(outcome.message);
       setLoading(false);
@@ -72,28 +104,19 @@ export function DealInput() {
     finish();
   }, [finish]);
 
-  async function analyseText() {
+  async function analyse(current: Mode) {
     outcomeRef.current = null;
     stepsDoneRef.current = false;
     setNotice(null);
     setLoading(true);
     try {
-      const response = await fetch("/api/analyse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const body: unknown = await response.json();
-      const analysis = analysisSchema.safeParse((body as { analysis?: unknown }).analysis);
-      if (response.ok && analysis.success) {
-        saveAnalysis(analysis.data);
-        outcomeRef.current = { ok: true };
-      } else {
-        const message = (body as { error?: unknown }).error;
-        outcomeRef.current = { ok: false, message: typeof message === "string" ? message : GENERIC_ERROR };
-      }
-    } catch {
-      outcomeRef.current = { ok: false, message: GENERIC_ERROR };
+      const selected = current === "text" ? null : files[current];
+      const payload = selected && current !== "text" ? { storagePath: await uploadFile(current, selected.file) } : { text };
+      const { analysisId } = await postJson("/api/analyse", payload);
+      outcomeRef.current =
+        typeof analysisId === "string" ? { ok: true, analysisId } : { ok: false, message: GENERIC_ERROR };
+    } catch (caught) {
+      outcomeRef.current = { ok: false, message: caught instanceof FlowError ? caught.message : GENERIC_ERROR };
     }
     finish();
   }
@@ -115,8 +138,7 @@ export function DealInput() {
       onSubmit={(event) => {
         event.preventDefault();
         if (!canSubmit) return;
-        if (mode === "text") void analyseText();
-        else setNotice("Bientôt disponible. Pour l'instant, colle le texte du message.");
+        void analyse(mode);
       }}
     >
       <Tabs

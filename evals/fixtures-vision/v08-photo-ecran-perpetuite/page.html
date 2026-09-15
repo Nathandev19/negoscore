@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+.status { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; font-size: 15px; font-weight: 600; }
+.status .icons { display: flex; gap: 6px; align-items: center; }
+.bar { width: 18px; height: 10px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+.bar::after { content: ""; position: absolute; inset: 1px 4px 1px 1px; background: currentColor; border-radius: 1px; }
+.signal { display: flex; gap: 2px; align-items: flex-end; height: 11px; }
+.signal i { width: 3px; background: currentColor; border-radius: 1px; display: block; }
+
+html, body { width: 900px; height: 1320px; overflow: hidden; }
+body.desk { background: radial-gradient(ellipse at 30% 20%, #6b5b4e 0%, #3b312a 55%, #1d1814 100%); }
+.stage { width: 900px; height: 1320px; display: grid; place-items: center; }
+/* Transformations 2D : le rendu 3D sans GPU coupe le plan en headless. */
+.phone { position: relative; width: 414px; padding: 12px; border-radius: 46px; background: #111; box-shadow: 0 40px 80px rgba(0,0,0,.55); transform: rotate(-8deg) skewX(-6deg) skewY(3deg) scale(1.05); }
+.screen { position: relative; width: 390px; height: 1060px; overflow: hidden; border-radius: 34px; background: #fff; filter: brightness(.93) contrast(.92) saturate(.85) blur(.45px); }
+.glare { position: absolute; inset: 0; pointer-events: none; border-radius: 34px; background:
+  linear-gradient(118deg, rgba(255,255,255,0) 18%, rgba(255,255,255,.55) 30%, rgba(255,255,255,.18) 38%, rgba(255,255,255,0) 50%),
+  radial-gradient(ellipse at 78% 12%, rgba(255,250,235,.5), rgba(255,255,255,0) 40%); }
+.moire { position: absolute; inset: 0; pointer-events: none; border-radius: 34px; opacity: .08; background: repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 3px); }
+</style></head><body class="desk"><div class="stage"><div class="phone"><div class="screen"><div class="scr">
+<style>
+.scr { background: #fff; color: #1f1f1f; width: 390px; min-height: 100%; }
+.top { display: flex; align-items: center; justify-content: space-between; padding: 4px 16px 8px; font-size: 20px; color: #444; }
+.top .right { display: flex; gap: 22px; }
+.subject { font-size: 22px; line-height: 1.3; padding: 6px 16px 4px; font-weight: 400; }
+.label { display: inline-block; font-size: 12px; background: #e8eaed; border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; color: #444; }
+.sender { display: flex; align-items: center; gap: 12px; padding: 14px 16px 8px; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; color: #fff; font-size: 18px; display: grid; place-items: center; flex: none; }
+.meta { flex: 1; line-height: 1.3; }
+.meta b { font-size: 15px; font-weight: 600; }
+.meta .time { font-size: 13px; color: #5f6368; margin-left: 6px; }
+.meta .to { font-size: 13px; color: #5f6368; display: block; }
+.meta .mail { font-size: 12px; color: #5f6368; }
+.more { font-size: 20px; color: #5f6368; }
+.body { padding: 4px 16px 24px; font-size: 15px; line-height: 1.5; }
+.body p { margin: 0 0 12px; }
+.reply { display: flex; gap: 10px; padding: 0 16px 20px; }
+.reply span { flex: 1; border: 1px solid #c4c7c5; border-radius: 20px; text-align: center; padding: 9px 0; font-size: 14px; font-weight: 600; color: #444; }
+</style>
+<div class="status"><span>10:42</span><span class="icons"><span class="signal"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i></span><span style="font-size:13px">5G</span><span class="bar"></span></span></div>
+<div class="top"><span>←</span><span class="right"><span>⤓</span><span>🗑</span><span>✉</span><span>⋮</span></span></div>
+<div class="subject">Conditions de notre collaboration — Maison Orvelle<span class="label">Boîte de réception</span></div>
+<div class="sender"><span class="avatar" style="background:#2f6f73">V</span><span class="meta"><b>Victoire Anselme</b><span class="time">19:04</span><span class="to">à moi ▾</span><span class="mail">victoire@maisonorvelle.example</span></span><span class="more">↩ ⋮</span></div>
+<div class="body"><p>Bonjour Lina,</p><p>Suite à notre échange, voici le récapitulatif de notre proposition pour la campagne « Rituel du soir ».</p><p>Contenus : 2 vidéos verticales pour TikTok, de 30 secondes environ, livrées à notre équipe (sans publication de ta part).<br>Rémunération : 450 € HT pour les deux vidéos, payés à 30 jours.<br>Modifications : deux séries de retours incluses.<br>Exclusivité : aucune.</p><p>Conditions d'utilisation : afin de simplifier la gestion de nos campagnes, les droits d'exploitation des vidéos (diffusion sur nos réseaux sociaux, notre site et en publicité payante) nous sont consentis pour toute la durée de protection des droits d'auteur, sur tous les territoires. Tu restes bien sûr créditée lorsque cela est possible.</p><p>Nous restons disponibles pour toute question et avons hâte de travailler ensemble !</p><p>Belle soirée,<br>Victoire Anselme<br>Chargée de partenariats — Maison Orvelle</p></div>
+<div class="reply"><span>↩ Répondre</span><span>↪ Transférer</span></div></div></div><div class="glare"></div><div class="moire"></div></div></div></body></html>

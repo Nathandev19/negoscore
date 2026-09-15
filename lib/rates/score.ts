@@ -6,7 +6,15 @@ type Score = Analysis["score"];
 
 // Score déterministe sur 100.
 // Base 50, puis ajustements additifs, puis borne entre 0 et 100.
-// Le maximum atteignable avec ces règles est 90 (50 + 30 + 5 + 5).
+//
+// Plafond de fait à 90 (50 + 30 prix + 5 paiement rapide + 5 organique),
+// conservé volontairement. Le score ne lit que ce qui est écrit dans l'offre :
+// il récompense un prix aligné, un paiement rapide et un usage limité, mais il
+// ne peut rien savoir de ce qui n'y figure pas (la marque paiera-t-elle
+// vraiment, le brief va-t-il déraper, une clause arrivera-t-elle au contrat).
+// Les 10 derniers points représentent ce risque qu'aucun texte ne lève : une
+// offre n'est donc jamais notée parfaite. Aucun bonus supplémentaire n'est
+// ajouté pour les atteindre, et la borne à 100 reste une simple sécurité.
 
 const BASE = 50;
 const MAX_PRICE_POINTS = 30;

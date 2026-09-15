@@ -8,6 +8,8 @@ pnpm install
 pnpm dev        # http://localhost:3000 (clés lues depuis .env.local)
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 pnpm eval       # éval des modèles sur evals/fixtures, résultats dans evals/results
+pnpm eval:vision        # éval image sur evals/fixtures-vision
+pnpm test:integration   # RLS, bucket et usage_guard contre Supabase (migrations appliquées)
 ```
 
 ## Stack

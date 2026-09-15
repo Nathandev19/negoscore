@@ -1,5 +1,6 @@
-// Modèle retenu par l'éval du 15/09/2026 (voir DECISIONS.md et evals/results/).
-// Un seul modèle. Aucun routeur, aucun repli automatique vers un autre fournisseur.
+// Modèle retenu par l'éval texte et l'éval vision du 15/09/2026 (voir
+// DECISIONS.md et evals/results/). Un seul modèle pour le texte et l'image.
+// Aucun routeur, aucun repli automatique vers un autre fournisseur.
 export const MODEL = {
   id: "gpt-5.6-luna",
   envKey: "OPENAI_API_KEY",

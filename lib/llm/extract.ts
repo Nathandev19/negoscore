@@ -4,6 +4,7 @@ import {
   buildUserMessage,
   extractionJsonSchema,
   extractionSchema,
+  IMAGE_USER_MESSAGE,
   SYSTEM_PROMPT,
   type Extraction,
 } from "@/lib/llm/prompt";
@@ -46,7 +47,26 @@ function problemWith(outputText: string): { extraction: Extraction } | { problem
   return { extraction: parsed.data };
 }
 
-export async function extractDeal(offerText: string): Promise<ExtractResult> {
+export type ImageInput = { base64: string; mimeType: string };
+
+export function extractDeal(offerText: string): Promise<ExtractResult> {
+  return run(buildUserMessage(offerText));
+}
+
+// Même modèle, même prompt système, même schéma : seule l'entrée change.
+export function extractDealFromImage(image: ImageInput): Promise<ExtractResult> {
+  return run([
+    {
+      role: "user",
+      content: [
+        { type: "input_text", text: IMAGE_USER_MESSAGE },
+        { type: "input_image", image_url: `data:${image.mimeType};base64,${image.base64}`, detail: "high" },
+      ],
+    },
+  ]);
+}
+
+async function run(input: OpenAI.Responses.ResponseCreateParams["input"]): Promise<ExtractResult> {
   const apiKey = process.env[MODEL.envKey];
   if (!apiKey) throw new MissingApiKeyError(`${MODEL.envKey} absente`);
 
@@ -63,7 +83,7 @@ export async function extractDeal(offerText: string): Promise<ExtractResult> {
     const response = await client.responses.create({
       model: MODEL.id,
       instructions: SYSTEM_PROMPT,
-      input: buildUserMessage(offerText),
+      input,
       max_output_tokens: 16000,
       text: { format: { type: "json_schema", name: "deal_analysis", schema, strict: true } },
     });

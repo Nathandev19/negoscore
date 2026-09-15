@@ -5,6 +5,7 @@ import { computeEstimate } from "@/lib/rates/engine";
 import rates from "@/lib/rates/fr-2026.1.json";
 import { computeScore } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
+import pipeline17 from "../evals/results/pipeline/17-contrat-boisson.json";
 
 type Deal = Analysis["deal"];
 
@@ -121,6 +122,35 @@ describe("computeEstimate", () => {
     const sumLow = lowBase + estimate.lines.reduce((s, l) => s + l.eur_low, 0);
     expect(estimate.total_low).toBe(Math.floor(sumLow / 10) * 10);
     expect((estimate.total_high ?? 0) % 10).toBe(0);
+  });
+
+  it("pondère les livrables : une story ou une photo pèse moins qu'une vidéo", () => {
+    const w = rates.deliverable_weights;
+    const deal = makeDeal({
+      deliverables: [
+        { type: "video", platform: "instagram", quantity: 2, format: null },
+        { type: "story", platform: "instagram", quantity: 3, format: null },
+        { type: "photo", platform: "instagram", quantity: 1, format: null },
+      ],
+    });
+    const units = 2 * w.video.weight + 3 * w.story.weight + 1 * w.photo.weight;
+    const estimate = computeEstimate(deal);
+    expect(estimate.base_low).toBe(Math.round(base.low * units));
+    expect(estimate.base_high).toBe(Math.round(base.high * units));
+    expect(w.story.weight).toBeLessThan(w.video.weight);
+    expect(w.photo.weight).toBeLessThan(w.video.weight);
+  });
+
+  it("fixture 17 (4 Reels + 4 stories) : fourchette ramenée sous l'ancien calcul à la vidéo", () => {
+    const deal = pipeline17.analysis.deal as Deal;
+    const w = rates.deliverable_weights;
+    const estimate = computeEstimate(deal);
+    // Ancien calcul : 8 livrables comptés comme 8 vidéos → 7 900–23 400 €.
+    expect(estimate.base_low).toBe(Math.round(base.low * (4 * w.video.weight + 4 * w.story.weight)));
+    expect(estimate.total_low).toBe(4930);
+    expect(estimate.total_high).toBe(14630);
+    expect(estimate.total_low).toBeLessThan(7900);
+    expect(estimate.total_high).toBeLessThan(23400);
   });
 
   it("renvoie un total null si aucun montant n'est proposé", () => {

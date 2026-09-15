@@ -9,7 +9,11 @@
     "lint": "eslint --max-warnings 0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "eval": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/run.ts"
+    "test:integration": "node --env-file-if-exists=.env.local node_modules/vitest/vitest.mjs run --config vitest.integration.config.mts",
+    "eval": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/run.ts",
+    "eval:vision": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/run-vision.ts",
+    "eval:vision:fixtures": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/vision/build-fixtures.ts",
+    "eval:rescore": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/rescore.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

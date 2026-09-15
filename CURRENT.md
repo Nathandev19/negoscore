@@ -1,32 +1,33 @@
 # CURRENT
 
 ## CURRENT STATUS
-Negoscore (marque verrouillée, domaine negoscore.fr). Mission #002 terminée : analyse réelle en mode texte, chiffrage déterministe, modèle choisi par éval.
+Negoscore (marque verrouillée, domaine negoscore.fr). Mission #003 livrée côté code : vision évaluée (Luna pour tout), livrables pondérés, schéma Supabase, dépôt signé, limite persistante, analyses enregistrées. Les migrations ne sont pas encore appliquées sur le projet Supabase.
 
 ## WHAT EXISTS
-- `/` landing et `/analyse` : le mode texte appelle `/api/analyse` ; Photo et PDF affichent « Bientôt disponible ».
-- `/analyse/resultat` : dernière analyse réelle, lue depuis le sessionStorage du navigateur.
+- `/analyse` : texte, photo et PDF. Photo et PDF : URL signée (`/api/upload-url`), dépôt direct dans le bucket privé, puis analyse par chemin.
+- `/analyse/resultat/[id]` : analyse lue en base, visible seulement par le navigateur qui l'a lancée (cookie httpOnly anonyme).
 - `/analyse/demo` : résultat sur la fixture locale, sans appel réseau.
-- `app/api/analyse/route.ts` : texte seul (60 000 caractères max), 5 analyses par IP et par heure en mémoire, mode fichier en 501.
-- `lib/llm/` : prompt et schéma d'extraction, un seul modèle (`model.ts`), un appel plus une reprise (`extract.ts`).
-- `lib/rates/` : table de tarifs `fr-2026.1.json`, calculateur, score. `lib/legal/` : couche légale FR et escalade, déterministes.
-- `lib/analysis/compose.ts` : assemble sortie du modèle et calculs, validé par le schéma complet.
-- `evals/` : 20 fixtures synthétiques, harness `pnpm eval`, résultats horodatés.
-- Tests Vitest : marque, fixture, moteur de tarifs, composition.
+- `app/api/analyse/route.ts` : texte (60 000 caractères max) ou image ; PDF en 501 et fichier supprimé ; 5 analyses par heure par IP hachée dans `usage_guard` ; écrit `deals` et `analyses`.
+- `lib/llm/` : un modèle pour le texte et l'image (`model.ts`), `extractDeal` et `extractDealFromImage`.
+- `lib/rates/` : table `fr-2026.1.json` avec poids des livrables, calculateur, score. `lib/legal/` : couche légale FR et escalade.
+- `lib/supabase/server.ts` : accès REST serveur avec la clé service_role. `supabase/migrations/` : 8 migrations.
+- `evals/` : 20 fixtures texte (`pnpm eval`), 8 captures (`pnpm eval:vision`, générées par `pnpm eval:vision:fixtures`), recalcul des hallucinations (`pnpm eval:rescore`).
+- Tests : `pnpm test` hors ligne ; `pnpm test:integration` contre Supabase (RLS, bucket, usage_guard).
 
 ## CURRENT BLOCKER
-Aucun pour le code. Textes juridiques à fournir. Table de tarifs à recalibrer (valeurs « low » interpolées).
+Migrations à appliquer sur le projet Supabase (sur ton feu vert), puis `pnpm test:integration` et un dépôt d'image réel.
 
 ## CURRENT MISSION
-#002 — moteur de tarifs, éval des modèles, pipeline réel. Terminée.
+#003 — vision, correctifs tarifs, Supabase.
 
 ## NEXT MISSION
-#003 — upload signé Supabase pour Photo et PDF, puis OCR ou lecture de document.
+#004 — comptes, rattachement des analyses anonymes, crédits.
 
 ## LAUNCH BLOCKERS
-- Supabase (stockage, suppression à 30 jours), Resend (gate email), Whop (paiement), PostHog.
-- Rate limiting persistant : la limite en mémoire ne tient pas entre instances serverless.
-- Compte Vercel Pro, avec `OPENAI_API_KEY` en variable d'environnement.
+- Suppression effective des documents après `delete_after` (tâche planifiée à écrire).
+- Lecture des PDF : aucune bibliothèque dans le projet.
+- Resend (gate email), Whop (paiement), PostHog.
+- Compte Vercel Pro, variables d'environnement serveur (`OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `IP_HASH_SALT`).
 - Mentions légales, politique de confidentialité, CGV rédigées par un professionnel.
-- Validation par un juriste de `lib/legal/fr.ts` (seuil, mentions obligatoires, texte de la note).
-- Recalibrage de la table de tarifs sur des offres réelles.
+- Validation par un juriste de `lib/legal/fr.ts`.
+- Recalibrage de la table de tarifs sur des offres réelles, poids photo et story compris.

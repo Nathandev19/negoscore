@@ -84,15 +84,23 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     assumptions.push("Profil de créateur « confirmé » supposé (portfolio existant, pas débutant).");
   }
 
-  let deliverableCount = deal.deliverables.reduce((sum, d) => sum + d.quantity, 0);
-  if (deliverableCount <= 0) {
-    deliverableCount = 1;
+  // Somme pondérée des livrables : une story ou une photo ne vaut pas une vidéo.
+  // Le poids de chaque type vient de la table (vidéo = 1).
+  let weightedUnits = deal.deliverables.reduce(
+    (sum, d) => sum + d.quantity * rates.deliverable_weights[d.type].weight,
+    0,
+  );
+  if (weightedUnits <= 0) {
+    weightedUnits = rates.deliverable_weights.video.weight;
     assumptions.push("Nombre de vidéos non précisé : une seule vidéo supposée.");
+  }
+  if (deal.deliverables.some((d) => rates.deliverable_weights[d.type].confidence === "low")) {
+    assumptions.push("Stories, photos et lives chiffrés avec un poids provisoire par rapport à une vidéo.");
   }
 
   const baseRate = rates.base_rates_eur[tier];
-  const baseLow = baseRate.low * deliverableCount;
-  const baseHigh = baseRate.high * deliverableCount;
+  const baseLow = Math.round(baseRate.low * weightedUnits);
+  const baseHigh = Math.round(baseRate.high * weightedUnits);
   const lines: EstimateLine[] = [];
 
   function addMultiplier(key: MultiplierKey, topic: RateTopic, label: string, factor = 1) {

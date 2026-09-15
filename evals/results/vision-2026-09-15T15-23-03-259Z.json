@@ -1,0 +1,1382 @@
+{
+  "timestamp": "2026-09-15T15-23-03-259Z",
+  "fixtures": [
+    "v01-dm-cosmetique ← 01-dm-cosmetique",
+    "v02-dm-spark-ads ← 05-dm-spark-ads",
+    "v03-dm-vague-droits ← 04-dm-vague-droits",
+    "v04-mail-biscuits ← 07-email-biscuits",
+    "v05-mail-anglais ← 20-email-anglais",
+    "v06-dm-coupe-whitelisting ← 06-dm-whitelisting",
+    "v07-dm-flou-produit-offert ← 02-dm-produit-offert",
+    "v08-photo-ecran-perpetuite ← 18-piege-perpetuite"
+  ],
+  "usdPerEur": 1.1592,
+  "decision": {
+    "decision": "LUNA_POUR_TOUT",
+    "rule": "Luna à 97.8 % ≥ 90 % : un seul modèle pour le texte et l'image."
+  },
+  "reports": [
+    {
+      "id": "openai/gpt-5.6-luna",
+      "skipped": null,
+      "temperature": "refusée par l'API (400 Unsupported parameter: 'temperature' is not supported with this model.) — valeur par défaut du modèle",
+      "runs": [
+        {
+          "fixture": "v01-dm-cosmetique",
+          "source": "01-dm-cosmetique",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 11879,
+          "tokens": {
+            "inputTokens": 3666,
+            "cachedInputTokens": 0,
+            "outputTokens": 1395
+          },
+          "costUsd": 0.0024072,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Aubépine Cosmétiques"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 2,
+                  "format": null
+                }
+              ]
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 6
+            },
+            {
+              "fact": "usage.perpetual",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.territory",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "exclusivity.duration_months",
+              "ok": true,
+              "actual": 3
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "revisions.unlimited",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 300
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 60
+            },
+            {
+              "fact": "ai_training_rights",
+              "ok": true,
+              "actual": "absent"
+            },
+            {
+              "fact": "must_flag:revision|illimit",
+              "ok": false
+            },
+            {
+              "fact": "must_flag:exclusiv",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"medium\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"Territoire des droits publicitaires\",\"Dates de livraison\",\"Modalités de paiement détaillées\",\"Confirmation d'une éventuelle publication sur ton compte\",\"Périmètre exact des droits publicitaires\"]},\"deal\":{\"brand\":\"Aubépine Cosmétiques\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"tiktok\",\"quantity\":2,\"format\":null}],\"publication_required\":false,\"usage\":{\"organic\":false,\"paid_ads\":true,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":6,\"territory\":null,\"perpetual\":false},\"exclusivity\":{\"present\":true,\"duration_months\":3,\"category\":\"cosmétique\"},\"raw_footage\":true,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":null,\"unlimited\":true},\"payment\":{\"amount_eur\":300,\"currency\":\"EUR\",\"terms_days\":60,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Rémunération clairement indiquée\",\"why\":\"L'offre précise le montant total prévu pour les deux vidéos.\"},{\"label\":\"Durée des droits publicitaires limitée\",\"why\":\"Les droits de publicité sont annoncés pour une durée de six mois.\"},{\"label\":\"Révisions illimitées prévues\",\"why\":\"Tu peux demander des ajustements jusqu'à validation.\"}],\"red_flags\":[{\"label\":\"Livraison des rushs incluse\",\"severity\":\"high\",\"why\":\"Les fichiers bruts doivent être transmis, sans précision sur leur utilisation ni sur leur conservation.\"},{\"label\":\"Exclusivité de trois mois\",\"severity\":\"high\",\"why\":\"Tu ne pourrais pas travailler avec d'autres marques de la catégorie cosmétique pendant cette période.\"},{\"label\":\"Paiement à 60 jours\",\"severity\":\"medium\",\"why\":\"Le délai de paiement est long et aucun échéancier n'est prévu.\"},{\"label\":\"Droits publicitaires peu détaillés\",\"severity\":\"medium\",\"why\":\"Le territoire, les plateformes concernées et le périmètre exact des publicités ne sont pas précisés.\"}],\"ready_to_send_message\":{\"tone\":\"Poli et ferme\",\"text\":\"Bonjour, merci pour votre proposition. Le projet m’intéresse. Avant de confirmer, pouvez-vous me préciser le territoire et les plateformes couvertes par les droits publicitaires, ainsi que les dates de livraison et les modalités de validation ? Je souhaite également encadrer précisément l’utilisation des rushs et revoir la durée de l’exclusivité. Pour ce périmètre, mon tarif se situe {{CONTRE_OFFRE}}. Pouvez-vous me confirmer si cela est envisageable ?\"},\"negotiate\":[{\"label\":\"Encadrer les droits publicitaires\",\"why\":\"Le territoire, les plateformes et le périmètre des publicités ne sont pas indiqués.\",\"priority\":1,\"topic\":\"paid_ads\"},{\"label\":\"Clarifier l'utilisation des rushs\",\"why\":\"La livraison des fichiers bruts est prévue, mais leur usage n'est pas défini.\",\"priority\":2,\"topic\":\"raw_footage\"},{\"label\":\"Réduire ou préciser l'exclusivité\",\"why\":\"L'exclusivité couvre toute la catégorie cosmétique pendant trois mois.\",\"priority\":3,\"topic\":\"exclusivity\"},{\"label\":\"Améliorer les conditions de paiement\",\"why\":\"Le paiement est prévu à 60 jours sans échéancier détaillé.\",\"priority\":4,\"topic\":\"payment_terms\"},{\"label\":\"Préciser les livrables et la validation\",\"why\":\"Le format des vidéos, les dates de livraison et le processus de validation ne sont pas indiqués.\",\"priority\":5,\"topic\":\"revisions\"}],\"counter_offer\":{\"changes\":[\"Limiter les droits publicitaires aux plateformes et au territoire expressément définis.\",\"Préciser que les rushs ne peuvent être utilisés que dans le cadre convenu pour cette campagne.\",\"Réduire ou mieux encadrer l'exclusivité sur la catégorie cosmétique.\",\"Définir un échéancier de paiement et les étapes de validation.\",\"Ajouter les dates de livraison et le format attendu pour chaque vidéo.\"]}}"
+        },
+        {
+          "fixture": "v02-dm-spark-ads",
+          "source": "05-dm-spark-ads",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 11469,
+          "tokens": {
+            "inputTokens": 3666,
+            "cachedInputTokens": 1922,
+            "outputTokens": 1429
+          },
+          "costUsd": 0.00210204,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Nomadelle"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 2,
+                  "format": null
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 400
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 30
+            },
+            {
+              "fact": "usage.spark_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.whitelisting",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 1
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:spark|boost",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"medium\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"Brief créatif et format détaillé des TikToks non précisés\",\"Territoire et périmètre exact de l'utilisation Spark Ads non précisés\",\"Nombre de révisions non précisé\",\"Conditions d'annulation non précisées\"]},\"deal\":{\"brand\":\"Nomadelle\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"tiktok\",\"quantity\":2.0,\"format\":null}],\"publication_required\":true,\"usage\":{\"organic\":false,\"paid_ads\":true,\"whitelisting\":false,\"spark_ads\":true,\"duration_months\":1.0,\"territory\":null,\"perpetual\":false},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":false,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":null,\"unlimited\":false},\"payment\":{\"amount_eur\":400.0,\"currency\":\"EUR\",\"terms_days\":30.0,\"schedule\":\"Paiement à 30 jours à réception de la facture\"},\"in_kind_value_eur\":null,\"deadlines\":[\"Code Spark Ads valable 30 jours\"],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Rémunération annoncée\",\"why\":\"Le montant total et le nombre de vidéos sont clairement indiqués.\"},{\"label\":\"Absence d'exclusivité\",\"why\":\"Tu restes libre de travailler avec d'autres marques.\"},{\"label\":\"Durée Spark Ads limitée\",\"why\":\"Le code est annoncé comme valable pendant 30 jours.\"},{\"label\":\"Délai de paiement précisé\",\"why\":\"Le paiement est prévu à 30 jours après réception de ta facture.\"}],\"red_flags\":[{\"label\":\"Périmètre Spark Ads incomplet\",\"severity\":\"medium\",\"why\":\"Le message ne précise pas le territoire, les comptes concernés ni les modalités exactes du boost.\"},{\"label\":\"Brief et révisions non définis\",\"severity\":\"medium\",\"why\":\"Le travail attendu peut évoluer sans cadre clair sur le contenu ou les retours.\"},{\"label\":\"Publication sur ton compte\",\"severity\":\"low\",\"why\":\"Les deux vidéos doivent être publiées sur ton propre compte, ce qui demande de clarifier les dates et les conditions de publication.\"}],\"ready_to_send_message\":{\"tone\":\"Poli et ferme\",\"text\":\"Bonjour Hugo, merci pour ta proposition. Le projet m’intéresse. Pour les deux TikToks publiés sur mon compte, mon tarif pour ce projet se situe {{CONTRE_OFFRE}}. Peux-tu aussi me confirmer le brief créatif, les dates de publication, le nombre de retours prévus et le périmètre exact du code Spark Ads valable 30 jours ? Merci !\"},\"negotiate\":[{\"label\":\"Clarifier les droits Spark Ads\",\"why\":\"Il faut cadrer précisément la durée, le territoire, les comptes utilisés et les modalités du boost.\",\"priority\":1.0,\"topic\":\"spark_ads\"},{\"label\":\"Définir le brief et les révisions\",\"why\":\"Le contenu attendu et le nombre de retours ne sont pas indiqués.\",\"priority\":2.0,\"topic\":\"revisions\"},{\"label\":\"Confirmer les dates de publication\",\"why\":\"Aucune date de livraison ou de publication n'est précisée.\",\"priority\":3.0,\"topic\":\"other\"},{\"label\":\"Encadrer le paiement\",\"why\":\"Le délai est indiqué, mais il est utile de confirmer que la facture peut être envoyée dès la livraison ou selon les conditions convenues.\",\"priority\":4.0,\"topic\":\"payment_terms\"}],\"counter_offer\":{\"changes\":[\"Confirmer le brief créatif et les formats attendus avant le début de la production.\",\"Limiter les retours à un nombre défini et préciser les demandes incluses.\",\"Définir par écrit le territoire, les comptes concernés et la durée exacte de l'utilisation Spark Ads.\",\"Confirmer les dates de livraison et de publication.\",\"Maintenir le paiement à 30 jours à réception de la facture.\"]}}"
+        },
+        {
+          "fixture": "v03-dm-vague-droits",
+          "source": "04-dm-vague-droits",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 11745,
+          "tokens": {
+            "inputTokens": 3666,
+            "cachedInputTokens": 1922,
+            "outputTokens": 956
+          },
+          "costUsd": 0.00153444,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Ondulia"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 1,
+                  "format": null
+                }
+              ]
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 150
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": false,
+              "actual": false
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "usage.perpetual",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.territory",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:duree|combien de temps|mois|limite",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"medium\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"Le format et la durée de la vidéo ne sont pas précisés\",\"Les droits publicitaires ne sont pas définis\",\"Le délai de paiement n'est pas indiqué\",\"Les modalités de publication et de validation ne sont pas précisées\"]},\"deal\":{\"brand\":\"Ondulia\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"tiktok\",\"quantity\":1,\"format\":null}],\"publication_required\":false,\"usage\":{\"organic\":false,\"paid_ads\":false,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":null,\"territory\":null,\"perpetual\":false},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":false,\"ip_transfer\":\"unclear\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":null,\"unlimited\":false},\"payment\":{\"amount_eur\":150,\"currency\":\"EUR\",\"terms_days\":null,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[\"ce mois-ci\"],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Montant annoncé\",\"why\":\"La marque indique un montant pour la vidéo demandée.\"},{\"label\":\"Plateforme identifiée\",\"why\":\"La vidéo est prévue pour TikTok.\"}],\"red_flags\":[{\"label\":\"Droits publicitaires non définis\",\"severity\":\"high\",\"why\":\"La marque mentionne des droits publicitaires sans préciser les supports, la durée, le territoire ni les usages autorisés.\"},{\"label\":\"Brief incomplet\",\"severity\":\"medium\",\"why\":\"Le concept, la durée, le nombre de plans et les éventuelles révisions ne sont pas indiqués.\"},{\"label\":\"Modalités de paiement absentes\",\"severity\":\"medium\",\"why\":\"Le délai et les conditions de paiement ne sont pas précisés.\"}],\"ready_to_send_message\":{\"tone\":\"Poli et ferme\",\"text\":\"Bonjour Maxence, merci pour ta proposition. Je suis disponible pour réaliser une vidéo UGC TikTok ce mois-ci. Mon tarif pour ce projet se situe {{CONTRE_OFFRE}}. Peux-tu me préciser le brief, le format attendu, les modalités de validation et les droits publicitaires envisagés, notamment leur durée, leur territoire et les supports concernés ? Merci !\"},\"negotiate\":[{\"label\":\"Droits publicitaires\",\"why\":\"Clarifier précisément les usages, la durée, le territoire et les supports avant d'accepter.\",\"priority\":1,\"topic\":\"paid_ads\"},{\"label\":\"Périmètre de la vidéo\",\"why\":\"Faire préciser le brief, la durée, le format et le nombre de révisions incluses.\",\"priority\":2,\"topic\":\"revisions\"},{\"label\":\"Modalités de paiement\",\"why\":\"Obtenir le délai et les conditions de paiement par écrit.\",\"priority\":3,\"topic\":\"payment_terms\"}],\"counter_offer\":{\"changes\":[\"Préciser le brief, la durée et le format de la vidéo TikTok.\",\"Définir séparément les droits publicitaires, avec une durée, un territoire et des supports précis.\",\"Limiter les révisions à un nombre défini et convenu à l'avance.\",\"Indiquer le délai et les conditions de paiement.\",\"Confirmer que la livraison des rushs n'est pas incluse, sauf accord séparé.\"]}}"
+        },
+        {
+          "fixture": "v04-mail-biscuits",
+          "source": "07-email-biscuits",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 10256,
+          "tokens": {
+            "inputTokens": 3966,
+            "cachedInputTokens": 1922,
+            "outputTokens": 1293
+          },
+          "costUsd": 0.00199884,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Les Délices de Marthe"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": null,
+                  "quantity": 2,
+                  "format": "30 secondes"
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.organic",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 3
+            },
+            {
+              "fact": "usage.territory",
+              "ok": true,
+              "actual": "France uniquement"
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "revisions.count",
+              "ok": true,
+              "actual": 2
+            },
+            {
+              "fact": "revisions.unlimited",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 500
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 30
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:rush|raw",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"medium\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"Plateformes précises de diffusion non indiquées\",\"Conditions d'utilisation des rushs bruts non précisées\",\"Échéancier de paiement non indiqué\",\"Clause de résiliation et indemnité d'annulation non indiquées\"]},\"deal\":{\"brand\":\"Les Délices de Marthe\",\"deliverables\":[{\"type\":\"video\",\"platform\":null,\"quantity\":2,\"format\":\"30 secondes\"}],\"publication_required\":false,\"usage\":{\"organic\":true,\"paid_ads\":true,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":3,\"territory\":\"France uniquement\",\"perpetual\":false},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":true,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":2,\"unlimited\":false},\"payment\":{\"amount_eur\":500,\"currency\":\"EUR\",\"terms_days\":30,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[\"Réception des vidéos sous 3 semaines après validation du brief\"],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Pas de publication sur ton compte\",\"why\":\"Tu n'as pas à publier les vidéos auprès de ta communauté.\"},{\"label\":\"Usage limité dans le temps et dans l'espace\",\"why\":\"La diffusion organique et publicitaire est prévue pendant 3 mois en France uniquement.\"},{\"label\":\"Délai de paiement indiqué\",\"why\":\"Le paiement est prévu 30 jours après la livraison.\"},{\"label\":\"Nombre de retours défini\",\"why\":\"Deux séries de retours sont prévues.\"}],\"red_flags\":[{\"label\":\"Livraison des rushs bruts\",\"severity\":\"high\",\"why\":\"La marque demande les fichiers sources en plus des vidéos finalisées, sans préciser clairement leur usage.\"},{\"label\":\"Utilisation publicitaire\",\"severity\":\"medium\",\"why\":\"Les vidéos pourront être utilisées en publicité payante, ce qui élargit leur utilisation au-delà d'une simple publication organique.\"},{\"label\":\"Périmètre des révisions peu détaillé\",\"severity\":\"medium\",\"why\":\"Deux séries de retours sont prévues, mais le nombre de modifications par série et les éventuels changements de brief ne sont pas définis.\"},{\"label\":\"Plateformes non précisées\",\"severity\":\"medium\",\"why\":\"La mention de propres réseaux ne permet pas de savoir sur quelles plateformes les vidéos seront diffusées.\"}],\"ready_to_send_message\":{\"tone\":\"Poli et ferme\",\"text\":\"Bonjour Paul,\\n\\nMerci pour ton message et pour les détails de la collaboration. Le projet m'intéresse. Avant de confirmer, pourrais-tu me préciser les plateformes prévues pour la diffusion, ainsi que les conditions d'utilisation des rushs bruts ?\\n\\nJe souhaite également confirmer que l'utilisation organique et publicitaire est limitée à la France et à une durée de 3 mois, sans utilisation supplémentaire des contenus ou des rushs. Mon tarif pour ce projet se situe {{CONTRE_OFFRE}}.\\n\\nPeux-tu aussi me confirmer que le paiement intervient bien 30 jours après la livraison finale et que les deux séries de retours correspondent au brief validé ?\\n\\nBien à toi,\\nNora\"},\"negotiate\":[{\"label\":\"Usage des rushs bruts\",\"why\":\"Demande que les rushs soient réservés à la préparation et à la livraison du projet, sans utilisation supplémentaire non définie.\",\"priority\":1,\"topic\":\"raw_footage\"},{\"label\":\"Droits publicitaires\",\"why\":\"Fais préciser les plateformes, les formats et les usages couverts par la diffusion payante.\",\"priority\":2,\"topic\":\"paid_ads\"},{\"label\":\"Révisions\",\"why\":\"Fais encadrer précisément les deux séries de retours et les changements de brief.\",\"priority\":3,\"topic\":\"revisions\"},{\"label\":\"Conditions de paiement\",\"why\":\"Fais confirmer le point de départ du délai de paiement et l'absence d'un autre échéancier.\",\"priority\":4,\"topic\":\"payment_terms\"},{\"label\":\"Périmètre des plateformes\",\"why\":\"Fais préciser les réseaux concernés par la diffusion organique et publicitaire.\",\"priority\":5,\"topic\":\"other\"}],\"counter_offer\":{\"changes\":[\"Limiter l'utilisation organique et publicitaire à la France pendant 3 mois.\",\"Préciser les plateformes et les formats publicitaires autorisés.\",\"Encadrer l'utilisation des rushs bruts et interdire tout usage supplémentaire non prévu.\",\"Définir précisément le contenu des deux séries de retours.\",\"Confirmer le paiement 30 jours après la livraison finale.\"]}}"
+        },
+        {
+          "fixture": "v05-mail-anglais",
+          "source": "20-email-anglais",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 10077,
+          "tokens": {
+            "inputTokens": 3666,
+            "cachedInputTokens": 1922,
+            "outputTokens": 1313
+          },
+          "costUsd": 0.00196284,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Luminelle Labs"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 3,
+                  "format": "20–40 seconds each"
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 500
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 30
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 3
+            },
+            {
+              "fact": "usage.territory",
+              "ok": true,
+              "actual": "France and Belgium"
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "revisions.count",
+              "ok": true,
+              "actual": 1
+            },
+            {
+              "fact": "must_flag:rush|raw",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"en\",\"confidence\":\"medium\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"Détails des formats publicitaires et des modalités de modification des vidéos\",\"Conditions précises d'utilisation des rushs\"]},\"deal\":{\"brand\":\"Luminelle Labs\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"tiktok\",\"quantity\":3,\"format\":\"20–40 seconds each\"}],\"publication_required\":false,\"usage\":{\"organic\":false,\"paid_ads\":true,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":3,\"territory\":\"France and Belgium\",\"perpetual\":false},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":true,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":1,\"unlimited\":false},\"payment\":{\"amount_eur\":500,\"currency\":\"EUR\",\"terms_days\":30,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Pas de publication sur ton compte\",\"why\":\"Tu dois seulement livrer les vidéos, sans les publier sur ton propre profil.\"},{\"label\":\"Durée et territoire des publicités définis\",\"why\":\"Les droits publicitaires sont limités à trois mois en France et en Belgique.\"},{\"label\":\"Délai de paiement indiqué\",\"why\":\"Le paiement est prévu à 30 jours.\"},{\"label\":\"Une seule série de révisions\",\"why\":\"Le nombre de retours est défini à l'avance.\"}],\"red_flags\":[{\"label\":\"Utilisation en publicité payante\",\"severity\":\"medium\",\"why\":\"La marque pourra diffuser les vidéos dans des publicités, mais les formats et placements ne sont pas précisés.\"},{\"label\":\"Livraison des rushs\",\"severity\":\"high\",\"why\":\"Les fichiers sources sont inclus, sans précision sur leur utilisation ni sur les modifications autorisées.\"},{\"label\":\"Périmètre des révisions peu détaillé\",\"severity\":\"medium\",\"why\":\"Une seule série est prévue, mais le nombre de changements inclus et le processus de validation ne sont pas définis.\"}],\"ready_to_send_message\":{\"tone\":\"Poli et ferme\",\"text\":\"Hi Daniel,\\n\\nThank you for reaching out and for sharing the details. I’d be happy to discuss the three TikTok videos.\\n\\nFor this project, my rate is {{CONTRE_OFFRE}}. Before confirming, could you please clarify the ad placements, whether the videos may be edited or adapted, and how the raw footage would be used during the three-month period?\\n\\nBest,\\nChloé\"},\"negotiate\":[{\"label\":\"Usage en publicité payante\",\"why\":\"Demande les plateformes, formats, placements et possibilités de modification des vidéos.\",\"priority\":1,\"topic\":\"paid_ads\"},{\"label\":\"Utilisation des rushs\",\"why\":\"Fais préciser les usages autorisés pour les fichiers sources et leur durée d'utilisation.\",\"priority\":2,\"topic\":\"raw_footage\"},{\"label\":\"Révisions\",\"why\":\"Fais définir ce qu'une série de révisions comprend et le processus de validation.\",\"priority\":3,\"topic\":\"revisions\"},{\"label\":\"Périmètre de la licence\",\"why\":\"Fais confirmer que l'utilisation reste limitée à la France, à la Belgique et à la période prévue.\",\"priority\":4,\"topic\":\"territory\"}],\"counter_offer\":{\"changes\":[\"Limiter l'utilisation publicitaire aux formats et placements explicitement confirmés.\",\"Limiter l'utilisation des rushs aux mêmes territoires et à la même durée que les vidéos finales.\",\"Définir précisément le contenu d'une série de révisions et le délai de validation.\",\"Confirmer par écrit qu'aucune publication sur le compte du créateur n'est requise.\"]}}"
+        },
+        {
+          "fixture": "v06-dm-coupe-whitelisting",
+          "source": "06-dm-whitelisting",
+          "degradation": "cut-bottom",
+          "error": null,
+          "latencyMs": 11348,
+          "tokens": {
+            "inputTokens": 3396,
+            "cachedInputTokens": 1922,
+            "outputTokens": 1524
+          },
+          "costUsd": 0.00216204,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Lunabrosse"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "instagram",
+                  "quantity": 3,
+                  "format": null
+                }
+              ]
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 750
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 45
+            },
+            {
+              "fact": "usage.whitelisting",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 2
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "exclusivity.duration_months",
+              "ok": true,
+              "actual": 1
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:whitelist|acces a ton compte|depuis ton compte",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"medium\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"La suite du message est coupée et potentiellement manquante\",\"Le territoire d'utilisation n'est pas indiqué\",\"Les conditions précises du whitelisting ne sont pas détaillées\",\"Le nombre de révisions n'est pas indiqué\",\"Les modalités de publication des Reels ne sont pas précisées\"]},\"deal\":{\"brand\":\"Lunabrosse\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"instagram\",\"quantity\":3,\"format\":null}],\"publication_required\":true,\"usage\":{\"organic\":false,\"paid_ads\":true,\"whitelisting\":true,\"spark_ads\":false,\"duration_months\":2,\"territory\":null,\"perpetual\":false},\"exclusivity\":{\"present\":true,\"duration_months\":1,\"category\":\"mode\"},\"raw_footage\":false,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":null,\"unlimited\":false},\"payment\":{\"amount_eur\":750,\"currency\":\"EUR\",\"terms_days\":45,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Rémunération indiquée\",\"why\":\"Le montant proposé est clairement indiqué pour les trois Reels.\"},{\"label\":\"Durée du whitelisting définie\",\"why\":\"L'accès publicitaire depuis ton compte est limité à deux mois.\"},{\"label\":\"Durée de l'exclusivité définie\",\"why\":\"L'exclusivité dans la catégorie mode est limitée à un mois.\"},{\"label\":\"Délai de paiement précisé\",\"why\":\"Le règlement est annoncé à 45 jours.\"}],\"red_flags\":[{\"label\":\"Whitelisting inclus dans l'offre\",\"severity\":\"high\",\"why\":\"La marque souhaite diffuser des publicités depuis ton compte, mais les modalités précises ne sont pas détaillées.\"},{\"label\":\"Territoire d'utilisation absent\",\"severity\":\"medium\",\"why\":\"L'offre ne précise pas dans quelles zones les publicités pourront être diffusées.\"},{\"label\":\"Exclusivité à encadrer\",\"severity\":\"medium\",\"why\":\"La catégorie mode est large et les marques ou produits concernés ne sont pas précisés.\"},{\"label\":\"Révisions non définies\",\"severity\":\"medium\",\"why\":\"Le nombre de retours et les conditions de validation ne sont pas indiqués.\"},{\"label\":\"Message potentiellement incomplet\",\"severity\":\"medium\",\"why\":\"La fin de l'offre est coupée, donc certaines conditions peuvent manquer.\"}],\"ready_to_send_message\":{\"tone\":\"Poli et ferme\",\"text\":\"Bonjour, merci pour ta proposition. Le projet m’intéresse. Avant de confirmer, peux-tu me préciser les modalités de publication des Reels, le territoire et les conditions exactes du whitelisting pendant les deux mois, ainsi que le nombre de révisions prévu ? Je souhaite également mieux encadrer l’exclusivité à la seule catégorie et aux produits directement concurrents. Pour l’ensemble du projet, mon tarif se situe {{CONTRE_OFFRE}}. Peux-tu aussi me confirmer que le règlement intervient à 45 jours après la livraison ou la validation ?\"},\"negotiate\":[{\"label\":\"Whitelisting\",\"why\":\"L'accès publicitaire depuis ton compte doit être précisément encadré, notamment sur les modalités de diffusion et le territoire.\",\"priority\":1,\"topic\":\"whitelisting\"},{\"label\":\"Exclusivité\",\"why\":\"La catégorie mode est très large. Il faut la limiter aux produits ou marques directement concurrents.\",\"priority\":2,\"topic\":\"exclusivity\"},{\"label\":\"Modalités de publication\",\"why\":\"Il faut confirmer si les Reels doivent être publiés sur ton compte et préciser les conditions associées.\",\"priority\":3,\"topic\":\"other\"},{\"label\":\"Révisions\",\"why\":\"Le nombre de retours et les conditions de validation doivent être définis avant le tournage.\",\"priority\":4,\"topic\":\"revisions\"},{\"label\":\"Conditions de paiement\",\"why\":\"Il faut préciser le point de départ du délai de règlement de 45 jours.\",\"priority\":5,\"topic\":\"payment_terms\"},{\"label\":\"Territoire d'utilisation\",\"why\":\"Le territoire de diffusion des publicités n'est pas indiqué.\",\"priority\":6,\"topic\":\"territory\"}],\"counter_offer\":{\"changes\":[\"Limiter le whitelisting à la durée convenue, au territoire convenu et aux publicités précisément validées.\",\"Limiter l'exclusivité aux produits et marques directement concurrents de Lunabrosse.\",\"Confirmer par écrit les modalités de publication des trois Reels Instagram.\",\"Définir le nombre de révisions incluses et le processus de validation.\",\"Préciser le point de départ du délai de règlement à 45 jours.\",\"Ajouter une clause prévoyant une rémunération distincte pour toute utilisation supplémentaire non prévue.\"]}}"
+        },
+        {
+          "fixture": "v07-dm-flou-produit-offert",
+          "source": "02-dm-produit-offert",
+          "degradation": "low-quality",
+          "error": null,
+          "latencyMs": 9027,
+          "tokens": {
+            "inputTokens": 3666,
+            "cachedInputTokens": 1922,
+            "outputTokens": 1150
+          },
+          "costUsd": 0.00176724,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Quiétilé"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "instagram",
+                  "quantity": 1,
+                  "format": "Reel Instagram"
+                },
+                {
+                  "type": "story",
+                  "platform": "instagram",
+                  "quantity": 3,
+                  "format": null
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "in_kind_value_eur",
+              "ok": true,
+              "actual": 89
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.organic",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:remuner|pas paye|gratuit|aucun paiement|sans paiement|budget|argent|cachet",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"medium\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"Budget financier éventuel\",\"Date ou délai de publication\",\"Durée et territoire du repartage du Reel\",\"Nombre de révisions prévues\"]},\"deal\":{\"brand\":\"Quiétilé\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"instagram\",\"quantity\":1.0,\"format\":\"Reel Instagram\"},{\"type\":\"story\",\"platform\":\"instagram\",\"quantity\":3.0,\"format\":null}],\"publication_required\":true,\"usage\":{\"organic\":true,\"paid_ads\":false,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":null,\"territory\":null,\"perpetual\":false},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":false,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":null,\"unlimited\":false},\"payment\":{\"amount_eur\":null,\"currency\":\"EUR\",\"terms_days\":null,\"schedule\":null},\"in_kind_value_eur\":89.0,\"deadlines\":[],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Coffret offert\",\"why\":\"Tu conserves le coffret Automne, annoncé à une valeur de 89 €.\"},{\"label\":\"Livrables clairement indiqués\",\"why\":\"L'offre précise un Reel Instagram et trois stories.\"},{\"label\":\"Repartage envisagé sur leur page\",\"why\":\"La marque propose de repartager le Reel sur son propre compte.\"}],\"red_flags\":[{\"label\":\"Aucune rémunération financière\",\"severity\":\"high\",\"why\":\"La collaboration repose uniquement sur le coffret offert, malgré la création et la publication de plusieurs contenus.\"},{\"label\":\"Droits de repartage peu définis\",\"severity\":\"medium\",\"why\":\"La durée, le territoire et les conditions du repartage du Reel ne sont pas précisés.\"},{\"label\":\"Aucun délai indiqué\",\"severity\":\"medium\",\"why\":\"La date de création et de publication des contenus n'est pas mentionnée.\"}],\"ready_to_send_message\":{\"tone\":\"Poli et ferme\",\"text\":\"Bonjour Lucie, merci pour ta proposition et pour les détails concernant le coffret Automne. Le projet peut m’intéresser. Peux-tu me préciser quel est le budget prévu par la marque pour cette collaboration ?\"},\"negotiate\":[{\"label\":\"Obtenir une rémunération financière\",\"why\":\"Le coffret offert ne précise pas de rémunération pour la création d’un Reel et de trois stories.\",\"priority\":1.0,\"topic\":\"other\"},{\"label\":\"Encadrer le repartage\",\"why\":\"Demande la durée, le territoire et les comptes concernés par le repartage du Reel.\",\"priority\":2.0,\"topic\":\"territory\"},{\"label\":\"Fixer les délais\",\"why\":\"Les dates de livraison et de publication ne sont pas indiquées.\",\"priority\":3.0,\"topic\":\"other\"},{\"label\":\"Clarifier les révisions\",\"why\":\"Le nombre de retours ou de modifications demandés n'est pas précisé.\",\"priority\":4.0,\"topic\":\"revisions\"}],\"counter_offer\":{\"changes\":[\"Prévoir une rémunération financière en complément du coffret offert.\",\"Limiter le repartage du Reel aux comptes organiques de Quiétilé, pour une durée et un territoire définis.\",\"Fixer les dates de livraison et de publication avant le début de la collaboration.\",\"Définir le nombre de séries de retours incluses.\"]}}"
+        },
+        {
+          "fixture": "v08-photo-ecran-perpetuite",
+          "source": "18-piege-perpetuite",
+          "degradation": "photo-of-screen",
+          "error": null,
+          "latencyMs": 11512,
+          "tokens": {
+            "inputTokens": 5028,
+            "cachedInputTokens": 1922,
+            "outputTokens": 1463
+          },
+          "costUsd": 0.00241524,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Maison Orvelle"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 2,
+                  "format": "verticales, 30 secondes environ"
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 450
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 30
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.perpetual",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "revisions.count",
+              "ok": true,
+              "actual": 2
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:perpetu|a vie|sans limite|sans fin|duree de protection|illimite|pour toujours|definiti|70 ans",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"medium\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"Date ou délai de livraison des vidéos\",\"Modalités précises de validation finale\"]},\"deal\":{\"brand\":\"Maison Orvelle\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"tiktok\",\"quantity\":2,\"format\":\"verticales, 30 secondes environ\"}],\"publication_required\":false,\"usage\":{\"organic\":true,\"paid_ads\":true,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":null,\"territory\":\"tous les territoires\",\"perpetual\":true},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":false,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":2,\"unlimited\":false},\"payment\":{\"amount_eur\":450,\"currency\":\"EUR\",\"terms_days\":30,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Livrables clairement définis\",\"why\":\"L'offre précise le nombre de vidéos, leur plateforme et leur durée approximative.\"},{\"label\":\"Pas de publication sur ton compte\",\"why\":\"Tu dois seulement livrer les vidéos à l'équipe de la marque.\"},{\"label\":\"Révisions encadrées\",\"why\":\"Deux séries de retours sont incluses, ce qui limite les demandes supplémentaires.\"},{\"label\":\"Aucune exclusivité\",\"why\":\"Tu restes libre de travailler avec d'autres marques.\"},{\"label\":\"Délai de paiement indiqué\",\"why\":\"Le paiement est prévu à 30 jours.\"}],\"red_flags\":[{\"label\":\"Utilisation très large et sans fin annoncée\",\"severity\":\"high\",\"why\":\"La marque prévoit une diffusion sur ses réseaux, son site et en publicité payante, sur tous les territoires et pendant toute la durée de protection des droits d'auteur.\"},{\"label\":\"Publicité payante incluse sans précision\",\"severity\":\"high\",\"why\":\"L'offre ne précise ni les supports publicitaires concernés, ni la durée, ni les conditions de renouvellement.\"},{\"label\":\"Délai de livraison absent\",\"severity\":\"medium\",\"why\":\"Tu ne sais pas pour quelle date les vidéos doivent être livrées.\"},{\"label\":\"Validation finale peu détaillée\",\"severity\":\"medium\",\"why\":\"Le nombre de séries de retours est indiqué, mais le délai de réponse et les critères de validation ne sont pas précisés.\"}],\"ready_to_send_message\":{\"tone\":\"Poli et ferme\",\"text\":\"Bonjour Victoire,\\n\\nMerci pour ton récapitulatif. Le projet m'intéresse. Avant de confirmer, peux-tu me préciser la date de livraison attendue ainsi que le délai de validation des vidéos ?\\n\\nJe souhaite également que les droits d'utilisation soient limités à une durée et à des supports définis, avec une distinction claire entre la diffusion organique et la publicité payante. Peux-tu aussi confirmer qu'aucun fichier source ou rush ne sera demandé ?\\n\\nPour l'ensemble du projet, mon tarif se situe {{CONTRE_OFFRE}}.\\n\\nMerci et bonne soirée,\\nLina\"},\"negotiate\":[{\"label\":\"Limiter la publicité payante\",\"why\":\"La publicité payante est incluse sans durée ni périmètre précis.\",\"priority\":1,\"topic\":\"paid_ads\"},{\"label\":\"Définir la durée et le territoire d'utilisation\",\"why\":\"Les droits sont prévus sur tous les territoires et sans fin annoncée.\",\"priority\":2,\"topic\":\"territory\"},{\"label\":\"Confirmer l'absence de rushs\",\"why\":\"L'offre indique la livraison des vidéos, mais ne précise pas si les fichiers sources sont exclus.\",\"priority\":3,\"topic\":\"raw_footage\"},{\"label\":\"Ajouter une date de livraison\",\"why\":\"Aucun délai de livraison n'est indiqué.\",\"priority\":4,\"topic\":\"other\"},{\"label\":\"Préciser la validation et les retours\",\"why\":\"Il faut définir le délai de réponse de la marque et le traitement des demandes supplémentaires après les deux séries prévues.\",\"priority\":5,\"topic\":\"revisions\"}],\"counter_offer\":{\"changes\":[\"Limiter l'utilisation organique et publicitaire à une durée et à des supports précisément définis.\",\"Prévoir une validation dans un délai clairement indiqué.\",\"Confirmer que seuls les contenus montés sont livrés, sans rushs ni fichiers sources.\",\"Ajouter une date ou un délai de livraison précis.\",\"Limiter les demandes de modification aux deux séries de retours prévues.\"]}}"
+        }
+      ],
+      "metrics": {
+        "criticalFactExtraction": 97.8,
+        "forbiddenHallucinations": 0,
+        "schemaValidity": 100,
+        "latencyP50Ms": 11348,
+        "latencyP95Ms": 11879,
+        "costPerAnalysisUsd": 0.002044,
+        "costPerAnalysisEur": 0.001763
+      }
+    },
+    {
+      "id": "google/gemini-3.6-flash",
+      "skipped": null,
+      "temperature": "0",
+      "runs": [
+        {
+          "fixture": "v01-dm-cosmetique",
+          "source": "01-dm-cosmetique",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 25257,
+          "tokens": {
+            "inputTokens": 2572,
+            "cachedInputTokens": 0,
+            "outputTokens": 2954
+          },
+          "costUsd": 0.0130065,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Aubépine Cosmétiques"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 2,
+                  "format": null
+                }
+              ]
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 6
+            },
+            {
+              "fact": "usage.perpetual",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.territory",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "exclusivity.duration_months",
+              "ok": true,
+              "actual": 3
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "revisions.unlimited",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 300
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 60
+            },
+            {
+              "fact": "ai_training_rights",
+              "ok": true,
+              "actual": "absent"
+            },
+            {
+              "fact": "must_flag:revision|illimit",
+              "ok": true
+            },
+            {
+              "fact": "must_flag:exclusiv",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\n  \"language\": \"fr\",\n  \"confidence\": \"high\",\n  \"input_quality\": {\n    \"readable\": true,\n    \"missing_critical\": []\n  },\n  \"deal\": {\n    \"brand\": \"Aubépine Cosmétiques\",\n    \"deliverables\": [\n      {\n        \"type\": \"video\",\n        \"platform\": \"tiktok\",\n        \"quantity\": 2,\n        \"format\": null\n      }\n    ],\n    \"publication_required\": false,\n    \"usage\": {\n      \"organic\": false,\n      \"paid_ads\": true,\n      \"whitelisting\": false,\n      \"spark_ads\": false,\n      \"duration_months\": 6,\n      \"territory\": null,\n      \"perpetual\": false\n    },\n    \"exclusivity\": {\n      \"present\": true,\n      \"duration_months\": 3,\n      \"category\": \"cosmétique\"\n    },\n    \"raw_footage\": true,\n    \"ip_transfer\": \"license\",\n    \"ai_training_rights\": \"absent\",\n    \"revisions\": {\n      \"count\": null,\n      \"unlimited\": true\n    },\n    \"payment\": {\n      \"amount_eur\": 300,\n      \"currency\": \"EUR\",\n      \"terms_days\": 60,\n      \"schedule\": null\n    },\n    \"in_kind_value_eur\": null,\n    \"deadlines\": [],\n    \"kill_fee\": null,\n    \"termination\": null,\n    \"governing_law\": null\n  },\n  \"good_points\": [\n    {\n      \"label\": \"Droits d'utilisation limités\",\n      \"why\": \"La durée des droits publicitaires est clairement cadrée à 6 mois.\"\n    },\n    {\n      \"label\": \"Exclusivité définie\",\n      \"why\": \"La durée et le secteur de l'exclusivité sont précisés dès le premier contact.\"\n    }\n  ],\n  \"red_flags\": [\n    {\n      \"label\": \"Révisions illimitées\",\n      \"severity\": \"high\",\n      \"why\": \"Cette clause permet à la marque d'exiger un nombre indéfini de modifications sans compensation.\"\n    },\n    {\n      \"label\": \"Délai de paiement très long\",\n      \"severity\": \"medium\",\n      \"why\": \"Un règlement à 60 jours impose une attente importante après la livraison.\"\n    },\n    {\n      \"label\": \"Rushs inclus sans précision\",\n      \"severity\": \"medium\",\n      \"why\": \"Fournir les fichiers bruts permet à la marque d'isoler ou réutiliser tes plans sans cadrage.\"\n    }\n  ],\n  \"ready_to_send_message\": {\n    \"tone\": \"Professionnel et direct\",\n    \"text\": \"Bonjour ! Merci pour ton message, je suis ravi(e) que mon contenu vous plaise. Concernant ta proposition, mon tarif pour ce projet se situe {{CONTRE_OFFRE}} en incluant 2 révisions maximum et un paiement sous 30 jours. Dis-moi si cela te convient !\"\n  },\n  \"negotiate\": [\n    {\n      \"label\": \"Nombre de révisions\",\n      \"why\": \"Fixer une limite à 1 ou 2 séries de retouches pour cadrer la charge de travail.\",\n      \"priority\": 1,\n      \"topic\": \"revisions\"\n    },\n    {\n      \"label\": \"Délai de paiement\",\n      \"why\": \"Réduire le délai de paiement à 30 jours à compter de la facturation.\",\n      \"priority\": 2,\n      \"topic\": \"payment_terms\"\n    },\n    {\n      \"label\": \"Cadrage du raw footage\",\n      \"why\": \"Préciser l'usage exact des rushs bruts ou demander un supplément.\",\n      \"priority\": 3,\n      \"topic\": \"raw_footage\"\n    },\n    {\n      \"label\": \"Exclusivité\",\n      \"why\": \"Resserrer la catégorie de produits concernée pour préserver d'autres opportunités.\",\n      \"priority\": 4,\n      \"topic\": \"exclusivity\"\n    }\n  ],\n  \"counter_offer\": {\n    \"changes\": [\n      \"Plafonner les révisions à 2 allers-retours au maximum\",\n      \"Régler la facture sous 30 jours au lieu de 60 jours\",\n      \"Préciser les conditions de réutilisation des rushs bruts\"\n    ]\n  }\n}"
+        },
+        {
+          "fixture": "v02-dm-spark-ads",
+          "source": "05-dm-spark-ads",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 10104,
+          "tokens": {
+            "inputTokens": 2572,
+            "cachedInputTokens": 0,
+            "outputTokens": 1522
+          },
+          "costUsd": 0.0076365,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Nomadelle"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 2,
+                  "format": null
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 400
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 30
+            },
+            {
+              "fact": "usage.spark_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.whitelisting",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 1
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:spark|boost",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"high\",\"input_quality\":{\"readable\":true,\"missing_critical\":[]},\"deal\":{\"brand\":\"Nomadelle\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"tiktok\",\"quantity\":2,\"format\":null}],\"publication_required\":true,\"usage\":{\"organic\":false,\"paid_ads\":false,\"whitelisting\":false,\"spark_ads\":true,\"duration_months\":1,\"territory\":null,\"perpetual\":false},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":false,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":null,\"unlimited\":false},\"payment\":{\"amount_eur\":400,\"currency\":\"EUR\",\"terms_days\":30,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Rémunération financière directe\",\"why\":\"La marque propose un tarif en euros dès le premier contact sans passer par du simple don de produit.\"},{\"label\":\"Absence d'exclusivité\",\"why\":\"Tu restes libre de collaborer avec d'autres marques du même secteur.\"},{\"label\":\"Usage Spark Ads limité dans le temps\",\"why\":\"La durée d'utilisation publicitaire est clairement encadrée à 30 jours.\"}],\"red_flags\":[],\"ready_to_send_message\":{\"tone\":\"Professionnel et chaleureux\",\"text\":\"Bonjour Hugo, merci pour votre message et l'intérêt pour mon travail ! Le projet avec Nomadelle me tente beaucoup. Concernant les deux vidéos TikTok avec le code Spark Ads de 30 jours, mon tarif pour ce projet se situe {{CONTRE_OFFRE}}. Dites-moi si cela vous convient pour qu'on puisse avancer ensemble !\"},\"negotiate\":[{\"label\":\"Ajustement tarifaire\",\"why\":\"Valide si le tarif proposé de 400 € couvre l'ensemble de la création et des droits Spark Ads selon tes standards.\",\"priority\":1,\"topic\":\"spark_ads\"}],\"counter_offer\":{\"changes\":[\"Revaloriser le tarif global pour inclure la création de 2 vidéos et l'autorisation Spark Ads de 30 jours.\"]}}"
+        },
+        {
+          "fixture": "v03-dm-vague-droits",
+          "source": "04-dm-vague-droits",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 16889,
+          "tokens": {
+            "inputTokens": 2572,
+            "cachedInputTokens": 0,
+            "outputTokens": 1446
+          },
+          "costUsd": 0.0073515,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Ondulia"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 1,
+                  "format": null
+                }
+              ]
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 150
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "usage.perpetual",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.territory",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:duree|combien de temps|mois|limite",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"medium\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"Durée d'utilisation des droits publicitaires non précisée\",\"Modalités et délais de paiement non définis\",\"Format précis de la vidéo non détaillé\"]},\"deal\":{\"brand\":\"Ondulia\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"tiktok\",\"quantity\":1,\"format\":null}],\"publication_required\":false,\"usage\":{\"organic\":false,\"paid_ads\":true,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":null,\"territory\":null,\"perpetual\":false},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":false,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":null,\"unlimited\":false},\"payment\":{\"amount_eur\":150,\"currency\":\"EUR\",\"terms_days\":null,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Rémunération financière dès le premier contact\",\"why\":\"La marque propose d'emblée un tarif fixe plutôt qu'un simple échange de produit.\"}],\"red_flags\":[{\"label\":\"Durée des droits pub non définie\",\"severity\":\"medium\",\"why\":\"Sans précision de durée, la marque pourrait utiliser ton image indéfiniment sans compensation supplémentaire.\"}],\"ready_to_send_message\":{\"tone\":\"Professionnel et chaleureux\",\"text\":\"Hello Maxence, merci pour ton message ! Je suis bien disponible ce mois-ci. Concernant la création de la vidéo TikTok avec les droits publicitaires, mon tarif pour ce projet se situe {{CONTRE_OFFRE}}. Peux-tu me préciser la durée souhaitée pour les droits pub ainsi que vos conditions de paiement ?\"},\"negotiate\":[{\"label\":\"Encadrer la durée des droits publicitaires\",\"why\":\"Il est essentiel de définir si les droits publicitaires s'appliquent sur 3, 6 ou 12 mois.\",\"priority\":1,\"topic\":\"paid_ads\"},{\"label\":\"Clarifier le délai de paiement\",\"why\":\"Aucun délai ni condition de paiement n'est mentionné dans le message.\",\"priority\":2,\"topic\":\"payment_terms\"}],\"counter_offer\":{\"changes\":[\"Définir une durée limitée pour les droits publicitaires (ex. 3 ou 6 mois)\",\"Fixer un délai de paiement clair à 30 jours après facturation\"]}}"
+        },
+        {
+          "fixture": "v04-mail-biscuits",
+          "source": "07-email-biscuits",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 14810,
+          "tokens": {
+            "inputTokens": 2554,
+            "cachedInputTokens": 0,
+            "outputTokens": 2816
+          },
+          "costUsd": 0.0124755,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Les Délices de Marthe"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": null,
+                  "quantity": 2,
+                  "format": "30 secondes"
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.organic",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 3
+            },
+            {
+              "fact": "usage.territory",
+              "ok": true,
+              "actual": "France"
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "revisions.count",
+              "ok": true,
+              "actual": 2
+            },
+            {
+              "fact": "revisions.unlimited",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 500
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 30
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:rush|raw",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"high\",\"input_quality\":{\"readable\":true,\"missing_critical\":[]},\"deal\":{\"brand\":\"Les Délices de Marthe\",\"deliverables\":[{\"type\":\"video\",\"platform\":null,\"quantity\":2,\"format\":\"30 secondes\"}],\"publication_required\":false,\"usage\":{\"organic\":true,\"paid_ads\":true,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":3,\"territory\":\"France\",\"perpetual\":false},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":true,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":2,\"unlimited\":false},\"payment\":{\"amount_eur\":500,\"currency\":\"EUR\",\"terms_days\":30,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[\"3 semaines après validation du brief\"],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Droits d'utilisation délimités\",\"why\":\"L'utilisation en publicité payante et sur les réseaux de la marque est limitée à une durée de 3 mois et au territoire français.\"},{\"label\":\"Nombre de retours cadré\",\"why\":\"La marque prévoit deux séries de retours, ce qui limite le risque de demandes de révision à l'infini.\"}],\"red_flags\":[{\"label\":\"Demande de rushs bruts\",\"severity\":\"medium\",\"why\":\"La marque demande les rushs non montés, ce qui lui donne la possibilité de réutiliser tes images pour d'autres contenus sans rémunération additionnelle.\"}],\"ready_to_send_message\":{\"tone\":\"Chaleureux et professionnel\",\"text\":\"Bonjour Paul,\\n\\nMerci pour ton message et l'intérêt porté à mon travail. Le projet pour Les Délices de Marthe me plaît beaucoup !\\n\\nPour la création des 2 vidéos de 30 secondes, l'utilisation publicitaire pendant 3 mois en France ainsi que la livraison des rushs bruts, mon tarif se situe {{CONTRE_OFFRE}}.\\n\\nDis-moi si cela te convient pour poursuivre !\\n\\nBien à toi,\\nNora\"},\"negotiate\":[{\"label\":\"Rémunération des rushs bruts\",\"why\":\"Fournir les fichiers sources à la marque est un service complémentaire qui mérite d'être valorisé.\",\"priority\":1,\"topic\":\"raw_footage\"}],\"counter_offer\":{\"changes\":[\"Incolure ou ajustement tarifaire prenant en compte la cession des fichiers rushs bruts\",\"Revalorisation de la prestation globale intégrant la création et les droits d'utilisation publicitaire\"]}}"
+        },
+        {
+          "fixture": "v05-mail-anglais",
+          "source": "20-email-anglais",
+          "degradation": "none",
+          "error": null,
+          "latencyMs": 17026,
+          "tokens": {
+            "inputTokens": 2572,
+            "cachedInputTokens": 0,
+            "outputTokens": 3160
+          },
+          "costUsd": 0.013779,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Luminelle Labs"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 3,
+                  "format": "20–40 seconds each"
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 500
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 30
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 3
+            },
+            {
+              "fact": "usage.territory",
+              "ok": true,
+              "actual": "France and Belgium"
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "revisions.count",
+              "ok": true,
+              "actual": 1
+            },
+            {
+              "fact": "must_flag:rush|raw",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\n  \"language\": \"en\",\n  \"confidence\": \"high\",\n  \"input_quality\": {\n    \"readable\": true,\n    \"missing_critical\": []\n  },\n  \"deal\": {\n    \"brand\": \"Luminelle Labs\",\n    \"deliverables\": [\n      {\n        \"type\": \"video\",\n        \"platform\": \"tiktok\",\n        \"quantity\": 3,\n        \"format\": \"20–40 seconds each\"\n      }\n    ],\n    \"publication_required\": false,\n    \"usage\": {\n      \"organic\": false,\n      \"paid_ads\": true,\n      \"whitelisting\": false,\n      \"spark_ads\": false,\n      \"duration_months\": 3,\n      \"territory\": \"France and Belgium\",\n      \"perpetual\": false\n    },\n    \"exclusivity\": {\n      \"present\": false,\n      \"duration_months\": null,\n      \"category\": null\n    },\n    \"raw_footage\": true,\n    \"ip_transfer\": \"license\",\n    \"ai_training_rights\": \"absent\",\n    \"revisions\": {\n      \"count\": 1,\n      \"unlimited\": false\n    },\n    \"payment\": {\n      \"amount_eur\": 500,\n      \"currency\": \"EUR\",\n      \"terms_days\": 30,\n      \"schedule\": null\n    },\n    \"in_kind_value_eur\": null,\n    \"deadlines\": [],\n    \"kill_fee\": null,\n    \"termination\": null,\n    \"governing_law\": null\n  },\n  \"good_points\": [\n    {\n      \"label\": \"Pas de publication sur ton compte\",\n      \"why\": \"Tu n'as pas besoin d'engager ton audience ni d'allouer une place sur ton propre fil d'actualité.\"\n    },\n    {\n      \"label\": \"Cadre d'utilisation clair\",\n      \"why\": \"La durée (3 mois) et les territoires (France et Belgique) pour les droits publicitaires sont clairement limités.\"\n    },\n    {\n      \"label\": \"Révisions limitées\",\n      \"why\": \"Un seul tour de révisions est inclus, ce qui évite les demandes de retouches interminables.\"\n    }\n  ],\n  \"red_flags\": [\n    {\n      \"label\": \"Transmission des rushs bruts\",\n      \"severity\": \"medium\",\n      \"why\": \"Fournir les rushs bruts permet à la marque de créer de nouvelles déclinaisons de vidéos sans te rémunérer davantage.\"\n    }\n  ],\n  \"ready_to_send_message\": {\n    \"tone\": \"Professionnel et constructif\",\n    \"text\": \"Hi Daniel,\\n\\nThank you for reaching out! I would love to collaborate with Luminelle Labs on these TikTok videos.\\n\\nRegarding the terms, my rate for 3 videos with 3 months of paid usage rights in France and Belgium, including the raw footage, is {{CONTRE_OFFRE}}.\\n\\nLet me know if this works for you so we can move forward!\\n\\nBest,\\nChloé\"\n  },\n  \"negotiate\": [\n    {\n      \"label\": \"Facturation des rushs bruts\",\n      \"why\": \"Les rushs ont de la valeur car la marque peut les réutiliser pour composer d'autres publicités.\",\n      \"priority\": 1,\n      \"topic\": \"raw_footage\"\n    },\n    {\n      \"label\": \"Ajustement du tarif global\",\n      \"why\": \"Le travail comprend 3 vidéos, les rushs et les droits publicitaires sur deux pays.\",\n      \"priority\": 2,\n      \"topic\": \"paid_ads\"\n    }\n  ],\n  \"counter_offer\": {\n    \"changes\": [\n      \"Ajuster la rémunération globale pour inclure la cession des rushs bruts et les droits d'utilisation publicitaire sur 3 mois.\",\n      \"Confirmer que les rushs ne seront pas réutilisés pour générer d'autres vidéos sans accord préalable.\"\n    ]\n  }\n}"
+        },
+        {
+          "fixture": "v06-dm-coupe-whitelisting",
+          "source": "06-dm-whitelisting",
+          "degradation": "cut-bottom",
+          "error": null,
+          "latencyMs": 19019,
+          "tokens": {
+            "inputTokens": 2550,
+            "cachedInputTokens": 0,
+            "outputTokens": 3652
+          },
+          "costUsd": 0.0156075,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Lunabrosse"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "instagram",
+                  "quantity": 3,
+                  "format": "Reels"
+                }
+              ]
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 750
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 45
+            },
+            {
+              "fact": "usage.whitelisting",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.duration_months",
+              "ok": true,
+              "actual": 2
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "exclusivity.duration_months",
+              "ok": true,
+              "actual": 1
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:whitelist|acces a ton compte|depuis ton compte",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\n  \"language\": \"fr\",\n  \"confidence\": \"medium\",\n  \"input_quality\": {\n    \"readable\": true,\n    \"missing_critical\": [\n      \"délais de livraison\",\n      \"conditions de révision\"\n    ]\n  },\n  \"deal\": {\n    \"brand\": \"Lunabrosse\",\n    \"deliverables\": [\n      {\n        \"type\": \"video\",\n        \"platform\": \"instagram\",\n        \"quantity\": 3,\n        \"format\": \"Reels\"\n      }\n    ],\n    \"publication_required\": true,\n    \"usage\": {\n      \"organic\": false,\n      \"paid_ads\": true,\n      \"whitelisting\": true,\n      \"spark_ads\": false,\n      \"duration_months\": 2,\n      \"territory\": null,\n      \"perpetual\": false\n    },\n    \"exclusivity\": {\n      \"present\": true,\n      \"duration_months\": 1,\n      \"category\": \"mode\"\n    },\n    \"raw_footage\": false,\n    \"ip_transfer\": \"license\",\n    \"ai_training_rights\": \"absent\",\n    \"revisions\": {\n      \"count\": null,\n      \"unlimited\": false\n    },\n    \"payment\": {\n      \"amount_eur\": 750,\n      \"currency\": \"EUR\",\n      \"terms_days\": 45,\n      \"schedule\": null\n    },\n    \"in_kind_value_eur\": null,\n    \"deadlines\": [],\n    \"kill_fee\": null,\n    \"termination\": null,\n    \"governing_law\": null\n  },\n  \"good_points\": [\n    {\n      \"label\": \"Budget de départ explicite\",\n      \"why\": \"La marque propose directement une rémunération financière par contenu.\"\n    },\n    {\n      \"label\": \"Durée des droits limitée\",\n      \"why\": \"L'accès whitelisting et l'exclusivité sont délimités dans le temps.\"\n    }\n  ],\n  \"red_flags\": [\n    {\n      \"label\": \"Délai de paiement long\",\n      \"severity\": \"medium\",\n      \"why\": \"Un règlement à 45 jours est un délai particulièrement long pour une prestation de création de contenu.\"\n    }\n  ],\n  \"ready_to_send_message\": {\n    \"tone\": \"professionnel et chaleureux\",\n    \"text\": \"Bonjour, merci pour cette proposition ! Le projet me plaît beaucoup. Compte tenu des 3 Reels, de l'exclusivité d'un mois et des 2 mois de whitelisting sur mon compte, mon tarif pour ce projet se situe {{CONTRE_OFFRE}}. Concernant le règlement, je fonctionne habituellement avec un délai plus court. Dis-moi si nous pouvons en discuter !\"\n  },\n  \"negotiate\": [\n    {\n      \"label\": \"Revalorisation pour whitelisting et exclusivité\",\n      \"why\": \"L'exclusivité sectorielle et l'utilisation de ton compte en whitelisting augmentent la valeur de la prestation et doivent être rémunérées en conséquence.\",\n      \"priority\": 1,\n      \"topic\": \"whitelisting\"\n    },\n    {\n      \"label\": \"Réduction du délai de paiement\",\n      \"why\": \"Un délai de 45 jours est très long, il vaut mieux demander 30 jours ou un acompte à la commande.\",\n      \"priority\": 2,\n      \"topic\": \"payment_terms\"\n    }\n  ],\n  \"counter_offer\": {\n    \"changes\": [\n      \"Inclusion du whitelisting et de l'exclusivité dans la rémunération globale\",\n      \"Réduction du délai de paiement à 30 jours\"\n    ]\n  }\n}"
+        },
+        {
+          "fixture": "v07-dm-flou-produit-offert",
+          "source": "02-dm-produit-offert",
+          "degradation": "low-quality",
+          "error": null,
+          "latencyMs": 16643,
+          "tokens": {
+            "inputTokens": 2572,
+            "cachedInputTokens": 0,
+            "outputTokens": 2936
+          },
+          "costUsd": 0.012939,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Quiétile"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "instagram",
+                  "quantity": 1,
+                  "format": "Reel"
+                },
+                {
+                  "type": "story",
+                  "platform": "instagram",
+                  "quantity": 3,
+                  "format": null
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "in_kind_value_eur",
+              "ok": true,
+              "actual": 89
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": null
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "usage.organic",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "raw_footage",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:remuner|pas paye|gratuit|aucun paiement|sans paiement|budget|argent|cachet",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"low\",\"input_quality\":{\"readable\":true,\"missing_critical\":[\"Rémunération financière\",\"Délais de livraison\",\"Durée des droits d'utilisation\"]},\"deal\":{\"brand\":\"Quiétile\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"instagram\",\"quantity\":1,\"format\":\"Reel\"},{\"type\":\"story\",\"platform\":\"instagram\",\"quantity\":3,\"format\":null}],\"publication_required\":true,\"usage\":{\"organic\":true,\"paid_ads\":false,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":null,\"territory\":null,\"perpetual\":false},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":false,\"ip_transfer\":\"license\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":null,\"unlimited\":false},\"payment\":{\"amount_eur\":null,\"currency\":\"EUR\",\"terms_days\":null,\"schedule\":null},\"in_kind_value_eur\":89,\"deadlines\":[],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Valeur du coffret précisée\",\"why\":\"La marque indique clairement la valeur du coffret de 89 €.\"}],\"red_flags\":[{\"label\":\"Absence de rémunération financière\",\"severity\":\"high\",\"why\":\"La marque demande la création et publication d'un Reel et de 3 stories uniquement en échange d'un produit offert.\"}],\"ready_to_send_message\":{\"tone\":\"Amical et professionnel\",\"text\":\"Hello Lucie, merci pour ta proposition ! Le coffret a l'air super. Cependant, réaliser un Reel et 3 stories demande un vrai travail de création et de diffusion, je ne fonctionne donc pas uniquement par échange de produit. Quel est le budget prévu pour cette collaboration ?\"},\"negotiate\":[{\"label\":\"Rémunération financière\",\"why\":\"Un coffret cadeau ne compense pas le temps de production et la mise à disposition de ton audience.\",\"priority\":1,\"topic\":\"payment_terms\"}],\"counter_offer\":{\"changes\":[\"Ajout d'un budget financier pour la création des contenus et la publication sur ton compte\",\"Maintien de l'envoi du coffret comme dotation\"]}}"
+        },
+        {
+          "fixture": "v08-photo-ecran-perpetuite",
+          "source": "18-piege-perpetuite",
+          "degradation": "photo-of-screen",
+          "error": null,
+          "latencyMs": 19900,
+          "tokens": {
+            "inputTokens": 2574,
+            "cachedInputTokens": 0,
+            "outputTokens": 2381
+          },
+          "costUsd": 0.01085925,
+          "schemaValid": true,
+          "schemaIssues": [],
+          "facts": [
+            {
+              "fact": "brand",
+              "ok": true,
+              "actual": "Maison Orvelle"
+            },
+            {
+              "fact": "deliverables",
+              "ok": true,
+              "actual": [
+                {
+                  "type": "video",
+                  "platform": "tiktok",
+                  "quantity": 2,
+                  "format": "verticales, 30 secondes environ"
+                }
+              ]
+            },
+            {
+              "fact": "publication_required",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "payment.amount_eur",
+              "ok": true,
+              "actual": 450
+            },
+            {
+              "fact": "payment.terms_days",
+              "ok": true,
+              "actual": 30
+            },
+            {
+              "fact": "usage.paid_ads",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "usage.perpetual",
+              "ok": true,
+              "actual": true
+            },
+            {
+              "fact": "revisions.count",
+              "ok": true,
+              "actual": 2
+            },
+            {
+              "fact": "exclusivity.present",
+              "ok": true,
+              "actual": false
+            },
+            {
+              "fact": "must_flag:perpetu|a vie|sans limite|sans fin|duree de protection|illimite|pour toujours|definiti|70 ans",
+              "ok": true
+            }
+          ],
+          "hallucinations": [],
+          "rawOutput": "{\"language\":\"fr\",\"confidence\":\"high\",\"input_quality\":{\"readable\":true,\"missing_critical\":[]},\"deal\":{\"brand\":\"Maison Orvelle\",\"deliverables\":[{\"type\":\"video\",\"platform\":\"tiktok\",\"quantity\":2,\"format\":\"verticales, 30 secondes environ\"}],\"publication_required\":false,\"usage\":{\"organic\":true,\"paid_ads\":true,\"whitelisting\":false,\"spark_ads\":false,\"duration_months\":null,\"territory\":\"tous les territoires\",\"perpetual\":true},\"exclusivity\":{\"present\":false,\"duration_months\":null,\"category\":null},\"raw_footage\":false,\"ip_transfer\":\"full_assignment\",\"ai_training_rights\":\"absent\",\"revisions\":{\"count\":2,\"unlimited\":false},\"payment\":{\"amount_eur\":450,\"currency\":\"EUR\",\"terms_days\":30,\"schedule\":null},\"in_kind_value_eur\":null,\"deadlines\":[],\"kill_fee\":null,\"termination\":null,\"governing_law\":null},\"good_points\":[{\"label\":\"Pas de publication personnelle\",\"why\":\"Tu n'as pas besoin de poster les vidéos sur tes propres réseaux sociaux.\"},{\"label\":\"Absence d'exclusivité\",\"why\":\"Tu restes libre de travailler avec d'autres marques du même secteur.\"},{\"label\":\"Nombre de révisions encadré\",\"why\":\"Le nombre de séries de retours est clairement limité à deux.\"}],\"red_flags\":[{\"label\":\"Droits cédés pour toute la durée des droits d'auteur\",\"severity\":\"high\",\"why\":\"La marque demande une cession quasi perpétuelle de tes droits sur tous les supports et territoires.\"},{\"label\":\"Publicité payante sans limite de durée\",\"severity\":\"medium\",\"why\":\"L'utilisation publicitaire payante n'est pas restreinte dans le temps.\"}],\"ready_to_send_message\":{\"tone\":\"Professionnel et constructif\",\"text\":\"Bonjour Victoire, merci pour cette proposition. La campagne Rituel du soir m'intéresse beaucoup. Concernant les conditions d'utilisation, je propose de limiter la licence d'exploitation (organique et publicité payante) à une durée de 12 mois. Pour ce périmètre, mon tarif pour ce projet se situe {{CONTRE_OFFRE}}. Qu'en penses-tu ? Belle journée, Lina\"},\"negotiate\":[{\"label\":\"Limiter la durée d'utilisation publicitaire\",\"why\":\"Les droits publicitaires à vie doivent être évités ou facturés très cher. Une durée de 6 à 12 mois est plus adaptée.\",\"priority\":1,\"topic\":\"paid_ads\"},{\"label\":\"Encadrer la cession globale de droits\",\"why\":\"Il est préférable d'accorder une licence temporaire plutôt qu'une cession pour toute la durée des droits d'auteur.\",\"priority\":2,\"topic\":\"ip_transfer\"}],\"counter_offer\":{\"changes\":[\"Limiter les droits d'utilisation (organique, site internet et publicité payante) à 12 mois\",\"Prévoir une option de prolongation des droits publicitaires à l'issue des 12 mois\"]}}"
+        }
+      ],
+      "metrics": {
+        "criticalFactExtraction": 100,
+        "forbiddenHallucinations": 0,
+        "schemaValidity": 100,
+        "latencyP50Ms": 16889,
+        "latencyP95Ms": 25257,
+        "costPerAnalysisUsd": 0.011707,
+        "costPerAnalysisEur": 0.010099
+      }
+    }
+  ]
+}

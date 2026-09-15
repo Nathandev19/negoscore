@@ -1,0 +1,30 @@
+﻿8 images, 2 candidats, température demandée 0.
+[openai/gpt-5.6-luna] v01-dm-cosmetique — 11879 ms, schéma ok, faits 14/15, hallucinations 0
+[openai/gpt-5.6-luna] v02-dm-spark-ads — 11469 ms, schéma ok, faits 11/11, hallucinations 0
+[google/gemini-3.6-flash] v01-dm-cosmetique — 25257 ms, schéma ok, faits 15/15, hallucinations 0
+[openai/gpt-5.6-luna] v03-dm-vague-droits — 11745 ms, schéma ok, faits 10/11, hallucinations 0
+[google/gemini-3.6-flash] v02-dm-spark-ads — 10104 ms, schéma ok, faits 11/11, hallucinations 0
+[openai/gpt-5.6-luna] v04-mail-biscuits — 10256 ms, schéma ok, faits 14/14, hallucinations 0
+[google/gemini-3.6-flash] v03-dm-vague-droits — 16889 ms, schéma ok, faits 11/11, hallucinations 0
+[openai/gpt-5.6-luna] v05-mail-anglais — 10077 ms, schéma ok, faits 11/11, hallucinations 0
+[openai/gpt-5.6-luna] v06-dm-coupe-whitelisting — 11348 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] v04-mail-biscuits — 14810 ms, schéma ok, faits 14/14, hallucinations 0
+[openai/gpt-5.6-luna] v07-dm-flou-produit-offert — 9027 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] v05-mail-anglais — 17026 ms, schéma ok, faits 11/11, hallucinations 0
+[openai/gpt-5.6-luna] v08-photo-ecran-perpetuite — 11512 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] v06-dm-coupe-whitelisting — 19019 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] v07-dm-flou-produit-offert — 16643 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] v08-photo-ecran-perpetuite — 19900 ms, schéma ok, faits 10/10, hallucinations 0
+
+| Candidat | Faits critiques | Hallucinations interdites | Schéma valide 1er coup | Latence p50 / p95 | Coût par analyse |
+|---|---|---|---|---|---|
+| openai/gpt-5.6-luna | 97.8 % | 0 | 100 % | 11348 / 11879 ms | 0.00204 $ / 0.00176 € |
+| google/gemini-3.6-flash | 100 % | 0 | 100 % | 16889 / 25257 ms | 0.01171 $ / 0.01010 € |
+
+Détail openai/gpt-5.6-luna : v01-dm-cosmetique 14/15, v02-dm-spark-ads 11/11, v03-dm-vague-droits 10/11, v04-mail-biscuits 14/14, v05-mail-anglais 11/11, v06-dm-coupe-whitelisting 10/10, v07-dm-flou-produit-offert 10/10, v08-photo-ecran-perpetuite 10/10
+Détail google/gemini-3.6-flash : v01-dm-cosmetique 15/15, v02-dm-spark-ads 11/11, v03-dm-vague-droits 11/11, v04-mail-biscuits 14/14, v05-mail-anglais 11/11, v06-dm-coupe-whitelisting 10/10, v07-dm-flou-produit-offert 10/10, v08-photo-ecran-perpetuite 10/10
+Température openai/gpt-5.6-luna : refusée par l'API (400 Unsupported parameter: 'temperature' is not supported with this model.) — valeur par défaut du modèle
+Température google/gemini-3.6-flash : 0
+
+Décision : LUNA_POUR_TOUT — Luna à 97.8 % ≥ 90 % : un seul modèle pour le texte et l'image.
+Résultats : evals\results\vision-2026-09-15T15-23-03-259Z.json
