@@ -62,12 +62,59 @@ export async function insertRow<T>(table: string, row: Record<string, unknown>):
   return rows[0];
 }
 
-export async function updateRows(table: string, filter: string, patch: Record<string, unknown>): Promise<void> {
-  await rest(`${table}?${filter}`, { method: "PATCH", body: JSON.stringify(patch), what: `mise à jour ${table}` });
+// Insère la ligne si sa clé primaire n'existe pas encore, sinon ne fait rien.
+export async function insertIfAbsent(table: string, row: Record<string, unknown>): Promise<void> {
+  await rest(table, {
+    method: "POST",
+    body: JSON.stringify(row),
+    headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+    what: `insertion ${table}`,
+  });
+}
+
+export async function updateRows<T = unknown>(table: string, filter: string, patch: Record<string, unknown>): Promise<T[]> {
+  const rows = await rest<T[] | null>(`${table}?${filter}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+    what: `mise à jour ${table}`,
+  });
+  return rows ?? [];
 }
 
 export async function selectRows<T>(table: string, query: string): Promise<T[]> {
   return rest<T[]>(`${table}?${query}`, { method: "GET", what: `lecture ${table}` });
+}
+
+export async function countRows(table: string, query: string): Promise<number> {
+  const { url, serviceKey } = config();
+  const response = await fetch(`${url}/rest/v1/${table}?${query}`, {
+    method: "HEAD",
+    headers: { ...authHeaders(serviceKey), Prefer: "count=exact" },
+    cache: "no-store",
+  });
+  if (!response.ok) throw await failure(response, `comptage ${table}`);
+  const total = response.headers.get("content-range")?.split("/")[1];
+  return total && total !== "*" ? Number(total) : 0;
+}
+
+// Ajoute delta à une colonne entière par compare-and-swap : la mise à jour ne
+// s'applique que si la valeur n'a pas changé depuis la lecture. Renvoie la
+// nouvelle valeur, ou null si la condition (filtre + garde) n'est pas remplie.
+export async function adjustInteger(
+  table: string,
+  filter: string,
+  column: string,
+  delta: number,
+  guard: (current: number) => boolean,
+): Promise<number | null> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const [row] = await selectRows<Record<string, number>>(table, `select=${column}&${filter}&limit=1`);
+    if (!row || !guard(row[column])) return null;
+    const next = row[column] + delta;
+    const updated = await updateRows(table, `${filter}&${column}=eq.${row[column]}`, { [column]: next });
+    if (updated.length > 0) return next;
+  }
+  throw new SupabaseRequestError(`mise à jour concurrente ${table}.${column}`, 409, null);
 }
 
 export async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {

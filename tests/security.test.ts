@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { lockAnalysis } from "@/lib/analysis/lock";
+import { safeNextPath } from "@/lib/auth/session";
+import { sampleAnalysis } from "@/lib/sample-analysis";
 import { hashIp, isUuid, sameToken } from "@/lib/security/request";
 import { isStoragePath, newStoragePath, sniffMime, validateAnnouncedFile } from "@/lib/storage/documents";
 
@@ -21,6 +24,27 @@ const migrations = readdirSync(MIGRATIONS_DIR)
   .sort()
   .map((name) => ({ name, sql: readFileSync(path.join(MIGRATIONS_DIR, name), "utf8").toLowerCase() }));
 const allSql = migrations.map((m) => m.sql).join("\n");
+
+describe("contenu verrouillé et redirections", () => {
+  it("retire physiquement la contre-offre et le message", () => {
+    const view = lockAnalysis(sampleAnalysis);
+    expect("counter_offer" in view).toBe(false);
+    expect("ready_to_send_message" in view).toBe(false);
+    const serialized = JSON.stringify(view);
+    expect(serialized).not.toContain(sampleAnalysis.ready_to_send_message.text);
+    for (const change of sampleAnalysis.counter_offer.changes) expect(serialized).not.toContain(change);
+    expect(view.score).toEqual(sampleAnalysis.score);
+    expect("counter_offer" in sampleAnalysis).toBe(true);
+  });
+
+  it("n'accepte que des chemins de retour internes", () => {
+    expect(safeNextPath("/analyse/resultat/abc")).toBe("/analyse/resultat/abc");
+    expect(safeNextPath("https://exemple.test")).toBe("/historique");
+    expect(safeNextPath("//exemple.test")).toBe("/historique");
+    expect(safeNextPath("/\\exemple.test")).toBe("/historique");
+    expect(safeNextPath(null)).toBe("/historique");
+  });
+});
 
 describe("hachage de l'IP", () => {
   it("ne contient jamais l'IP en clair et dépend du sel", () => {

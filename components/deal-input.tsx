@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileDropZone, type SelectedFile } from "@/components/file-drop-zone";
 import { LoadingSteps } from "@/components/loading-steps";
@@ -16,9 +17,16 @@ const GENERIC_ERROR = "L'analyse n'a pas abouti. Vérifie ta connexion et réess
 const UPLOAD_ERROR = "Le fichier n'a pas pu être envoyé. Vérifie ta connexion et réessaie.";
 
 type Mode = "text" | FileKind;
-type Outcome = { ok: true; analysisId: string } | { ok: false; message: string };
+type Outcome = { ok: true; analysisId: string } | { ok: false; message: string; paywall: boolean };
 
-class FlowError extends Error {}
+class FlowError extends Error {
+  constructor(
+    message: string,
+    readonly paywall = false,
+  ) {
+    super(message);
+  }
+}
 
 async function postJson(url: string, payload: unknown): Promise<Record<string, unknown>> {
   const response = await fetch(url, {
@@ -32,7 +40,9 @@ async function postJson(url: string, payload: unknown): Promise<Record<string, u
   } catch {
     // réponse non JSON
   }
-  if (!response.ok) throw new FlowError(typeof body.error === "string" ? body.error : GENERIC_ERROR);
+  if (!response.ok) {
+    throw new FlowError(typeof body.error === "string" ? body.error : GENERIC_ERROR, response.status === 402);
+  }
   return body;
 }
 
@@ -64,7 +74,7 @@ export function DealInput() {
     pdf: null,
   });
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ message: string; paywall: boolean } | null>(null);
   const outcomeRef = useRef<Outcome | null>(null);
   const stepsDoneRef = useRef(false);
 
@@ -94,7 +104,7 @@ export function DealInput() {
     if (outcome.ok) {
       router.push(`/analyse/resultat/${outcome.analysisId}`);
     } else {
-      setNotice(outcome.message);
+      setNotice({ message: outcome.message, paywall: outcome.paywall });
       setLoading(false);
     }
   }, [router]);
@@ -114,9 +124,12 @@ export function DealInput() {
       const payload = selected && current !== "text" ? { storagePath: await uploadFile(current, selected.file) } : { text };
       const { analysisId } = await postJson("/api/analyse", payload);
       outcomeRef.current =
-        typeof analysisId === "string" ? { ok: true, analysisId } : { ok: false, message: GENERIC_ERROR };
+        typeof analysisId === "string" ? { ok: true, analysisId } : { ok: false, message: GENERIC_ERROR, paywall: false };
     } catch (caught) {
-      outcomeRef.current = { ok: false, message: caught instanceof FlowError ? caught.message : GENERIC_ERROR };
+      outcomeRef.current =
+        caught instanceof FlowError
+          ? { ok: false, message: caught.message, paywall: caught.paywall }
+          : { ok: false, message: GENERIC_ERROR, paywall: false };
     }
     finish();
   }
@@ -183,9 +196,19 @@ export function DealInput() {
       </Tabs>
 
       {notice ? (
-        <p role="alert" className="text-sm font-medium text-red-700">
-          {notice}
-        </p>
+        <div role="alert" className="flex flex-col gap-2 text-sm font-medium text-red-700">
+          <p>{notice.message}</p>
+          {notice.paywall ? (
+            <p className="flex gap-4">
+              <Link href="/offres" className="font-semibold text-neutral-950 underline">
+                Voir les offres
+              </Link>
+              <Link href="/connexion?next=%2Fanalyse" className="font-semibold text-neutral-950 underline">
+                Me connecter
+              </Link>
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <Button type="submit" size="lg" disabled={!canSubmit} className="h-12 w-full text-base">

@@ -1,33 +1,31 @@
 # CURRENT
 
 ## CURRENT STATUS
-Negoscore (marque verrouillée, domaine negoscore.fr). Mission #003 livrée côté code : vision évaluée (Luna pour tout), livrables pondérés, schéma Supabase, dépôt signé, limite persistante, analyses enregistrées. Les migrations ne sont pas encore appliquées sur le projet Supabase.
+Negoscore (marque verrouillée, domaine negoscore.fr). Mission #004 livrée : chiffrage plafonné et dégressif, base Supabase validée (RLS, bucket, usage_guard), connexion par magic link, rattachement des analyses anonymes, contenu verrouillé retiré côté serveur, crédits vérifiés avant l'appel au modèle.
 
 ## WHAT EXISTS
-- `/analyse` : texte, photo et PDF. Photo et PDF : URL signée (`/api/upload-url`), dépôt direct dans le bucket privé, puis analyse par chemin.
-- `/analyse/resultat/[id]` : analyse lue en base, visible seulement par le navigateur qui l'a lancée (cookie httpOnly anonyme).
-- `/analyse/demo` : résultat sur la fixture locale, sans appel réseau.
-- `app/api/analyse/route.ts` : texte (60 000 caractères max) ou image ; PDF en 501 et fichier supprimé ; 5 analyses par heure par IP hachée dans `usage_guard` ; écrit `deals` et `analyses`.
-- `lib/llm/` : un modèle pour le texte et l'image (`model.ts`), `extractDeal` et `extractDealFromImage`.
-- `lib/rates/` : table `fr-2026.1.json` avec poids des livrables, calculateur, score. `lib/legal/` : couche légale FR et escalade.
-- `lib/supabase/server.ts` : accès REST serveur avec la clé service_role. `supabase/migrations/` : 8 migrations.
-- `evals/` : 20 fixtures texte (`pnpm eval`), 8 captures (`pnpm eval:vision`, générées par `pnpm eval:vision:fixtures`), recalcul des hallucinations (`pnpm eval:rescore`).
-- Tests : `pnpm test` hors ligne ; `pnpm test:integration` contre Supabase (RLS, bucket, usage_guard).
+- `/analyse` : texte ou photo (URL signée, dépôt direct), PDF en 501. Réponse 402 et paywall quand le droit d'analyser manque.
+- `/analyse/resultat/[id]` : visiteur anonyme propriétaire = contre-offre et message retirés de la réponse ; propriétaire connecté = analyse complète.
+- `/connexion` (magic link PKCE), `/auth/callback` (profil, crédits gratuits, rattachement du jeton anonyme), `/auth/deconnexion`, `/historique`, `/offres`.
+- `proxy.ts` : rafraîchit la session avant le rendu, n'autorise rien.
+- `lib/billing/` : offres (`plans.ts`) et droits (`entitlement.ts`) : anonyme 1 analyse (jeton + IP hachée), pack décrémenté, pro 30 par période, échec jamais consommé.
+- `lib/rates/` : table `fr-2026.1.json` avec poids, dégressivité et plafonds de majoration ; contrôle de vraisemblance.
+- `evals/` : `pnpm eval`, `pnpm eval:vision`, `pnpm eval:pipeline`, `pnpm eval:rescore`.
+- Tests : `pnpm test` (hors ligne) ; `pnpm test:integration` (RLS, stockage, usage_guard, callback, rattachement, droits).
 
 ## CURRENT BLOCKER
-Migrations à appliquer sur le projet Supabase (sur ton feu vert), puis `pnpm test:integration` et un dépôt d'image réel.
+Envoi réel du magic link non vérifié (aucune boîte de réception de test) : URL de redirection à autoriser dans Supabase Auth, SMTP à configurer.
 
 ## CURRENT MISSION
-#003 — vision, correctifs tarifs, Supabase.
+#004 — correction du chiffrage, auth, crédits.
 
 ## NEXT MISSION
-#004 — comptes, rattachement des analyses anonymes, crédits.
+#005 — paiement Whop (webhooks, whop_events, attribution des crédits).
 
 ## LAUNCH BLOCKERS
+- SMTP Supabase (Resend) et URL de redirection de production autorisée.
 - Suppression effective des documents après `delete_after` (tâche planifiée à écrire).
 - Lecture des PDF : aucune bibliothèque dans le projet.
-- Resend (gate email), Whop (paiement), PostHog.
 - Compte Vercel Pro, variables d'environnement serveur (`OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `IP_HASH_SALT`).
-- Mentions légales, politique de confidentialité, CGV rédigées par un professionnel.
-- Validation par un juriste de `lib/legal/fr.ts`.
-- Recalibrage de la table de tarifs sur des offres réelles, poids photo et story compris.
+- Mentions légales, confidentialité, CGV rédigées par un professionnel ; validation juridique de `lib/legal/fr.ts`.
+- Recalibrage de la table de tarifs (poids, dégressivité, plafonds) sur des offres réelles.

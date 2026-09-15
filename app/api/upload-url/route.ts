@@ -1,3 +1,4 @@
+import { getRequestUser } from "@/lib/auth/request-user";
 import { DOCUMENT_TTL_DAYS, newStoragePath, validateAnnouncedFile } from "@/lib/storage/documents";
 import { ANON_COOKIE, anonCookieHeader, newAnonToken, readCookie } from "@/lib/security/request";
 import { createSignedUploadUrl, insertRow, SupabaseConfigError } from "@/lib/supabase/server";
@@ -24,12 +25,14 @@ export async function POST(request: Request) {
   const file = validateAnnouncedFile(body);
   if ("error" in file) return error(400, file.error);
 
+  const user = await getRequestUser(request);
   const existingToken = readCookie(request, ANON_COOKIE);
-  const anonToken = existingToken ?? newAnonToken();
+  const anonToken = user ? null : (existingToken ?? newAnonToken());
   const storagePath = newStoragePath(file.mime);
 
   try {
     const deal = await insertRow<{ id: string }>("deals", {
+      user_id: user?.id ?? null,
       anon_token: anonToken,
       source_type: file.kind === "photo" ? "image" : "pdf",
       status: "awaiting_upload",
@@ -44,7 +47,7 @@ export async function POST(request: Request) {
     const uploadUrl = await createSignedUploadUrl(storagePath);
 
     const headers = new Headers();
-    if (!existingToken) headers.append("Set-Cookie", anonCookieHeader(anonToken));
+    if (anonToken && !existingToken) headers.append("Set-Cookie", anonCookieHeader(anonToken));
     return Response.json({ uploadUrl, storagePath }, { headers });
   } catch (caught) {
     console.error(

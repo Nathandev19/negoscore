@@ -1,17 +1,19 @@
-import type { ReactNode } from "react";
-import { CopyIcon, LockIcon } from "lucide-react";
+import Link from "next/link";
+import { LockIcon, LockOpenIcon } from "lucide-react";
 import { Section } from "@/components/result/section";
 import { Button } from "@/components/ui/button";
-import { formatEurRange } from "@/lib/display";
-import type { Analysis } from "@/lib/schema";
 
-function Blurred({ children }: { children: ReactNode }) {
+// Bloc de substitution affiché quand le contenu est verrouillé. Il ne reçoit
+// aucune donnée de l'analyse : le serveur a retiré ces champs de la réponse.
+function Placeholder({ lines }: { lines: number }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border bg-white">
-      <div aria-hidden className="pointer-events-none blur-[7px] select-none">
-        {children}
+    <div className="relative overflow-hidden rounded-xl border bg-white" aria-hidden>
+      <div className="flex flex-col gap-3 p-4">
+        {Array.from({ length: lines }, (_, i) => (
+          <div key={i} className="h-4 rounded bg-neutral-200" style={{ width: `${90 - i * 12}%` }} />
+        ))}
       </div>
-      <div className="absolute inset-0 flex items-center justify-center bg-white/30">
+      <div className="absolute inset-0 flex items-center justify-center bg-white/40">
         <span className="flex items-center gap-2 rounded-full bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white">
           <LockIcon className="size-4" />
           Verrouillé
@@ -21,37 +23,32 @@ function Blurred({ children }: { children: ReactNode }) {
   );
 }
 
-export function LockedCounterOffer({ offer }: { offer: Analysis["counter_offer"] }) {
-  const amount = formatEurRange(offer.amount_low, offer.amount_high);
+export function LockedCounterOfferPlaceholder() {
   return (
     <Section title="Ta contre-offre chiffrée">
-      <Blurred>
-        <div className="flex flex-col gap-3 p-4">
-          {amount ? <p className="text-4xl font-black tracking-tight">{amount}</p> : null}
-          <ul className="list-disc pl-5 text-base">
-            {offer.changes.map((change) => (
-              <li key={change}>{change}</li>
-            ))}
-          </ul>
-        </div>
-      </Blurred>
+      <Placeholder lines={4} />
     </Section>
   );
 }
 
-export function LockedMessage({ message }: { message: Analysis["ready_to_send_message"] }) {
+export function LockedMessagePlaceholder() {
   return (
     <Section title="Ton message prêt à envoyer">
-      <Blurred>
-        <div className="flex flex-col gap-3 p-4">
-          <p className="text-sm text-neutral-600">Ton : {message.tone}</p>
-          <p className="text-lg leading-relaxed font-medium text-neutral-950">{message.text}</p>
-        </div>
-      </Blurred>
-      <Button type="button" variant="outline" disabled className="w-full">
-        <CopyIcon />
-        Copier le message
-      </Button>
+      <Placeholder lines={5} />
     </Section>
+  );
+}
+
+export function UnlockCta({ href }: { href: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Button asChild size="lg" className="h-14 w-full text-lg">
+        <Link href={href}>
+          <LockOpenIcon className="size-5" />
+          Débloquer — ton email suffit
+        </Link>
+      </Button>
+      <p className="text-center text-sm text-neutral-600">Pas de mot de passe, pas de carte bancaire.</p>
+    </div>
   );
 }
