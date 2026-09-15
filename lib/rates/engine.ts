@@ -73,6 +73,30 @@ export function countFilledFields(deal: Deal): number {
   return filled.filter(Boolean).length;
 }
 
+export const UPLIFT_CAPPED_ASSUMPTION =
+  "Les suppléments demandés cumulés dépassent ce qu'un annonceur accepte en pratique : l'estimation a été plafonnée.";
+
+// Au-delà de ce rapport entre borne basse estimée et montant proposé, l'écart
+// est signalé comme inhabituel.
+const PLAUSIBILITY_RATIO = 3;
+
+export function isFarAboveOffer(amountEur: number | null, totalLow: number | null): boolean {
+  return amountEur !== null && amountEur > 0 && totalLow !== null && totalLow > PLAUSIBILITY_RATIO * amountEur;
+}
+
+export function volumeDiscountFactor(weightedUnits: number): number {
+  const tier = rates.volume_discount.tiers.find(
+    (t) => t.max_weighted_units === null || weightedUnits <= t.max_weighted_units,
+  );
+  return tier?.factor ?? 1;
+}
+
+// Plafond « heavy » quand l'offre demande une utilisation à vie ou une cession totale.
+export function upliftCap(deal: Deal): number {
+  const heavy = deal.usage.perpetual || deal.ip_transfer === "full_assignment";
+  return heavy ? rates.uplift_caps.heavy.max_cumulative_uplift : rates.uplift_caps.standard.max_cumulative_uplift;
+}
+
 function roundPercent(value: number): number {
   return Math.round(value * 1000) / 10;
 }
@@ -98,22 +122,22 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     assumptions.push("Stories, photos et lives chiffrés avec un poids provisoire par rapport à une vidéo.");
   }
 
+  // Dégressivité : un lot se négocie moins cher à l'unité.
+  const discount = volumeDiscountFactor(weightedUnits);
+  if (discount < 1) {
+    assumptions.push("Tarif unitaire réduit pour tenir compte du volume de contenus demandés.");
+  }
+
   const baseRate = rates.base_rates_eur[tier];
-  const baseLow = Math.round(baseRate.low * weightedUnits);
-  const baseHigh = Math.round(baseRate.high * weightedUnits);
+  const baseLow = Math.round(baseRate.low * weightedUnits * discount);
+  const baseHigh = Math.round(baseRate.high * weightedUnits * discount);
   const lines: EstimateLine[] = [];
 
+  // Majorations en pourcentage de la base, collectées puis plafonnées ensemble.
+  const uplifts: Array<{ label: string; topic: RateTopic; low: number; high: number }> = [];
   function addMultiplier(key: MultiplierKey, topic: RateTopic, label: string, factor = 1) {
     const m = rates.multipliers[key];
-    lines.push({
-      label,
-      topic,
-      type: "percent",
-      low: roundPercent(m.low * factor),
-      high: roundPercent(m.high * factor),
-      eur_low: Math.round(baseLow * m.low * factor),
-      eur_high: Math.round(baseHigh * m.high * factor),
-    });
+    uplifts.push({ label, topic, low: m.low * factor, high: m.high * factor });
   }
 
   const { usage } = deal;
@@ -194,6 +218,33 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     addMultiplier("ip_full_assignment", "ip_transfer", "Cession totale des droits");
   }
 
+  // Plafond de majoration cumulée. Quand la somme dépasse le plafond, chaque
+  // ligne est réduite dans la même proportion : les lignes restent cohérentes
+  // avec le total et l'impact de chaque point de négociation.
+  const cap = upliftCap(deal);
+  const sumLow = uplifts.reduce((sum, u) => sum + u.low, 0);
+  const sumHigh = uplifts.reduce((sum, u) => sum + u.high, 0);
+  const scaleLow = sumLow > cap ? cap / sumLow : 1;
+  const scaleHigh = sumHigh > cap ? cap / sumHigh : 1;
+  if (scaleLow < 1 || scaleHigh < 1) {
+    assumptions.push(UPLIFT_CAPPED_ASSUMPTION);
+  }
+  for (const u of uplifts) {
+    // Les deux bornes sont plafonnées séparément : le pourcentage appliqué à la
+    // borne basse peut dépasser celui de la borne haute. L'affichage reste ordonné.
+    const percentLow = roundPercent(u.low * scaleLow);
+    const percentHigh = roundPercent(u.high * scaleHigh);
+    lines.push({
+      label: u.label,
+      topic: u.topic,
+      type: "percent",
+      low: Math.min(percentLow, percentHigh),
+      high: Math.max(percentLow, percentHigh),
+      eur_low: Math.round(baseLow * u.low * scaleLow),
+      eur_high: Math.round(baseHigh * u.high * scaleHigh),
+    });
+  }
+
   // Variantes d'accroche ou de CTA, lues dans le format des livrables
   // (« 3 hooks », « 2 accroches », « 2 variantes de CTA »).
   const hookCount = deal.deliverables.reduce((sum, d) => {
@@ -213,11 +264,14 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     });
   }
 
-  const sumLow = baseLow + lines.reduce((sum, l) => sum + l.eur_low, 0);
-  const sumHigh = baseHigh + lines.reduce((sum, l) => sum + l.eur_high, 0);
+  // Total sur les majorations exactes, pas sur les lignes arrondies à l'euro.
+  const flatLow = lines.filter((l) => l.type === "flat").reduce((sum, l) => sum + l.eur_low, 0);
+  const flatHigh = lines.filter((l) => l.type === "flat").reduce((sum, l) => sum + l.eur_high, 0);
+  const grossLow = Math.round(baseLow * (1 + sumLow * scaleLow)) + flatLow;
+  const grossHigh = Math.round(baseHigh * (1 + sumHigh * scaleHigh)) + flatHigh;
 
-  let totalLow: number | null = Math.floor(sumLow / 10) * 10;
-  let totalHigh: number | null = Math.ceil(sumHigh / 10) * 10;
+  let totalLow: number | null = Math.floor(grossLow / 10) * 10;
+  let totalHigh: number | null = Math.ceil(grossHigh / 10) * 10;
 
   if (deal.payment.amount_eur === null) {
     totalLow = null;
@@ -227,6 +281,14 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     totalLow = null;
     totalHigh = null;
     assumptions.push("Trop peu d'informations dans l'offre pour donner une fourchette totale fiable.");
+  }
+
+  // Contrôle de vraisemblance : l'écart est signalé, jamais corrigé. Un deal
+  // peut réellement être très sous-payé.
+  if (isFarAboveOffer(deal.payment.amount_eur, totalLow)) {
+    assumptions.push(
+      "L'estimation dépasse de plus de trois fois le montant proposé. Cet écart important peut venir d'une offre volontairement sous-évaluée, ou d'une information de l'offre mal comprise : vérifie les livrables et les droits demandés.",
+    );
   }
 
   return {

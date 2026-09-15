@@ -6,10 +6,9 @@
     "input_quality": {
       "readable": true,
       "missing_critical": [
-        "Absence de clause de résiliation",
-        "Absence de clause d'annulation ou d'indemnité en cas d'arrêt du projet",
-        "Absence de précision sur la livraison éventuelle des fichiers sources",
-        "Absence de délai de livraison"
+        "Durée souhaitée des droits d'utilisation",
+        "Modalités en cas d'annulation ou de fin de collaboration",
+        "Délai de validation des vidéos"
       ]
     },
     "deal": {
@@ -19,7 +18,7 @@
           "type": "video",
           "platform": "tiktok",
           "quantity": 2,
-          "format": "30 secondes environ"
+          "format": "30 secondes environ, format vertical"
         }
       ],
       "publication_required": false,
@@ -51,7 +50,9 @@
         "schedule": null
       },
       "in_kind_value_eur": null,
-      "deadlines": [],
+      "deadlines": [
+        "paiement à 30 jours"
+      ],
       "kill_fee": null,
       "termination": null,
       "governing_law": null
@@ -62,47 +63,47 @@
     },
     "good_points": [
       {
+        "label": "Livrables clairement définis",
+        "why": "Tu dois livrer deux vidéos verticales d'environ 30 secondes, sans publication sur ton compte."
+      },
+      {
+        "label": "Paiement indiqué",
+        "why": "Le montant total et le délai de paiement sont précisés."
+      },
+      {
+        "label": "Nombre de retours limité",
+        "why": "Deux séries de retours sont incluses, ce qui évite des modifications sans fin."
+      },
+      {
         "label": "Aucune exclusivité",
-        "why": "Tu peux travailler avec d'autres marques, y compris dans la même catégorie."
-      },
-      {
-        "label": "Publication non requise",
-        "why": "Tu n'as pas besoin de publier les vidéos sur ton propre compte TikTok."
-      },
-      {
-        "label": "Nombre de contenus défini",
-        "why": "La demande porte clairement sur deux vidéos verticales d'environ 30 secondes."
-      },
-      {
-        "label": "Retours encadrés",
-        "why": "Deux séries de retours sont incluses, ce qui limite les demandes de modification prévues."
+        "why": "Tu restes libre de travailler avec d'autres marques."
       }
     ],
     "negotiate": [
       {
-        "label": "Limiter la durée d'utilisation",
-        "why": "L'utilisation est prévue sans date de fin, y compris pour les publicités payantes.",
-        "eur_impact_low": 750,
-        "eur_impact_high": 2500,
+        "label": "Encadrer la durée des droits",
+        "why": "L'utilisation est prévue sans date de fin définie.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
         "priority": 1
       },
       {
-        "label": "Clarifier les fichiers à livrer",
-        "why": "L'offre ne précise pas si les fichiers sources ou les rushs sont demandés en plus des vidéos finalisées.",
-        "eur_impact_low": null,
-        "eur_impact_high": null,
+        "label": "Limiter l'utilisation en publicité payante",
+        "why": "La publicité payante élargit fortement l'exploitation des vidéos.",
+        "eur_impact_low": 750,
+        "eur_impact_high": 2232,
         "priority": 2
       },
       {
-        "label": "Préciser le délai de livraison",
-        "why": "Aucune date ou aucun délai n'est indiqué pour la remise des vidéos.",
-        "eur_impact_low": null,
-        "eur_impact_high": null,
+        "label": "Préciser le territoire",
+        "why": "Les droits couvrent tous les territoires sans autre précision.",
+        "eur_impact_low": 100,
+        "eur_impact_high": 268,
         "priority": 3
       },
       {
-        "label": "Ajouter des conditions en cas d'arrêt du projet",
-        "why": "L'offre ne précise pas les conditions applicables si la campagne est modifiée ou interrompue après le début du travail.",
+        "label": "Confirmer le nombre de retours",
+        "why": "Il faut s'assurer que seules deux séries de retours sont incluses.",
         "eur_impact_low": null,
         "eur_impact_high": null,
         "priority": 4
@@ -112,22 +113,22 @@
       {
         "label": "Droits d'utilisation sans fin",
         "severity": "high",
-        "why": "La marque prévoit une utilisation pendant toute la durée de protection des droits d'auteur, sans date de fin indiquée."
+        "why": "La marque demande une utilisation pendant toute la durée de protection des droits d'auteur, sans date de fin définie."
       },
       {
-        "label": "Utilisation mondiale et publicité payante",
+        "label": "Utilisation mondiale",
+        "severity": "medium",
+        "why": "Les vidéos peuvent être exploitées sur tous les territoires."
+      },
+      {
+        "label": "Publicité payante incluse",
         "severity": "high",
-        "why": "Les vidéos peuvent être diffusées sur tous les territoires, notamment en publicité payante, sans limitation de durée."
+        "why": "La marque prévoit d'utiliser les vidéos en publicité payante, en plus de ses réseaux sociaux et de son site."
       },
       {
-        "label": "Pas de délai de livraison indiqué",
+        "label": "Périmètre d'utilisation large",
         "severity": "medium",
-        "why": "Tu ne sais pas à quelle date les vidéos doivent être livrées."
-      },
-      {
-        "label": "Pas de clause d'arrêt du projet",
-        "severity": "medium",
-        "why": "Les conditions ne précisent pas ce qui se passe si la campagne est modifiée ou arrêtée après le début du travail."
+        "why": "Les canaux autorisés sont nombreux et aucune limite précise de campagne ou de format n'est indiquée."
       }
     ],
     "estimate": {
@@ -138,23 +139,24 @@
           "label": "Droits pub à vie",
           "type": "percent",
           "low": 150,
-          "high": 250,
+          "high": 223.2,
           "eur_low": 750,
-          "eur_high": 2500
+          "eur_high": 2232
         },
         {
           "label": "Diffusion dans le monde entier",
           "type": "percent",
           "low": 20,
-          "high": 30,
+          "high": 26.8,
           "eur_low": 100,
-          "eur_high": 300
+          "eur_high": 268
         }
       ],
       "total_low": 1350,
-      "total_high": 3800,
+      "total_high": 3500,
       "assumptions": [
-        "Profil de créateur « confirmé » supposé (portfolio existant, pas débutant)."
+        "Profil de créateur « confirmé » supposé (portfolio existant, pas débutant).",
+        "Les suppléments demandés cumulés dépassent ce qu'un annonceur accepte en pratique : l'estimation a été plafonnée."
       ],
       "rate_table_version": "fr-2026.1"
     },
@@ -177,18 +179,18 @@
     },
     "counter_offer": {
       "amount_low": 1350,
-      "amount_high": 3800,
+      "amount_high": 3500,
       "changes": [
-        "Limiter les droits d'utilisation à une durée définie, avec une durée distincte pour la publicité payante.",
-        "Préciser que la livraison comprend uniquement les vidéos finalisées et non les rushs ou fichiers sources.",
-        "Ajouter un délai de livraison validé entre les deux parties.",
-        "Prévoir des conditions claires en cas d'arrêt ou d'annulation du projet après le début de la production.",
-        "Confirmer que toute utilisation depuis le compte de la créatrice ou tout dispositif de type Spark Ads est exclu."
+        "Limiter les droits d'utilisation à une durée définie.",
+        "Définir précisément les canaux et formats autorisés pour la publicité payante.",
+        "Limiter le territoire d'exploitation ou prévoir une validation spécifique pour une diffusion internationale.",
+        "Confirmer que deux séries de retours maximum sont incluses.",
+        "Maintenir l'absence d'exclusivité et la livraison sans publication sur ton compte."
       ]
     },
     "ready_to_send_message": {
-      "tone": "poli et ferme",
-      "text": "Bonjour Victoire,\n\nMerci pour ce récapitulatif, je suis ravie de cette proposition pour la campagne « Rituel du soir ».\n\nPour les deux vidéos et les droits d’utilisation prévus sur tous les territoires, y compris en publicité payante et sans limitation de durée, mon tarif pour ce projet se situe entre 1 350 et 3 800 €.\n\nAvant confirmation, pourrais-tu également préciser le délai de livraison, confirmer que seuls les fichiers finalisés sont attendus et indiquer les conditions prévues si la campagne est arrêtée en cours de projet ?\n\nJe serais ravie d’avancer avec vous après validation de ces éléments.\n\nBelle journée,\nLina"
+      "tone": "Poli et ferme",
+      "text": "Bonjour Victoire,\n\nMerci pour ta proposition et pour le récapitulatif. Le projet m'intéresse. Avant de confirmer, j'aimerais encadrer les droits d'utilisation des vidéos avec une durée et un périmètre clairement définis, notamment pour la publicité payante et la diffusion à l'international. Je souhaite également confirmer que deux séries de retours maximum sont bien prévues.\n\nPour ce projet et ces conditions d'utilisation, mon tarif se situe entre 1 350 et 3 500 €.\n\nPeux-tu me confirmer si ces ajustements sont possibles ?\n\nBelle soirée,\nLina"
     }
   }
 }

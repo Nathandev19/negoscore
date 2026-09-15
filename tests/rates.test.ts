@@ -1,13 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { computeEscalation } from "@/lib/legal/escalate";
 import { computeFrLegal } from "@/lib/legal/fr";
-import { computeEstimate } from "@/lib/rates/engine";
+import {
+  computeEstimate,
+  isFarAboveOffer,
+  UPLIFT_CAPPED_ASSUMPTION,
+  upliftCap,
+  volumeDiscountFactor,
+} from "@/lib/rates/engine";
 import rates from "@/lib/rates/fr-2026.1.json";
 import { computeScore } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
-import pipeline17 from "../evals/results/pipeline/17-contrat-boisson.json";
+import extracted17 from "./fixtures/deal-17-contrat-boisson.json";
 
 type Deal = Analysis["deal"];
+
+// Deal extrait par le modèle sur la fixture 17 (#002), figé ici pour que le
+// test ne dépende pas d'une régénération des sorties du pipeline.
+const FIXTURE_17_DEAL = extracted17 as Deal;
 
 // Deal neutre : 1 vidéo TikTok, 300 €, usage organique, rien d'autre.
 function makeDeal(overrides: Partial<Deal> = {}): Deal {
@@ -47,13 +57,13 @@ function lineFor(deal: Deal, topic: string) {
 }
 
 describe("computeEstimate", () => {
-  it("multiplie la base du palier par défaut par le nombre de livrables", () => {
+  it("multiplie la base du palier par défaut par le nombre de livrables, avec la dégressivité", () => {
     const deal = makeDeal({
       deliverables: [{ type: "video", platform: "tiktok", quantity: 3, format: null }],
     });
     const estimate = computeEstimate(deal);
-    expect(estimate.base_low).toBe(base.low * 3);
-    expect(estimate.base_high).toBe(base.high * 3);
+    expect(estimate.base_low).toBe(Math.round(base.low * 3 * volumeDiscountFactor(3)));
+    expect(estimate.base_high).toBe(Math.round(base.high * 3 * volumeDiscountFactor(3)));
     expect(estimate.lines).toEqual([]);
     expect(estimate.rate_table_version).toBe(rates.version);
     expect(estimate.assumptions.some((a) => a.includes("confirmé"))).toBe(true);
@@ -135,22 +145,100 @@ describe("computeEstimate", () => {
     });
     const units = 2 * w.video.weight + 3 * w.story.weight + 1 * w.photo.weight;
     const estimate = computeEstimate(deal);
-    expect(estimate.base_low).toBe(Math.round(base.low * units));
-    expect(estimate.base_high).toBe(Math.round(base.high * units));
+    expect(estimate.base_low).toBe(Math.round(base.low * units * volumeDiscountFactor(units)));
+    expect(estimate.base_high).toBe(Math.round(base.high * units * volumeDiscountFactor(units)));
     expect(w.story.weight).toBeLessThan(w.video.weight);
     expect(w.photo.weight).toBeLessThan(w.video.weight);
   });
 
-  it("fixture 17 (4 Reels + 4 stories) : fourchette ramenée sous l'ancien calcul à la vidéo", () => {
-    const deal = pipeline17.analysis.deal as Deal;
+  it("fixture 17 (offre 3 500 €, 4 Reels + 4 stories, cession totale) : fourchette défendable", () => {
+    const deal = FIXTURE_17_DEAL;
     const w = rates.deliverable_weights;
+    const units = 4 * w.video.weight + 4 * w.story.weight;
     const estimate = computeEstimate(deal);
-    // Ancien calcul : 8 livrables comptés comme 8 vidéos → 7 900–23 400 €.
-    expect(estimate.base_low).toBe(Math.round(base.low * (4 * w.video.weight + 4 * w.story.weight)));
-    expect(estimate.total_low).toBe(4930);
-    expect(estimate.total_high).toBe(14630);
-    expect(estimate.total_low).toBeLessThan(7900);
-    expect(estimate.total_high).toBeLessThan(23400);
+    // #002 : 7 900–23 400 €. #003 : 4 930–14 630 €. Plafond heavy + dégressivité.
+    expect(estimate.base_low).toBe(Math.round(base.low * units * volumeDiscountFactor(units)));
+    expect(estimate.total_low).toBe(3500);
+    expect(estimate.total_high).toBe(7000);
+    expect(estimate.assumptions).toContain(UPLIFT_CAPPED_ASSUMPTION);
+    expect(estimate.total_low! / deal.payment.amount_eur!).toBeLessThanOrEqual(3);
+  });
+
+  it("dégressivité aux quatre paliers", () => {
+    const tiers = rates.volume_discount.tiers;
+    expect(volumeDiscountFactor(1)).toBe(tiers[0].factor);
+    expect(volumeDiscountFactor(2)).toBe(tiers[0].factor);
+    expect(volumeDiscountFactor(2.25)).toBe(tiers[1].factor);
+    expect(volumeDiscountFactor(4)).toBe(tiers[1].factor);
+    expect(volumeDiscountFactor(5)).toBe(tiers[2].factor);
+    expect(volumeDiscountFactor(8)).toBe(tiers[2].factor);
+    expect(volumeDiscountFactor(9)).toBe(tiers[3].factor);
+    expect(new Set(tiers.map((t) => t.factor)).size).toBe(4);
+
+    const tenVideos = computeEstimate(
+      makeDeal({ deliverables: [{ type: "video", platform: "tiktok", quantity: 10, format: null }] }),
+    );
+    expect(tenVideos.base_low).toBe(Math.round(base.low * 10 * tiers[3].factor));
+    expect(tenVideos.assumptions.some((a) => a.includes("volume"))).toBe(true);
+  });
+
+  it("plafond standard : la majoration cumulée ne dépasse pas le plafond, lignes réduites en proportion", () => {
+    // Pub 12 mois + exclusivité 6 mois et plus + rushes + monde + plateforme en plus, sans perpétuité ni cession totale.
+    const deal = makeDeal({
+      deliverables: [
+        { type: "video", platform: "tiktok", quantity: 1, format: null },
+        { type: "video", platform: "instagram", quantity: 1, format: null },
+      ],
+      usage: { ...makeDeal().usage, paid_ads: true, duration_months: 12, territory: "monde" },
+      exclusivity: { present: true, duration_months: 12, category: null },
+      raw_footage: true,
+    });
+    const cap = rates.uplift_caps.standard.max_cumulative_uplift;
+    expect(upliftCap(deal)).toBe(cap);
+    const estimate = computeEstimate(deal);
+    const upliftLow = estimate.lines.reduce((s, l) => s + l.eur_low, 0);
+    const upliftHigh = estimate.lines.reduce((s, l) => s + l.eur_high, 0);
+    expect(upliftLow).toBeCloseTo(estimate.base_low! * cap, -1);
+    expect(upliftHigh).toBeCloseTo(estimate.base_high! * cap, -1);
+    expect(estimate.assumptions).toContain(UPLIFT_CAPPED_ASSUMPTION);
+    const paid = estimate.lines.find((l) => l.topic === "paid_ads");
+    const excl = estimate.lines.find((l) => l.topic === "exclusivity");
+    // Proportions conservées entre lignes.
+    expect(paid!.low / excl!.low).toBeCloseTo(m.paid_ads_12m.low / m.exclusivity_6m_plus.low, 1);
+  });
+
+  it("plafond heavy : perpétuité ou cession totale relèvent le plafond", () => {
+    const heavyCap = rates.uplift_caps.heavy.max_cumulative_uplift;
+    const perpetual = makeDeal({ usage: { ...makeDeal().usage, paid_ads: true, perpetual: true, territory: "monde" } });
+    const assignment = makeDeal({ ip_transfer: "full_assignment" });
+    expect(upliftCap(perpetual)).toBe(heavyCap);
+    expect(upliftCap(assignment)).toBe(heavyCap);
+
+    const heavy = computeEstimate(
+      makeDeal({
+        usage: { ...makeDeal().usage, paid_ads: true, perpetual: true, territory: "monde" },
+        ip_transfer: "full_assignment",
+        raw_footage: true,
+      }),
+    );
+    expect(heavy.lines.reduce((s, l) => s + l.eur_high, 0)).toBeCloseTo(heavy.base_high! * heavyCap, -1);
+    expect(heavy.assumptions).toContain(UPLIFT_CAPPED_ASSUMPTION);
+
+    // Sous le plafond : aucune réduction, aucune mention.
+    const light = computeEstimate(makeDeal({ usage: { ...makeDeal().usage, paid_ads: true, duration_months: 3 } }));
+    expect(light.assumptions).not.toContain(UPLIFT_CAPPED_ASSUMPTION);
+  });
+
+  it("contrôle de vraisemblance : écart signalé sans toucher la fourchette", () => {
+    const fair = computeEstimate(makeDeal());
+    const lowball = computeEstimate(makeDeal({ payment: { amount_eur: 50, currency: "EUR", terms_days: null, schedule: null } }));
+    expect(lowball.total_low).toBe(fair.total_low);
+    expect(lowball.total_high).toBe(fair.total_high);
+    expect(lowball.assumptions.some((a) => a.includes("trois fois"))).toBe(true);
+    expect(fair.assumptions.some((a) => a.includes("trois fois"))).toBe(false);
+    expect(isFarAboveOffer(100, 300)).toBe(false);
+    expect(isFarAboveOffer(100, 310)).toBe(true);
+    expect(isFarAboveOffer(null, 310)).toBe(false);
   });
 
   it("renvoie un total null si aucun montant n'est proposé", () => {

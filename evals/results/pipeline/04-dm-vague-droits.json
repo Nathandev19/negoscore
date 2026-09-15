@@ -7,9 +7,9 @@
       "readable": true,
       "missing_critical": [
         "Durée et territoire des droits publicitaires",
-        "Publication ou non sur ton propre compte TikTok",
-        "Format et nombre exacts de vidéos",
-        "Modalités et délai de paiement"
+        "Détails du contenu attendu",
+        "Délai de livraison",
+        "Modalités de paiement"
       ]
     },
     "deal": {
@@ -64,39 +64,39 @@
     },
     "good_points": [
       {
-        "label": "Rémunération annoncée",
-        "why": "La marque indique clairement une rémunération de 150 €."
+        "label": "Rémunération indiquée",
+        "why": "Le montant proposé est clairement mentionné dans le message."
       },
       {
-        "label": "Plateforme identifiée",
-        "why": "La collaboration concerne TikTok."
+        "label": "Format identifié",
+        "why": "La marque précise qu’elle recherche une vidéo UGC pour TikTok."
       }
     ],
     "negotiate": [
       {
-        "label": "Droits publicitaires",
-        "why": "Il faut définir précisément leur durée, leur territoire et les supports concernés.",
+        "label": "Encadrer les droits publicitaires",
+        "why": "Il faut préciser la durée, le territoire, les plateformes et les usages inclus avant d’accepter.",
         "eur_impact_low": 75,
         "eur_impact_high": 250,
         "priority": 1
       },
       {
-        "label": "Format des livrables",
-        "why": "Le nombre de vidéos, leur durée et les éventuelles variantes ne sont pas indiqués.",
+        "label": "Clarifier le brief et les livrables",
+        "why": "Le format, la durée, les éléments à intégrer et les éventuelles variantes ne sont pas indiqués.",
         "eur_impact_low": null,
         "eur_impact_high": null,
         "priority": 2
       },
       {
-        "label": "Modalités de paiement",
-        "why": "Le délai et l’échéancier doivent être confirmés avant acceptation.",
+        "label": "Limiter les retours",
+        "why": "Le nombre de révisions n’est pas défini.",
         "eur_impact_low": null,
         "eur_impact_high": null,
         "priority": 3
       },
       {
-        "label": "Publication sur le compte créateur",
-        "why": "Il faut confirmer si la vidéo est uniquement livrée à la marque ou si elle doit aussi être publiée sur TikTok.",
+        "label": "Préciser le paiement",
+        "why": "Le délai et les modalités de paiement ne sont pas mentionnés.",
         "eur_impact_low": null,
         "eur_impact_high": null,
         "priority": 4
@@ -106,17 +106,17 @@
       {
         "label": "Droits publicitaires non détaillés",
         "severity": "high",
-        "why": "La marque demande des droits pub sans préciser la durée, le territoire ni les formats d'utilisation."
+        "why": "La durée, le territoire, les plateformes et les modalités d’utilisation ne sont pas précisés."
       },
       {
         "label": "Brief incomplet",
         "severity": "medium",
-        "why": "Le nombre exact de vidéos, leur durée, les éventuelles retouches et les modalités de livraison ne sont pas précisés."
+        "why": "Le message ne précise ni le concept, ni la durée de la vidéo, ni le nombre de retours attendus."
       },
       {
-        "label": "Paiement non encadré",
+        "label": "Délai de paiement absent",
         "severity": "medium",
-        "why": "Le délai et les conditions de paiement ne sont pas indiqués."
+        "why": "Les conditions et le moment du paiement ne sont pas indiqués."
       }
     ],
     "estimate": {
@@ -160,16 +160,15 @@
       "amount_low": 320,
       "amount_high": 750,
       "changes": [
-        "Définir le nombre exact de vidéos et leur format.",
-        "Limiter les droits publicitaires à une durée et un territoire clairement indiqués.",
-        "Confirmer qu’aucune publication sur ton compte personnel n’est requise, sauf accord séparé.",
-        "Préciser le délai et les conditions de paiement.",
-        "Définir le nombre de retours inclus."
+        "Définir précisément la durée, le territoire, les plateformes et les usages inclus dans les droits publicitaires.",
+        "Préciser le brief, la durée de la vidéo, les éléments à intégrer et le nombre de variantes éventuelles.",
+        "Limiter le nombre de séries de retours prévues.",
+        "Confirmer le délai et les modalités de paiement."
       ]
     },
     "ready_to_send_message": {
       "tone": "Poli et ferme",
-      "text": "Hello Maxence, merci pour ton message. Je suis potentiellement disponible ce mois-ci. Peux-tu me préciser le nombre et le format exacts de vidéos, ainsi que la durée et le territoire prévus pour les droits publicitaires ? Je souhaite également confirmer qu’aucune publication sur mon compte TikTok n’est demandée et connaître les modalités de paiement. Pour ce projet, mon tarif se situe entre 320 et 750 €."
+      "text": "Hello Maxence, merci pour ta proposition. Je suis intéressée par le projet. Mon tarif pour ce projet se situe entre 320 et 750 €. Peux-tu me préciser le brief, la durée des droits pub, le territoire concerné, les plateformes visées, le nombre de retours et les modalités de paiement ?"
     }
   }
 }

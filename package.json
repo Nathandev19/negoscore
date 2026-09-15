@@ -13,6 +13,7 @@
     "eval": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/run.ts",
     "eval:vision": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/run-vision.ts",
     "eval:vision:fixtures": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/vision/build-fixtures.ts",
+    "eval:pipeline": "node --env-file-if-exists=.env.local --import ./evals/register-alias.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/pipeline.ts",
     "eval:rescore": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/rescore.ts"
   },
   "dependencies": {

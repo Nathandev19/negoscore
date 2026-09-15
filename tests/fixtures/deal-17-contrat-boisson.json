@@ -1,0 +1,62 @@
+{
+  "brand": "Nectarelle SRL",
+  "deliverables": [
+    {
+      "type": "video",
+      "platform": "instagram",
+      "quantity": 4,
+      "format": "Reels de 15 à 60 secondes"
+    },
+    {
+      "type": "story",
+      "platform": "instagram",
+      "quantity": 4,
+      "format": "Chaque story peut comporter plusieurs séquences"
+    }
+  ],
+  "publication_required": true,
+  "usage": {
+    "organic": true,
+    "paid_ads": true,
+    "whitelisting": false,
+    "spark_ads": false,
+    "duration_months": 24,
+    "territory": "le monde entier",
+    "perpetual": false
+  },
+  "exclusivity": {
+    "present": true,
+    "duration_months": 12,
+    "category": "boissons sans alcool"
+  },
+  "raw_footage": true,
+  "ip_transfer": "full_assignment",
+  "ai_training_rights": "absent",
+  "revisions": {
+    "count": 3,
+    "unlimited": false
+  },
+  "payment": {
+    "amount_eur": 3500,
+    "currency": "EUR",
+    "terms_days": 90,
+    "schedule": "Paiement en une seule fois, 90 jours après la publication du dernier contenu, sur présentation d'une facture conforme"
+  },
+  "in_kind_value_eur": null,
+  "deadlines": [
+    "Brief dans les cinq jours ouvrables suivant la signature",
+    "Première version de chaque livrable au moins dix jours avant la date de publication envisagée",
+    "Calendrier de publication à arrêter dans les quinze jours suivant la remise du Brief",
+    "Tous les livrables publiés avant le 15 novembre 2026",
+    "Chaque Reel accessible pendant au moins six mois après sa publication",
+    "Rushes remis au plus tard dix jours après la publication du dernier livrable",
+    "Statistiques remises dans les quinze jours suivant la publication du dernier livrable",
+    "Modifications intégrées dans les trois jours ouvrables suivant leur réception",
+    "Validation ou demandes de modifications sous trois jours ouvrables",
+    "Exclusivité pendant douze mois à compter de la signature",
+    "Confidentialité pendant le contrat et trois ans après son terme"
+  ],
+  "kill_fee": null,
+  "termination": "La marque peut résilier à tout moment avec un préavis de huit jours. En cas d'annulation ou de résiliation à l'initiative de la marque, aucune indemnité n'est prévue, y compris si des livrables ont déjà été produits. En cas de résiliation, les contenus et rushes déjà réalisés doivent être remis sous huit jours et les droits cédés sur ces éléments restent acquis à la marque.",
+  "governing_law": "Droit belge ; compétence exclusive des tribunaux de Liège après une tentative de résolution amiable de trente jours"
+}

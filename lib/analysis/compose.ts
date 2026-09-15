@@ -1,7 +1,7 @@
 import { computeEscalation } from "@/lib/legal/escalate";
 import { computeFrLegal } from "@/lib/legal/fr";
 import { PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
-import { computeEstimate } from "@/lib/rates/engine";
+import { computeEstimate, isFarAboveOffer } from "@/lib/rates/engine";
 import { computeScore } from "@/lib/rates/score";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 
@@ -43,7 +43,13 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
   });
 
   // Sans montant proposé, on ne peut pas être confiant, quoi qu'en dise le modèle.
-  const confidence = deal.payment.amount_eur === null ? "low" : extraction.confidence;
+  // Estimation très au-dessus de l'offre : la confiance ne peut pas rester haute.
+  const confidence =
+    deal.payment.amount_eur === null
+      ? "low"
+      : extraction.confidence === "high" && isFarAboveOffer(deal.payment.amount_eur, estimate.total_low)
+        ? "medium"
+        : extraction.confidence;
 
   const analysis: Analysis = {
     schema_version: SCHEMA_VERSION,

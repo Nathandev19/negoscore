@@ -61,6 +61,20 @@ describe("composeAnalysis", () => {
     expect(analysis.negotiate[1].eur_impact_low).toBeNull();
   });
 
+  it("estimation plus de trois fois au-dessus de l'offre : confiance high ramenée à medium, fourchette intacte", () => {
+    const base = makeExtraction();
+    const cheap = makeExtraction({
+      confidence: "high",
+      deal: { ...base.deal, payment: { ...base.deal.payment, amount_eur: 10 } },
+    });
+    const analysis = composeAnalysis(cheap);
+    const reference = composeAnalysis(makeExtraction({ confidence: "high" }));
+    expect(analysis.confidence).toBe("medium");
+    expect(analysis.estimate.total_low).toBe(reference.estimate.total_low);
+    expect(analysis.estimate.assumptions.some((a) => a.includes("trois fois"))).toBe(true);
+    expect(composeAnalysis(makeExtraction({ confidence: "low", deal: cheap.deal })).confidence).toBe("low");
+  });
+
   it("ajoute les hypothèses fournies par la route", () => {
     const analysis = composeAnalysis(makeExtraction(), { extraAssumptions: ["Texte tronqué."] });
     expect(analysis.estimate.assumptions[0]).toBe("Texte tronqué.");
