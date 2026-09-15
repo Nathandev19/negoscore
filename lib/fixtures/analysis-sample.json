@@ -1,0 +1,198 @@
+{
+  "schema_version": "1.0",
+  "language": "fr",
+  "confidence": "medium",
+  "input_quality": {
+    "readable": true,
+    "missing_critical": [
+      "Territoire de diffusion des pubs",
+      "Date de livraison des vidéos",
+      "Publication sur ton compte ou non"
+    ]
+  },
+  "deal": {
+    "brand": "Marque Exemple",
+    "deliverables": [
+      {
+        "type": "video",
+        "platform": "tiktok",
+        "quantity": 2,
+        "format": null
+      }
+    ],
+    "publication_required": false,
+    "usage": {
+      "organic": true,
+      "paid_ads": true,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": 6,
+      "territory": null,
+      "perpetual": false
+    },
+    "exclusivity": {
+      "present": true,
+      "duration_months": 3,
+      "category": "cosmétique"
+    },
+    "raw_footage": true,
+    "ip_transfer": "license",
+    "ai_training_rights": "absent",
+    "revisions": {
+      "count": null,
+      "unlimited": true
+    },
+    "payment": {
+      "amount_eur": 300,
+      "currency": "EUR",
+      "terms_days": 60,
+      "schedule": null
+    },
+    "in_kind_value_eur": null,
+    "deadlines": [],
+    "kill_fee": null,
+    "termination": null,
+    "governing_law": null
+  },
+  "score": {
+    "value": 32,
+    "band": "weak"
+  },
+  "good_points": [
+    {
+      "label": "Une offre chiffrée dès le départ",
+      "why": "Tu pars d'un montant clair, pas d'un « on verra selon les résultats ». C'est une vraie base pour négocier."
+    },
+    {
+      "label": "Des droits pub limités dans le temps",
+      "why": "6 mois, c'est borné. La marque ne te demande pas d'utiliser tes vidéos à vie."
+    },
+    {
+      "label": "Aucun droit d'entraînement IA demandé",
+      "why": "Ton visage et ta voix ne servent pas à entraîner un modèle. Garde cette ligne si un contrat arrive."
+    }
+  ],
+  "negotiate": [
+    {
+      "label": "Limiter les révisions à 2 allers-retours",
+      "why": "Au-delà, chaque nouvelle version se facture. Sinon tu risques de refaire les vidéos gratuitement pendant des semaines.",
+      "eur_impact_low": null,
+      "eur_impact_high": null,
+      "priority": 4
+    },
+    {
+      "label": "Facturer les droits pub à part",
+      "why": "Une vidéo diffusée en pub pendant 6 mois rapporte bien plus à la marque qu'une vidéo organique. Ce droit a un prix.",
+      "eur_impact_low": 90,
+      "eur_impact_high": 250,
+      "priority": 1
+    },
+    {
+      "label": "Faire payer l'exclusivité, ou la ramener à 1 mois",
+      "why": "3 mois sans pouvoir travailler avec une autre marque cosmétique, c'est un manque à gagner réel pour toi.",
+      "eur_impact_low": 60,
+      "eur_impact_high": 200,
+      "priority": 2
+    },
+    {
+      "label": "Proposer le raw footage en option payante",
+      "why": "Les rushs permettent à la marque de créer d'autres pubs avec ton image. Ce n'est pas inclus dans une vidéo livrée.",
+      "eur_impact_low": 60,
+      "eur_impact_high": 150,
+      "priority": 3
+    },
+    {
+      "label": "Paiement à 30 jours, avec 50 % à la signature",
+      "why": "60 jours, c'est long pour une petite somme. Un acompte te protège si le projet s'arrête en cours de route.",
+      "eur_impact_low": null,
+      "eur_impact_high": null,
+      "priority": 5
+    }
+  ],
+  "red_flags": [
+    {
+      "label": "Révisions illimitées",
+      "severity": "high",
+      "why": "Sans limite, la marque peut te demander de refaire les vidéos autant de fois qu'elle veut, sans rien payer de plus."
+    },
+    {
+      "label": "Exclusivité non rémunérée",
+      "severity": "medium",
+      "why": "Tu bloques toute la catégorie cosmétique pendant 3 mois, et ce blocage n'est pas compté dans les 300 €."
+    },
+    {
+      "label": "Paiement à 60 jours",
+      "severity": "medium",
+      "why": "Tu avances ton temps et ton matériel, et tu attends deux mois avant de toucher ton argent."
+    },
+    {
+      "label": "Territoire des pubs non précisé",
+      "severity": "low",
+      "why": "Sans territoire, tes vidéos peuvent tourner en pub dans n'importe quel pays."
+    }
+  ],
+  "estimate": {
+    "base_low": 300,
+    "base_high": 500,
+    "lines": [
+      {
+        "label": "Droits pub 6 mois",
+        "type": "percent",
+        "low": 30,
+        "high": 50,
+        "eur_low": 90,
+        "eur_high": 250
+      },
+      {
+        "label": "Exclusivité cosmétique 3 mois",
+        "type": "percent",
+        "low": 20,
+        "high": 40,
+        "eur_low": 60,
+        "eur_high": 200
+      },
+      {
+        "label": "Raw footage",
+        "type": "percent",
+        "low": 20,
+        "high": 30,
+        "eur_low": 60,
+        "eur_high": 150
+      }
+    ],
+    "total_low": 510,
+    "total_high": 1100,
+    "assumptions": [
+      "Base de 150 à 250 € par vidéo TikTok UGC de 30 à 60 secondes.",
+      "Vidéos livrées à la marque, sans publication sur ton compte.",
+      "Diffusion des pubs en France uniquement."
+    ],
+    "rate_table_version": "demo-2026-09"
+  },
+  "fr_legal": {
+    "applicable": true,
+    "threshold_1000_reached": "no",
+    "written_contract_required": false,
+    "missing_mandatory_clauses": [],
+    "note": "En France, l'influence commerciale est encadrée par la loi du 9 juin 2023. Au-delà de 1 000 € HT, un contrat écrit avec certaines mentions devient obligatoire. À 300 €, ce seuil n'est pas atteint. Si la négociation le dépasse, demande un contrat écrit."
+  },
+  "escalate_to_professional": {
+    "required": false,
+    "reasons": []
+  },
+  "counter_offer": {
+    "amount_low": 650,
+    "amount_high": 850,
+    "changes": [
+      "Droits pub 6 mois facturés en plus de la création",
+      "Exclusivité ramenée à 1 mois",
+      "Raw footage en option payante",
+      "2 révisions incluses",
+      "Paiement à 30 jours, 50 % à la signature"
+    ]
+  },
+  "ready_to_send_message": {
+    "tone": "cordial et ferme",
+    "text": "Bonjour, merci pour votre message, ça me fait très plaisir ! Le projet m'intéresse. Pour 2 vidéos TikTok avec 6 mois de droits pub, mon tarif se situe entre 650 et 850 €. Je vous propose une exclusivité de 1 mois, 2 révisions incluses, et le raw footage en option. Côté paiement : 50 % à la signature et le solde à 30 jours. Dites-moi si ça vous convient, et je vous envoie un devis détaillé."
+  }
+}
