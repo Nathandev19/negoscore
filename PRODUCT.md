@@ -1,6 +1,6 @@
 # PRODUCT
 
-**Nom** : Creator Deal Copilot — nom de travail, BRAND_STATUS = NOT_LOCKED.
+**Nom** : Negoscore — BRAND_STATUS = LOCKED. Domaine negoscore.fr, comptes @negoscore sur TikTok et Instagram.
 
 ## Cible
 Créateurs UGC francophones qui reçoivent des offres de marques (DM, mail, brief, contrat), sans agent ni juriste.

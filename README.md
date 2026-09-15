@@ -1,4 +1,4 @@
-# Creator Deal Copilot (nom de travail, non verrouillé)
+# Negoscore
 
 Colle l'offre d'une marque : on te dit ce qu'elle vaut, ce que tu cèdes, et quoi répondre.
 

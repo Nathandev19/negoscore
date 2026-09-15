@@ -1,6 +1,6 @@
 export const BRAND = {
-  name: "Creator Deal Copilot",
-  shortName: "Copilot",
-  domain: "creator-deal-copilot.vercel.app",
+  name: "Negoscore",
+  shortName: "Negoscore",
+  domain: "negoscore.fr",
   tagline: "Ne signe plus un deal à l'aveugle.",
 } as const;
