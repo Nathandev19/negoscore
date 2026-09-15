@@ -1,0 +1,12 @@
+{
+  "brand": "Dragonnerie",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 5 }],
+  "payment.amount_eur": 1500,
+  "payment.terms_days": 45,
+  "usage.paid_ads": true,
+  "usage.spark_ads": true,
+  "usage.duration_months": 3,
+  "usage.territory": ["monde", "world"],
+  "revisions.count": 1,
+  "ai_training_rights": ["present", "unclear"]
+}

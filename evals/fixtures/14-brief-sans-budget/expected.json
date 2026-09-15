@@ -1,0 +1,12 @@
+{
+  "brand": "Vitalune",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 4 }],
+  "publication_required": false,
+  "payment.amount_eur": null,
+  "payment.terms_days": null,
+  "usage.paid_ads": true,
+  "usage.duration_months": 6,
+  "raw_footage": true,
+  "exclusivity.present": true,
+  "exclusivity.duration_months": 6
+}

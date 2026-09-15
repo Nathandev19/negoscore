@@ -1,0 +1,21 @@
+{
+  "brand": "Nectarelle",
+  "deliverables": [
+    { "type": "video", "platform": "instagram", "quantity": 4 },
+    { "type": "story", "platform": "instagram", "quantity": 4 }
+  ],
+  "publication_required": true,
+  "payment.amount_eur": 3500,
+  "payment.terms_days": 90,
+  "ip_transfer": "full_assignment",
+  "usage.paid_ads": true,
+  "usage.whitelisting": false,
+  "usage.duration_months": 24,
+  "usage.perpetual": false,
+  "usage.territory": "monde",
+  "exclusivity.present": true,
+  "exclusivity.duration_months": 12,
+  "raw_footage": true,
+  "revisions.count": 3,
+  "governing_law": "belg"
+}

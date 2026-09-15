@@ -1,0 +1,22 @@
+{
+  "brand": "Veloutine",
+  "deliverables": [
+    { "type": "video", "platform": "tiktok", "quantity": 3 },
+    { "type": "video", "platform": "instagram", "quantity": 2 }
+  ],
+  "publication_required": true,
+  "payment.amount_eur": 1800,
+  "payment.terms_days": 45,
+  "in_kind_value_eur": 120,
+  "usage.paid_ads": true,
+  "usage.whitelisting": true,
+  "usage.duration_months": 12,
+  "usage.perpetual": false,
+  "exclusivity.present": true,
+  "exclusivity.duration_months": 6,
+  "raw_footage": false,
+  "ip_transfer": "license",
+  "revisions.count": 2,
+  "ai_training_rights": "absent",
+  "governing_law": "fran"
+}

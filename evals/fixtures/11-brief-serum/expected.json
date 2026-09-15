@@ -1,0 +1,16 @@
+{
+  "brand": "Hydrelune",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 3 }],
+  "publication_required": false,
+  "payment.amount_eur": 1200,
+  "payment.terms_days": 30,
+  "usage.paid_ads": true,
+  "usage.whitelisting": true,
+  "usage.duration_months": 6,
+  "usage.territory": "France",
+  "exclusivity.present": true,
+  "exclusivity.duration_months": 2,
+  "exclusivity.category": "visage",
+  "raw_footage": true,
+  "revisions.count": 2
+}

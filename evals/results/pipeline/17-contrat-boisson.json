@@ -1,0 +1,281 @@
+{
+  "analysis": {
+    "schema_version": "1.0",
+    "language": "fr",
+    "confidence": "medium",
+    "input_quality": {
+      "readable": true,
+      "missing_critical": [
+        "Le calendrier précis de publication n'est pas encore fixé.",
+        "Le Brief n'est pas joint au contrat.",
+        "Aucune indemnité n'est prévue en cas d'annulation par la marque.",
+        "Les modalités de paiement en cas de résiliation après production ne sont pas précisées."
+      ]
+    },
+    "deal": {
+      "brand": "Nectarelle SRL",
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "instagram",
+          "quantity": 4,
+          "format": "Reels de 15 à 60 secondes"
+        },
+        {
+          "type": "story",
+          "platform": "instagram",
+          "quantity": 4,
+          "format": "Chaque story peut comporter plusieurs séquences"
+        }
+      ],
+      "publication_required": true,
+      "usage": {
+        "organic": true,
+        "paid_ads": true,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": 24,
+        "territory": "le monde entier",
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": true,
+        "duration_months": 12,
+        "category": "boissons sans alcool"
+      },
+      "raw_footage": true,
+      "ip_transfer": "full_assignment",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": 3,
+        "unlimited": false
+      },
+      "payment": {
+        "amount_eur": 3500,
+        "currency": "EUR",
+        "terms_days": 90,
+        "schedule": "Paiement en une seule fois, 90 jours après la publication du dernier contenu, sur présentation d'une facture conforme"
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [
+        "Brief dans les cinq jours ouvrables suivant la signature",
+        "Première version de chaque livrable au moins dix jours avant la date de publication envisagée",
+        "Calendrier de publication à arrêter dans les quinze jours suivant la remise du Brief",
+        "Tous les livrables publiés avant le 15 novembre 2026",
+        "Chaque Reel accessible pendant au moins six mois après sa publication",
+        "Rushes remis au plus tard dix jours après la publication du dernier livrable",
+        "Statistiques remises dans les quinze jours suivant la publication du dernier livrable",
+        "Modifications intégrées dans les trois jours ouvrables suivant leur réception",
+        "Validation ou demandes de modifications sous trois jours ouvrables",
+        "Exclusivité pendant douze mois à compter de la signature",
+        "Confidentialité pendant le contrat et trois ans après son terme"
+      ],
+      "kill_fee": null,
+      "termination": "La marque peut résilier à tout moment avec un préavis de huit jours. En cas d'annulation ou de résiliation à l'initiative de la marque, aucune indemnité n'est prévue, y compris si des livrables ont déjà été produits. En cas de résiliation, les contenus et rushes déjà réalisés doivent être remis sous huit jours et les droits cédés sur ces éléments restent acquis à la marque.",
+      "governing_law": "Droit belge ; compétence exclusive des tribunaux de Liège après une tentative de résolution amiable de trente jours"
+    },
+    "score": {
+      "value": 15,
+      "band": "bad"
+    },
+    "good_points": [
+      {
+        "label": "Livrables précisément définis",
+        "why": "Le contrat indique le nombre, le type et la plateforme des contenus à produire."
+      },
+      {
+        "label": "Limitation des révisions",
+        "why": "La marque est limitée à trois séries de modifications par livrable, avec des demandes écrites et regroupées."
+      },
+      {
+        "label": "Validation tacite",
+        "why": "L'absence de réponse de la marque sous trois jours ouvrables vaut validation."
+      },
+      {
+        "label": "Exclusion du whitelisting",
+        "why": "La marque ne peut pas diffuser de publicité depuis ton compte ni sponsoriser tes publications avec ton identité."
+      },
+      {
+        "label": "Protection en cas de baisse de portée Instagram",
+        "why": "Le contrat ne te rend pas responsable des changements d'algorithme ou de fonctionnalités d'Instagram."
+      }
+    ],
+    "negotiate": [
+      {
+        "label": "Cession des droits et publicité payante",
+        "why": "La cession est complète et couvre de nombreux supports ainsi que les campagnes publicitaires de la marque pendant 24 mois.",
+        "eur_impact_low": 2000,
+        "eur_impact_high": 8000,
+        "priority": 1
+      },
+      {
+        "label": "Annulation par la marque",
+        "why": "Le contrat ne prévoit aucun paiement si la marque annule après le début du travail.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 2
+      },
+      {
+        "label": "Remise des rushes",
+        "why": "La livraison de tous les fichiers bruts et sources est incluse sans distinction entre les éléments utilisés et non utilisés.",
+        "eur_impact_low": 700,
+        "eur_impact_high": 1800,
+        "priority": 3
+      },
+      {
+        "label": "Délai de paiement",
+        "why": "Le paiement unique intervient 90 jours après la publication du dernier contenu.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 4
+      },
+      {
+        "label": "Exclusivité",
+        "why": "La restriction couvre tous tes comptes pendant douze mois et toute la catégorie des boissons sans alcool.",
+        "eur_impact_low": 1200,
+        "eur_impact_high": 3600,
+        "priority": 5
+      },
+      {
+        "label": "Nombre de contenus et charge de production",
+        "why": "Les quatre Reels, quatre stories, rushes, statistiques et validations doivent être confirmés au regard du brief final.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 6
+      },
+      {
+        "label": "Révisions supplémentaires",
+        "why": "Le contrat prévoit trois séries par livrable, mais les demandes au-delà de cette limite doivent être encadrées avant tout travail supplémentaire.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 7
+      },
+      {
+        "label": "Territoire d'exploitation",
+        "why": "L'exploitation est mondiale alors que la campagne et les comptes concernés ne sont pas détaillés.",
+        "eur_impact_low": 400,
+        "eur_impact_high": 1200,
+        "priority": 8
+      }
+    ],
+    "red_flags": [
+      {
+        "label": "Cession complète des droits",
+        "severity": "high",
+        "why": "La marque obtient les droits de reproduction, de diffusion et de modification sur les livrables et les rushes, pour ses campagnes publicitaires et sa communication organique."
+      },
+      {
+        "label": "Remise obligatoire de tous les rushes",
+        "severity": "high",
+        "why": "Tu dois transmettre l'intégralité des séquences brutes, fichiers de montage et pistes sonores, sans exception."
+      },
+      {
+        "label": "Paiement très tardif",
+        "severity": "high",
+        "why": "Le paiement intervient en une seule fois jusqu'à 90 jours après la publication du dernier contenu."
+      },
+      {
+        "label": "Annulation sans indemnité",
+        "severity": "high",
+        "why": "La marque peut interrompre la collaboration avec un préavis de huit jours sans prévoir de paiement pour le travail déjà réalisé."
+      },
+      {
+        "label": "Exclusivité étendue",
+        "severity": "high",
+        "why": "Elle couvre toutes tes plateformes pendant douze mois et toute la catégorie des boissons sans alcool."
+      },
+      {
+        "label": "Garantie sur les personnes et les éléments utilisés",
+        "severity": "medium",
+        "why": "Tu dois obtenir les autorisations écrites des personnes visibles et garantir les droits sur les musiques, sons et éléments de tiers."
+      }
+    ],
+    "estimate": {
+      "base_low": 2000,
+      "base_high": 4000,
+      "lines": [
+        {
+          "label": "Droits pub 24 mois",
+          "type": "percent",
+          "low": 80,
+          "high": 120,
+          "eur_low": 1600,
+          "eur_high": 4800
+        },
+        {
+          "label": "Exclusivité boissons sans alcool 12 mois",
+          "type": "percent",
+          "low": 60,
+          "high": 90,
+          "eur_low": 1200,
+          "eur_high": 3600
+        },
+        {
+          "label": "Raw footage",
+          "type": "percent",
+          "low": 35,
+          "high": 45,
+          "eur_low": 700,
+          "eur_high": 1800
+        },
+        {
+          "label": "Diffusion dans le monde entier",
+          "type": "percent",
+          "low": 20,
+          "high": 30,
+          "eur_low": 400,
+          "eur_high": 1200
+        },
+        {
+          "label": "Cession totale des droits",
+          "type": "percent",
+          "low": 100,
+          "high": 200,
+          "eur_low": 2000,
+          "eur_high": 8000
+        }
+      ],
+      "total_low": 7900,
+      "total_high": 23400,
+      "assumptions": [
+        "Profil de créateur « confirmé » supposé (portfolio existant, pas débutant).",
+        "Droits pub de plus de 12 mois chiffrés comme 12 mois : le vrai prix est plus haut."
+      ],
+      "rate_table_version": "fr-2026.1"
+    },
+    "fr_legal": {
+      "applicable": false,
+      "threshold_1000_reached": "yes",
+      "written_contract_required": false,
+      "missing_mandatory_clauses": [],
+      "note": "Cette offre semble soumise à un autre droit que le droit français : cette vérification ne s'applique pas. C'est une information générale, pas un conseil juridique."
+    },
+    "escalate_to_professional": {
+      "required": true,
+      "reasons": [
+        "Le montant dépasse 3 000 € : fais relire le contrat avant de signer.",
+        "La marque demande une cession totale de tes droits sur les vidéos.",
+        "L'exclusivité dure plus de 6 mois.",
+        "Tes vidéos seraient diffusées dans le monde entier pendant plus d'un an."
+      ]
+    },
+    "counter_offer": {
+      "amount_low": 7900,
+      "amount_high": 23400,
+      "changes": [
+        "Limiter les droits de la marque aux contenus finaux validés, pendant une durée définie et uniquement pour les supports convenus.",
+        "Prévoir une autorisation séparée pour toute adaptation importante, tout nouveau support ou toute prolongation de l'exploitation publicitaire.",
+        "Remplacer la remise de tous les rushes par la remise des seuls fichiers expressément convenus.",
+        "Prévoir le paiement du travail réalisé et des frais engagés si la marque annule après le démarrage de la production.",
+        "Réduire et préciser l'exclusivité, avec une liste identifiable de marques ou de concurrents concernés.",
+        "Fixer un calendrier de publication précis après réception du brief.",
+        "Préciser qu'une série de modifications ne peut pas entraîner une nouvelle conception complète du contenu.",
+        "Prévoir un délai de paiement plus court et un échéancier écrit."
+      ]
+    },
+    "ready_to_send_message": {
+      "tone": "Poli et ferme",
+      "text": "Bonjour, merci pour l’envoi du contrat. Avant de signer, je souhaite clarifier plusieurs points : limiter la cession aux usages et à la durée prévus, exclure la remise systématique de l’intégralité des rushes, encadrer l’exclusivité à une liste précise de concurrents et prévoir une indemnisation en cas d’annulation après le début de la production. Je souhaite également convenir d’un calendrier précis et d’un délai de paiement plus court. Mon tarif pour ce projet se situe entre 7 900 et 23 400 €. Pouvez-vous me transmettre une version révisée du contrat ?"
+    }
+  }
+}

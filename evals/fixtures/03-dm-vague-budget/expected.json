@@ -1,0 +1,10 @@
+{
+  "brand": "Frimousse",
+  "payment.amount_eur": null,
+  "payment.terms_days": null,
+  "usage.paid_ads": false,
+  "usage.duration_months": null,
+  "usage.territory": null,
+  "exclusivity.present": false,
+  "raw_footage": false
+}

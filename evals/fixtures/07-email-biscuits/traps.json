@@ -1,0 +1,4 @@
+{
+  "must_flag": ["rush|raw"],
+  "forbidden": ["\"exclusivity\":{\"present\":true", "\"kill_fee\":\""]
+}

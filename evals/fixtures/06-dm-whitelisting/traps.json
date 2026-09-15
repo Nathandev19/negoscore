@@ -1,0 +1,4 @@
+{
+  "must_flag": ["whitelist|acces a ton compte|depuis ton compte"],
+  "forbidden": ["\"territory\":\"", "\"perpetual\":true"]
+}

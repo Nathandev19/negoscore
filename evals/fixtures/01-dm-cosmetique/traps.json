@@ -1,0 +1,4 @@
+{
+  "must_flag": ["revision|illimit", "exclusiv"],
+  "forbidden": ["\"territory\":\"", "\"governing_law\":\"", "\"kill_fee\":\""]
+}

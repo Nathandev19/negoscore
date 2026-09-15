@@ -1,0 +1,4 @@
+{
+  "must_flag": ["remuner|pas paye|gratuit|aucun paiement|sans paiement|budget|argent|cachet"],
+  "forbidden": ["\"paid_ads\":true", "re:\"terms_days\":\\d", "re:\"duration_months\":\\d"]
+}

@@ -1,0 +1,11 @@
+{
+  "brand": "Lunabrosse",
+  "deliverables": [{ "type": "video", "platform": "instagram", "quantity": 3 }],
+  "payment.amount_eur": 750,
+  "payment.terms_days": 45,
+  "usage.whitelisting": true,
+  "usage.duration_months": 2,
+  "exclusivity.present": true,
+  "exclusivity.duration_months": 1,
+  "raw_footage": false
+}

@@ -1,0 +1,12 @@
+{
+  "brand": "Ondulia",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 1 }],
+  "payment.amount_eur": 150,
+  "payment.terms_days": null,
+  "usage.paid_ads": true,
+  "usage.duration_months": null,
+  "usage.perpetual": false,
+  "usage.territory": null,
+  "exclusivity.present": false,
+  "raw_footage": false
+}

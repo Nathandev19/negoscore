@@ -1,0 +1,9 @@
+{
+  "brand": "Brindille",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 3 }],
+  "payment.amount_eur": 600,
+  "payment.terms_days": 30,
+  "revisions.count": 2,
+  "ip_transfer": "full_assignment",
+  "exclusivity.present": false
+}

@@ -1,27 +1,32 @@
 # CURRENT
 
 ## CURRENT STATUS
-Negoscore (marque verrouillée, domaine negoscore.fr). Mission #001 terminée et marque renommée : squelette complet, UI fonctionnelle sur fixture JSON locale. Aucune IA, base de données, paiement ni appel réseau.
+Negoscore (marque verrouillée, domaine negoscore.fr). Mission #002 terminée : analyse réelle en mode texte, chiffrage déterministe, modèle choisi par éval.
 
 ## WHAT EXISTS
-- `/` landing FR mobile-first, zone de dépôt au-dessus du pli.
-- `/analyse` input en 3 modes (texte, photo, PDF), validation client, écran de chargement simulé (2,5 s).
-- `/analyse/demo` résultat complet rendu depuis `lib/fixtures/analysis-sample.json`, contre-offre et message floutés, gate email factice (console.log).
-- `/mentions-legales`, `/confidentialite`, `/cgv` : placeholders.
-- `lib/schema.ts` (Zod), `lib/brand.ts` (seul endroit contenant le nom Negoscore), tests Vitest (fixture + marque).
+- `/` landing et `/analyse` : le mode texte appelle `/api/analyse` ; Photo et PDF affichent « Bientôt disponible ».
+- `/analyse/resultat` : dernière analyse réelle, lue depuis le sessionStorage du navigateur.
+- `/analyse/demo` : résultat sur la fixture locale, sans appel réseau.
+- `app/api/analyse/route.ts` : texte seul (60 000 caractères max), 5 analyses par IP et par heure en mémoire, mode fichier en 501.
+- `lib/llm/` : prompt et schéma d'extraction, un seul modèle (`model.ts`), un appel plus une reprise (`extract.ts`).
+- `lib/rates/` : table de tarifs `fr-2026.1.json`, calculateur, score. `lib/legal/` : couche légale FR et escalade, déterministes.
+- `lib/analysis/compose.ts` : assemble sortie du modèle et calculs, validé par le schéma complet.
+- `evals/` : 20 fixtures synthétiques, harness `pnpm eval`, résultats horodatés.
+- Tests Vitest : marque, fixture, moteur de tarifs, composition.
 
 ## CURRENT BLOCKER
-Aucun pour le code. Textes juridiques à fournir.
+Aucun pour le code. Textes juridiques à fournir. Table de tarifs à recalibrer (valeurs « low » interpolées).
 
 ## CURRENT MISSION
-Renommage de la marque en Negoscore. Terminé.
+#002 — moteur de tarifs, éval des modèles, pipeline réel. Terminée.
 
 ## NEXT MISSION
-#002 — benchmark des modèles IA sur nos propres fixtures, puis branchement de l'analyse réelle sur le schéma existant.
+#003 — upload signé Supabase pour Photo et PDF, puis OCR ou lecture de document.
 
 ## LAUNCH BLOCKERS
-- Modèle IA choisi et clé `LLM_API_KEY`.
 - Supabase (stockage, suppression à 30 jours), Resend (gate email), Whop (paiement), PostHog.
-- Compte Vercel Pro.
+- Rate limiting persistant : la limite en mémoire ne tient pas entre instances serverless.
+- Compte Vercel Pro, avec `OPENAI_API_KEY` en variable d'environnement.
 - Mentions légales, politique de confidentialité, CGV rédigées par un professionnel.
-- Validation par un juriste du contenu « alerte légale FR » (seuil, mentions obligatoires).
+- Validation par un juriste de `lib/legal/fr.ts` (seuil, mentions obligatoires, texte de la note).
+- Recalibrage de la table de tarifs sur des offres réelles.

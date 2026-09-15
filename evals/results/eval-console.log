@@ -1,0 +1,81 @@
+﻿node.exe : $ node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/run.ts
+Au caractère Ligne:1 : 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ($ node --env-fi...ON evals/run.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+20 fixtures, 3 candidats, température demandée 0.
+[openai/gpt-5.6-luna] 01-dm-cosmetique — 13149 ms, schéma ok, faits 15/15, hallucinations 0
+[google/gemini-3.6-flash] 01-dm-cosmetique — 16384 ms, schéma ok, faits 15/15, hallucinations 0
+[anthropic/claude-sonnet-5] 01-dm-cosmetique — 18341 ms, schéma ok, faits 15/15, hallucinations 0
+[openai/gpt-5.6-luna] 02-dm-produit-offert — 11537 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] 02-dm-produit-offert — 14826 ms, schéma ok, faits 10/10, hallucinations 0
+[anthropic/claude-sonnet-5] 02-dm-produit-offert — 13567 ms, schéma ok, faits 10/10, hallucinations 0
+[openai/gpt-5.6-luna] 03-dm-vague-budget — 11650 ms, schéma ok, faits 9/9, hallucinations 0
+[anthropic/claude-sonnet-5] 03-dm-vague-budget — 12083 ms, schéma ok, faits 9/9, hallucinations 0
+[google/gemini-3.6-flash] 03-dm-vague-budget — 15721 ms, schéma ok, faits 9/9, hallucinations 0
+[openai/gpt-5.6-luna] 04-dm-vague-droits — 11762 ms, schéma ok, faits 11/11, hallucinations 0
+[anthropic/claude-sonnet-5] 04-dm-vague-droits — 13543 ms, schéma ok, faits 11/11, hallucinations 0
+[google/gemini-3.6-flash] 04-dm-vague-droits — 12170 ms, schéma ok, faits 11/11, hallucinations 0
+[openai/gpt-5.6-luna] 05-dm-spark-ads — 14424 ms, schéma ok, faits 10/11, hallucinations 0
+[google/gemini-3.6-flash] 05-dm-spark-ads — 8361 ms, schéma ok, faits 11/11, hallucinations 0
+[anthropic/claude-sonnet-5] 05-dm-spark-ads — 13686 ms, schéma ok, faits 11/11, hallucinations 0
+[openai/gpt-5.6-luna] 06-dm-whitelisting — 14175 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] 06-dm-whitelisting — 12207 ms, schéma ok, faits 10/10, hallucinations 0
+[anthropic/claude-sonnet-5] 06-dm-whitelisting — 16158 ms, schéma KO, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] 07-email-biscuits — 10272 ms, schéma ok, faits 14/14, hallucinations 0
+[openai/gpt-5.6-luna] 07-email-biscuits — 14237 ms, schéma ok, faits 14/14, hallucinations 0
+[google/gemini-3.6-flash] 08-email-chargeur — 8739 ms, schéma ok, faits 11/11, hallucinations 1
+[anthropic/claude-sonnet-5] 07-email-biscuits — 18493 ms, schéma ok, faits 14/14, hallucinations 0
+[openai/gpt-5.6-luna] 08-email-chargeur — 16027 ms, schéma ok, faits 11/11, hallucinations 0
+[google/gemini-3.6-flash] 09-email-vetements — 18213 ms, schéma ok, faits 10/10, hallucinations 0
+[openai/gpt-5.6-luna] 09-email-vetements — 12061 ms, schéma ok, faits 10/10, hallucinations 0
+[anthropic/claude-sonnet-5] 08-email-chargeur — 17146 ms, schéma ok, faits 11/11, hallucinations 0
+[google/gemini-3.6-flash] 10-email-voyage — 16453 ms, schéma ok, faits 12/12, hallucinations 0
+[openai/gpt-5.6-luna] 10-email-voyage — 14321 ms, schéma ok, faits 12/12, hallucinations 0
+[anthropic/claude-sonnet-5] 09-email-vetements — 14701 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] 11-brief-serum — 11857 ms, schéma ok, faits 15/15, hallucinations 0
+[openai/gpt-5.6-luna] 11-brief-serum — 12935 ms, schéma ok, faits 15/15, hallucinations 0
+[anthropic/claude-sonnet-5] 10-email-voyage — 18209 ms, schéma ok, faits 12/12, hallucinations 0
+[google/gemini-3.6-flash] 12-brief-jeu-mobile — 16422 ms, schéma ok, faits 11/11, hallucinations 0
+[openai/gpt-5.6-luna] 12-brief-jeu-mobile — 16329 ms, schéma ok, faits 11/11, hallucinations 0
+[google/gemini-3.6-flash] 13-brief-linge — 7939 ms, schéma ok, faits 10/10, hallucinations 0
+[anthropic/claude-sonnet-5] 11-brief-serum — 17513 ms, schéma ok, faits 15/15, hallucinations 0
+[openai/gpt-5.6-luna] 13-brief-linge — 11657 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] 14-brief-sans-budget — 15241 ms, schéma ok, faits 11/11, hallucinations 0
+[openai/gpt-5.6-luna] 14-brief-sans-budget — 12940 ms, schéma ok, faits 11/11, hallucinations 0
+[anthropic/claude-sonnet-5] 12-brief-jeu-mobile — 16953 ms, schéma ok, faits 11/11, hallucinations 0
+[google/gemini-3.6-flash] 15-contrat-cosmetique — 14747 ms, schéma ok, faits 18/18, hallucinations 0
+[anthropic/claude-sonnet-5] 13-brief-linge — 14427 ms, schéma ok, faits 10/10, hallucinations 0
+[openai/gpt-5.6-luna] 15-contrat-cosmetique — 20116 ms, schéma ok, faits 18/18, hallucinations 0
+[anthropic/claude-sonnet-5] 14-brief-sans-budget — 15206 ms, schéma ok, faits 11/11, hallucinations 0
+[google/gemini-3.6-flash] 16-contrat-app-sport — 21215 ms, schéma ok, faits 17/17, hallucinations 0
+[openai/gpt-5.6-luna] 16-contrat-app-sport — 17687 ms, schéma ok, faits 17/17, hallucinations 0
+[openai/gpt-5.6-luna] 17-contrat-boisson — 19865 ms, schéma ok, faits 19/19, hallucinations 0
+[anthropic/claude-sonnet-5] 15-contrat-cosmetique — 26100 ms, schéma ok, faits 18/18, hallucinations 0
+[google/gemini-3.6-flash] 17-contrat-boisson — 26922 ms, schéma ok, faits 19/19, hallucinations 0
+[openai/gpt-5.6-luna] 18-piege-perpetuite — 14820 ms, schéma ok, faits 10/10, hallucinations 0
+[google/gemini-3.6-flash] 18-piege-perpetuite — 18927 ms, schéma ok, faits 10/10, hallucinations 0
+[anthropic/claude-sonnet-5] 16-contrat-app-sport — 29300 ms, schéma ok, faits 17/17, hallucinations 0
+[google/gemini-3.6-flash] 19-piege-cession — 11824 ms, schéma ok, faits 8/8, hallucinations 0
+[openai/gpt-5.6-luna] 19-piege-cession — 18959 ms, schéma ok, faits 8/8, hallucinations 0
+[google/gemini-3.6-flash] 20-email-anglais — 12624 ms, schéma ok, faits 11/11, hallucinations 0
+[openai/gpt-5.6-luna] 20-email-anglais — 15589 ms, schéma ok, faits 11/11, hallucinations 0
+[anthropic/claude-sonnet-5] 17-contrat-boisson — 31044 ms, schéma ok, faits 19/19, hallucinations 0
+[anthropic/claude-sonnet-5] 18-piege-perpetuite — 17787 ms, schéma ok, faits 10/10, hallucinations 0
+[anthropic/claude-sonnet-5] 19-piege-cession — 19313 ms, schéma ok, faits 8/8, hallucinations 0
+[anthropic/claude-sonnet-5] 20-email-anglais — 17548 ms, schéma KO, faits 11/11, hallucinations 0
+
+| Candidat | Faits critiques | Hallucinations interdites | Schéma valide 1er coup | Latence p50 / p95 | Coût par analyse | Statut |
+|---|---|---|---|---|---|---|
+| google/gemini-3.6-flash | 100 % | 1 | 100 % | 14747 / 21215 ms | 0.01190 $ / 0.01026 € | DISQUALIFIÉ |
+| anthropic/claude-sonnet-5 | 100 % | 0 | 90 % | 17146 / 29300 ms | 0.03175 $ / 0.02739 € | Schéma < 95 % |
+| openai/gpt-5.6-luna | 99.6 % | 0 | 100 % | 14237 / 19865 ms | 0.00198 $ / 0.00171 € | Éligible |
+
+Température google/gemini-3.6-flash : 0
+Température anthropic/claude-sonnet-5 : refusée par l'API (400 {"type":"error","error":{"type":"invalid_request_error","message":"`temperature` is deprecated for this model."},"request_id":"req_011Cf4qxPc3imvyxARUneLBo") — valeur par défaut du modèle
+Température openai/gpt-5.6-luna : refusée par l'API (400 Unsupported parameter: 'temperature' is not supported with this model.) — valeur par défaut du modèle
+
+Sélection : openai/gpt-5.6-luna — Seul candidat à passer les critères 1 et 2.
+Résultats : evals\results\2026-09-15T07-45-12-414Z.json

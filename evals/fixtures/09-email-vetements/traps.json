@@ -1,0 +1,4 @@
+{
+  "must_flag": [],
+  "forbidden": ["\"paid_ads\":true", "\"raw_footage\":true", "\"territory\":\""]
+}

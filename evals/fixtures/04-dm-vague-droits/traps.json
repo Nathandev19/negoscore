@@ -1,0 +1,4 @@
+{
+  "must_flag": ["duree|combien de temps|mois|limite"],
+  "forbidden": ["re:\"duration_months\":\\d", "\"territory\":\"", "re:\"terms_days\":\\d"]
+}

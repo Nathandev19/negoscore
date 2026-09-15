@@ -1,0 +1,4 @@
+{
+  "must_flag": ["perpetu|a vie|sans limite|sans fin|duree de protection|illimite|pour toujours|definiti|70 ans"],
+  "forbidden": ["\"perpetual\":false", "re:\"duration_months\":\\d"]
+}

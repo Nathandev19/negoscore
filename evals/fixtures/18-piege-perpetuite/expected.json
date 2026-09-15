@@ -1,0 +1,11 @@
+{
+  "brand": "Orvelle",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 2 }],
+  "publication_required": false,
+  "payment.amount_eur": 450,
+  "payment.terms_days": 30,
+  "usage.paid_ads": true,
+  "usage.perpetual": true,
+  "revisions.count": 2,
+  "exclusivity.present": false
+}

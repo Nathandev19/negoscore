@@ -1,0 +1,17 @@
+{
+  "brand": "Pulsoria",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 6 }],
+  "publication_required": false,
+  "payment.amount_eur": 2400,
+  "payment.terms_days": 60,
+  "usage.paid_ads": true,
+  "usage.spark_ads": true,
+  "usage.duration_months": 6,
+  "usage.territory": ["union europ", "ue", "europe"],
+  "raw_footage": true,
+  "revisions.unlimited": true,
+  "exclusivity.present": false,
+  "ip_transfer": "license",
+  "ai_training_rights": "present",
+  "governing_law": "fran"
+}

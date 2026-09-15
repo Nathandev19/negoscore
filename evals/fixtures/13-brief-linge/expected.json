@@ -1,0 +1,15 @@
+{
+  "brand": "Terre & Lin",
+  "deliverables": [
+    { "type": "video", "platform": "instagram", "quantity": 2 },
+    { "type": "video", "platform": "tiktok", "quantity": 2 }
+  ],
+  "publication_required": true,
+  "payment.amount_eur": 800,
+  "payment.terms_days": 30,
+  "usage.organic": true,
+  "usage.paid_ads": false,
+  "usage.duration_months": 12,
+  "exclusivity.present": false,
+  "raw_footage": false
+}

@@ -1,0 +1,4 @@
+{
+  "must_flag": ["cession|cede|propriet|tes droits", "exclusiv", "90 jours|delai de paiement|paiement"],
+  "forbidden": ["\"ip_transfer\":\"license\"", "\"whitelisting\":true", "\"ai_training_rights\":\"present\""]
+}

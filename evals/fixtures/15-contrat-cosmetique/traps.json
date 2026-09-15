@@ -1,0 +1,4 @@
+{
+  "must_flag": ["exclusiv|whitelist"],
+  "forbidden": ["\"raw_footage\":true", "\"ai_training_rights\":\"present\"", "\"ip_transfer\":\"full_assignment\""]
+}

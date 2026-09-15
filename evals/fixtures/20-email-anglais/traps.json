@@ -1,0 +1,4 @@
+{
+  "must_flag": ["rush|raw"],
+  "forbidden": ["\"language\":\"fr\"", "\"exclusivity\":{\"present\":true"]
+}

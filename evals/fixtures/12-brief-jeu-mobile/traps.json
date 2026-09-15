@@ -1,0 +1,4 @@
+{
+  "must_flag": ["intelligence artificielle|variante|l'ia| ia "],
+  "forbidden": ["\"raw_footage\":true", "\"exclusivity\":{\"present\":true"]
+}

@@ -1,0 +1,14 @@
+{
+  "brand": "Quiétile",
+  "deliverables": [
+    { "type": "video", "platform": "instagram", "quantity": 1 },
+    { "type": "story", "platform": "instagram", "quantity": 3 }
+  ],
+  "publication_required": true,
+  "in_kind_value_eur": 89,
+  "payment.amount_eur": [0, null],
+  "usage.paid_ads": false,
+  "usage.organic": true,
+  "raw_footage": false,
+  "exclusivity.present": false
+}

@@ -1,0 +1,175 @@
+{
+  "analysis": {
+    "schema_version": "1.0",
+    "language": "fr",
+    "confidence": "low",
+    "input_quality": {
+      "readable": true,
+      "missing_critical": [
+        "Durée et territoire des droits publicitaires",
+        "Publication ou non sur ton propre compte TikTok",
+        "Format et nombre exacts de vidéos",
+        "Modalités et délai de paiement"
+      ]
+    },
+    "deal": {
+      "brand": "Ondulia",
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "tiktok",
+          "quantity": 1,
+          "format": null
+        }
+      ],
+      "publication_required": false,
+      "usage": {
+        "organic": false,
+        "paid_ads": true,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": null,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": false,
+        "duration_months": null,
+        "category": null
+      },
+      "raw_footage": false,
+      "ip_transfer": "license",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": false
+      },
+      "payment": {
+        "amount_eur": 150,
+        "currency": "EUR",
+        "terms_days": null,
+        "schedule": null
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [
+        "ce mois-ci"
+      ],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "score": {
+      "value": 53,
+      "band": "fair"
+    },
+    "good_points": [
+      {
+        "label": "Rémunération annoncée",
+        "why": "La marque indique clairement une rémunération de 150 €."
+      },
+      {
+        "label": "Plateforme identifiée",
+        "why": "La collaboration concerne TikTok."
+      }
+    ],
+    "negotiate": [
+      {
+        "label": "Droits publicitaires",
+        "why": "Il faut définir précisément leur durée, leur territoire et les supports concernés.",
+        "eur_impact_low": 75,
+        "eur_impact_high": 250,
+        "priority": 1
+      },
+      {
+        "label": "Format des livrables",
+        "why": "Le nombre de vidéos, leur durée et les éventuelles variantes ne sont pas indiqués.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 2
+      },
+      {
+        "label": "Modalités de paiement",
+        "why": "Le délai et l’échéancier doivent être confirmés avant acceptation.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 3
+      },
+      {
+        "label": "Publication sur le compte créateur",
+        "why": "Il faut confirmer si la vidéo est uniquement livrée à la marque ou si elle doit aussi être publiée sur TikTok.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 4
+      }
+    ],
+    "red_flags": [
+      {
+        "label": "Droits publicitaires non détaillés",
+        "severity": "high",
+        "why": "La marque demande des droits pub sans préciser la durée, le territoire ni les formats d'utilisation."
+      },
+      {
+        "label": "Brief incomplet",
+        "severity": "medium",
+        "why": "Le nombre exact de vidéos, leur durée, les éventuelles retouches et les modalités de livraison ne sont pas précisés."
+      },
+      {
+        "label": "Paiement non encadré",
+        "severity": "medium",
+        "why": "Le délai et les conditions de paiement ne sont pas indiqués."
+      }
+    ],
+    "estimate": {
+      "base_low": 250,
+      "base_high": 500,
+      "lines": [
+        {
+          "label": "Droits pub 3 mois",
+          "type": "percent",
+          "low": 30,
+          "high": 50,
+          "eur_low": 75,
+          "eur_high": 250
+        }
+      ],
+      "total_low": 320,
+      "total_high": 750,
+      "assumptions": [
+        "Profil de créateur « confirmé » supposé (portfolio existant, pas débutant).",
+        "Durée des droits pub non précisée : 3 mois supposés.",
+        "Territoire non précisé : diffusion en France supposée."
+      ],
+      "rate_table_version": "fr-2026.1"
+    },
+    "fr_legal": {
+      "applicable": true,
+      "threshold_1000_reached": "no",
+      "written_contract_required": false,
+      "missing_mandatory_clauses": [
+        "Valeur des avantages en nature",
+        "Modalités de paiement",
+        "Soumission au droit français"
+      ],
+      "note": "En France, un contrat écrit est obligatoire quand une collaboration dépasse 1 000 € HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus. Le montant de cette offre reste sous ce seuil, mais le cumul de l'année compte. C'est une information générale, pas un conseil juridique."
+    },
+    "escalate_to_professional": {
+      "required": false,
+      "reasons": []
+    },
+    "counter_offer": {
+      "amount_low": 320,
+      "amount_high": 750,
+      "changes": [
+        "Définir le nombre exact de vidéos et leur format.",
+        "Limiter les droits publicitaires à une durée et un territoire clairement indiqués.",
+        "Confirmer qu’aucune publication sur ton compte personnel n’est requise, sauf accord séparé.",
+        "Préciser le délai et les conditions de paiement.",
+        "Définir le nombre de retours inclus."
+      ]
+    },
+    "ready_to_send_message": {
+      "tone": "Poli et ferme",
+      "text": "Hello Maxence, merci pour ton message. Je suis potentiellement disponible ce mois-ci. Peux-tu me préciser le nombre et le format exacts de vidéos, ainsi que la durée et le territoire prévus pour les droits publicitaires ? Je souhaite également confirmer qu’aucune publication sur mon compte TikTok n’est demandée et connaître les modalités de paiement. Pour ce projet, mon tarif se situe entre 320 et 750 €."
+    }
+  }
+}

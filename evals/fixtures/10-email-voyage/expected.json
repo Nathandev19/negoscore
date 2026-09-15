@@ -1,0 +1,13 @@
+{
+  "brand": "Escales Douces",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 3 }],
+  "payment.amount_eur": 900,
+  "payment.schedule": "50",
+  "payment.terms_days": null,
+  "usage.paid_ads": true,
+  "usage.duration_months": 6,
+  "exclusivity.present": true,
+  "exclusivity.duration_months": 3,
+  "kill_fee": "30",
+  "in_kind_value_eur": null
+}

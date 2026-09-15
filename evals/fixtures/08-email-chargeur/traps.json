@@ -1,0 +1,4 @@
+{
+  "must_flag": ["revision|retour|illimit|validation"],
+  "forbidden": ["\"raw_footage\":true", "\"kill_fee\":\""]
+}

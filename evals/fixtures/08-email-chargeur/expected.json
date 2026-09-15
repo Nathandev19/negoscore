@@ -1,0 +1,15 @@
+{
+  "brand": "Voltarys",
+  "deliverables": [
+    { "type": "video", "platform": "youtube", "quantity": 1 },
+    { "type": "video", "platform": "tiktok", "quantity": 1 }
+  ],
+  "payment.amount_eur": 600,
+  "payment.terms_days": 60,
+  "usage.paid_ads": true,
+  "usage.whitelisting": false,
+  "usage.duration_months": 12,
+  "usage.territory": "Europe",
+  "revisions.unlimited": true,
+  "raw_footage": false
+}

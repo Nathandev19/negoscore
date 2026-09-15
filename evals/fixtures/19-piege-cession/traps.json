@@ -1,0 +1,4 @@
+{
+  "must_flag": ["propriet|cession|cede|appartien|tes droits"],
+  "forbidden": ["\"ip_transfer\":\"license\"", "\"ip_transfer\":\"none\""]
+}

@@ -1,0 +1,15 @@
+{
+  "brand": "Aubépine",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 2 }],
+  "usage.paid_ads": true,
+  "usage.duration_months": 6,
+  "usage.perpetual": false,
+  "usage.territory": null,
+  "exclusivity.present": true,
+  "exclusivity.duration_months": 3,
+  "raw_footage": true,
+  "revisions.unlimited": true,
+  "payment.amount_eur": 300,
+  "payment.terms_days": 60,
+  "ai_training_rights": "absent"
+}

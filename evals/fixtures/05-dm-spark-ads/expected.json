@@ -1,0 +1,12 @@
+{
+  "brand": "Nomadelle",
+  "deliverables": [{ "type": "video", "platform": "tiktok", "quantity": 2 }],
+  "publication_required": true,
+  "payment.amount_eur": 400,
+  "payment.terms_days": 30,
+  "usage.spark_ads": true,
+  "usage.whitelisting": false,
+  "usage.duration_months": 1,
+  "exclusivity.present": false,
+  "raw_footage": false
+}

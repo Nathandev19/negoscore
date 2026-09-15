@@ -1,0 +1,4 @@
+{
+  "must_flag": ["intelligence artificielle|entrain|l'ia| ia ", "revision|modification|illimit|validation"],
+  "forbidden": ["\"ip_transfer\":\"full_assignment\"", "\"exclusivity\":{\"present\":true", "\"perpetual\":true"]
+}

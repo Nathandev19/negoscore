@@ -1,0 +1,4 @@
+{
+  "must_flag": ["spark|boost"],
+  "forbidden": ["\"territory\":\"", "\"raw_footage\":true"]
+}

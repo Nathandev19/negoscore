@@ -1,0 +1,4 @@
+{
+  "must_flag": ["budget|montant|tarif|remuner|prix"],
+  "forbidden": ["\"paid_ads\":true", "re:\"terms_days\":\\d", "re:\"duration_months\":\\d", "re:\"amount_eur\":\\d", "\"territory\":\""]
+}

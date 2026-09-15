@@ -1,0 +1,233 @@
+import rates from "@/lib/rates/fr-2026.1.json";
+import type { Analysis } from "@/lib/schema";
+
+// Chiffrage déterministe. Toutes les valeurs de tarif viennent de la table
+// versionnée : ce fichier ne contient que des règles d'application.
+
+type Deal = Analysis["deal"];
+type Estimate = Analysis["estimate"];
+
+export type Tier = "starter" | "confirmed" | "experienced";
+export type Profile = { tier?: Tier };
+
+// Sujet de négociation auquel une ligne se rattache. Sert à reporter
+// l'impact en euros sur les points à négocier.
+export type RateTopic =
+  | "paid_ads"
+  | "whitelisting"
+  | "spark_ads"
+  | "exclusivity"
+  | "raw_footage"
+  | "territory"
+  | "extra_platform"
+  | "ip_transfer"
+  | "extra_hooks";
+
+export type EstimateLine = Estimate["lines"][number] & { topic: RateTopic };
+export type ComputedEstimate = Omit<Estimate, "lines"> & { lines: EstimateLine[] };
+
+type MultiplierKey = keyof typeof rates.multipliers;
+
+// Durée retenue quand la durée d'un droit n'est pas écrite.
+const ASSUMED_MONTHS = 3;
+// Plafond de mois facturés pour un droit mensuel accordé à vie.
+const PERPETUAL_MONTHS_CAP = 12;
+const MIN_FILLED_FIELDS = 3;
+
+const PLATFORM_LABEL: Record<string, string> = {
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  youtube: "YouTube",
+  other: "autre plateforme",
+};
+
+export function isWorldwide(territory: string | null): boolean {
+  return (
+    territory !== null && /monde|world|international|global|tous (les )?(pays|territoires)/i.test(territory)
+  );
+}
+
+// Nombre de champs du deal réellement renseignés (hors valeurs par défaut).
+export function countFilledFields(deal: Deal): number {
+  const filled = [
+    deal.brand !== null,
+    deal.deliverables.length > 0,
+    deal.publication_required,
+    deal.usage.organic || deal.usage.paid_ads || deal.usage.whitelisting || deal.usage.spark_ads,
+    deal.usage.duration_months !== null || deal.usage.perpetual,
+    deal.usage.territory !== null,
+    deal.exclusivity.present,
+    deal.raw_footage,
+    deal.ip_transfer !== "none" && deal.ip_transfer !== "unclear",
+    deal.ai_training_rights !== "absent",
+    deal.revisions.unlimited || deal.revisions.count !== null,
+    deal.payment.amount_eur !== null,
+    deal.payment.terms_days !== null,
+    deal.payment.schedule !== null,
+    deal.in_kind_value_eur !== null,
+    deal.deadlines.length > 0,
+    deal.kill_fee !== null,
+    deal.termination !== null,
+    deal.governing_law !== null,
+  ];
+  return filled.filter(Boolean).length;
+}
+
+function roundPercent(value: number): number {
+  return Math.round(value * 1000) / 10;
+}
+
+export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEstimate {
+  const assumptions: string[] = [];
+  const tier: Tier = profile.tier ?? (rates.base_rates_eur.default_tier as Tier);
+  if (!profile.tier) {
+    assumptions.push("Profil de créateur « confirmé » supposé (portfolio existant, pas débutant).");
+  }
+
+  let deliverableCount = deal.deliverables.reduce((sum, d) => sum + d.quantity, 0);
+  if (deliverableCount <= 0) {
+    deliverableCount = 1;
+    assumptions.push("Nombre de vidéos non précisé : une seule vidéo supposée.");
+  }
+
+  const baseRate = rates.base_rates_eur[tier];
+  const baseLow = baseRate.low * deliverableCount;
+  const baseHigh = baseRate.high * deliverableCount;
+  const lines: EstimateLine[] = [];
+
+  function addMultiplier(key: MultiplierKey, topic: RateTopic, label: string, factor = 1) {
+    const m = rates.multipliers[key];
+    lines.push({
+      label,
+      topic,
+      type: "percent",
+      low: roundPercent(m.low * factor),
+      high: roundPercent(m.high * factor),
+      eur_low: Math.round(baseLow * m.low * factor),
+      eur_high: Math.round(baseHigh * m.high * factor),
+    });
+  }
+
+  const { usage } = deal;
+
+  if (usage.paid_ads) {
+    if (usage.perpetual) {
+      addMultiplier("paid_ads_perpetual", "paid_ads", "Droits pub à vie");
+    } else {
+      let months = usage.duration_months;
+      if (months === null) {
+        months = ASSUMED_MONTHS;
+        assumptions.push(`Durée des droits pub non précisée : ${ASSUMED_MONTHS} mois supposés.`);
+      }
+      if (months > 12) {
+        assumptions.push("Droits pub de plus de 12 mois chiffrés comme 12 mois : le vrai prix est plus haut.");
+      }
+      const key: MultiplierKey =
+        months <= 1 ? "paid_ads_1m" : months <= 3 ? "paid_ads_3m" : months <= 6 ? "paid_ads_6m" : "paid_ads_12m";
+      addMultiplier(key, "paid_ads", `Droits pub ${months} mois`);
+    }
+  }
+
+  const monthlyRightMonths = usage.perpetual
+    ? PERPETUAL_MONTHS_CAP
+    : (usage.duration_months ?? ASSUMED_MONTHS);
+  if ((usage.whitelisting || usage.spark_ads) && usage.duration_months === null) {
+    assumptions.push(
+      usage.perpetual
+        ? `Whitelisting ou Spark Ads à vie chiffrés sur ${PERPETUAL_MONTHS_CAP} mois.`
+        : `Durée du whitelisting ou des Spark Ads non précisée : ${ASSUMED_MONTHS} mois supposés.`,
+    );
+  }
+  if (usage.whitelisting) {
+    addMultiplier(
+      "whitelisting_per_month",
+      "whitelisting",
+      `Whitelisting ${monthlyRightMonths} mois`,
+      monthlyRightMonths,
+    );
+  }
+  if (usage.spark_ads) {
+    addMultiplier("spark_ads_per_month", "spark_ads", `Spark Ads ${monthlyRightMonths} mois`, monthlyRightMonths);
+  }
+
+  if (deal.exclusivity.present) {
+    let months = deal.exclusivity.duration_months;
+    if (months === null) {
+      months = ASSUMED_MONTHS;
+      assumptions.push(`Durée de l'exclusivité non précisée : ${ASSUMED_MONTHS} mois supposés.`);
+    }
+    const key: MultiplierKey = months <= 1 ? "exclusivity_1m" : months < 6 ? "exclusivity_3m" : "exclusivity_6m_plus";
+    const category = deal.exclusivity.category ? ` ${deal.exclusivity.category}` : "";
+    addMultiplier(key, "exclusivity", `Exclusivité${category} ${months} mois`);
+  }
+
+  if (deal.raw_footage) {
+    addMultiplier("raw_footage", "raw_footage", "Raw footage");
+  }
+
+  if (isWorldwide(usage.territory)) {
+    addMultiplier("territory_worldwide", "territory", "Diffusion dans le monde entier");
+  } else if (usage.territory === null && (usage.paid_ads || usage.whitelisting || usage.spark_ads)) {
+    assumptions.push("Territoire non précisé : diffusion en France supposée.");
+  }
+
+  const platforms = [...new Set(deal.deliverables.map((d) => d.platform).filter((p) => p !== null))];
+  if (platforms.length > 1) {
+    const extra = platforms.slice(1).map((p) => PLATFORM_LABEL[p] ?? p);
+    addMultiplier(
+      "extra_platform",
+      "extra_platform",
+      `Plateforme${extra.length > 1 ? "s" : ""} en plus (${extra.join(", ")})`,
+      extra.length,
+    );
+  }
+
+  if (deal.ip_transfer === "full_assignment") {
+    addMultiplier("ip_full_assignment", "ip_transfer", "Cession totale des droits");
+  }
+
+  // Variantes d'accroche ou de CTA, lues dans le format des livrables
+  // (« 3 hooks », « 2 accroches », « 2 variantes de CTA »).
+  const hookCount = deal.deliverables.reduce((sum, d) => {
+    const match = d.format?.match(/(\d+)\s*(hooks?|accroches?|cta|variantes?)/i);
+    return sum + (match ? Number(match[1]) : 0);
+  }, 0);
+  if (hookCount > 0) {
+    const flat = rates.flat_eur.extra_hook_or_cta;
+    lines.push({
+      label: `${hookCount} variante${hookCount > 1 ? "s" : ""} d'accroche ou de CTA`,
+      topic: "extra_hooks",
+      type: "flat",
+      low: flat.low,
+      high: flat.high,
+      eur_low: flat.low * hookCount,
+      eur_high: flat.high * hookCount,
+    });
+  }
+
+  const sumLow = baseLow + lines.reduce((sum, l) => sum + l.eur_low, 0);
+  const sumHigh = baseHigh + lines.reduce((sum, l) => sum + l.eur_high, 0);
+
+  let totalLow: number | null = Math.floor(sumLow / 10) * 10;
+  let totalHigh: number | null = Math.ceil(sumHigh / 10) * 10;
+
+  if (deal.payment.amount_eur === null) {
+    totalLow = null;
+    totalHigh = null;
+    assumptions.push("Aucun montant proposé dans l'offre : pas de fourchette totale tant que la marque n'a pas donné de budget.");
+  } else if (countFilledFields(deal) < MIN_FILLED_FIELDS) {
+    totalLow = null;
+    totalHigh = null;
+    assumptions.push("Trop peu d'informations dans l'offre pour donner une fourchette totale fiable.");
+  }
+
+  return {
+    base_low: baseLow,
+    base_high: baseHigh,
+    lines,
+    total_low: totalLow,
+    total_high: totalHigh,
+    assumptions,
+    rate_table_version: rates.version,
+  };
+}

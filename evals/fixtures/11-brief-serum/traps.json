@@ -1,0 +1,4 @@
+{
+  "must_flag": ["rush|raw|exclusiv|whitelist"],
+  "forbidden": ["\"perpetual\":true", "\"kill_fee\":\""]
+}

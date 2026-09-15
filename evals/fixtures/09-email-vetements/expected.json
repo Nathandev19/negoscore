@@ -1,0 +1,15 @@
+{
+  "brand": "Pèlerine",
+  "deliverables": [
+    { "type": "photo", "platform": "instagram", "quantity": 4 },
+    { "type": "video", "platform": "instagram", "quantity": 2 }
+  ],
+  "publication_required": true,
+  "payment.amount_eur": 350,
+  "in_kind_value_eur": 200,
+  "usage.organic": true,
+  "usage.paid_ads": false,
+  "usage.duration_months": 6,
+  "payment.terms_days": 30,
+  "exclusivity.present": false
+}

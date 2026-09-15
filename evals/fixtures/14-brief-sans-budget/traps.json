@@ -1,0 +1,4 @@
+{
+  "must_flag": ["exclusiv"],
+  "forbidden": ["re:\"amount_eur\":\\d", "re:\"terms_days\":\\d"]
+}

@@ -1,0 +1,15 @@
+{
+  "brand": "Délices de Marthe",
+  "deliverables": [{ "type": "video", "quantity": 2 }],
+  "publication_required": false,
+  "usage.organic": true,
+  "usage.paid_ads": true,
+  "usage.duration_months": 3,
+  "usage.territory": "France",
+  "raw_footage": true,
+  "revisions.count": 2,
+  "revisions.unlimited": false,
+  "payment.amount_eur": 500,
+  "payment.terms_days": 30,
+  "exclusivity.present": false
+}
