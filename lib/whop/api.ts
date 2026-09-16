@@ -52,8 +52,13 @@ export async function createCheckoutUrl(options: {
     }
     const body = (await response.json()) as { id?: string; purchase_url?: string };
     if (!body.id) return null;
-    const path = body.purchase_url ?? `/checkout/${body.id}/`;
-    return { url: `${CHECKOUT_BASE}${path.startsWith("/") ? path : `/${path}`}`, checkoutConfigurationId: body.id };
+    // Whop renvoie purchase_url en absolu (https://whop.com/checkout/ch_xxx/).
+    // On ne préfixe que si la valeur est relative, sinon l'URL est doublée.
+    const target = body.purchase_url ?? `/checkout/${body.id}/`;
+    const url = /^https?:\/\//i.test(target)
+      ? target
+      : `${CHECKOUT_BASE}${target.startsWith("/") ? target : `/${target}`}`;
+    return { url, checkoutConfigurationId: body.id };
   } catch (error) {
     console.error(
       JSON.stringify({ event: "whop_checkout_error", detail: error instanceof Error ? error.message.slice(0, 200) : "inconnu" }),
