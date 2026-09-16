@@ -1,87 +1,93 @@
 import type { Metadata } from "next";
-import { Facts, LegalPage, LegalSection, ToFill } from "@/components/legal/legal-page";
+import { Facts, LegalPage, LegalSection } from "@/components/legal/legal-page";
+import { BRAND } from "@/lib/brand";
+import { SELLER } from "@/lib/legal/identity";
 
 export const metadata: Metadata = { title: "Confidentialité" };
 
+// Textes fournis par l'éditeur, repris mot pour mot.
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Confidentialité" updated="16 septembre 2026">
-      <LegalSection title="Responsable de traitement">
-        <ToFill>
-          identité du responsable de traitement, adresse, contact du DPO ou de la personne responsable des données
-        </ToFill>
+    <LegalPage title="Politique de confidentialité" updated="16 septembre 2026">
+      <LegalSection title="Responsable du traitement">
+        <p>
+          {SELLER.name}, {SELLER.address.replace(", France", "")}.
+          <br />
+          Contact : {SELLER.email}
+        </p>
       </LegalSection>
 
-      <LegalSection title="Données traitées">
+      <LegalSection title="Données traitées et finalités">
         <Facts
           items={[
-            "Adresse email, quand tu crées un compte par lien de connexion.",
-            "Texte des offres que tu colles, et documents que tu déposes (photo ou PDF).",
-            "Analyses produites à partir de ces offres, conservées sur ton compte.",
-            "Adresse IP hachée (HMAC-SHA256 avec un sel serveur), pour limiter le nombre d'analyses. L'adresse IP n'est jamais stockée en clair.",
-            "Historique de paiement : plan, solde de crédits, période d'abonnement, consentement donné au moment du paiement avec sa date.",
-            "Mesure d'audience : pages vues et actions dans le service, sans le contenu des offres, sans montant et sans email.",
+            "Adresse email — création et accès au compte — exécution du contrat.",
+            "Texte et documents des offres déposées — production de l'analyse — exécution du contrat.",
+            "Analyses produites — affichage et historique — exécution du contrat.",
+            "Adresse IP sous forme hachée — limitation des abus et de l'usage gratuit — intérêt légitime.",
+            `Données de paiement — traitées exclusivement par Whop, jamais reçues ni conservées par ${BRAND.name}.`,
+            "Mesure d'audience — statistiques d'usage anonymes — intérêt légitime.",
           ]}
         />
-      </LegalSection>
-
-      <LegalSection title="Finalités">
-        <Facts
-          items={[
-            "Fournir le service : lire l'offre, produire l'analyse, te la réafficher.",
-            "Limiter les abus et le nombre d'analyses gratuites.",
-            "Gérer les comptes, les crédits et les paiements.",
-            "Mesurer l'audience du service pour l'améliorer.",
-          ]}
-        />
-        <ToFill>base légale de chacun de ces traitements (contrat, intérêt légitime, consentement)</ToFill>
       </LegalSection>
 
       <LegalSection title="Durées de conservation">
         <Facts
           items={[
-            "Documents déposés (photo, PDF) : supprimés 30 jours après le dépôt.",
-            "Analyses et compte : conservés tant que le compte existe, supprimés sur demande.",
-            "Compteurs d'usage rattachés à une IP hachée : fenêtre glissante de 30 jours maximum.",
+            "Documents déposés : supprimés 30 jours après l'analyse.",
+            "Compte et analyses : jusqu'à la suppression du compte par l'utilisateur.",
+            "Données de facturation : conservées par Whop selon ses propres durées.",
+            "Preuves de consentement au paiement : conservées pendant la durée de prescription applicable aux contrats de consommation.",
           ]}
         />
-        <ToFill>durée de conservation des données de facturation et des consentements</ToFill>
       </LegalSection>
 
       <LegalSection title="Sous-traitants">
         <Facts
           items={[
-            "Supabase : hébergement de la base de données et des fichiers déposés, région Union européenne.",
-            "Vercel : hébergement de l'application.",
-            "OpenAI : lecture de l'offre et rédaction de l'analyse.",
-            "Resend : envoi des emails de connexion.",
-            "Whop : encaissement des paiements.",
-            "PostHog : mesure d'audience, région Union européenne.",
+            "Supabase — base de données et stockage des fichiers — Union européenne.",
+            "Vercel — hébergement de l'application — États-Unis.",
+            "OpenAI — analyse automatisée du contenu des offres — États-Unis.",
+            "Resend — envoi des emails — Union européenne.",
+            "Whop — encaissement des paiements — États-Unis.",
+            "PostHog — mesure d'audience — Union européenne.",
           ]}
         />
-        <ToFill>
-          mention sur les transferts hors Union européenne (Vercel, OpenAI, Whop) et garanties associées
-        </ToFill>
       </LegalSection>
 
-      <LegalSection title="Tes droits">
-        <Facts
-          items={[
-            "Accès, rectification, effacement, portabilité, opposition et limitation.",
-            "Réclamation auprès de la CNIL, autorité française de protection des données.",
-          ]}
-        />
-        <ToFill>adresse email à utiliser pour exercer ces droits, et délai de traitement annoncé</ToFill>
+      <LegalSection title="Transferts hors Union européenne">
+        <p>
+          Certains sous-traitants sont établis aux États-Unis. Ces transferts sont encadrés par les clauses
+          contractuelles types de la Commission européenne ou par un mécanisme équivalent prévu par le RGPD.
+        </p>
       </LegalSection>
 
-      <LegalSection title="Cookies et traceurs">
-        <Facts
-          items={[
-            "Cookies techniques : session de connexion et jeton anonyme rattaché à une analyse faite sans compte.",
-            "Mesure d'audience : le signal « Do Not Track » de ton navigateur est respecté, et l'enregistrement de session est désactivé.",
-          ]}
-        />
-        <ToFill>bandeau de consentement aux traceurs : nécessaire ou non selon la configuration retenue</ToFill>
+      <LegalSection title="Contenu des offres déposées">
+        <p>
+          Le texte des offres est transmis au prestataire d&apos;analyse automatisée pour produire le résultat. Aucun
+          contenu d&apos;offre n&apos;est utilisé à des fins publicitaires, ni transmis à un tiers en dehors de ce
+          traitement, ni publié sans accord écrit préalable de l&apos;utilisateur.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Mesure d'audience">
+        <p>
+          Les statistiques d&apos;usage ne contiennent ni le texte des offres, ni les noms de marques, ni les montants
+          proposés, ni les adresses email. Le signal «&nbsp;Do Not Track&nbsp;» du navigateur est respecté.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Droits">
+        <p>
+          Accès, rectification, effacement, limitation, portabilité et opposition.
+          <br />
+          Ces droits s&apos;exercent à {SELLER.email}.
+          <br />
+          En cas de désaccord, réclamation possible auprès de la CNIL, 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex
+          07,{" "}
+          <a href="https://www.cnil.fr" className="underline">
+            www.cnil.fr
+          </a>
+        </p>
       </LegalSection>
     </LegalPage>
   );

@@ -1,5 +1,8 @@
 import { ANALYTICS_EVENTS, captureServerEvent } from "@/lib/analytics/server";
 import { applyWhopEvent, type WhopEvent } from "@/lib/billing/whop-events";
+import { sendEmail } from "@/lib/email/send";
+import { purchaseConfirmationEmail } from "@/lib/email/templates";
+import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
 import { insertRow, SupabaseRequestError, updateRows } from "@/lib/supabase/server";
 import { readWebhookHeaders, verifyWhopSignature } from "@/lib/whop/webhook";
 
@@ -60,13 +63,33 @@ export async function POST(request: Request) {
       JSON.stringify({ event: "whop_webhook", type: parsed.type, handled: outcome.handled, reason: outcome.reason }),
     );
 
-    // Revenu mesuré côté serveur, jamais depuis le navigateur.
     if (outcome.handled && outcome.userId && outcome.plan && parsed.type === "payment.succeeded") {
+      // Revenu mesuré côté serveur, jamais depuis le navigateur.
       await captureServerEvent(ANALYTICS_EVENTS.purchaseCompleted, outcome.userId, {
         plan: outcome.plan,
         amount: outcome.amount ?? null,
         currency: outcome.currency ?? null,
       });
+
+      // Confirmation d'achat sur support durable : troisième condition de
+      // l'article L221-28 13°. Un échec est journalisé, jamais bloquant :
+      // le compte est déjà crédité à ce stade.
+      if (outcome.userEmail) {
+        const siteUrl = configuredSiteUrl() ?? originFromHeaders(request.headers);
+        await sendEmail(
+          purchaseConfirmationEmail({
+            to: outcome.userEmail,
+            plan: outcome.plan,
+            amount: outcome.amount ?? null,
+            currency: outcome.currency ?? null,
+            date: new Date(),
+            siteUrl,
+          }),
+          { kind: "purchase_confirmation", event_id: parsed.id },
+        );
+      } else {
+        console.error(JSON.stringify({ event: "email_error", reason: "no_account_email", event_id: parsed.id }));
+      }
     }
     return ok({ received: true, handled: outcome.handled });
   } catch (caught) {

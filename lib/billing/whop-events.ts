@@ -10,12 +10,14 @@ export type EventOutcome = {
   handled: boolean;
   reason: string;
   userId?: string;
+  userEmail?: string | null;
   plan?: PlanKey;
   amount?: number | null;
   currency?: string | null;
 };
 
 type Credits = { user_id: string; plan: "free" | "pack" | "pro"; balance: number; period_end: string | null };
+type Profile = { id: string; email: string | null };
 
 function record(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
@@ -27,20 +29,19 @@ function text(value: unknown): string | null {
 
 // Rattachement : l'identifiant du compte posé en metadata au checkout, sinon
 // l'email de l'acheteur renvoyé par Whop.
-async function resolveUser(data: Record<string, unknown>): Promise<{ id: string; how: "metadata" | "email" } | null> {
+async function resolveUser(
+  data: Record<string, unknown>,
+): Promise<{ id: string; email: string | null; how: "metadata" | "email" } | null> {
   const metadata = record(data.metadata);
   const fromMetadata = text(metadata.user_id);
   if (fromMetadata) {
-    const rows = await selectRows<{ id: string }>("profiles", `select=id&id=eq.${encodeURIComponent(fromMetadata)}&limit=1`);
-    if (rows.length > 0) return { id: rows[0].id, how: "metadata" };
+    const rows = await selectRows<Profile>("profiles", `select=id,email&id=eq.${encodeURIComponent(fromMetadata)}&limit=1`);
+    if (rows.length > 0) return { id: rows[0].id, email: rows[0].email, how: "metadata" };
   }
   const email = text(record(data.user).email);
   if (email) {
-    const rows = await selectRows<{ id: string }>(
-      "profiles",
-      `select=id&email=ilike.${encodeURIComponent(email)}&limit=1`,
-    );
-    if (rows.length > 0) return { id: rows[0].id, how: "email" };
+    const rows = await selectRows<Profile>("profiles", `select=id,email&email=ilike.${encodeURIComponent(email)}&limit=1`);
+    if (rows.length > 0) return { id: rows[0].id, email: rows[0].email, how: "email" };
   }
   return null;
 }
@@ -85,6 +86,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       handled: true,
       reason: `+${PACK_ANALYSES} analyses (rattachement par ${user.how})`,
       userId: user.id,
+      userEmail: user.email,
       plan,
       amount: total,
       currency: text(source.currency),
@@ -98,6 +100,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       handled: true,
       reason: `paiement Pro enregistré (rattachement par ${user.how})`,
       userId: user.id,
+      userEmail: user.email,
       plan,
       amount: total,
       currency: text(source.currency),

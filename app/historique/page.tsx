@@ -54,6 +54,11 @@ export default async function HistoryPage() {
             ))}
           </ul>
         )}
+        <p className="text-sm">
+          <Link href="/resilier" className="underline">
+            Résilier votre contrat
+          </Link>
+        </p>
         <form action="/auth/deconnexion" method="post">
           <button type="submit" className="text-sm text-neutral-600 underline">
             Se déconnecter

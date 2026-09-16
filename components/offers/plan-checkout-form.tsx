@@ -3,8 +3,24 @@
 import { useState } from "react";
 import { track } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
-import { CONSENT_TEXT } from "@/lib/billing/consent";
+import Link from "next/link";
+import { CONSENT_LINK_LABEL, CONSENT_TEXT } from "@/lib/billing/consent";
 import { Button } from "@/components/ui/button";
+
+// Le texte de la case est celui enregistré en base : on ne le réécrit pas,
+// on rend simplement « conditions générales de vente » cliquable.
+function consentWithLink() {
+  const [before, after] = CONSENT_TEXT.split(CONSENT_LINK_LABEL);
+  return (
+    <>
+      {before}
+      <Link href="/cgv" className="underline">
+        {CONSENT_LINK_LABEL}
+      </Link>
+      {after}
+    </>
+  );
+}
 
 // Case à cocher obligatoire, jamais pré-cochée. Son état est enregistré côté
 // serveur, avec la date, par /api/checkout.
@@ -25,7 +41,7 @@ export function PlanCheckoutForm({ plan, label }: { plan: "pack" | "pro"; label:
           onChange={(event) => setAccepted(event.target.checked)}
           className="mt-0.5 size-4 shrink-0"
         />
-        <span>{CONSENT_TEXT}</span>
+        <span>{consentWithLink()}</span>
       </label>
       <Button
         type="submit"

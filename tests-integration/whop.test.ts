@@ -11,6 +11,18 @@ vi.mock("@/lib/analytics/server", async (importOriginal) => {
   return { ...actual, captureServerEvent: analytics.capture };
 });
 
+// L'email de confirmation est intercepté : aucun envoi réel pendant les tests.
+const mail = vi.hoisted(() => ({
+  send: vi.fn(
+    async (email: { to: string; subject: string; text: string }, context?: Record<string, unknown>) =>
+      ({ sent: true, attempts: 1, to: email.to, context }) as const,
+  ),
+}));
+vi.mock("@/lib/email/send", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/email/send")>();
+  return { ...actual, sendEmail: mail.send };
+});
+
 const { POST: webhook } = await import("@/app/api/whop/webhook/route");
 
 const SECRET = process.env.WHOP_WEBHOOK_SECRET ?? "";
@@ -88,7 +100,8 @@ describe.skipIf(!ready)("webhook Whop", () => {
     expect(stored.body).toEqual([]);
   });
 
-  it("rejoué dix fois, le même event_id ne crédite qu'une fois", async () => {
+  it("rejoué dix fois, le même event_id ne crédite qu'une fois et n'envoie qu'un email", async () => {
+    mail.send.mockClear();
     const buyer = await user("free");
     const event = envelope("payment.succeeded", payment(PACK, { user_id: buyer.id }));
 
@@ -103,6 +116,7 @@ describe.skipIf(!ready)("webhook Whop", () => {
     }
 
     expect(await credits(buyer.id)).toMatchObject({ balance: 3, plan: "pack" });
+    expect(mail.send).toHaveBeenCalledTimes(1);
     const rows = await service(
       `/rest/v1/whop_events?event_id=eq.${encodeURIComponent(event.id)}&select=event_id,processed_at`,
     );
@@ -173,6 +187,43 @@ describe.skipIf(!ready)("webhook Whop", () => {
       envelope("membership.deactivated", { id: `mem_${randomUUID()}`, plan: { id: PRO }, metadata: { user_id: buyer.id } }),
     );
     expect(await credits(buyer.id)).toMatchObject({ plan: "free", balance: 0 });
+  });
+
+  it("l'email de confirmation part une fois, avec le contenu attendu", async () => {
+    mail.send.mockClear();
+    const buyer = await user("free");
+    await send(envelope("payment.succeeded", payment(PACK, { user_id: buyer.id })));
+
+    expect(mail.send).toHaveBeenCalledTimes(1);
+    const [email, context] = mail.send.mock.calls[0];
+    expect(email.to).toBe(buyer.email);
+    expect(email.subject).toBe("Confirmation de ton achat Negoscore");
+    expect(email.text).toContain("Ton paiement est confirmé.");
+    expect(email.text).toContain("Offre : Pack Deal");
+    expect(email.text).toContain("Ce que tu as obtenu : 3 analyses ajoutées à ton compte");
+    expect(email.text).toContain("Cet email constitue la confirmation de cet accord.");
+    expect(context).toMatchObject({ kind: "purchase_confirmation" });
+  });
+
+  it("un échec d'envoi d'email ne bloque pas le crédit", async () => {
+    mail.send.mockClear();
+    mail.send.mockRejectedValueOnce(new Error("resend indisponible"));
+    const buyer = await user("free");
+
+    const response = await send(envelope("payment.succeeded", payment(PACK, { user_id: buyer.id })));
+    expect(response.status).toBe(200);
+    expect(mail.send).toHaveBeenCalledTimes(1);
+    expect(await credits(buyer.id)).toMatchObject({ balance: 3, plan: "pack" });
+  });
+
+  it("une résiliation d'abonnement n'envoie aucun email d'achat", async () => {
+    mail.send.mockClear();
+    const buyer = await user("pro", 2);
+    await send(
+      envelope("membership.deactivated", { id: `mem_${randomUUID()}`, plan: { id: PRO }, metadata: { user_id: buyer.id } }),
+    );
+    expect(mail.send).not.toHaveBeenCalled();
+    expect(await credits(buyer.id)).toMatchObject({ plan: "pack", balance: 2 });
   });
 
   it("paiement échoué et plan inconnu : aucun crédit", async () => {

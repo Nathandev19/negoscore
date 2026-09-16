@@ -61,3 +61,52 @@ export async function createCheckoutUrl(options: {
     return null;
   }
 }
+
+export type WhopMembership = {
+  id: string;
+  status: string | null;
+  cancel_at_period_end: boolean | null;
+  renewal_period_end: string | null;
+};
+
+function membershipFrom(body: unknown): WhopMembership | null {
+  const row = body as Partial<WhopMembership> | null;
+  if (!row?.id) return null;
+  return {
+    id: row.id,
+    status: row.status ?? null,
+    cancel_at_period_end: row.cancel_at_period_end ?? null,
+    renewal_period_end: row.renewal_period_end ?? null,
+  };
+}
+
+async function membershipRequest(path: string, init: RequestInit): Promise<WhopMembership | null> {
+  const apiKey = process.env.WHOP_API_KEY;
+  if (!apiKey) throw new WhopConfigError("Clé API Whop absente");
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", ...init.headers },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    console.error(JSON.stringify({ event: "whop_membership_error", path, status: response.status }));
+    return null;
+  }
+  return membershipFrom(await response.json());
+}
+
+// État d'un abonnement. Docs : https://docs.whop.com/api-reference/memberships/retrieve-membership
+export function getMembership(id: string): Promise<WhopMembership | null> {
+  return membershipRequest(`/memberships/${encodeURIComponent(id)}`, { method: "GET" });
+}
+
+// Annulation à la fin de la période en cours.
+// Docs : https://docs.whop.com/api-reference/memberships/cancel-membership
+// POST /memberships/{id}/cancel, body { cancellation_mode: "at_period_end" }.
+// Permissions requises sur la clé : membership:cancel, member:basic:read, member:email:read.
+export function cancelMembershipAtPeriodEnd(id: string): Promise<WhopMembership | null> {
+  return membershipRequest(`/memberships/${encodeURIComponent(id)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ cancellation_mode: "at_period_end" }),
+  });
+}

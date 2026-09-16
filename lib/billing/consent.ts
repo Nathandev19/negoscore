@@ -1,8 +1,10 @@
-// Case à cocher obligatoire au moment du paiement. Le texte exact reste à
-// fournir : il doit couvrir les deux conditions cumulatives de renonciation
-// au droit de rétractation (accord exprès pour une exécution immédiate ET
-// renoncement exprès au droit de rétractation).
-export const CONSENT_VERSION = "2026-09-a-completer";
+// Case à cocher obligatoire au moment du paiement. Texte fourni par
+// l'éditeur, repris mot pour mot : il couvre les deux premières conditions
+// de l'article L221-28 13° du code de la consommation. La troisième est
+// l'email de confirmation envoyé après l'achat.
+export const CONSENT_VERSION = "2026-09-16";
+
+export const CONSENT_LINK_LABEL = "conditions générales de vente";
 
 export const CONSENT_TEXT =
-  "[[À COMPLÉTER : texte exact de la case à cocher, couvrant l'accord exprès pour que l'exécution commence avant la fin du délai de 14 jours ET le renoncement exprès au droit de rétractation]]";
+  "J'accepte que l'exécution du service commence immédiatement, avant la fin du délai de rétractation de 14 jours, et je reconnais que je perdrai mon droit de rétractation une fois le service fourni. J'ai lu et j'accepte les conditions générales de vente.";
