@@ -18,8 +18,8 @@ import type { ResultView } from "@/lib/analysis/lock";
 export function AnalysisResult({ analysis, unlockHref }: { analysis: ResultView; unlockHref: string }) {
   const locked = !analysis.counter_offer || !analysis.ready_to_send_message;
   const incomplete = analysis.evaluability === "incomplete";
-  // Hors offre complète, la contre-offre ne porte pas de montant : le titre ne l'annonce pas.
-  const counterOfferTitle = analysis.evaluability === "complete" ? undefined : "Ta contre-offre";
+  // Offre incomplète : la contre-offre ne porte pas de montant, le titre ne l'annonce pas.
+  const counterOfferTitle = incomplete ? "Ta contre-offre" : undefined;
   return (
     <>
       <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>

@@ -1,0 +1,182 @@
+{
+  "analysis": {
+    "schema_version": "1.1",
+    "evaluability": "complete",
+    "language": "fr",
+    "confidence": "low",
+    "input_quality": {
+      "readable": true,
+      "missing_critical": [
+        "Nom de la marque",
+        "Durée et territoire du repost",
+        "Délai et modalités de paiement",
+        "Nombre de révisions",
+        "Plateformes concernées"
+      ]
+    },
+    "deal": {
+      "brand": null,
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": null,
+          "quantity": 1,
+          "format": null
+        },
+        {
+          "type": "story",
+          "platform": null,
+          "quantity": 3,
+          "format": null
+        }
+      ],
+      "publication_required": false,
+      "usage": {
+        "organic": true,
+        "paid_ads": false,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": null,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": false,
+        "duration_months": null,
+        "category": null
+      },
+      "raw_footage": false,
+      "ip_transfer": "license",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": false
+      },
+      "payment": {
+        "amount_eur": 400,
+        "currency": "EUR",
+        "terms_days": null,
+        "schedule": null
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "score": {
+      "value": 82,
+      "band": "good"
+    },
+    "good_points": [
+      {
+        "label": "Livrables définis",
+        "why": "L'offre précise le nombre de vidéos et de stories attendues."
+      },
+      {
+        "label": "Rémunération indiquée",
+        "why": "Le montant proposé est clairement mentionné."
+      },
+      {
+        "label": "Repost organique prévu",
+        "why": "La marque indique qu'elle republiera le contenu sur son propre compte, sans mention de publicité payante."
+      }
+    ],
+    "negotiate": [
+      {
+        "label": "Cadrer les droits de repost",
+        "why": "Il faut définir la durée, le territoire et limiter l'utilisation au repost organique sur le compte de la marque.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 1
+      },
+      {
+        "label": "Clarifier les plateformes",
+        "why": "Le type de contenu est indiqué, mais pas la plateforme concernée.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 2
+      },
+      {
+        "label": "Définir les modalités de paiement",
+        "why": "Le délai et l'échelonnement du paiement ne sont pas mentionnés.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 3
+      },
+      {
+        "label": "Limiter les révisions",
+        "why": "Le nombre de retours inclus doit être défini avant le début du projet.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 4
+      }
+    ],
+    "red_flags": [
+      {
+        "label": "Droits d'utilisation peu cadrés",
+        "severity": "high",
+        "why": "La durée, le territoire et les conditions exactes du repost ne sont pas précisés."
+      },
+      {
+        "label": "Modalités de paiement absentes",
+        "severity": "medium",
+        "why": "L'offre ne précise ni le délai ni l'échéancier de paiement."
+      },
+      {
+        "label": "Révisions non définies",
+        "severity": "medium",
+        "why": "Le nombre de retours ou de modifications inclus n'est pas indiqué."
+      },
+      {
+        "label": "Plateformes non précisées",
+        "severity": "medium",
+        "why": "Le message parle d'un reel et de stories sans confirmer la plateforme de diffusion."
+      }
+    ],
+    "estimate": {
+      "base_low": 438,
+      "base_high": 875,
+      "lines": [],
+      "total_low": 430,
+      "total_high": 880,
+      "assumptions": [
+        "Profil de créateur « confirmé » supposé (portfolio existant, pas débutant).",
+        "Stories, photos et lives chiffrés avec un poids provisoire par rapport à une vidéo."
+      ],
+      "rate_table_version": "fr-2026.1"
+    },
+    "fr_legal": {
+      "applicable": true,
+      "threshold_1000_reached": "no",
+      "written_contract_required": false,
+      "missing_mandatory_clauses": [
+        "Identification des parties",
+        "Valeur des avantages en nature",
+        "Modalités de paiement",
+        "Soumission au droit français"
+      ],
+      "note": "En France, un contrat écrit est obligatoire quand une collaboration dépasse 1 000 € HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus. Le montant de cette offre reste sous ce seuil, mais le cumul de l'année compte. C'est une information générale, pas un conseil juridique."
+    },
+    "escalate_to_professional": {
+      "required": false,
+      "reasons": []
+    },
+    "counter_offer": {
+      "amount_low": 430,
+      "amount_high": 880,
+      "changes": [
+        "Le repost est limité aux comptes de la marque et à une utilisation organique.",
+        "La durée et le territoire d'utilisation sont précisés avant validation.",
+        "Aucune utilisation en publicité payante, aucun whitelisting et aucun Spark Ads ne sont inclus.",
+        "Le délai de paiement est indiqué par écrit.",
+        "Le nombre de révisions incluses est défini.",
+        "Le tarif proposé est révisé pour tenir compte des livrables et des droits accordés."
+      ]
+    },
+    "ready_to_send_message": {
+      "tone": "poli et ferme",
+      "text": "Bonjour, merci pour votre proposition. Pouvez-vous me confirmer la plateforme concernée, le délai de paiement ainsi que la durée et le territoire du repost sur votre compte ? Je souhaite également préciser que l'utilisation est limitée à un repost organique sur votre compte, sans publicité payante ni livraison de fichiers sources. Pour ce projet, mon tarif se situe entre 430 € et 880 €. Pouvez-vous me confirmer ces éléments afin que nous puissions avancer ?"
+    }
+  }
+}

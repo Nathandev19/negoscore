@@ -1,0 +1,8 @@
+{
+  "must_flag": [],
+  "forbidden": [
+    "\"paid_ads\":true",
+    "re:\"terms_days\":\\d",
+    "re:\"duration_months\":\\d"
+  ]
+}

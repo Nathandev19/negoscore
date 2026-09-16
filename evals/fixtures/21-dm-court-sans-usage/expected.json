@@ -1,0 +1,14 @@
+{
+  "deliverables": [
+    {
+      "type": "video",
+      "platform": "tiktok",
+      "quantity": 2
+    }
+  ],
+  "payment.amount_eur": 300,
+  "usage.paid_ads": false,
+  "usage.perpetual": false,
+  "exclusivity.present": false,
+  "raw_footage": false
+}

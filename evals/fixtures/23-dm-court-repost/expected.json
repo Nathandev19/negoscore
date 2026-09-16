@@ -1,0 +1,17 @@
+{
+  "deliverables": [
+    {
+      "type": "video",
+      "platform": "instagram",
+      "quantity": 1
+    },
+    {
+      "type": "story",
+      "platform": "instagram",
+      "quantity": 3
+    }
+  ],
+  "payment.amount_eur": 400,
+  "usage.organic": true,
+  "usage.paid_ads": false
+}

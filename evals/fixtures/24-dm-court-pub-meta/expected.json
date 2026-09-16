@@ -1,0 +1,11 @@
+{
+  "deliverables": [
+    {
+      "type": "video",
+      "quantity": 3
+    }
+  ],
+  "payment.amount_eur": 500,
+  "usage.paid_ads": true,
+  "usage.perpetual": false
+}

@@ -273,11 +273,9 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   let totalLow: number | null = Math.floor(grossLow / 10) * 10;
   let totalHigh: number | null = Math.ceil(grossHigh / 10) * 10;
 
-  if (deal.payment.amount_eur === null) {
-    totalLow = null;
-    totalHigh = null;
-    assumptions.push("Aucun montant proposé dans l'offre : pas de fourchette totale tant que la marque n'a pas donné de budget.");
-  } else if (countFilledFields(deal) < MIN_FILLED_FIELDS) {
+  // Sans montant proposé, la fourchette reste calculée : c'est quand la marque
+  // ne donne pas de budget que le créateur a le plus besoin d'un chiffre.
+  if (countFilledFields(deal) < MIN_FILLED_FIELDS) {
     totalLow = null;
     totalHigh = null;
     assumptions.push("Trop peu d'informations dans l'offre pour donner une fourchette totale fiable.");

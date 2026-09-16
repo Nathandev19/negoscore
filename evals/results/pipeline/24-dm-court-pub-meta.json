@@ -1,0 +1,193 @@
+{
+  "analysis": {
+    "schema_version": "1.1",
+    "evaluability": "complete",
+    "language": "fr",
+    "confidence": "medium",
+    "input_quality": {
+      "readable": true,
+      "missing_critical": [
+        "Nom de la marque",
+        "Durée et territoire des droits publicitaires",
+        "Nombre de révisions",
+        "Délais et modalités de paiement"
+      ]
+    },
+    "deal": {
+      "brand": null,
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "other",
+          "quantity": 3,
+          "format": null
+        }
+      ],
+      "publication_required": false,
+      "usage": {
+        "organic": false,
+        "paid_ads": true,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": null,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": false,
+        "duration_months": null,
+        "category": null
+      },
+      "raw_footage": false,
+      "ip_transfer": "unclear",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": false
+      },
+      "payment": {
+        "amount_eur": 500,
+        "currency": "EUR",
+        "terms_days": null,
+        "schedule": null
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "score": {
+      "value": 59,
+      "band": "fair"
+    },
+    "good_points": [
+      {
+        "label": "Livrables clairement indiqués",
+        "why": "L'offre précise qu'il faut produire trois vidéos."
+      },
+      {
+        "label": "Usage publicitaire identifié",
+        "why": "Les vidéos sont destinées aux publicités Meta, ce qui clarifie leur usage principal."
+      },
+      {
+        "label": "Budget communiqué",
+        "why": "La marque indique un budget total pour le projet."
+      }
+    ],
+    "negotiate": [
+      {
+        "label": "Encadrer les publicités payantes",
+        "why": "Il faut définir la durée, le territoire et les supports autorisés pour l'utilisation des vidéos.",
+        "eur_impact_low": 203,
+        "eur_impact_high": 675,
+        "priority": 1
+      },
+      {
+        "label": "Éviter une cession complète des droits",
+        "why": "L'offre ne précise pas l'étendue des droits accordés à la marque.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 2
+      },
+      {
+        "label": "Définir les révisions",
+        "why": "Un nombre de retours doit être fixé pour éviter les demandes successives.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 3
+      },
+      {
+        "label": "Clarifier le paiement",
+        "why": "Le délai et l'échéancier doivent être confirmés avant de commencer.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 4
+      },
+      {
+        "label": "Préciser le territoire",
+        "why": "Le périmètre géographique des publicités n'est pas indiqué.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 5
+      }
+    ],
+    "red_flags": [
+      {
+        "label": "Droits publicitaires peu encadrés",
+        "severity": "high",
+        "why": "La durée, le territoire et les supports précis des publicités ne sont pas indiqués."
+      },
+      {
+        "label": "Droits sur les contenus non précisés",
+        "severity": "medium",
+        "why": "L'offre ne dit pas si la marque obtient une simple licence ou des droits plus larges."
+      },
+      {
+        "label": "Révisions non définies",
+        "severity": "medium",
+        "why": "Le nombre de retours et les conditions de modification ne sont pas prévus."
+      },
+      {
+        "label": "Paiement non détaillé",
+        "severity": "medium",
+        "why": "Le délai et les modalités de paiement ne sont pas indiqués."
+      }
+    ],
+    "estimate": {
+      "base_low": 675,
+      "base_high": 1350,
+      "lines": [
+        {
+          "label": "Droits pub 3 mois",
+          "type": "percent",
+          "low": 30,
+          "high": 50,
+          "eur_low": 203,
+          "eur_high": 675
+        }
+      ],
+      "total_low": 870,
+      "total_high": 2030,
+      "assumptions": [
+        "Profil de créateur « confirmé » supposé (portfolio existant, pas débutant).",
+        "Tarif unitaire réduit pour tenir compte du volume de contenus demandés.",
+        "Durée des droits pub non précisée : 3 mois supposés.",
+        "Territoire non précisé : diffusion en France supposée."
+      ],
+      "rate_table_version": "fr-2026.1"
+    },
+    "fr_legal": {
+      "applicable": true,
+      "threshold_1000_reached": "no",
+      "written_contract_required": false,
+      "missing_mandatory_clauses": [
+        "Identification des parties",
+        "Valeur des avantages en nature",
+        "Modalités de paiement",
+        "Droits et obligations, dont la propriété intellectuelle",
+        "Soumission au droit français"
+      ],
+      "note": "En France, un contrat écrit est obligatoire quand une collaboration dépasse 1 000 € HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus. Le montant de cette offre reste sous ce seuil, mais le cumul de l'année compte. C'est une information générale, pas un conseil juridique."
+    },
+    "escalate_to_professional": {
+      "required": false,
+      "reasons": []
+    },
+    "counter_offer": {
+      "amount_low": 870,
+      "amount_high": 2030,
+      "changes": [
+        "Limiter l'utilisation des vidéos aux publicités Meta pendant une durée et sur un territoire définis.",
+        "Confirmer qu'aucune cession complète des droits n'est prévue.",
+        "Fixer le nombre de révisions incluses.",
+        "Préciser le délai et l'échéancier de paiement.",
+        "Confirmer que les fichiers sources et rushs ne sont pas inclus, sauf accord séparé."
+      ]
+    },
+    "ready_to_send_message": {
+      "tone": "Poli et ferme",
+      "text": "Bonjour, merci pour ta proposition. Peux-tu me préciser la durée et le territoire d'utilisation des vidéos dans les publicités Meta, ainsi que le nombre de révisions prévu et les modalités de paiement ? Pour les trois vidéos, mon tarif pour ce projet se situe entre 870 € et 2 030 €. Peux-tu également confirmer qu'il s'agit d'une licence d'utilisation limitée aux publicités Meta, sans cession complète de mes droits ?"
+    }
+  }
+}

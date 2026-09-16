@@ -33,18 +33,24 @@ describe("composeAnalysis", () => {
     expect(analysis.negotiate.find((n) => n.label === "Limiter les révisions")?.eur_impact_low).toBeNull();
   });
 
-  it("sans montant proposé : confiance faible et total null", () => {
+  it("sans montant proposé : confiance faible, fourchette indicative reprise par la contre-offre et le message", () => {
     const base = makeExtraction();
     const analysis = composeAnalysis(
       makeExtraction({
         confidence: "high",
         deal: { ...base.deal, payment: { ...base.deal.payment, amount_eur: null } },
-        ready_to_send_message: { tone: "cordial", text: "Quel budget avez-vous prévu ?" },
       }),
     );
+    expect(analysis.evaluability).toBe("unpriced");
     expect(analysis.confidence).toBe("low");
-    expect(analysis.estimate.total_low).toBeNull();
-    expect(analysis.counter_offer.amount_low).toBeNull();
+    const { total_low: low, total_high: high } = analysis.estimate;
+    expect(low).not.toBeNull();
+    expect(analysis.estimate.total_low).toBe(composeAnalysis(makeExtraction()).estimate.total_low);
+    expect(analysis.counter_offer.amount_low).toBe(low);
+    expect(analysis.counter_offer.amount_high).toBe(high);
+    expect(analysis.ready_to_send_message.text).toContain(`entre ${formatEur(low!)} et ${formatEur(high!)}`);
+    expect(analysis.ready_to_send_message.text).not.toContain("devis");
+    expect(analysis.estimate.assumptions.some((a) => a.includes("trois fois"))).toBe(false);
     expect(analysis.fr_legal.threshold_1000_reached).toBe("unknown");
   });
 

@@ -1,0 +1,7 @@
+{
+  "must_flag": [],
+  "forbidden": [
+    "re:\"terms_days\":\\d",
+    "re:\"duration_months\":\\d"
+  ]
+}

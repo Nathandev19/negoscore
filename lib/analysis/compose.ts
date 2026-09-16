@@ -10,7 +10,7 @@ import { analysisSchema, type Analysis } from "@/lib/schema";
 export const SCHEMA_VERSION = "1.1";
 
 export const UNPRICED_ASSUMPTION =
-  "Estimation indicative : l'offre ne précise pas de rémunération. Ces montants sont des références de marché à confirmer avec la marque, pas un avis sur l'offre.";
+  "Fourchette indicative : elle est calculée à partir des contenus et des droits décrits dans l'offre. La marque n'a donné aucun montant, rien ne permet donc de la confronter à son budget.";
 export const INCOMPLETE_ASSUMPTION =
   "Pas d'estimation : l'offre ne dit pas assez précisément ce qui est demandé pour être chiffrée.";
 

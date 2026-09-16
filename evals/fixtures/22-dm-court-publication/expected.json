@@ -1,0 +1,13 @@
+{
+  "deliverables": [
+    {
+      "type": "video",
+      "platform": "tiktok",
+      "quantity": 1
+    }
+  ],
+  "publication_required": true,
+  "payment.amount_eur": 250,
+  "usage.paid_ads": false,
+  "usage.perpetual": false
+}

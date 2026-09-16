@@ -1,0 +1,137 @@
+{
+  "analysis": {
+    "schema_version": "1.1",
+    "evaluability": "incomplete",
+    "language": "fr",
+    "confidence": "low",
+    "input_quality": {
+      "readable": true,
+      "missing_critical": [
+        "nom de la marque",
+        "contenus attendus",
+        "plateforme de publication",
+        "droits d'utilisation",
+        "conditions de livraison"
+      ]
+    },
+    "deal": {
+      "brand": null,
+      "deliverables": [],
+      "publication_required": false,
+      "usage": {
+        "organic": false,
+        "paid_ads": false,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": null,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": false,
+        "duration_months": null,
+        "category": null
+      },
+      "raw_footage": false,
+      "ip_transfer": "none",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": false
+      },
+      "payment": {
+        "amount_eur": null,
+        "currency": "EUR",
+        "terms_days": null,
+        "schedule": null
+      },
+      "in_kind_value_eur": 150,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "score": null,
+    "good_points": [
+      {
+        "label": "Produits offerts",
+        "why": "La valeur des produits offerts est indiquée à 150 €."
+      }
+    ],
+    "negotiate": [
+      {
+        "label": "Clarifier le budget",
+        "why": "L'offre mentionne uniquement des produits offerts, sans budget financier.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 1
+      },
+      {
+        "label": "Préciser les livrables",
+        "why": "Le nombre et le type de contenus attendus ne sont pas indiqués.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 2
+      },
+      {
+        "label": "Définir les droits d'utilisation",
+        "why": "Les usages prévus par la marque ne sont pas précisés.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 3
+      }
+    ],
+    "red_flags": [
+      {
+        "label": "Rémunération uniquement en produits",
+        "severity": "high",
+        "why": "Aucun paiement financier n'est proposé."
+      },
+      {
+        "label": "Offre très incomplète",
+        "severity": "high",
+        "why": "Les contenus attendus, les plateformes, les délais et les droits d'utilisation ne sont pas précisés."
+      }
+    ],
+    "estimate": {
+      "base_low": null,
+      "base_high": null,
+      "lines": [],
+      "total_low": null,
+      "total_high": null,
+      "assumptions": [
+        "Pas d'estimation : l'offre ne dit pas assez précisément ce qui est demandé pour être chiffrée."
+      ],
+      "rate_table_version": "fr-2026.1"
+    },
+    "fr_legal": {
+      "applicable": true,
+      "threshold_1000_reached": "unknown",
+      "written_contract_required": false,
+      "missing_mandatory_clauses": [
+        "Identification des parties",
+        "Description des prestations",
+        "Rémunération ou méthode de détermination",
+        "Modalités de paiement",
+        "Soumission au droit français"
+      ],
+      "note": "En France, un contrat écrit est obligatoire quand une collaboration dépasse 1 000 € HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus. Le montant n'est pas connu : impossible de savoir si ce seuil est atteint. C'est une information générale, pas un conseil juridique."
+    },
+    "escalate_to_professional": {
+      "required": false,
+      "reasons": []
+    },
+    "counter_offer": {
+      "amount_low": null,
+      "amount_high": null,
+      "changes": [
+        "Prévoir une rémunération financière en plus des produits offerts.",
+        "Préciser les livrables, les plateformes, les délais et les droits d'utilisation avant validation."
+      ]
+    },
+    "ready_to_send_message": {
+      "tone": "poli et direct",
+      "text": "Bonjour,\n\nMerci pour votre message, cette collaboration m'intéresse. Avant de vous faire une proposition, pourriez-vous me préciser :\n- les contenus attendus (nombre, format et plateformes)\n- l'utilisation prévue des contenus (publication, publicité, durée)\n\nAvec ces éléments, je vous réponds rapidement.\n\nBelle journée,"
+    }
+  }
+}

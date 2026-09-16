@@ -241,11 +241,17 @@ describe("computeEstimate", () => {
     expect(isFarAboveOffer(null, 310)).toBe(false);
   });
 
-  it("renvoie un total null si aucun montant n'est proposé", () => {
+  it("sans montant proposé : même fourchette qu'avec un montant, sans écart signalé", () => {
     const deal = makeDeal({ payment: { amount_eur: null, currency: "EUR", terms_days: null, schedule: null } });
     const estimate = computeEstimate(deal);
-    expect(estimate.total_low).toBeNull();
-    expect(estimate.total_high).toBeNull();
+    const withAmount = computeEstimate(makeDeal({ payment: { amount_eur: 50, currency: "EUR", terms_days: null, schedule: null } }));
+    expect(estimate.total_low).not.toBeNull();
+    expect(estimate.total_low).toBe(withAmount.total_low);
+    expect(estimate.total_high).toBe(withAmount.total_high);
+    expect(estimate.lines).toEqual(withAmount.lines);
+    expect(estimate.assumptions.some((a) => a.includes("Aucun montant proposé"))).toBe(false);
+    expect(estimate.assumptions.some((a) => a.includes("trois fois"))).toBe(false);
+    expect(withAmount.assumptions.some((a) => a.includes("trois fois"))).toBe(true);
   });
 
   it("renvoie un total null si moins de 3 champs sont renseignés", () => {

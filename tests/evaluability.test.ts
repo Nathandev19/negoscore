@@ -232,12 +232,17 @@ describe("CASE B — message sans contenu, droits ni budget", () => {
 });
 
 describe("CASE C — périmètre connu, aucun prix", () => {
-  const analysis = composeAnalysis(extraction(CASE_C, { ready_to_send_message: { tone: "cordial", text: "Quel budget avez-vous prévu ?" } }));
+  const analysis = composeAnalysis(extraction(CASE_C));
 
-  it("« unpriced » : estimation présente et marquée indicative, aucun score", () => {
+  it("« unpriced » : fourchette présente et marquée indicative, aucun score", () => {
     expect(analysis.evaluability).toBe("unpriced");
     expect(analysis.score).toBeNull();
+    expect(analysis.confidence).toBe("low");
     expect(analysis.estimate.base_low).not.toBeNull();
+    expect(analysis.estimate.total_low).not.toBeNull();
+    expect(analysis.estimate.total_high).not.toBeNull();
+    expect(analysis.counter_offer.amount_low).toBe(analysis.estimate.total_low);
+    expect(analysis.ready_to_send_message.text).toMatch(/entre .+€ et .+€/);
     expect(analysis.estimate.lines.length).toBeGreaterThan(0);
     expect(analysis.estimate.assumptions).toContain(UNPRICED_ASSUMPTION);
     expect(analysis.negotiate[0].eur_impact_low).not.toBeNull();
@@ -248,7 +253,8 @@ describe("CASE C — périmètre connu, aucun prix", () => {
     expect(html).toContain("Offre à chiffrer");
     expect(html).toContain("Cette offre ne précise pas de rémunération.");
     expect(html).toContain("Ce que ça vaut");
-    expect(html).toContain("Estimation indicative");
+    expect(html).toContain("Fourchette estimée");
+    expect(html).toContain("Fourchette indicative");
   });
 });
 

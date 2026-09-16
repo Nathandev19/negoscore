@@ -1,0 +1,153 @@
+{
+  "analysis": {
+    "schema_version": "1.1",
+    "evaluability": "incomplete",
+    "language": "fr",
+    "confidence": "low",
+    "input_quality": {
+      "readable": true,
+      "missing_critical": [
+        "Nom de la marque",
+        "Délai de paiement",
+        "Droits de réutilisation par la marque",
+        "Éventuelles révisions ou conditions de livraison"
+      ]
+    },
+    "deal": {
+      "brand": null,
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "tiktok",
+          "quantity": 1,
+          "format": null
+        }
+      ],
+      "publication_required": true,
+      "usage": {
+        "organic": false,
+        "paid_ads": false,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": null,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": false,
+        "duration_months": null,
+        "category": null
+      },
+      "raw_footage": false,
+      "ip_transfer": "none",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": false
+      },
+      "payment": {
+        "amount_eur": 250,
+        "currency": "EUR",
+        "terms_days": null,
+        "schedule": null
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "score": null,
+    "good_points": [
+      {
+        "label": "Livrable clairement défini",
+        "why": "L'offre précise qu'une vidéo doit être publiée sur TikTok."
+      },
+      {
+        "label": "Montant indiqué",
+        "why": "Le paiement proposé est clairement mentionné."
+      }
+    ],
+    "negotiate": [
+      {
+        "label": "Droits de réutilisation",
+        "why": "Clarifier les supports et usages autorisés pour la vidéo.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 1
+      },
+      {
+        "label": "Délai de paiement",
+        "why": "Obtenir une confirmation écrite des conditions de règlement.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 2
+      },
+      {
+        "label": "Révisions",
+        "why": "Définir le nombre de retours inclus avant la livraison finale.",
+        "eur_impact_low": null,
+        "eur_impact_high": null,
+        "priority": 3
+      }
+    ],
+    "red_flags": [
+      {
+        "label": "Droits d'utilisation non précisés",
+        "severity": "medium",
+        "why": "L'offre ne dit pas si la marque peut réutiliser la vidéo sur ses propres supports ou en publicité."
+      },
+      {
+        "label": "Conditions de paiement absentes",
+        "severity": "medium",
+        "why": "Aucun délai ni échéancier de paiement n'est indiqué."
+      },
+      {
+        "label": "Conditions de production incomplètes",
+        "severity": "low",
+        "why": "Les révisions, le brief et les délais de livraison ne sont pas précisés."
+      }
+    ],
+    "estimate": {
+      "base_low": null,
+      "base_high": null,
+      "lines": [],
+      "total_low": null,
+      "total_high": null,
+      "assumptions": [
+        "Pas d'estimation : l'offre ne dit pas assez précisément ce qui est demandé pour être chiffrée."
+      ],
+      "rate_table_version": "fr-2026.1"
+    },
+    "fr_legal": {
+      "applicable": true,
+      "threshold_1000_reached": "no",
+      "written_contract_required": false,
+      "missing_mandatory_clauses": [
+        "Identification des parties",
+        "Valeur des avantages en nature",
+        "Modalités de paiement",
+        "Soumission au droit français"
+      ],
+      "note": "En France, un contrat écrit est obligatoire quand une collaboration dépasse 1 000 € HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus. Le montant de cette offre reste sous ce seuil, mais le cumul de l'année compte. C'est une information générale, pas un conseil juridique."
+    },
+    "escalate_to_professional": {
+      "required": false,
+      "reasons": []
+    },
+    "counter_offer": {
+      "amount_low": null,
+      "amount_high": null,
+      "changes": [
+        "Préciser que la vidéo est destinée à une publication sur TikTok uniquement, sauf accord distinct pour toute réutilisation.",
+        "Confirmer le délai et les modalités de paiement.",
+        "Définir le nombre de révisions incluses.",
+        "Confirmer le brief et la date de livraison avant le début de la création."
+      ]
+    },
+    "ready_to_send_message": {
+      "tone": "poli et ferme",
+      "text": "Bonjour,\n\nMerci pour votre message, cette collaboration m'intéresse. Avant de vous faire une proposition, pourriez-vous me préciser :\n- l'utilisation prévue des contenus (publication, publicité, durée)\n\nAvec ces éléments, je vous réponds rapidement.\n\nBelle journée,"
+    }
+  }
+}
