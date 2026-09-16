@@ -2,10 +2,11 @@ import { z } from "zod";
 
 export const analysisSchema = z.object({
   schema_version: z.string(),
-  // Ajouté en 1.1 (voir lib/analysis/evaluability.ts). Une analyse 1.0 n'a pas
-  // ce champ : elle a été produite quand toute offre recevait un score, elle
-  // est donc relue comme « complete » et s'affiche comme avant.
-  evaluability: z.enum(["complete", "unpriced", "incomplete"]).default("complete"),
+  // Ajouté en 1.1 (voir lib/analysis/evaluability.ts), « terms_unknown » en 1.2.
+  // Une analyse 1.0 n'a pas ce champ : elle a été produite quand toute offre
+  // recevait un score, elle est donc relue comme « complete » et s'affiche
+  // comme avant. Une analyse 1.1 garde l'état sous lequel elle a été produite.
+  evaluability: z.enum(["complete", "terms_unknown", "unpriced", "incomplete"]).default("complete"),
   language: z.enum(["fr", "en"]),
   confidence: z.enum(["high", "medium", "low"]),
   input_quality: z.object({

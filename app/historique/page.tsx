@@ -22,6 +22,7 @@ type Row = {
 
 // Analyse sans score : on dit pourquoi plutôt que d'afficher « —/100 ».
 const NO_SCORE_LABEL: Record<string, string> = {
+  terms_unknown: "À préciser",
   unpriced: "À chiffrer",
   incomplete: "Incomplète",
 };

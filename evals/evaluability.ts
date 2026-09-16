@@ -33,7 +33,7 @@ function readDeal(raw: unknown): Analysis["deal"] | null {
 }
 
 for (const report of results.reports) {
-  const counts = { complete: 0, unpriced: 0, incomplete: 0, illisible: 0 };
+  const counts = { complete: 0, terms_unknown: 0, unpriced: 0, incomplete: 0, illisible: 0 };
   const notComplete: string[] = [];
   for (const run of report.runs ?? []) {
     const deal = readDeal(run.rawOutput);

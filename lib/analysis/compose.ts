@@ -1,4 +1,4 @@
-import { evaluability, incompleteRequestMessage } from "@/lib/analysis/evaluability";
+import { evaluability, incompleteRequestMessage, termsRequestMessage } from "@/lib/analysis/evaluability";
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { computeEscalation } from "@/lib/legal/escalate";
 import { computeFrLegal } from "@/lib/legal/fr";
@@ -8,10 +8,12 @@ import { computeEstimate, isFarAboveOffer } from "@/lib/rates/engine";
 import { computeScore } from "@/lib/rates/score";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 
-export const SCHEMA_VERSION = "1.1";
+export const SCHEMA_VERSION = "1.2";
 
 export const UNPRICED_ASSUMPTION =
   "Fourchette indicative : elle est calculée à partir des contenus et des droits décrits dans l'offre. La marque n'a donné aucun montant, rien ne permet donc de la confronter à son budget.";
+export const TERMS_UNKNOWN_ASSUMPTION =
+  "Conditions inconnues : l'offre ne précise pas assez la durée, le territoire, le délai de paiement, l'exclusivité, les droits cédés ou les révisions. La fourchette dit ce que valent les contenus demandés, pas si l'échange est équilibré.";
 export const INCOMPLETE_ASSUMPTION =
   "Pas d'estimation : l'offre ne dit pas assez précisément ce qui est demandé pour être chiffrée.";
 
@@ -52,10 +54,12 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
             eur_low: line.eur_low,
             eur_high: line.eur_high,
           })),
-          // « unpriced » : l'estimation reste un repère utile, marqué indicatif.
+          // « unpriced » et « terms_unknown » : l'estimation reste un repère
+          // utile, avec ce qu'elle ne permet pas de dire.
           assumptions: [
             ...extraAssumptions,
             ...(state === "unpriced" ? [UNPRICED_ASSUMPTION] : []),
+            ...(state === "terms_unknown" ? [TERMS_UNKNOWN_ASSUMPTION] : []),
             ...computed.assumptions,
           ],
         };
@@ -93,11 +97,14 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
     },
     ready_to_send_message: {
       tone: extraction.ready_to_send_message.tone,
-      // Offre incomplète : aucun tarif annoncé, le message demande ce qui manque.
+      // Offre incomplète ou aux conditions inconnues : aucun tarif annoncé, le
+      // message demande ce qui manque pour pouvoir juger.
       text:
         state === "incomplete"
           ? incompleteRequestMessage(deal, extraction.language)
-          : fillPrice(extraction.ready_to_send_message.text, extraction.language, estimate),
+          : state === "terms_unknown"
+            ? termsRequestMessage(deal, extraction.language)
+            : fillPrice(extraction.ready_to_send_message.text, extraction.language, estimate),
     },
   };
 

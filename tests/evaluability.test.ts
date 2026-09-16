@@ -2,13 +2,22 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AnalysisResult } from "@/components/result/analysis-result";
-import { composeAnalysis, INCOMPLETE_ASSUMPTION, UNPRICED_ASSUMPTION } from "@/lib/analysis/compose";
+import {
+  composeAnalysis,
+  INCOMPLETE_ASSUMPTION,
+  TERMS_UNKNOWN_ASSUMPTION,
+  UNPRICED_ASSUMPTION,
+} from "@/lib/analysis/compose";
 import {
   evaluability,
   incompleteRequestMessage,
+  knownTerms,
   missingInformation,
   priceKnown,
   scopeKnown,
+  TERM_KEYS,
+  termsKnown,
+  termsRequestMessage,
 } from "@/lib/analysis/evaluability";
 import { lockAnalysis } from "@/lib/analysis/lock";
 import { BAND_LABEL } from "@/lib/display";
@@ -299,8 +308,8 @@ describe("analyses enregistrées avant la version 1.1", () => {
     expect(renderAll(parsed)).toContain("Deal faible");
   });
 
-  it("une nouvelle analyse est en version 1.1", () => {
-    expect(composeAnalysis(extraction(CASE_A)).schema_version).toBe("1.1");
+  it("une nouvelle analyse est en version 1.2", () => {
+    expect(composeAnalysis(extraction(CASE_A)).schema_version).toBe("1.2");
   });
 
   it("le modèle ne produit pas l'évaluabilité", () => {
@@ -314,5 +323,78 @@ describe("message d'une offre incomplète en anglais", () => {
     expect(text).toContain("the budget planned");
     expect(text).toContain("the expected content");
     expect(text).not.toMatch(/€|\d/);
+  });
+});
+
+// CASE F — « Tu postes 1 vidéo sur ton TikTok, on te paie 250 € » : 85/100 avant la #017.
+const CASE_F = deal({
+  deliverables: [{ type: "video", platform: "tiktok", quantity: 1, format: null }],
+  publication_required: true,
+  usage: { ...EMPTY_DEAL.usage, organic: true },
+  payment: { amount_eur: 250, currency: "EUR", terms_days: null, schedule: null },
+});
+
+describe("conditions connues", () => {
+  it("au moins deux conditions renseignées, chacune lue telle qu'écrite", () => {
+    expect(termsKnown(CASE_F)).toBe(false);
+    expect(knownTerms(CASE_F)).toEqual([]);
+    const one = deal({ ...CASE_F, payment: { ...CASE_F.payment, terms_days: 30 } });
+    expect(termsKnown(one)).toBe(false);
+    expect(termsKnown(deal({ ...one, revisions: { count: null, unlimited: true } }))).toBe(true);
+    expect(knownTerms(deal({ ...CASE_F, usage: { ...CASE_F.usage, perpetual: true }, exclusivity: { present: true, duration_months: null, category: null } }))).toEqual(["duration", "exclusivity"]);
+    expect(knownTerms(deal({ ...CASE_F, usage: { ...CASE_F.usage, territory: "France" }, ip_transfer: "license" }))).toEqual(["territory", "ip_transfer"]);
+    expect(knownTerms(deal({ ...CASE_F, ip_transfer: "unclear" }))).toEqual([]);
+    expect(knownTerms(CASE_A)).toEqual([...TERM_KEYS]);
+  });
+
+  it("quatrième état réservé à un deal au périmètre et au prix connus", () => {
+    expect(evaluability(CASE_F)).toBe("terms_unknown");
+    expect(evaluability(deal({ ...CASE_F, payment: EMPTY_DEAL.payment }))).toBe("unpriced");
+    expect(evaluability(deal({ ...CASE_F, deliverables: [] }))).toBe("incomplete");
+  });
+});
+
+describe("CASE F — prix connu, conditions inconnues", () => {
+  const analysis = composeAnalysis(
+    extraction(CASE_F, { input_quality: { readable: true, missing_critical: ["Nom de la marque", "Délai et modalités de paiement"] } }),
+  );
+
+  it("« terms_unknown » : estimation conservée, score null, hypothèse explicite", () => {
+    const estimate = computeEstimate(CASE_F);
+    expect(computeScore(CASE_F, estimate)).toEqual({ value: 85, band: "excellent" });
+    expect(analysis.evaluability).toBe("terms_unknown");
+    expect(analysis.score).toBeNull();
+    expect(analysis.estimate.total_low).toBe(estimate.total_low);
+    expect(analysis.estimate.total_high).toBe(estimate.total_high);
+    expect(analysis.estimate.assumptions).toContain(TERMS_UNKNOWN_ASSUMPTION);
+    expect(analysis.counter_offer.amount_low).toBe(estimate.total_low);
+  });
+
+  it("« Offre à préciser », comparaison au montant, liste des conditions, aucun libellé de qualité", () => {
+    const html = expectNoQualityVerdict(analysis);
+    expect(html).toContain("Offre à préciser");
+    expect(html).toContain("On peut chiffrer ce que ça vaut, pas si le deal est bon : la marque ne dit rien de ses conditions.");
+    expect(html).toContain("Montant proposé");
+    expect(html).toContain("Le montant proposé est dans notre fourchette.");
+    expect(html).toContain("Ce que ça vaut");
+    expect(missingInformation(analysis)).toEqual([
+      "Nom de la marque",
+      "Délai et modalités de paiement",
+      "La durée d'utilisation des contenus",
+      "Le territoire de diffusion",
+      "L'existence ou non d'une exclusivité",
+      "Qui détient les droits sur les contenus : licence ou cession",
+      "Le nombre de révisions prévues",
+    ]);
+  });
+
+  it("le message demande les conditions, sans tarif", () => {
+    const text = analysis.ready_to_send_message.text;
+    expect(text).toContain("les conditions de la collaboration");
+    expect(text).toContain("le délai de paiement");
+    expect(text).toContain("le nombre de révisions prévues");
+    expect(text).not.toMatch(/€|\d/);
+    expect(text).not.toContain(PRICE_PLACEHOLDER);
+    expect(termsRequestMessage(CASE_F, "en")).toContain("the payment terms");
   });
 });

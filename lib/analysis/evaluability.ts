@@ -5,13 +5,17 @@ import type { Analysis } from "@/lib/schema";
 // jugement du modèle. input_quality.missing_critical sert à afficher ce qui
 // manque, il ne décide jamais de l'état.
 //
-//   complete    périmètre connu, prix connu   → score et estimation habituels
-//   unpriced    périmètre connu, prix inconnu → estimation indicative, aucun verdict
-//   incomplete  périmètre inconnu             → ni score ni estimation
+//   complete       périmètre, prix et conditions connus → score et estimation habituels
+//   terms_unknown  périmètre et prix connus, conditions inconnues
+//                  → estimation comparée au montant proposé, aucun verdict
+//   unpriced       périmètre connu, prix inconnu → estimation indicative, aucun verdict
+//   incomplete     périmètre inconnu             → ni score ni estimation
 //
-// Sans montant, le score perd son seul levier positif (le ratio prix /
-// estimation) et retombe vers 50, « Deal correct » : d'où l'état « unpriced »,
-// distinct d'un « complete » dégradé.
+// Le score ne pénalise que ce qui est écrit. Sans montant, il retombe vers 50,
+// « Deal correct » : d'où « unpriced ». Sans conditions, aucune pénalité ne
+// peut se déclencher et un prix aligné suffit à « Excellent deal » : d'où
+// « terms_unknown ». Dans les deux cas, l'absence d'information serait lue
+// comme une absence de risque.
 
 type Deal = Analysis["deal"];
 export type Evaluability = Analysis["evaluability"];
@@ -30,12 +34,52 @@ export function priceKnown(deal: Deal): boolean {
   return deal.payment.amount_eur !== null || deal.in_kind_value_eur !== null;
 }
 
-export function evaluability(deal: Deal): Evaluability {
-  if (!scopeKnown(deal)) return "incomplete";
-  return priceKnown(deal) ? "complete" : "unpriced";
+// Conditions : ce qui fait qu'un même prix est un bon ou un mauvais échange.
+// Un élément est connu quand l'offre l'écrit, y compris sans limite (usage à
+// vie, révisions illimitées).
+export const TERM_KEYS = ["duration", "territory", "payment_terms", "exclusivity", "ip_transfer", "revisions"] as const;
+export type TermKey = (typeof TERM_KEYS)[number];
+
+// Seuil choisi avant tout relevé : un seul élément ne suffit pas à juger un
+// échange, les six seraient trop exigeants pour un DM ordinaire.
+export const MIN_KNOWN_TERMS = 2;
+
+function termKnown(deal: Deal, key: TermKey): boolean {
+  switch (key) {
+    case "duration":
+      return deal.usage.duration_months !== null || deal.usage.perpetual;
+    case "territory":
+      return deal.usage.territory !== null;
+    case "payment_terms":
+      return deal.payment.terms_days !== null;
+    case "exclusivity":
+      return deal.exclusivity.present;
+    case "ip_transfer":
+      return deal.ip_transfer !== "none" && deal.ip_transfer !== "unclear";
+    case "revisions":
+      return deal.revisions.count !== null || deal.revisions.unlimited;
+  }
 }
 
-// Manques déterministes, dans l'ordre du deal.
+export function knownTerms(deal: Deal): TermKey[] {
+  return TERM_KEYS.filter((key) => termKnown(deal, key));
+}
+
+export function missingTermKeys(deal: Deal): TermKey[] {
+  return TERM_KEYS.filter((key) => !termKnown(deal, key));
+}
+
+export function termsKnown(deal: Deal): boolean {
+  return knownTerms(deal).length >= MIN_KNOWN_TERMS;
+}
+
+export function evaluability(deal: Deal): Evaluability {
+  if (!scopeKnown(deal)) return "incomplete";
+  if (!priceKnown(deal)) return "unpriced";
+  return termsKnown(deal) ? "complete" : "terms_unknown";
+}
+
+// Manques déterministes du périmètre et du prix, dans l'ordre du deal.
 export type MissingKey = "deliverables" | "usage" | "price";
 
 export function missingKeys(deal: Deal): MissingKey[] {
@@ -61,13 +105,38 @@ const MISSING_HINT: Record<MissingKey, RegExp> = {
   price: /r[ée]mun[ée]ration|budget|prix|montant|tarif|paiement|cachet|€/i,
 };
 
-// Liste affichée quand l'offre est incomplète : d'abord ce que le modèle a
-// relevé, puis les manques déterministes qu'il n'a pas signalés.
-export function missingInformation(analysis: Pick<Analysis, "deal" | "input_quality">): string[] {
+const TERM_LABEL: Record<TermKey, string> = {
+  duration: "La durée d'utilisation des contenus",
+  territory: "Le territoire de diffusion",
+  payment_terms: "Le délai de paiement",
+  exclusivity: "L'existence ou non d'une exclusivité",
+  ip_transfer: "Qui détient les droits sur les contenus : licence ou cession",
+  revisions: "Le nombre de révisions prévues",
+};
+
+const TERM_HINT: Record<TermKey, RegExp> = {
+  duration: /dur[ée]e|combien de temps|p[ée]riode/i,
+  territory: /territoire|pays|zone|g[ée]ograph/i,
+  payment_terms: /paiement|r[èe]glement|facturation/i,
+  exclusivity: /exclusivit/i,
+  ip_transfer: /propri[ée]t|cession|licence|droits? d'auteur/i,
+  revisions: /r[ée]vision|retours?\b|modification/i,
+};
+
+// Liste affichée quand l'offre n'est pas évaluable : d'abord ce que le modèle a
+// relevé, puis les manques déterministes qu'il n'a pas signalés. Conditions
+// inconnues : les conditions ; sinon le périmètre et le prix.
+export function missingInformation(analysis: Pick<Analysis, "deal" | "input_quality" | "evaluability">): string[] {
   const fromModel = analysis.input_quality.missing_critical.map((item) => item.trim()).filter(Boolean);
-  const added = missingKeys(analysis.deal)
-    .filter((key) => !fromModel.some((item) => MISSING_HINT[key].test(item)))
-    .map((key) => MISSING_LABEL[key]);
+  const notFlagged = (hint: RegExp) => !fromModel.some((item) => hint.test(item));
+  const added =
+    analysis.evaluability === "terms_unknown"
+      ? missingTermKeys(analysis.deal)
+          .filter((key) => notFlagged(TERM_HINT[key]))
+          .map((key) => TERM_LABEL[key])
+      : missingKeys(analysis.deal)
+          .filter((key) => notFlagged(MISSING_HINT[key]))
+          .map((key) => MISSING_LABEL[key]);
   return [...fromModel, ...added];
 }
 
@@ -84,30 +153,55 @@ const REQUEST_ITEM: Record<Analysis["language"], Record<MissingKey, string>> = {
   },
 };
 
+const TERM_REQUEST: Record<Analysis["language"], Record<TermKey, string>> = {
+  fr: {
+    duration: "la durée pendant laquelle les contenus seront utilisés",
+    territory: "les pays ou la zone de diffusion",
+    payment_terms: "le délai de paiement",
+    exclusivity: "s'il y a une exclusivité, et sur quelle durée",
+    ip_transfer: "si vous souhaitez une licence d'utilisation ou une cession des droits",
+    revisions: "le nombre de révisions prévues",
+  },
+  en: {
+    duration: "how long the content will be used",
+    territory: "the countries or region where it will run",
+    payment_terms: "the payment terms",
+    exclusivity: "whether there is any exclusivity, and for how long",
+    ip_transfer: "whether you need a usage licence or a transfer of rights",
+    revisions: "the number of revision rounds",
+  },
+};
+
+function requestMessage(language: Analysis["language"], items: string[], intro: { fr: string; en: string }): string {
+  const lines = items.map((item) => `- ${item}`);
+  if (language === "en") {
+    return ["Hello,", "", intro.en, ...lines, "", "With these details, I will get back to you quickly.", "", "Best regards,"].join("\n");
+  }
+  return ["Bonjour,", "", intro.fr, ...lines, "", "Avec ces éléments, je vous réponds rapidement.", "", "Belle journée,"].join("\n");
+}
+
 // Message pour une offre incomplète : aucun tarif, seulement les questions
 // nécessaires pour pouvoir chiffrer.
 export function incompleteRequestMessage(deal: Deal, language: Analysis["language"]): string {
-  const items = missingKeys(deal).map((key) => `- ${REQUEST_ITEM[language][key]}`);
-  if (language === "en") {
-    return [
-      "Hello,",
-      "",
-      "Thank you for your message, I would be happy to discuss this collaboration. Before I send you a proposal, could you tell me:",
-      ...items,
-      "",
-      "With these details, I will get back to you quickly.",
-      "",
-      "Best regards,",
-    ].join("\n");
-  }
-  return [
-    "Bonjour,",
-    "",
-    "Merci pour votre message, cette collaboration m'intéresse. Avant de vous faire une proposition, pourriez-vous me préciser :",
-    ...items,
-    "",
-    "Avec ces éléments, je vous réponds rapidement.",
-    "",
-    "Belle journée,",
-  ].join("\n");
+  return requestMessage(
+    language,
+    missingKeys(deal).map((key) => REQUEST_ITEM[language][key]),
+    {
+      fr: "Merci pour votre message, cette collaboration m'intéresse. Avant de vous faire une proposition, pourriez-vous me préciser :",
+      en: "Thank you for your message, I would be happy to discuss this collaboration. Before I send you a proposal, could you tell me:",
+    },
+  );
+}
+
+// Message pour une offre aux conditions inconnues : aucun tarif, on demande
+// les conditions avant de pouvoir s'engager.
+export function termsRequestMessage(deal: Deal, language: Analysis["language"]): string {
+  return requestMessage(
+    language,
+    missingTermKeys(deal).map((key) => TERM_REQUEST[language][key]),
+    {
+      fr: "Merci pour votre proposition, elle m'intéresse. Avant de confirmer, pourriez-vous me préciser les conditions de la collaboration :",
+      en: "Thank you for your offer, I am interested. Before confirming, could you specify the terms of the collaboration:",
+    },
+  );
 }

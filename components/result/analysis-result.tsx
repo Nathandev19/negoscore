@@ -9,7 +9,7 @@ import {
 import { LockedCounterOfferPlaceholder, LockedMessagePlaceholder, UnlockCta } from "@/components/result/locked-blocks";
 import { ScoreCard } from "@/components/result/score-card";
 import { CounterOffer, ReadyMessage } from "@/components/result/unlocked-blocks";
-import { IncompleteCard, UnpricedCard } from "@/components/result/verdict-card";
+import { IncompleteCard, TermsUnknownCard, UnpricedCard } from "@/components/result/verdict-card";
 import { missingInformation } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
 
@@ -27,6 +27,8 @@ export function AnalysisResult({ analysis, unlockHref }: { analysis: ResultView;
         <ScoreCard score={analysis.score} confidence={analysis.confidence} />
       ) : incomplete ? (
         <IncompleteCard missing={missingInformation(analysis)} />
+      ) : analysis.evaluability === "terms_unknown" ? (
+        <TermsUnknownCard deal={analysis.deal} estimate={analysis.estimate} missing={missingInformation(analysis)} />
       ) : (
         <UnpricedCard confidence={analysis.confidence} />
       )}

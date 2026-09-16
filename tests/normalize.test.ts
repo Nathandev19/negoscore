@@ -75,13 +75,18 @@ describe("normalizeDeal", () => {
 });
 
 describe("composeAnalysis sur un deal normalisé", () => {
-  it("la fixture 22 devient « complete » et tout lit la même donnée", () => {
+  it("la fixture 22 quitte « incomplete » et tout lit la même donnée", () => {
     expect(evaluability(POSTS_ON_OWN_ACCOUNT)).toBe("incomplete");
     const analysis = composeAnalysis(extraction(POSTS_ON_OWN_ACCOUNT));
     const normalized = normalizeDeal(POSTS_ON_OWN_ACCOUNT);
-    expect(analysis.evaluability).toBe("complete");
+    // Périmètre et prix connus ; ses conditions ne le sont pas (mission #017).
+    expect(analysis.evaluability).toBe("terms_unknown");
     expect(analysis.deal.usage.organic).toBe(true);
-    expect(analysis.score).toEqual(computeScore(normalized, computeEstimate(normalized)));
     expect(analysis.estimate.total_low).toBe(computeEstimate(normalized).total_low);
+    const withTerms: Deal = { ...POSTS_ON_OWN_ACCOUNT, usage: { ...NO_USAGE, duration_months: 3 }, revisions: { count: 2, unlimited: false } };
+    const complete = composeAnalysis(extraction(withTerms));
+    const normalizedWithTerms = normalizeDeal(withTerms);
+    expect(complete.evaluability).toBe("complete");
+    expect(complete.score).toEqual(computeScore(normalizedWithTerms, computeEstimate(normalizedWithTerms)));
   });
 });
