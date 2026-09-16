@@ -1,4 +1,5 @@
 import type { SessionUser } from "@/lib/auth/session";
+import { isProActive, periodEndsAt } from "@/lib/billing/plan-access";
 import { FREE_ANALYSES, PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
 import { hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
@@ -53,10 +54,11 @@ export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise
 
   if (credits?.plan === "pro") {
     // period_end fait foi : la période courante est le mois qui le précède.
-    const periodEnd = credits.period_end ? new Date(credits.period_end) : null;
-    if (!periodEnd || periodEnd.getTime() <= Date.now()) {
+    // Même lecture que l'affichage, via lib/billing/plan-access.
+    if (!isProActive(credits)) {
       return { allowed: false, reason: "no_credit", message: "Ton abonnement n'est plus actif. Choisis une offre pour continuer." };
     }
+    const periodEnd = periodEndsAt(credits) as Date;
     const periodStart = new Date(periodEnd);
     periodStart.setMonth(periodStart.getMonth() - 1);
     const used = await countRows(

@@ -5,10 +5,9 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/lib/auth/viewer";
-import { findMembershipId } from "@/lib/billing/subscription";
+import { isCancelled, isProActive, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 import { SELLER } from "@/lib/legal/identity";
 import { selectRows } from "@/lib/supabase/server";
-import { getMembership } from "@/lib/whop/api";
 
 export const metadata: Metadata = {
   title: "Résilier votre contrat",
@@ -31,16 +30,15 @@ export default async function CancelPage({ searchParams }: PageProps<"/resilier"
   const error = typeof params.erreur === "string" ? ERRORS[params.erreur] : null;
   const justCancelled = params.etat === "resilie";
 
-  const [credits] = await selectRows<{ plan: string; balance: number; period_end: string | null }>(
+  const [credits] = await selectRows<PlanState>(
     "credits",
-    `select=plan,balance,period_end&user_id=eq.${user.id}&limit=1`,
+    `select=plan,balance,period_end,cancelled_at&user_id=eq.${user.id}&limit=1`,
   );
-  const isPro = credits?.plan === "pro";
-  const membershipId = isPro ? await findMembershipId(user) : null;
-  const membership = membershipId ? await getMembership(membershipId) : null;
-  const alreadyCancelled = membership?.cancel_at_period_end === true || membership?.status === "canceling";
-  const endsAtValue = membership?.renewal_period_end ?? credits?.period_end ?? null;
-  const endsAt = endsAtValue ? DATE.format(new Date(endsAtValue)) : null;
+  // Nos propres données font foi : aucun appel au prestataire de paiement.
+  const isPro = isProActive(credits ?? null);
+  const alreadyCancelled = justCancelled || params.etat === "deja" || isCancelled(credits ?? null);
+  const endsAtValue = periodEndsAt(credits ?? null);
+  const endsAt = endsAtValue ? DATE.format(endsAtValue) : null;
 
   return (
     <>
@@ -66,7 +64,7 @@ export default async function CancelPage({ searchParams }: PageProps<"/resilier"
               <Link href="/historique">Retour à mon compte</Link>
             </Button>
           </div>
-        ) : justCancelled || alreadyCancelled ? (
+        ) : alreadyCancelled ? (
           <div className="flex flex-col gap-4">
             <p className="text-lg font-medium" role="status">
               Ta résiliation est enregistrée.

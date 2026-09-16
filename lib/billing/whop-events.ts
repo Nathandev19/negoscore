@@ -18,7 +18,13 @@ export type EventOutcome = {
   currency?: string | null;
 };
 
-type Credits = { user_id: string; plan: "free" | "pack" | "pro"; balance: number; period_end: string | null };
+type Credits = {
+  user_id: string;
+  plan: "free" | "pack" | "pro";
+  balance: number;
+  period_end: string | null;
+  cancelled_at: string | null;
+};
 type Profile = { id: string; email: string | null };
 
 function record(value: unknown): Record<string, unknown> {
@@ -50,7 +56,10 @@ async function resolveUser(
 
 async function credits(userId: string): Promise<Credits> {
   await insertIfAbsent("credits", { user_id: userId, balance: 0, plan: "free" });
-  const [row] = await selectRows<Credits>("credits", `select=user_id,plan,balance,period_end&user_id=eq.${userId}&limit=1`);
+  const [row] = await selectRows<Credits>(
+    "credits",
+    `select=user_id,plan,balance,period_end,cancelled_at&user_id=eq.${userId}&limit=1`,
+  );
   return row;
 }
 
@@ -115,19 +124,55 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
 
   if (type === "membership.activated" && plan === "pro") {
     const periodEnd = text(data.renewal_period_end) ?? new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
-    await updateRows("credits", `user_id=eq.${user.id}`, { plan: "pro", period_end: periodEnd, updated_at: new Date().toISOString() });
+    await updateRows("credits", `user_id=eq.${user.id}`, {
+      plan: "pro",
+      period_end: periodEnd,
+      // Un réabonnement efface une résiliation antérieure.
+      cancelled_at: null,
+      updated_at: new Date().toISOString(),
+    });
     return { handled: true, reason: `Pro actif jusqu'au ${periodEnd}`, userId: user.id, plan };
   }
 
   if (type === "membership.deactivated" && plan === "pro") {
-    // Les crédits de pack restants ne sont jamais perdus.
+    // Whop coupe l'abonnement dès la demande de résiliation, même quand on
+    // demande la fin de période. On ne déclasse donc pas sur son signal : la
+    // période payée court jusqu'à renewal_period_end, et reserveAnalysis
+    // refuse déjà les analyses Pro une fois cette date passée.
+    const status = text(data.status);
+    const renewalEnd = text(data.renewal_period_end);
+    const stillPaidFor = renewalEnd !== null && new Date(renewalEnd).getTime() > Date.now();
+
+    if (status === "canceled" && stillPaidFor) {
+      await updateRows("credits", `user_id=eq.${user.id}`, {
+        plan: "pro",
+        period_end: renewalEnd,
+        // La date de demande n'est jamais écrasée : c'est la première qui compte.
+        ...(current.cancelled_at ? {} : { cancelled_at: new Date().toISOString() }),
+        updated_at: new Date().toISOString(),
+      });
+      return {
+        handled: true,
+        reason: `résiliation enregistrée, accès Pro conservé jusqu'au ${renewalEnd}`,
+        userId: user.id,
+        plan,
+      };
+    }
+
+    // Période terminée, ou fin d'abonnement pour une autre raison : les
+    // crédits de pack restants ne sont jamais perdus.
     const nextPlan = current.balance > 0 ? "pack" : "free";
     await updateRows("credits", `user_id=eq.${user.id}`, {
       plan: nextPlan,
       period_end: null,
       updated_at: new Date().toISOString(),
     });
-    return { handled: true, reason: `Pro désactivé, retour au plan ${nextPlan}`, userId: user.id, plan };
+    return {
+      handled: true,
+      reason: `Pro désactivé (statut ${status ?? "inconnu"}), retour au plan ${nextPlan}`,
+      userId: user.id,
+      plan,
+    };
   }
 
   if (isRefund) {
@@ -140,8 +185,15 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       }
       return { handled: true, reason: `remboursement : -${removed} analyses`, userId: user.id, plan };
     }
+    // L'argent est rendu : l'accès s'arrête tout de suite, ce n'est pas une
+    // résiliation en fin de période.
     const nextPlan = current.balance > 0 ? "pack" : "free";
-    await updateRows("credits", `user_id=eq.${user.id}`, { plan: nextPlan, period_end: null, updated_at: new Date().toISOString() });
+    await updateRows("credits", `user_id=eq.${user.id}`, {
+      plan: nextPlan,
+      period_end: null,
+      cancelled_at: null,
+      updated_at: new Date().toISOString(),
+    });
     return { handled: true, reason: `remboursement Pro : retour au plan ${nextPlan}`, userId: user.id, plan };
   }
 

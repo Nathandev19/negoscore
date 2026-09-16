@@ -3,18 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { displayedPlan, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 
 // Le paiement est confirmé par le webhook, pas par ce retour de navigateur :
 // on relit le solde toutes les 2 secondes pendant 30 secondes au maximum.
 const INTERVAL_MS = 2000;
 const TIMEOUT_MS = 30_000;
 
-type Credits = { plan: "free" | "pack" | "pro"; balance: number; period_end: string | null };
+type Credits = PlanState;
 type State = { status: "waiting" | "credited" | "timeout"; credits: Credits | null };
 
 function describe(credits: Credits): string {
-  if (credits.plan === "pro") {
-    const until = credits.period_end ? new Date(credits.period_end).toLocaleDateString("fr-FR") : null;
+  // Un abonnement dont la période est passée n'est plus annoncé comme actif.
+  if (displayedPlan(credits) === "pro") {
+    const until = periodEndsAt(credits)?.toLocaleDateString("fr-FR") ?? null;
     return until ? `Abonnement Pro actif jusqu'au ${until}.` : "Abonnement Pro actif.";
   }
   const count = credits.balance;
@@ -25,7 +27,7 @@ function describe(credits: Credits): string {
 // le webhook est plus rapide que le retour du navigateur. Dans ce cas il n'y
 // a aucune augmentation à observer, seulement un solde à afficher.
 export function isCredited(credits: Credits | null): boolean {
-  return credits !== null && (credits.plan !== "free" || credits.balance > 0);
+  return credits !== null && displayedPlan(credits) !== "free";
 }
 
 export function CreditsWaiter({ initial }: { initial: Credits | null }) {

@@ -46,9 +46,29 @@ async function user(plan: "free" | "pack" | "pro", balance = 0): Promise<TestUse
   return created;
 }
 
-async function credits(userId: string): Promise<{ plan: string; balance: number; period_end: string | null }> {
-  const res = await service(`/rest/v1/credits?user_id=eq.${userId}&select=plan,balance,period_end`);
-  return (res.body as Array<{ plan: string; balance: number; period_end: string | null }>)[0];
+type CreditsRow = { plan: string; balance: number; period_end: string | null; cancelled_at: string | null };
+
+async function credits(userId: string): Promise<CreditsRow> {
+  const res = await service(`/rest/v1/credits?user_id=eq.${userId}&select=plan,balance,period_end,cancelled_at`);
+  return (res.body as CreditsRow[])[0];
+}
+
+async function setCredits(userId: string, patch: Record<string, unknown>): Promise<void> {
+  await service(`/rest/v1/credits?user_id=eq.${userId}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+// Charge utile réellement observée en production le 16/09/2026 : Whop coupe
+// l'abonnement tout de suite (status "canceled", cancel_at_period_end "false")
+// alors qu'on a demandé la fin de période.
+function deactivation(renewalPeriodEnd: string | null, userId: string, status = "canceled") {
+  return {
+    id: `mem_${randomUUID()}`,
+    status,
+    cancel_at_period_end: "false",
+    plan: { id: PRO },
+    metadata: { user_id: userId },
+    ...(renewalPeriodEnd ? { renewal_period_end: renewalPeriodEnd } : {}),
+  };
 }
 
 function envelope(type: string, data: Record<string, unknown>, id = `msg_test_${randomUUID()}`) {
@@ -211,6 +231,89 @@ describe.skipIf(!ready)("webhook Whop", () => {
       }),
     );
     expect(await credits(buyer.id)).toMatchObject({ plan: "pack", balance: 2, period_end: null });
+  });
+
+  it("résiliation Whop immédiate : l'accès Pro payé est conservé jusqu'à la fin de période", async () => {
+    const subscriber = await user("pro", 2);
+    const paidUntil = "2026-10-16T05:37:47.007Z";
+    await setCredits(subscriber.id, { period_end: paidUntil, cancelled_at: null });
+
+    const response = await send(envelope("membership.deactivated", deactivation(paidUntil, subscriber.id)));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ handled: true });
+
+    const after = await credits(subscriber.id);
+    expect(after.plan).toBe("pro");
+    expect(new Date(after.period_end ?? 0).toISOString()).toBe(paidUntil);
+    expect(after.cancelled_at).not.toBeNull();
+    expect(after.balance).toBe(2);
+  });
+
+  it("n'écrase pas la date de résiliation déjà enregistrée", async () => {
+    const subscriber = await user("pro", 0);
+    const paidUntil = "2026-10-16T05:37:47.007Z";
+    const firstRequest = "2026-09-16T05:38:36.000Z";
+    await setCredits(subscriber.id, { period_end: paidUntil, cancelled_at: firstRequest });
+
+    await send(envelope("membership.deactivated", deactivation(paidUntil, subscriber.id)));
+    const after = await credits(subscriber.id);
+    expect(new Date(after.cancelled_at ?? 0).toISOString()).toBe(firstRequest);
+    expect(after.plan).toBe("pro");
+  });
+
+  it("période déjà terminée : déclassement immédiat", async () => {
+    const subscriber = await user("pro", 1);
+    const over = "2026-09-01T05:37:47.007Z";
+    await setCredits(subscriber.id, { period_end: over });
+
+    await send(envelope("membership.deactivated", deactivation(over, subscriber.id)));
+    expect(await credits(subscriber.id)).toMatchObject({ plan: "pack", balance: 1, period_end: null });
+  });
+
+  it("statut autre que canceled : déclassement immédiat", async () => {
+    const subscriber = await user("pro", 0);
+    const paidUntil = "2026-10-16T05:37:47.007Z";
+    await setCredits(subscriber.id, { period_end: paidUntil });
+
+    await send(envelope("membership.deactivated", deactivation(paidUntil, subscriber.id, "expired")));
+    expect(await credits(subscriber.id)).toMatchObject({ plan: "free", period_end: null });
+  });
+
+  it("remboursement après résiliation : accès coupé tout de suite, résiliation effacée", async () => {
+    const subscriber = await user("pro", 0);
+    await setCredits(subscriber.id, {
+      period_end: "2026-10-16T05:37:47.007Z",
+      cancelled_at: "2026-09-16T05:38:36.000Z",
+    });
+
+    await send(
+      envelope("refund.created", {
+        id: `ref_${randomUUID()}`,
+        amount: 12.99,
+        currency: "eur",
+        payment: { ...payment(PRO, { user_id: subscriber.id }), total: 12.99 },
+      }),
+    );
+    expect(await credits(subscriber.id)).toMatchObject({ plan: "free", period_end: null, cancelled_at: null });
+  });
+
+  it("réabonnement : la résiliation précédente est effacée", async () => {
+    const subscriber = await user("pro", 0);
+    await setCredits(subscriber.id, { cancelled_at: "2026-09-16T05:38:36.000Z" });
+    const periodEnd = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+
+    await send(
+      envelope("membership.activated", {
+        id: `mem_${randomUUID()}`,
+        status: "active",
+        plan: { id: PRO },
+        metadata: { user_id: subscriber.id },
+        renewal_period_end: periodEnd,
+      }),
+    );
+    const after = await credits(subscriber.id);
+    expect(after).toMatchObject({ plan: "pro", cancelled_at: null });
+    expect(new Date(after.period_end ?? 0).toISOString()).toBe(periodEnd);
   });
 
   it("Pro désactivé sans crédit pack : retour au plan gratuit", async () => {

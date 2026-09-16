@@ -104,9 +104,42 @@ describe.skipIf(!ready)("résiliation en ligne", () => {
     expect(email.text).toContain("Ta résiliation est enregistrée.");
     expect(email.text).toContain("Les crédits d'analyse achetés séparément restent acquis.");
 
-    // Les crédits pack ne bougent pas : c'est le webhook de fin de période qui ajustera le plan.
-    const credits = await service(`/rest/v1/credits?user_id=eq.${subscriber.id}&select=plan,balance`);
-    expect(credits.body).toEqual([{ plan: "pro", balance: 2 }]);
+    // L'accès reste ouvert : le plan ne bouge pas, la date de demande est posée.
+    const credits = await service(
+      `/rest/v1/credits?user_id=eq.${subscriber.id}&select=plan,balance,period_end,cancelled_at`,
+    );
+    const row = (credits.body as Array<{ plan: string; balance: number; period_end: string | null; cancelled_at: string | null }>)[0];
+    expect(row.plan).toBe("pro");
+    expect(row.balance).toBe(2);
+    expect(row.cancelled_at).not.toBeNull();
+    expect(new Date(row.period_end ?? 0).toISOString()).toBe(endsAt);
+  });
+
+  it("déjà résilié : aucun second appel au prestataire de paiement", async () => {
+    const subscriber = await user("pro", 1);
+    await seedActivation(subscriber.id);
+    await service(`/rest/v1/credits?user_id=eq.${subscriber.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ cancelled_at: new Date().toISOString() }),
+    });
+
+    const response = await cancelRequest(subscriber.token);
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/resilier?etat=deja");
+    expect(whop.cancel).not.toHaveBeenCalled();
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+
+  it("abonnement Pro déjà expiré : plus rien à résilier", async () => {
+    const subscriber = await user("pro", 0);
+    await service(`/rest/v1/credits?user_id=eq.${subscriber.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ period_end: "2026-09-01T05:37:47.007Z" }),
+    });
+
+    const response = await cancelRequest(subscriber.token);
+    expect(response.headers.get("location")).toBe("/resilier?etat=aucun");
+    expect(whop.cancel).not.toHaveBeenCalled();
   });
 
   it("sans abonnement actif : message clair, aucun appel à Whop", async () => {
