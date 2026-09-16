@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
 import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
@@ -19,7 +20,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className="h-full antialiased">
-      <body className="flex min-h-full flex-col bg-neutral-50">{children}</body>
+      <body className="flex min-h-full flex-col bg-neutral-50">
+        <AnalyticsProvider />
+        {children}
+      </body>
     </html>
   );
 }

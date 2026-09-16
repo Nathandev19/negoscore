@@ -1,6 +1,7 @@
 import { computeEscalation } from "@/lib/legal/escalate";
 import { computeFrLegal } from "@/lib/legal/fr";
 import { PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
+import { formatEur } from "@/lib/money";
 import { computeEstimate, isFarAboveOffer } from "@/lib/rates/engine";
 import { computeScore } from "@/lib/rates/score";
 import { analysisSchema, type Analysis } from "@/lib/schema";
@@ -27,20 +28,7 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
     assumptions: [...(options.extraAssumptions ?? []), ...computed.assumptions],
   };
 
-  // Un sujet de tarif n'est chiffré qu'une fois, sur le point le plus prioritaire.
-  const pricedTopics = new Set<string>();
-  const byPriority = [...extraction.negotiate].sort((a, b) => a.priority - b.priority);
-  const negotiate = byPriority.map((item) => {
-    const lines = pricedTopics.has(item.topic) ? [] : computed.lines.filter((line) => line.topic === item.topic);
-    if (lines.length > 0) pricedTopics.add(item.topic);
-    return {
-      label: item.label,
-      why: item.why,
-      priority: item.priority,
-      eur_impact_low: lines.length > 0 ? lines.reduce((sum, l) => sum + l.eur_low, 0) : null,
-      eur_impact_high: lines.length > 0 ? lines.reduce((sum, l) => sum + l.eur_high, 0) : null,
-    };
-  });
+  const negotiate = mergeNegotiate(extraction.negotiate, computed.lines);
 
   // Sans montant proposé, on ne peut pas être confiant, quoi qu'en dise le modèle.
   // Estimation très au-dessus de l'offre : la confiance ne peut pas rester haute.
@@ -78,18 +66,68 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
   return analysisSchema.parse(analysis);
 }
 
+// Le modèle produit parfois deux points de négociation pour le même sujet
+// (« encadrer les droits pub » et « clarifier les droits pub »). On n'en garde
+// qu'un par sujet : celui qui porte le chiffrage, et on ajoute l'explication de
+// l'autre si elle apporte quelque chose. Le sujet « other » regroupe des points
+// sans rapport entre eux : il n'est pas dédoublonné.
+function mergeNegotiate(
+  items: Extraction["negotiate"],
+  lines: ReturnType<typeof computeEstimate>["lines"],
+): Analysis["negotiate"] {
+  const byPriority = [...items].sort((a, b) => a.priority - b.priority);
+  const kept = new Map<string, Analysis["negotiate"][number]>();
+  const result: Analysis["negotiate"][number][] = [];
+
+  for (const item of byPriority) {
+    const existing = item.topic === "other" ? undefined : kept.get(item.topic);
+    if (existing) {
+      if (!sameIdea(existing.why, item.why)) existing.why = `${existing.why} ${item.why}`.trim();
+      continue;
+    }
+    // Le premier point d'un sujet est le plus prioritaire : c'est lui qui porte l'impact.
+    const topicLines = lines.filter((line) => line.topic === item.topic);
+    const entry = {
+      label: item.label,
+      why: item.why,
+      priority: item.priority,
+      eur_impact_low: topicLines.length > 0 ? topicLines.reduce((sum, l) => sum + l.eur_low, 0) : null,
+      eur_impact_high: topicLines.length > 0 ? topicLines.reduce((sum, l) => sum + l.eur_high, 0) : null,
+    };
+    if (item.topic !== "other") kept.set(item.topic, entry);
+    result.push(entry);
+  }
+
+  // Priorités renumérotées après fusion, pour rester 1, 2, 3…
+  return result.map((entry, index) => ({ ...entry, priority: index + 1 }));
+}
+
+function normalizeWhy(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Deux explications disent la même chose si l'une contient l'autre.
+function sameIdea(a: string, b: string): boolean {
+  const left = normalizeWhy(a);
+  const right = normalizeWhy(b);
+  return left.includes(right) || right.includes(left);
+}
+
 function fillPrice(text: string, language: Analysis["language"], estimate: Analysis["estimate"]): string {
   if (!text.includes(PRICE_PLACEHOLDER)) return text;
   const { total_low: low, total_high: high } = estimate;
   let price: string;
   if (low !== null && high !== null) {
-    if (language === "en") {
-      const n = new Intl.NumberFormat("en-GB");
-      price = `between €${n.format(low)} and €${n.format(high)}`;
-    } else {
-      const n = new Intl.NumberFormat("fr-FR");
-      price = `entre ${n.format(low)} et ${n.format(high)} €`;
-    }
+    price =
+      language === "en"
+        ? `between ${formatEur(low, "en")} and ${formatEur(high, "en")}`
+        : `entre ${formatEur(low)} et ${formatEur(high)}`;
   } else {
     price = language === "en" ? "a rate I will detail in my quote" : "un tarif que je vous détaille dans mon devis";
   }

@@ -51,7 +51,9 @@ export async function GET(request: Request) {
 
     const cookies = [...sessionCookieHeaders(session), clearVerifier];
     if (anonToken) cookies.push(expiredCookieHeader(ANON_COOKIE));
-    return redirect(next, cookies);
+    // ?connexion=ok sert à la mesure d'audience, le paramètre est retiré côté client.
+    const target = `${next}${next.includes("?") ? "&" : "?"}connexion=ok`;
+    return redirect(target, cookies);
   } catch (caught) {
     console.error(
       JSON.stringify({

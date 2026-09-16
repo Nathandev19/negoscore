@@ -8,6 +8,8 @@ import { LoadingSteps } from "@/components/loading-steps";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { track } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { validateFile, type FileKind } from "@/lib/upload";
 
 const MIN_TEXT_LENGTH = 20;
@@ -15,14 +17,19 @@ const LOADING_DURATION_MS = 2500;
 const LOADING_STEPS = ["Lecture du message", "Extraction du deal", "Analyse et chiffrage"] as const;
 const GENERIC_ERROR = "L'analyse n'a pas abouti. Vérifie ta connexion et réessaie.";
 const UPLOAD_ERROR = "Le fichier n'a pas pu être envoyé. Vérifie ta connexion et réessaie.";
+const METHOD = { text: "paste", photo: "photo", pdf: "pdf" } as const;
 
 type Mode = "text" | FileKind;
-type Outcome = { ok: true; analysisId: string } | { ok: false; message: string; paywall: boolean };
+type AnalysisMeta = { latency_ms: number; confidence: string; score_band: string; has_price: boolean };
+type Outcome =
+  | { ok: true; analysisId: string }
+  | { ok: false; message: string; paywall: boolean };
 
 class FlowError extends Error {
   constructor(
     message: string,
     readonly paywall = false,
+    readonly reason = "erreur",
   ) {
     super(message);
   }
@@ -41,7 +48,8 @@ async function postJson(url: string, payload: unknown): Promise<Record<string, u
     // réponse non JSON
   }
   if (!response.ok) {
-    throw new FlowError(typeof body.error === "string" ? body.error : GENERIC_ERROR, response.status === 402);
+    const reason = typeof body.reason === "string" ? body.reason : `http_${response.status}`;
+    throw new FlowError(typeof body.error === "string" ? body.error : GENERIC_ERROR, response.status === 402, reason);
   }
   return body;
 }
@@ -77,11 +85,20 @@ export function DealInput() {
   const [notice, setNotice] = useState<{ message: string; paywall: boolean } | null>(null);
   const outcomeRef = useRef<Outcome | null>(null);
   const stepsDoneRef = useRef(false);
+  const startedRef = useRef<Record<Mode, boolean>>({ text: false, photo: false, pdf: false });
 
   const textLength = text.trim().length;
   const canSubmit = mode === "text" ? textLength >= MIN_TEXT_LENGTH : files[mode] !== null;
 
+  // Émis une seule fois par mode, au premier geste réel de l'utilisateur.
+  function markInputStarted(current: Mode) {
+    if (startedRef.current[current]) return;
+    startedRef.current[current] = true;
+    track(ANALYTICS_EVENTS.inputStarted, { method: METHOD[current] });
+  }
+
   function selectFile(kind: FileKind, file: File) {
+    markInputStarted(kind);
     const error = validateFile(file, kind);
     setErrors((prev) => ({ ...prev, [kind]: error }));
     if (error) return;
@@ -119,17 +136,34 @@ export function DealInput() {
     stepsDoneRef.current = false;
     setNotice(null);
     setLoading(true);
+    const method = METHOD[current];
+    track(ANALYTICS_EVENTS.analysisSubmitted, { method });
     try {
       const selected = current === "text" ? null : files[current];
       const payload = selected && current !== "text" ? { storagePath: await uploadFile(current, selected.file) } : { text };
-      const { analysisId } = await postJson("/api/analyse", payload);
-      outcomeRef.current =
-        typeof analysisId === "string" ? { ok: true, analysisId } : { ok: false, message: GENERIC_ERROR, paywall: false };
+      const { analysisId, meta } = await postJson("/api/analyse", payload);
+      if (typeof analysisId === "string") {
+        const info = meta as AnalysisMeta | undefined;
+        track(ANALYTICS_EVENTS.analysisCompleted, {
+          method,
+          latency_ms: info?.latency_ms ?? 0,
+          confidence: info?.confidence ?? "inconnue",
+          score_band: info?.score_band ?? "inconnu",
+          has_price: info?.has_price ?? false,
+        });
+        outcomeRef.current = { ok: true, analysisId };
+      } else {
+        track(ANALYTICS_EVENTS.analysisFailed, { reason: "reponse_invalide" });
+        outcomeRef.current = { ok: false, message: GENERIC_ERROR, paywall: false };
+      }
     } catch (caught) {
-      outcomeRef.current =
+      const failure =
         caught instanceof FlowError
-          ? { ok: false, message: caught.message, paywall: caught.paywall }
-          : { ok: false, message: GENERIC_ERROR, paywall: false };
+          ? { ok: false as const, message: caught.message, paywall: caught.paywall, reason: caught.reason }
+          : { ok: false as const, message: GENERIC_ERROR, paywall: false, reason: "reseau" };
+      track(ANALYTICS_EVENTS.analysisFailed, { reason: failure.reason });
+      if (failure.reason === "free_used") track(ANALYTICS_EVENTS.secondAnalysisAttempt, { method });
+      outcomeRef.current = { ok: false, message: failure.message, paywall: failure.paywall };
     }
     finish();
   }
@@ -170,7 +204,10 @@ export function DealInput() {
         <TabsContent value="text" className="flex flex-col gap-1.5">
           <Textarea
             value={text}
-            onChange={(event) => setText(event.target.value)}
+            onChange={(event) => {
+              markInputStarted("text");
+              setText(event.target.value);
+            }}
             placeholder="Colle ici le DM, le mail ou le brief de la marque…"
             aria-label="Message de la marque"
             className="min-h-40 resize-y bg-white text-base md:text-base"

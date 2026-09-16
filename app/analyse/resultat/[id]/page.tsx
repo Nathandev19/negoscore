@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import { TrackView } from "@/components/analytics/track-view";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { getViewer } from "@/lib/auth/viewer";
 import { ANON_COOKIE } from "@/lib/security/request";
@@ -23,6 +25,8 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   return (
     <>
       <SiteHeader />
+      <TrackView event={ANALYTICS_EVENTS.resultViewed} />
+      {result.unlocked ? null : <TrackView event={ANALYTICS_EVENTS.paywallEmailShown} />}
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-2 pb-12 sm:px-6 sm:pt-8">
         <AnalysisResult
           analysis={result.analysis}

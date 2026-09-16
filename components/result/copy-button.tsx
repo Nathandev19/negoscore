@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
+import { track } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 
 export function CopyButton({ text }: { text: string }) {
@@ -15,6 +17,7 @@ export function CopyButton({ text }: { text: string }) {
         try {
           await navigator.clipboard.writeText(text);
           setCopied(true);
+          track(ANALYTICS_EVENTS.messageCopied);
         } catch {
           setCopied(false);
         }

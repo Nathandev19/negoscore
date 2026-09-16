@@ -1,31 +1,29 @@
 # CURRENT
 
 ## CURRENT STATUS
-Negoscore (marque verrouillée, domaine negoscore.fr). Mission #004 livrée : chiffrage plafonné et dégressif, base Supabase validée (RLS, bucket, usage_guard), connexion par magic link, rattachement des analyses anonymes, contenu verrouillé retiré côté serveur, crédits vérifiés avant l'appel au modèle.
+Negoscore en production sur www.negoscore.fr. Mission #005 livrée côté code : chiffrage corrigé à l'affichage, paiement Whop (checkout rattaché, webhook signé et idempotent), mesure d'audience PostHog, pages légales avec les éléments manquants affichés en clair.
 
 ## WHAT EXISTS
-- `/analyse` : texte ou photo (URL signée, dépôt direct), PDF en 501. Réponse 402 et paywall quand le droit d'analyser manque.
-- `/analyse/resultat/[id]` : visiteur anonyme propriétaire = contre-offre et message retirés de la réponse ; propriétaire connecté = analyse complète.
-- `/connexion` (magic link PKCE), `/auth/callback` (profil, crédits gratuits, rattachement du jeton anonyme), `/auth/deconnexion`, `/historique`, `/offres`.
-- `proxy.ts` : rafraîchit la session avant le rendu, n'autorise rien.
-- `lib/billing/` : offres (`plans.ts`) et droits (`entitlement.ts`) : anonyme 1 analyse (jeton + IP hachée), pack décrémenté, pro 30 par période, échec jamais consommé.
-- `lib/rates/` : table `fr-2026.1.json` avec poids, dégressivité et plafonds de majoration ; contrôle de vraisemblance.
-- `evals/` : `pnpm eval`, `pnpm eval:vision`, `pnpm eval:pipeline`, `pnpm eval:rescore`.
-- Tests : `pnpm test` (hors ligne) ; `pnpm test:integration` (RLS, stockage, usage_guard, callback, rattachement, droits).
+- Analyse : texte et photo (PDF en 501), chiffrage déterministe plafonné, contenu verrouillé retiré côté serveur pour un visiteur non connecté.
+- Comptes : magic link, rattachement de l'analyse anonyme, `/historique`.
+- Crédits : gratuit 1 analyse, Pack Deal 3 analyses, Pro 30 par période. Droit vérifié avant l'appel au modèle ; un échec ne consomme rien.
+- Paiement : `/offres` (case de consentement obligatoire), `/api/checkout`, `/api/whop/webhook`, `/merci` qui attend le crédit.
+- Analytics : `lib/analytics/` côté navigateur (sans donnée de deal, DNT respecté, enregistrement de session désactivé) et `purchase_completed` émis par le webhook.
+- Pages légales : `/mentions-legales`, `/confidentialite`, `/cgv`, chaque manque affiché en `[[À COMPLÉTER : …]]`.
 
 ## CURRENT BLOCKER
-Envoi réel du magic link non vérifié (aucune boîte de réception de test) : URL de redirection à autoriser dans Supabase Auth, SMTP à configurer.
+Migration `20260916000010_checkout_consents.sql` à appliquer : sans elle, `/api/checkout` renvoie l'utilisateur sur `/offres?erreur=indisponible`.
 
 ## CURRENT MISSION
-#004 — correction du chiffrage, auth, crédits.
+#005 — paiement Whop, analytics, pages légales.
 
 ## NEXT MISSION
-#005 — paiement Whop (webhooks, whop_events, attribution des crédits).
+#006 — à définir.
 
 ## LAUNCH BLOCKERS
-- SMTP Supabase (Resend) et URL de redirection de production autorisée.
+- Textes légaux à fournir : tous les `[[À COMPLÉTER]]` des trois pages, dont le texte exact de la case de consentement.
+- Achat réel de bout en bout à faire une fois (Pack puis Pro), webhook et crédits vérifiés.
 - Suppression effective des documents après `delete_after` (tâche planifiée à écrire).
 - Lecture des PDF : aucune bibliothèque dans le projet.
-- Compte Vercel Pro, variables d'environnement serveur (`OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `IP_HASH_SALT`).
-- Mentions légales, confidentialité, CGV rédigées par un professionnel ; validation juridique de `lib/legal/fr.ts`.
 - Recalibrage de la table de tarifs (poids, dégressivité, plafonds) sur des offres réelles.
+- Validation par un juriste de `lib/legal/fr.ts`.

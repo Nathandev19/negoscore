@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { newPkcePair, safeNextPath, sendMagicLink, VERIFIER_COOKIE } from "@/lib/auth/session";
 import { hashIp } from "@/lib/security/request";
+import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
 import { hitUsageGuard } from "@/lib/security/usage-guard";
 
 export type LoginState = { status: "idle" | "sent" | "error"; message: string | null };
@@ -18,8 +19,7 @@ export async function requestMagicLink(_previous: LoginState, formData: FormData
   }
 
   const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
+  const origin = configuredSiteUrl() ?? originFromHeaders(requestHeaders);
   const ip = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || requestHeaders.get("x-real-ip") || "local";
 
   try {
@@ -36,7 +36,7 @@ export async function requestMagicLink(_previous: LoginState, formData: FormData
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
     });
-    const redirectTo = `${protocol}://${host}/auth/callback?next=${encodeURIComponent(next)}`;
+    const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const sent = await sendMagicLink(email, challenge, redirectTo);
     if (!sent) {
       return { status: "error", message: "Le lien n'a pas pu être envoyé. Réessaie dans quelques minutes." };

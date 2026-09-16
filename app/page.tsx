@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { ShieldCheckIcon } from "lucide-react";
+import { TrackView } from "@/components/analytics/track-view";
 import { DealInput } from "@/components/deal-input";
 import { ScoreCard } from "@/components/result/score-card";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { formatEurRange } from "@/lib/display";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 
@@ -21,6 +23,7 @@ export default function HomePage() {
   return (
     <>
       <SiteHeader />
+      <TrackView event={ANALYTICS_EVENTS.landingView} />
       <main className="flex-1">
         <section
           id="analyser"

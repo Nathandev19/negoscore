@@ -1,3 +1,4 @@
+import { formatEur } from "@/lib/money";
 import type { Analysis } from "@/lib/schema";
 
 // Mise en forme pour l'affichage. Aucun calcul métier : on ne fait que
@@ -7,24 +8,8 @@ type Deal = Analysis["deal"];
 type Band = Analysis["score"]["band"];
 type Severity = Analysis["red_flags"][number]["severity"];
 
-const eur = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0,
-});
-
-export function formatEur(value: number): string {
-  return eur.format(value);
-}
-
-export function formatEurRange(low: number | null, high: number | null): string | null {
-  if (low !== null && high !== null) {
-    return low === high ? formatEur(low) : `${formatEur(low)} – ${formatEur(high)}`;
-  }
-  if (low !== null) return formatEur(low);
-  if (high !== null) return formatEur(high);
-  return null;
-}
+// Les montants passent par le formateur unique de lib/money.ts.
+export { formatEur, formatEurRange } from "@/lib/money";
 
 export const BAND_LABEL: Record<Band, string> = {
   bad: "Mauvais deal",
@@ -156,7 +141,17 @@ export function dealRecapRows(deal: Deal): RecapRow[] {
     deal.termination ? { label: "Résiliation", value: deal.termination } : null,
     deal.governing_law ? { label: "Droit applicable", value: deal.governing_law } : null,
   ];
-  return rows.filter((row): row is RecapRow => row !== null);
+  return rows
+    .filter((row): row is RecapRow => row !== null)
+    .map((row) => ({ ...row, value: capitalizeFirst(row.value) }));
+}
+
+// Uniformise la casse des valeurs du récap : le modèle écrit tantôt
+// « pub payante », tantôt « Licence d'utilisation ». On ne touche qu'à
+// l'affichage, jamais au contenu de l'analyse.
+function capitalizeFirst(value: string): string {
+  const first = value.charAt(0);
+  return first === first.toUpperCase() ? value : first.toUpperCase() + value.slice(1);
 }
 
 function usageRow(usage: Deal["usage"]): RecapRow | null {

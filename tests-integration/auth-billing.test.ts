@@ -123,7 +123,8 @@ describe.skipIf(!configured)("magic link : callback et rattachement", () => {
     const response = await openLink(await magicLinkHash(u.email), next, `deal_anon_token=${token}`);
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe(next);
+    // ?connexion=ok sert uniquement à la mesure d'audience.
+    expect(response.headers.get("location")).toBe(`${next}?connexion=ok`);
     const setCookies = response.headers.getSetCookie();
     expect(setCookies.some((c) => /^sb_access_token=[^;]+;.*HttpOnly/.test(c))).toBe(true);
     expect(setCookies.some((c) => /^sb_refresh_token=[^;]+;.*HttpOnly/.test(c))).toBe(true);

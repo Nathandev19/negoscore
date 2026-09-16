@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { composeAnalysis } from "@/lib/analysis/compose";
 import sample from "@/lib/fixtures/analysis-sample.json";
 import { extractionSchema, PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
+import { formatEur } from "@/lib/money";
 
 // Sortie de modèle simulée, construite à partir de la fixture d'exemple.
 function makeExtraction(overrides: Partial<Extraction> = {}): Extraction {
@@ -24,7 +25,7 @@ describe("composeAnalysis", () => {
     expect(analysis.counter_offer.amount_low).toBe(analysis.estimate.total_low);
     expect(analysis.counter_offer.amount_high).toBe(analysis.estimate.total_high);
     expect(analysis.ready_to_send_message.text).not.toContain(PRICE_PLACEHOLDER);
-    expect(analysis.ready_to_send_message.text).toMatch(/entre .+ et .+ €/);
+    expect(analysis.ready_to_send_message.text).toMatch(/entre .+€ et .+€/);
 
     const paidAds = analysis.negotiate.find((n) => n.label === "Facturer les droits pub");
     const paidAdsLine = analysis.estimate.lines.find((l) => l.label.startsWith("Droits pub"));
@@ -47,18 +48,45 @@ describe("composeAnalysis", () => {
     expect(analysis.fr_legal.threshold_1000_reached).toBe("unknown");
   });
 
-  it("ne chiffre un même sujet qu'une fois, sur le point le plus prioritaire", () => {
+  it("fusionne les points qui portent sur le même sujet, en gardant le chiffrage", () => {
     const analysis = composeAnalysis(
       makeExtraction({
         negotiate: [
-          { label: "Encadrer l'usage pub", why: "Trop large.", priority: 2, topic: "paid_ads" },
-          { label: "Facturer les droits pub", why: "Ils ont de la valeur.", priority: 1, topic: "paid_ads" },
+          { label: "Clarifier les droits publicitaires", why: "Trop large.", priority: 2, topic: "paid_ads" },
+          { label: "Encadrer les droits publicitaires", why: "Ils ont de la valeur.", priority: 1, topic: "paid_ads" },
+          { label: "Limiter les révisions", why: "Sinon ça ne s'arrête pas.", priority: 3, topic: "revisions" },
         ],
       }),
     );
-    expect(analysis.negotiate.map((n) => n.label)).toEqual(["Facturer les droits pub", "Encadrer l'usage pub"]);
+    expect(analysis.negotiate.map((n) => n.label)).toEqual([
+      "Encadrer les droits publicitaires",
+      "Limiter les révisions",
+    ]);
+    expect(analysis.negotiate[0].why).toBe("Ils ont de la valeur. Trop large.");
     expect(analysis.negotiate[0].eur_impact_low).not.toBeNull();
-    expect(analysis.negotiate[1].eur_impact_low).toBeNull();
+    expect(analysis.negotiate.map((n) => n.priority)).toEqual([1, 2]);
+  });
+
+  it("ne répète pas une explication déjà dite, et ne fusionne pas le sujet « other »", () => {
+    const analysis = composeAnalysis(
+      makeExtraction({
+        negotiate: [
+          { label: "Droits pub", why: "Ils ont de la valeur.", priority: 1, topic: "paid_ads" },
+          { label: "Droits pub, encore", why: "Ils ont de la valeur", priority: 2, topic: "paid_ads" },
+          { label: "Demander le brief", why: "Il manque.", priority: 3, topic: "other" },
+          { label: "Demander le calendrier", why: "Il manque aussi.", priority: 4, topic: "other" },
+        ],
+      }),
+    );
+    expect(analysis.negotiate).toHaveLength(3);
+    expect(analysis.negotiate[0].why).toBe("Ils ont de la valeur.");
+    expect(analysis.negotiate.map((n) => n.label)).toEqual(["Droits pub", "Demander le brief", "Demander le calendrier"]);
+  });
+
+  it("écrit la fourchette du message avec le formateur unique", () => {
+    const analysis = composeAnalysis(makeExtraction());
+    const { total_low: low, total_high: high } = analysis.estimate;
+    expect(analysis.ready_to_send_message.text).toContain(`entre ${formatEur(low!)} et ${formatEur(high!)}`);
   });
 
   it("estimation plus de trois fois au-dessus de l'offre : confiance high ramenée à medium, fourchette intacte", () => {

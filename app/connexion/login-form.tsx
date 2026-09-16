@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { requestMagicLink, type LoginState } from "@/app/connexion/actions";
+import { track } from "@/lib/analytics/client";
+import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -19,7 +21,13 @@ export function LoginForm({ next }: { next: string }) {
   }
 
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form
+      action={(formData) => {
+        track(ANALYTICS_EVENTS.emailSubmitted);
+        return action(formData);
+      }}
+      className="flex flex-col gap-3"
+    >
       <input type="hidden" name="next" value={next} />
       <Input
         type="email"

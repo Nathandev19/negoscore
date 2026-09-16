@@ -210,7 +210,20 @@ export async function POST(request: Request) {
         usage_count: guard.count,
       }),
     );
-    return json(200, { analysisId: saved.id }, cookie);
+    // Métadonnées de mesure : aucune donnée du deal, seulement des repères.
+    return json(
+      200,
+      {
+        analysisId: saved.id,
+        meta: {
+          latency_ms: result.latencyMs,
+          confidence: analysis.confidence,
+          score_band: analysis.score.band,
+          has_price: analysis.deal.payment.amount_eur !== null,
+        },
+      },
+      cookie,
+    );
   } catch (caught) {
     if (grant) {
       await grant.release().catch((error: unknown) =>
