@@ -9,14 +9,24 @@ import { adjustInteger, countRows, selectRows } from "@/lib/supabase/server";
 // Le droit est réservé avant l'appel et rendu si l'analyse échoue : une
 // analyse ratée ne consomme jamais rien.
 
-// Analyse gratuite comptée aussi par IP hachée, sur 30 jours, pour limiter
-// le contournement par suppression du cookie.
-const FREE_IP_WINDOW_SECONDS = 30 * 24 * 60 * 60;
+// La gratuité se compte sur le jeton anonyme et sur le compte. L'IP, elle,
+// n'est qu'un filet anti-script : derrière une même IP publique (réseau
+// mobile, foyer, lycée, coworking) se trouvent des visiteurs différents, et
+// les bloquer coûterait des clients pour économiser des fractions de centime.
+// Seuil haut, fenêtre courte : seul un automate y touche.
+const FREE_IP_LIMIT = 20;
+const FREE_IP_WINDOW_SECONDS = 24 * 60 * 60;
 
-export type Denial = { allowed: false; reason: "free_used" | "no_credit"; message: string };
+export type Denial = {
+  allowed: false;
+  reason: "free_used" | "no_credit" | "rate_limited";
+  message: string;
+};
 export type Grant = { allowed: true; plan: "free" | "pack" | "pro"; release: () => Promise<void> };
 
 const NO_CREDIT_MESSAGE = "Tu as utilisé ton analyse gratuite. Choisis une offre pour analyser d'autres deals.";
+const RATE_LIMITED_MESSAGE =
+  "Trop d'analyses ont été lancées depuis ton réseau ces dernières heures. Réessaie plus tard, ou connecte-toi pour continuer.";
 
 function freeIpKey(ip: string): string {
   return hashIp(`free-analysis:${ip}`);
@@ -24,10 +34,21 @@ function freeIpKey(ip: string): string {
 
 async function reserveFree(ip: string): Promise<Grant | Denial> {
   const key = freeIpKey(ip);
-  const guard = await hitUsageGuard(key, { limit: FREE_ANALYSES, windowSeconds: FREE_IP_WINDOW_SECONDS });
+  const guard = await hitUsageGuard(key, { limit: FREE_IP_LIMIT, windowSeconds: FREE_IP_WINDOW_SECONDS });
   if (!guard.allowed) {
     await releaseUsageGuard(key);
-    return { allowed: false, reason: "free_used", message: NO_CREDIT_MESSAGE };
+    // Journalisé pour savoir si ce filet se déclenche vraiment en production.
+    // L'IP n'apparaît pas : seule sa version hachée sert de compteur.
+    console.warn(
+      JSON.stringify({
+        event: "free_ip_rate_limited",
+        reason: "rate_limited",
+        count: guard.count,
+        limit: FREE_IP_LIMIT,
+        window_hours: FREE_IP_WINDOW_SECONDS / 3600,
+      }),
+    );
+    return { allowed: false, reason: "rate_limited", message: RATE_LIMITED_MESSAGE };
   }
   return { allowed: true, plan: "free", release: () => releaseUsageGuard(key) };
 }
@@ -52,7 +73,8 @@ type Context = { user: SessionUser | null; anonToken: string | null; ip: string 
 
 export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise<Grant | Denial> {
   if (!user) {
-    // Visiteur anonyme : une analyse, comptée sur le jeton et sur l'IP.
+    // Visiteur anonyme : une analyse, comptée sur le jeton. L'IP ne sert
+    // qu'au filet anti-script, jamais à décompter la gratuité.
     if (anonToken) {
       const done = await selectRows<{ id: string }>(
         "deals",

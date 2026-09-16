@@ -145,7 +145,13 @@ export async function POST(request: Request) {
         await removeDocument(storagePath as string);
         await updateRows("deals", `id=eq.${document.deal.id}`, { status: "denied" });
       }
-      return fail(402, entitlement.message, { paywall: true, reason: entitlement.reason });
+      // Filet anti-script : ce n'est pas un paywall, et le message ne dit pas
+      // au visiteur qu'il a déjà consommé quelque chose.
+      const limited = entitlement.reason === "rate_limited";
+      return fail(limited ? 429 : 402, entitlement.message, {
+        ...(limited ? {} : { paywall: true }),
+        reason: entitlement.reason,
+      });
     }
     grant = entitlement;
 

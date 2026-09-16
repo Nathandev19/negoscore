@@ -182,19 +182,64 @@ describe.skipIf(!configured)("droits d'analyse", () => {
     expect(model.extractDeal).not.toHaveBeenCalled();
   });
 
-  it("visiteur anonyme : 1 analyse par IP, même sans cookie, puis 402 sans appel au modèle", async () => {
+  it("visiteur anonyme sans cookie : l'IP seule ne consomme pas la gratuité", async () => {
     const ip = testIp();
     model.extractDeal.mockResolvedValue(fakeExtraction());
-    const first = await analyseRequest({ ip });
-    expect(first.status).toBe(200);
-    const { analysisId } = (await first.json()) as { analysisId: string };
-    const created = await service(`/rest/v1/analyses?id=eq.${analysisId}&select=deal_id`);
-    deals.push((created.body as Array<{ deal_id: string }>)[0].deal_id);
-    expect(model.extractDeal).toHaveBeenCalledTimes(1);
 
-    const second = await analyseRequest({ ip });
-    expect(second.status).toBe(402);
-    expect(model.extractDeal).toHaveBeenCalledTimes(1);
+    // Deux requêtes sans cookie depuis la même IP : ce sont deux visiteurs
+    // différents derrière un même réseau, chacun a droit à son analyse.
+    for (let i = 0; i < 2; i++) {
+      const response = await analyseRequest({ ip });
+      expect(response.status).toBe(200);
+      const { analysisId } = (await response.json()) as { analysisId: string };
+      const created = await service(`/rest/v1/analyses?id=eq.${analysisId}&select=deal_id`);
+      deals.push((created.body as Array<{ deal_id: string }>)[0].deal_id);
+    }
+    expect(model.extractDeal).toHaveBeenCalledTimes(2);
+  });
+
+  it("deux visiteurs différents derrière la même IP ont chacun leur analyse gratuite", async () => {
+    const ip = testIp();
+    model.extractDeal.mockResolvedValue(fakeExtraction());
+
+    for (const token of [newToken(), newToken()]) {
+      const response = await analyseRequest({ ip, cookies: { deal_anon_token: token } });
+      expect(response.status).toBe(200);
+      const { analysisId } = (await response.json()) as { analysisId: string };
+      const created = await service(`/rest/v1/analyses?id=eq.${analysisId}&select=deal_id`);
+      deals.push((created.body as Array<{ deal_id: string }>)[0].deal_id);
+    }
+    expect(model.extractDeal).toHaveBeenCalledTimes(2);
+  });
+
+  it("au-delà du seuil anti-script, l'IP est freinée en 429 avec un message honnête", async () => {
+    const ip = testIp();
+    usedIps.push(ip);
+    // Compteur déjà à 20 sur la fenêtre de 24 h : la requête suivante est la 21e.
+    await insert("usage_guard", { ip_hash: hashIp(`free-analysis:${ip}`), count: 20, window_start: new Date().toISOString() });
+
+    const response = await analyseRequest({ ip, cookies: { deal_anon_token: newToken() } });
+    expect(response.status).toBe(429);
+    const body = (await response.json()) as { error: string; reason: string; paywall?: boolean };
+    expect(body.reason).toBe("rate_limited");
+    expect(body.paywall).toBeUndefined();
+    expect(body.error).toContain("Trop d'analyses ont été lancées depuis ton réseau");
+    expect(body.error).not.toContain("Tu as utilisé ton analyse gratuite");
+    expect(model.extractDeal).not.toHaveBeenCalled();
+  });
+
+  it("un client payant n'est jamais freiné par l'IP de son voisin", async () => {
+    const ip = testIp();
+    usedIps.push(ip);
+    await insert("usage_guard", { ip_hash: hashIp(`free-analysis:${ip}`), count: 50, window_start: new Date().toISOString() });
+
+    const u = await user();
+    await insert("credits", { user_id: u.id, balance: 2, plan: "pack" });
+    model.extractDeal.mockResolvedValue(fakeExtraction());
+
+    const response = await analyseRequest({ ip, cookies: { sb_access_token: u.token } });
+    expect(response.status).toBe(200);
+    expect(await balanceOf(u.id)).toBe(1);
   });
 
   it("utilisateur connecté sans crédit : 402 et aucun appel au modèle", async () => {

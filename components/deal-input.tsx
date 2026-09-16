@@ -23,7 +23,7 @@ type Mode = "text" | FileKind;
 type AnalysisMeta = { latency_ms: number; confidence: string; score_band: string; has_price: boolean };
 type Outcome =
   | { ok: true; analysisId: string }
-  | { ok: false; message: string; paywall: boolean };
+  | { ok: false; message: string; paywall: boolean; signIn: boolean };
 
 class FlowError extends Error {
   constructor(
@@ -82,7 +82,7 @@ export function DealInput() {
     pdf: null,
   });
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState<{ message: string; paywall: boolean } | null>(null);
+  const [notice, setNotice] = useState<{ message: string; paywall: boolean; signIn: boolean } | null>(null);
   const outcomeRef = useRef<Outcome | null>(null);
   const stepsDoneRef = useRef(false);
   const startedRef = useRef<Record<Mode, boolean>>({ text: false, photo: false, pdf: false });
@@ -121,7 +121,7 @@ export function DealInput() {
     if (outcome.ok) {
       router.push(`/analyse/resultat/${outcome.analysisId}`);
     } else {
-      setNotice({ message: outcome.message, paywall: outcome.paywall });
+      setNotice({ message: outcome.message, paywall: outcome.paywall, signIn: outcome.signIn });
       setLoading(false);
     }
   }, [router]);
@@ -154,7 +154,7 @@ export function DealInput() {
         outcomeRef.current = { ok: true, analysisId };
       } else {
         track(ANALYTICS_EVENTS.analysisFailed, { reason: "reponse_invalide" });
-        outcomeRef.current = { ok: false, message: GENERIC_ERROR, paywall: false };
+        outcomeRef.current = { ok: false, message: GENERIC_ERROR, paywall: false, signIn: false };
       }
     } catch (caught) {
       const failure =
@@ -163,7 +163,13 @@ export function DealInput() {
           : { ok: false as const, message: GENERIC_ERROR, paywall: false, reason: "reseau" };
       track(ANALYTICS_EVENTS.analysisFailed, { reason: failure.reason });
       if (failure.reason === "free_used") track(ANALYTICS_EVENTS.secondAnalysisAttempt, { method });
-      outcomeRef.current = { ok: false, message: failure.message, paywall: failure.paywall };
+      outcomeRef.current = {
+        ok: false,
+        message: failure.message,
+        paywall: failure.paywall,
+        // Freinage réseau : le message invite à se connecter, pas à payer.
+        signIn: failure.reason === "rate_limited",
+      };
     }
     finish();
   }
@@ -235,6 +241,13 @@ export function DealInput() {
       {notice ? (
         <div role="alert" className="flex flex-col gap-2 text-sm font-medium text-red-700">
           <p>{notice.message}</p>
+          {notice.signIn ? (
+            <p>
+              <Link href="/connexion?next=%2Fanalyse" className="font-semibold text-neutral-950 underline">
+                Me connecter
+              </Link>
+            </p>
+          ) : null}
           {notice.paywall ? (
             <p className="flex gap-4">
               <Link href="/offres" className="font-semibold text-neutral-950 underline">
