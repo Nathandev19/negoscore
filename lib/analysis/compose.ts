@@ -1,4 +1,5 @@
 import { evaluability, incompleteRequestMessage } from "@/lib/analysis/evaluability";
+import { normalizeDeal } from "@/lib/analysis/normalize";
 import { computeEscalation } from "@/lib/legal/escalate";
 import { computeFrLegal } from "@/lib/legal/fr";
 import { PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
@@ -19,7 +20,8 @@ type ComposeOptions = { extraAssumptions?: string[] };
 // Assemble la sortie du modèle et les calculs déterministes en une analyse
 // conforme au schéma complet. Tous les montants viennent du moteur de tarifs.
 export function composeAnalysis(extraction: Extraction, options: ComposeOptions = {}): Analysis {
-  const { deal } = extraction;
+  // Deal mis en cohérence avant tout calcul, et c'est lui qui est enregistré.
+  const deal = normalizeDeal(extraction.deal);
   const state = evaluability(deal);
   const extraAssumptions = options.extraAssumptions ?? [];
   const computed = computeEstimate(deal);
