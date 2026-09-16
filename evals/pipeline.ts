@@ -23,7 +23,7 @@ async function main() {
     writeFileSync(path.join(outDir, `${name}.json`), `${JSON.stringify({ analysis }, null, 2)}\n`);
     const e = analysis.estimate;
     console.log(
-      `${name} — ${result.latencyMs} ms, ${result.costEur.toFixed(6)} €, offre ${analysis.deal.payment.amount_eur ?? "—"} €, fourchette ${e.total_low ?? "—"}–${e.total_high ?? "—"} €, score ${analysis.score.value}, confiance ${analysis.confidence}`,
+      `${name} — ${result.latencyMs} ms, ${result.costEur.toFixed(6)} €, offre ${analysis.deal.payment.amount_eur ?? "—"} €, fourchette ${e.total_low ?? "—"}–${e.total_high ?? "—"} €, score ${analysis.score?.value ?? analysis.evaluability}, confiance ${analysis.confidence}`,
     );
   }
 }

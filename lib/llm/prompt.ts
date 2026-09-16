@@ -24,10 +24,11 @@ export const PRICE_PLACEHOLDER = "{{CONTRE_OFFRE}}";
 
 // Ce que le modèle a le droit de produire : le schéma complet moins tout ce
 // qui est calculé par le code (chiffrage, score, couche légale, escalade,
-// montants de négociation et de contre-offre, version du schéma).
+// montants de négociation et de contre-offre, version du schéma, évaluabilité).
 export const extractionSchema = analysisSchema
   .omit({
     schema_version: true,
+    evaluability: true,
     estimate: true,
     score: true,
     fr_legal: true,

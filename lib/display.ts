@@ -5,7 +5,7 @@ import type { Analysis } from "@/lib/schema";
 // traduire et formater ce que contient l'analyse.
 
 type Deal = Analysis["deal"];
-type Band = Analysis["score"]["band"];
+type Band = NonNullable<Analysis["score"]>["band"];
 type Severity = Analysis["red_flags"][number]["severity"];
 
 // Les montants passent par le formateur unique de lib/money.ts.

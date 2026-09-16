@@ -3,10 +3,16 @@ import { Section } from "@/components/result/section";
 import { formatEurRange } from "@/lib/display";
 import type { Analysis } from "@/lib/schema";
 
-export function CounterOffer({ offer }: { offer: Analysis["counter_offer"] }) {
+export function CounterOffer({
+  offer,
+  title = "Ta contre-offre chiffrée",
+}: {
+  offer: Analysis["counter_offer"];
+  title?: string;
+}) {
   const amount = formatEurRange(offer.amount_low, offer.amount_high);
   return (
-    <Section title="Ta contre-offre chiffrée">
+    <Section title={title}>
       <div className="flex flex-col gap-3 rounded-xl border bg-white p-4">
         {amount ? <p className="text-4xl font-black tracking-tight">{amount}</p> : null}
         <ul className="list-disc pl-5 text-base">

@@ -3,7 +3,7 @@ import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 
 type ScoreCardProps = {
-  score: Analysis["score"];
+  score: NonNullable<Analysis["score"]>;
   confidence: Analysis["confidence"];
 };
 

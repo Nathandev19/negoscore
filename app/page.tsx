@@ -60,7 +60,7 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="flex flex-col gap-3">
-                <ScoreCard score={score} confidence={confidence} />
+                {score ? <ScoreCard score={score} confidence={confidence} /> : null}
                 {total ? (
                   <div className="rounded-xl border bg-white p-4">
                     <p className="text-sm text-neutral-600">Ce que ça vaut vraiment</p>

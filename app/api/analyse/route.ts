@@ -193,7 +193,7 @@ export async function POST(request: Request) {
       prompt_version: PROMPT_VERSION,
       rate_table_version: analysis.estimate.rate_table_version,
       payload: analysis,
-      score: analysis.score.value,
+      score: analysis.score?.value ?? null,
       confidence: analysis.confidence,
       cost_cents: Number((result.costEur * 100).toFixed(4)),
       latency_ms: result.latencyMs,
@@ -224,7 +224,8 @@ export async function POST(request: Request) {
         meta: {
           latency_ms: result.latencyMs,
           confidence: analysis.confidence,
-          score_band: analysis.score.band,
+          // Sans verdict, la bande est remplacée par l'état : « unpriced » ou « incomplete ».
+          score_band: analysis.score?.band ?? analysis.evaluability,
           has_price: analysis.deal.payment.amount_eur !== null,
         },
       },

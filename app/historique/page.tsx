@@ -12,7 +12,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type Row = { id: string; created_at: string; score: number | null; amount: number | null };
+type Row = {
+  id: string;
+  created_at: string;
+  score: number | null;
+  amount: number | null;
+  evaluability: string | null;
+};
+
+// Analyse sans score : on dit pourquoi plutôt que d'afficher « —/100 ».
+const NO_SCORE_LABEL: Record<string, string> = {
+  unpriced: "À chiffrer",
+  incomplete: "Incomplète",
+};
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
@@ -25,7 +37,7 @@ export default async function HistoryPage() {
   const rows = await selectRowsAsUser<Row>(
     token,
     "analyses",
-    "select=id,created_at,score,amount:payload->deal->payment->amount_eur&order=created_at.desc&limit=100",
+    "select=id,created_at,score,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability&order=created_at.desc&limit=100",
   );
 
   return (
@@ -48,7 +60,11 @@ export default async function HistoryPage() {
                       {typeof row.amount === "number" ? `Offre : ${formatEur(row.amount)}` : "Montant non précisé"}
                     </span>
                   </span>
-                  <span className="text-2xl font-black">{row.score ?? "—"}<span className="text-sm font-medium text-neutral-500">/100</span></span>
+                  {row.score !== null ? (
+                    <span className="text-2xl font-black">{row.score}<span className="text-sm font-medium text-neutral-500">/100</span></span>
+                  ) : (
+                    <span className="text-sm font-semibold text-neutral-700">{NO_SCORE_LABEL[row.evaluability ?? ""] ?? "—"}</span>
+                  )}
                 </Link>
               </li>
             ))}

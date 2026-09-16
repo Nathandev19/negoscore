@@ -23,9 +23,9 @@ function Placeholder({ lines }: { lines: number }) {
   );
 }
 
-export function LockedCounterOfferPlaceholder() {
+export function LockedCounterOfferPlaceholder({ title = "Ta contre-offre chiffrée" }: { title?: string }) {
   return (
-    <Section title="Ta contre-offre chiffrée">
+    <Section title={title}>
       <Placeholder lines={4} />
     </Section>
   );

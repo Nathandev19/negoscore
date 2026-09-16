@@ -2,7 +2,8 @@ import type { Analysis } from "@/lib/schema";
 
 type Deal = Analysis["deal"];
 type Estimate = Analysis["estimate"];
-type Score = Analysis["score"];
+// Le score calculé existe toujours ; c'est l'analyse qui peut ne pas en porter.
+type Score = NonNullable<Analysis["score"]>;
 
 // Score déterministe sur 100.
 // Base 50, puis ajustements additifs, puis borne entre 0 et 100.

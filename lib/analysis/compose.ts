@@ -1,3 +1,4 @@
+import { evaluability, incompleteRequestMessage } from "@/lib/analysis/evaluability";
 import { computeEscalation } from "@/lib/legal/escalate";
 import { computeFrLegal } from "@/lib/legal/fr";
 import { PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
@@ -6,7 +7,12 @@ import { computeEstimate, isFarAboveOffer } from "@/lib/rates/engine";
 import { computeScore } from "@/lib/rates/score";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 
-export const SCHEMA_VERSION = "1.0";
+export const SCHEMA_VERSION = "1.1";
+
+export const UNPRICED_ASSUMPTION =
+  "Estimation indicative : l'offre ne précise pas de rémunération. Ces montants sont des références de marché à confirmer avec la marque, pas un avis sur l'offre.";
+export const INCOMPLETE_ASSUMPTION =
+  "Pas d'estimation : l'offre ne dit pas assez précisément ce qui est demandé pour être chiffrée.";
 
 type ComposeOptions = { extraAssumptions?: string[] };
 
@@ -14,21 +20,45 @@ type ComposeOptions = { extraAssumptions?: string[] };
 // conforme au schéma complet. Tous les montants viennent du moteur de tarifs.
 export function composeAnalysis(extraction: Extraction, options: ComposeOptions = {}): Analysis {
   const { deal } = extraction;
+  const state = evaluability(deal);
+  const extraAssumptions = options.extraAssumptions ?? [];
   const computed = computeEstimate(deal);
-  const estimate: Analysis["estimate"] = {
-    ...computed,
-    lines: computed.lines.map((line) => ({
-      label: line.label,
-      type: line.type,
-      low: line.low,
-      high: line.high,
-      eur_low: line.eur_low,
-      eur_high: line.eur_high,
-    })),
-    assumptions: [...(options.extraAssumptions ?? []), ...computed.assumptions],
-  };
 
-  const negotiate = mergeNegotiate(extraction.negotiate, computed.lines);
+  // « incomplete » : on ne sait pas ce qui est livré ni ce que la marque en
+  // fera. Toute valeur serait inventée, donc l'estimation est vide (bornes à
+  // null, aucune ligne) et le score vaut null, plutôt qu'un 50 par défaut.
+  // Le moteur n'est pas modifié : on ne garde simplement pas son résultat.
+  const lines = state === "incomplete" ? [] : computed.lines;
+  const estimate: Analysis["estimate"] =
+    state === "incomplete"
+      ? {
+          base_low: null,
+          base_high: null,
+          lines: [],
+          total_low: null,
+          total_high: null,
+          assumptions: [...extraAssumptions, INCOMPLETE_ASSUMPTION],
+          rate_table_version: computed.rate_table_version,
+        }
+      : {
+          ...computed,
+          lines: computed.lines.map((line) => ({
+            label: line.label,
+            type: line.type,
+            low: line.low,
+            high: line.high,
+            eur_low: line.eur_low,
+            eur_high: line.eur_high,
+          })),
+          // « unpriced » : l'estimation reste un repère utile, marqué indicatif.
+          assumptions: [
+            ...extraAssumptions,
+            ...(state === "unpriced" ? [UNPRICED_ASSUMPTION] : []),
+            ...computed.assumptions,
+          ],
+        };
+
+  const negotiate = mergeNegotiate(extraction.negotiate, lines);
 
   // Sans montant proposé, on ne peut pas être confiant, quoi qu'en dise le modèle.
   // Estimation très au-dessus de l'offre : la confiance ne peut pas rester haute.
@@ -41,11 +71,13 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
 
   const analysis: Analysis = {
     schema_version: SCHEMA_VERSION,
+    evaluability: state,
     language: extraction.language,
     confidence,
     input_quality: extraction.input_quality,
     deal,
-    score: computeScore(deal, estimate),
+    // Un verdict de qualité seulement quand l'offre est complète.
+    score: state === "complete" ? computeScore(deal, estimate) : null,
     good_points: extraction.good_points,
     negotiate,
     red_flags: extraction.red_flags,
@@ -59,7 +91,11 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
     },
     ready_to_send_message: {
       tone: extraction.ready_to_send_message.tone,
-      text: fillPrice(extraction.ready_to_send_message.text, extraction.language, estimate),
+      // Offre incomplète : aucun tarif annoncé, le message demande ce qui manque.
+      text:
+        state === "incomplete"
+          ? incompleteRequestMessage(deal, extraction.language)
+          : fillPrice(extraction.ready_to_send_message.text, extraction.language, estimate),
     },
   };
 

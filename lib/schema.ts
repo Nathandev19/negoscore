@@ -2,6 +2,10 @@ import { z } from "zod";
 
 export const analysisSchema = z.object({
   schema_version: z.string(),
+  // Ajouté en 1.1 (voir lib/analysis/evaluability.ts). Une analyse 1.0 n'a pas
+  // ce champ : elle a été produite quand toute offre recevait un score, elle
+  // est donc relue comme « complete » et s'affiche comme avant.
+  evaluability: z.enum(["complete", "unpriced", "incomplete"]).default("complete"),
   language: z.enum(["fr", "en"]),
   confidence: z.enum(["high", "medium", "low"]),
   input_quality: z.object({
@@ -52,10 +56,14 @@ export const analysisSchema = z.object({
     termination: z.string().nullable(),
     governing_law: z.string().nullable(),
   }),
-  score: z.object({
-    value: z.number(),
-    band: z.enum(["bad", "weak", "fair", "good", "excellent"]),
-  }),
+  // null quand l'offre n'est pas évaluable (« unpriced » ou « incomplete ») :
+  // aucun verdict de qualité plutôt qu'un score par défaut.
+  score: z
+    .object({
+      value: z.number(),
+      band: z.enum(["bad", "weak", "fair", "good", "excellent"]),
+    })
+    .nullable(),
   good_points: z.array(z.object({ label: z.string(), why: z.string() })),
   negotiate: z.array(
     z.object({
