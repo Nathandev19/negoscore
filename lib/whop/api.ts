@@ -2,6 +2,19 @@
 
 const API_BASE = "https://api.whop.com/api/v1";
 const CHECKOUT_BASE = "https://whop.com";
+// Whop versionne son API par date. Sans cet en-tête, les requêtes repartent
+// dans les formes du 2025-01-01, où `cancellation_mode` n'existe pas : la
+// résiliation devient immédiate au lieu de prendre effet en fin de période.
+// Docs : https://docs.whop.com/api-reference/beta/overview
+const API_VERSION_DATE = "2026-08-21-1";
+
+function whopHeaders(apiKey: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "Api-Version-Date": API_VERSION_DATE,
+  };
+}
 
 export type PlanKey = "pack" | "pro";
 
@@ -38,7 +51,7 @@ export async function createCheckoutUrl(options: {
   try {
     const response = await fetch(`${API_BASE}/checkout_configurations`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: whopHeaders(apiKey),
       body: JSON.stringify({
         plan_id: planId(options.plan),
         metadata: options.metadata,
@@ -90,7 +103,7 @@ async function membershipRequest(path: string, init: RequestInit): Promise<WhopM
   if (!apiKey) throw new WhopConfigError("Clé API Whop absente");
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", ...init.headers },
+    headers: { ...whopHeaders(apiKey), ...init.headers },
     cache: "no-store",
   });
   if (!response.ok) {

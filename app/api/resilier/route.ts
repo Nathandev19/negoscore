@@ -36,7 +36,16 @@ export async function POST(request: Request) {
     if (!membership) return redirect("/resilier?erreur=whop");
 
     const endsAt = membership.renewal_period_end ?? credits.period_end;
-    console.log(JSON.stringify({ event: "subscription_cancelled", ends_at: endsAt, status: membership.status }));
+    console.log(
+      JSON.stringify({
+        event: "subscription_cancelled",
+        ends_at: endsAt,
+        status: membership.status,
+        // Doit valoir true : sinon Whop a résilié immédiatement et l'accès
+        // payé est perdu, contrairement à ce qu'annoncent la page et l'email.
+        cancel_at_period_end: membership.cancel_at_period_end,
+      }),
+    );
 
     // Confirmation écrite. Un échec d'email ne remet pas la résiliation en cause.
     if (user.email) {
