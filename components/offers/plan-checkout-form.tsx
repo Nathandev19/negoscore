@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { track } from "@/lib/analytics/client";
+import { useEffect, useRef, useState } from "react";
+import { analyticsDistinctId, track } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import Link from "next/link";
 import { CONSENT_LINK_LABEL, CONSENT_TEXT } from "@/lib/billing/consent";
@@ -26,11 +26,21 @@ function consentWithLink() {
 // serveur, avec la date, par /api/checkout.
 export function PlanCheckoutForm({ plan, label }: { plan: "pack" | "pro"; label: string }) {
   const [accepted, setAccepted] = useState(false);
+  // Identifiant anonyme de la mesure d'audience, écrit directement dans le
+  // champ caché : vide si la mesure est désactivée (DNT, pas de clé).
+  const distinctIdField = useRef<HTMLInputElement>(null);
   const id = `consent-${plan}`;
 
+  function fillDistinctId() {
+    if (distinctIdField.current) distinctIdField.current.value = analyticsDistinctId() ?? "";
+  }
+
+  useEffect(fillDistinctId, []);
+
   return (
-    <form action="/api/checkout" method="post" className="flex flex-col gap-3">
+    <form action="/api/checkout" method="post" className="flex flex-col gap-3" onSubmit={fillDistinctId}>
       <input type="hidden" name="plan" value={plan} />
+      <input type="hidden" name="ph_distinct_id" ref={distinctIdField} defaultValue="" />
       <label htmlFor={id} className="flex items-start gap-2 text-xs text-neutral-700">
         <input
           id={id}

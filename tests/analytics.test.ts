@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
+import { isCredited } from "@/components/merci/credits-waiter";
 
 // posthog-js est remplacé : on vérifie ce qui lui est réellement passé.
-const posthog = vi.hoisted(() => ({ init: vi.fn(), capture: vi.fn() }));
+const posthog = vi.hoisted(() => ({ init: vi.fn(), capture: vi.fn(), get_distinct_id: vi.fn(() => "01924f3a-anon-id") }));
 vi.mock("posthog-js", () => ({ default: posthog }));
 
 const OFFER = "On te propose 300 € pour 2 vidéos TikTok, marque Ondulia, lea@exemple.fr";
@@ -102,5 +104,48 @@ describe("mesure d'audience", () => {
       "checkout_started",
       "purchase_completed",
     ]);
+  });
+});
+
+describe("identifiant anonyme transmis au paiement", () => {
+  it("accepte un identifiant PostHog, refuse le reste", () => {
+    expect(sanitizeDistinctId("01924f3a-7c21-7a4e-8f3e-anon_id")).toBe("01924f3a-7c21-7a4e-8f3e-anon_id");
+    expect(sanitizeDistinctId("  01924f3a  ")).toBe("01924f3a");
+    expect(sanitizeDistinctId("a".repeat(200))).toHaveLength(200);
+    expect(sanitizeDistinctId("a".repeat(201))).toBeNull();
+    expect(sanitizeDistinctId("lea@exemple.fr")).toBeNull();
+    expect(sanitizeDistinctId("id avec espace")).toBeNull();
+    expect(sanitizeDistinctId("<script>")).toBeNull();
+    expect(sanitizeDistinctId("")).toBeNull();
+    expect(sanitizeDistinctId(null)).toBeNull();
+    expect(sanitizeDistinctId(undefined)).toBeNull();
+    expect(sanitizeDistinctId(42)).toBeNull();
+  });
+
+  it("expose l'identifiant du navigateur une fois la mesure initialisée", async () => {
+    const { initAnalytics, analyticsDistinctId } = await freshModule();
+    expect(analyticsDistinctId()).toBeNull();
+    initAnalytics();
+    expect(analyticsDistinctId()).toBe("01924f3a-anon-id");
+  });
+
+  it("ne renvoie rien quand la mesure est désactivée", async () => {
+    vi.stubGlobal("navigator", { doNotTrack: "1" });
+    const { initAnalytics, analyticsDistinctId } = await freshModule();
+    initAnalytics();
+    expect(analyticsDistinctId()).toBeNull();
+  });
+});
+
+describe("page Merci : compte déjà crédité", () => {
+  it("considère le compte crédité dès que le solde ou le plan le montrent", () => {
+    expect(isCredited({ plan: "pack", balance: 3, period_end: null })).toBe(true);
+    expect(isCredited({ plan: "pro", balance: 0, period_end: "2026-10-16T00:00:00.000Z" })).toBe(true);
+    expect(isCredited({ plan: "free", balance: 2, period_end: null })).toBe(true);
+  });
+
+  it("reste en attente tant que le compte est à zéro", () => {
+    expect(isCredited({ plan: "free", balance: 0, period_end: null })).toBe(false);
+    expect(isCredited(null)).toBe(false);
   });
 });

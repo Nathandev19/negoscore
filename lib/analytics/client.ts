@@ -48,3 +48,14 @@ export function track(event: AnalyticsEvent, properties: AnalyticsProperties = {
   if (!ready) return;
   posthog.capture(event, properties);
 }
+
+// Identifiant anonyme du navigateur, à transmettre au paiement pour relier
+// l'achat au parcours. null quand la mesure est désactivée (DNT, pas de clé).
+export function analyticsDistinctId(): string | null {
+  if (!ready) return null;
+  try {
+    return posthog.get_distinct_id() || null;
+  } catch {
+    return null;
+  }
+}

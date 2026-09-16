@@ -1,3 +1,4 @@
+import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/billing/consent";
 import { insertRow } from "@/lib/supabase/server";
@@ -24,13 +25,15 @@ export async function POST(request: Request) {
   if (!user) return redirect(`/connexion?next=${encodeURIComponent("/offres")}`);
   if (consent !== "on") return redirect(`/offres?erreur=consentement&offre=${plan}`);
 
+  // Identifiant de mesure d'audience : transmis s'il est propre, ignoré sinon.
+  const analyticsId = sanitizeDistinctId(form?.get("ph_distinct_id"));
   const origin = configuredSiteUrl() ?? originFromHeaders(request.headers);
   const redirectUrl = `${origin}/merci?offre=${plan}`;
 
   try {
     const checkout = await createCheckoutUrl({
       plan: plan as PlanKey,
-      metadata: { user_id: user.id, plan },
+      metadata: { user_id: user.id, plan, ...(analyticsId ? { ph_distinct_id: analyticsId } : {}) },
       redirectUrl,
     });
     await insertRow("checkout_consents", {
@@ -42,7 +45,12 @@ export async function POST(request: Request) {
       checkout_configuration_id: checkout?.checkoutConfigurationId ?? null,
     });
     console.log(
-      JSON.stringify({ event: "checkout_started", plan, attached: checkout !== null ? "metadata" : "email_fallback" }),
+      JSON.stringify({
+        event: "checkout_started",
+        plan,
+        attached: checkout !== null ? "metadata" : "email_fallback",
+        analytics_id: analyticsId !== null,
+      }),
     );
     // Repli : lien de paiement simple, le webhook rapprochera par l'email.
     return redirect(checkout?.url ?? fallbackCheckoutUrl(plan as PlanKey));

@@ -1,3 +1,4 @@
+import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
 import { PACK_ANALYSES } from "@/lib/billing/plans";
 import { planKeyFromId, type PlanKey } from "@/lib/whop/api";
 import { adjustInteger, insertIfAbsent, selectRows, updateRows } from "@/lib/supabase/server";
@@ -11,6 +12,7 @@ export type EventOutcome = {
   reason: string;
   userId?: string;
   userEmail?: string | null;
+  analyticsId?: string | null;
   plan?: PlanKey;
   amount?: number | null;
   currency?: string | null;
@@ -76,6 +78,8 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   const user = await resolveUser(source);
   if (!user) return { handled: false, reason: "aucun compte rattaché à ce paiement" };
   const current = await credits(user.id);
+  // Identifiant anonyme posé au checkout : il relie l'achat au parcours mesuré.
+  const analyticsId = sanitizeDistinctId(record(source.metadata).ph_distinct_id);
 
   if (type === "payment.succeeded" && plan === "pack") {
     // Le pack s'ajoute au solde existant.
@@ -87,6 +91,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       reason: `+${PACK_ANALYSES} analyses (rattachement par ${user.how})`,
       userId: user.id,
       userEmail: user.email,
+      analyticsId,
       plan,
       amount: total,
       currency: text(source.currency),
@@ -101,6 +106,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       reason: `paiement Pro enregistré (rattachement par ${user.how})`,
       userId: user.id,
       userEmail: user.email,
+      analyticsId,
       plan,
       amount: total,
       currency: text(source.currency),

@@ -64,11 +64,14 @@ export async function POST(request: Request) {
     );
 
     if (outcome.handled && outcome.userId && outcome.plan && parsed.type === "payment.succeeded") {
-      // Revenu mesuré côté serveur, jamais depuis le navigateur.
-      await captureServerEvent(ANALYTICS_EVENTS.purchaseCompleted, outcome.userId, {
+      // Revenu mesuré côté serveur, jamais depuis le navigateur. L'identifiant
+      // anonyme du navigateur prime : sans lui, l'achat ne rejoindrait pas le
+      // parcours mesuré. À défaut, l'identifiant de compte sert de repli.
+      await captureServerEvent(ANALYTICS_EVENTS.purchaseCompleted, outcome.analyticsId ?? outcome.userId, {
         plan: outcome.plan,
         amount: outcome.amount ?? null,
         currency: outcome.currency ?? null,
+        attribution: outcome.analyticsId ? "browser" : "account",
       });
 
       // Confirmation d'achat sur support durable : troisième condition de

@@ -133,7 +133,39 @@ describe.skipIf(!ready)("webhook Whop", () => {
       plan: "pack",
       amount: 4.99,
       currency: "eur",
+      attribution: "account",
     });
+  });
+
+  it("rattache l'achat au parcours quand le navigateur a transmis son identifiant", async () => {
+    analytics.capture.mockClear();
+    const buyer = await user("free");
+    const distinctId = "01924f3a-7c21-7a4e-8f3e-anon_id";
+    await send(
+      envelope("payment.succeeded", payment(PACK, { user_id: buyer.id, ph_distinct_id: distinctId })),
+    );
+
+    // distinct_id du navigateur, pas celui du compte : le funnel se referme.
+    expect(analytics.capture).toHaveBeenCalledWith("purchase_completed", distinctId, {
+      plan: "pack",
+      amount: 4.99,
+      currency: "eur",
+      attribution: "browser",
+    });
+    expect(await credits(buyer.id)).toMatchObject({ balance: 3, plan: "pack" });
+  });
+
+  it("ignore un identifiant de mesure douteux et retombe sur le compte", async () => {
+    analytics.capture.mockClear();
+    const buyer = await user("free");
+    await send(
+      envelope("payment.succeeded", payment(PACK, { user_id: buyer.id, ph_distinct_id: "lea@exemple.fr" })),
+    );
+    expect(analytics.capture).toHaveBeenCalledWith(
+      "purchase_completed",
+      buyer.id,
+      expect.objectContaining({ attribution: "account" }),
+    );
   });
 
   it("rattache par l'email quand les metadata manquent", async () => {

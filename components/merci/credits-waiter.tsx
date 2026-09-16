@@ -21,13 +21,22 @@ function describe(credits: Credits): string {
   return `${count} analyse${count > 1 ? "s" : ""} disponible${count > 1 ? "s" : ""}.`;
 }
 
+// Un compte déjà crédité l'est parfois avant même l'ouverture de la page :
+// le webhook est plus rapide que le retour du navigateur. Dans ce cas il n'y
+// a aucune augmentation à observer, seulement un solde à afficher.
+export function isCredited(credits: Credits | null): boolean {
+  return credits !== null && (credits.plan !== "free" || credits.balance > 0);
+}
+
 export function CreditsWaiter({ initial }: { initial: Credits | null }) {
-  const [state, setState] = useState<State>({ status: "waiting", credits: initial });
+  const [state, setState] = useState<State>({
+    status: isCredited(initial) ? "credited" : "waiting",
+    credits: initial,
+  });
 
   useEffect(() => {
     let stopped = false;
     const startedAt = Date.now();
-    const before = initial;
 
     async function poll() {
       if (stopped) return;
@@ -35,19 +44,22 @@ export function CreditsWaiter({ initial }: { initial: Credits | null }) {
         const response = await fetch("/api/credits", { cache: "no-store" });
         if (response.ok) {
           const credits = (await response.json()) as Credits;
-          const credited =
-            credits.plan === "pro" || credits.balance > (before?.balance ?? 0) || (before === null && credits.balance > 0);
-          if (credited) {
-            setState({ status: "credited", credits });
-            return;
-          }
-          setState((current) => ({ ...current, credits }));
+          // On continue de relire jusqu'à 30 s pour afficher un solde qui
+          // monte encore, sans jamais repasser en attente.
+          setState((current) => ({
+            status: isCredited(credits) ? "credited" : current.status === "credited" ? "credited" : "waiting",
+            credits,
+          }));
         }
       } catch {
         // on réessaiera au tour suivant
       }
       if (Date.now() - startedAt >= TIMEOUT_MS) {
-        setState((current) => ({ status: "timeout", credits: current.credits }));
+        // Le message de temporisation ne s'affiche jamais sur un solde visible.
+        setState((current) => ({
+          status: current.status === "credited" || isCredited(current.credits) ? "credited" : "timeout",
+          credits: current.credits,
+        }));
         return;
       }
       window.setTimeout(poll, INTERVAL_MS);
