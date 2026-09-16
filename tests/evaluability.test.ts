@@ -377,14 +377,13 @@ describe("CASE F — prix connu, conditions inconnues", () => {
     expect(html).toContain("Montant proposé");
     expect(html).toContain("Le montant proposé est dans notre fourchette.");
     expect(html).toContain("Ce que ça vaut");
+    // Plafonnée à quatre : droits et durée, exclusivité, délai de paiement ;
+    // « Nom de la marque », le territoire et les révisions passent après.
     expect(missingInformation(analysis)).toEqual([
-      "Nom de la marque",
-      "Délai et modalités de paiement",
       "La durée d'utilisation des contenus",
-      "Le territoire de diffusion",
-      "L'existence ou non d'une exclusivité",
       "Qui détient les droits sur les contenus : licence ou cession",
-      "Le nombre de révisions prévues",
+      "L'existence ou non d'une exclusivité",
+      "Délai et modalités de paiement",
     ]);
   });
 
@@ -396,5 +395,47 @@ describe("CASE F — prix connu, conditions inconnues", () => {
     expect(text).not.toMatch(/€|\d/);
     expect(text).not.toContain(PRICE_PLACEHOLDER);
     expect(termsRequestMessage(CASE_F, "en")).toContain("the payment terms");
+  });
+});
+
+describe("mission #018 — licence seule, produits offerts, liste plafonnée", () => {
+  it("« licence » seule ne compte pas ; avec une durée ou un territoire, elle compte", () => {
+    const licence = deal({ ...CASE_F, ip_transfer: "license" });
+    expect(knownTerms(licence)).toEqual([]);
+    const withPayment = deal({ ...licence, payment: { ...licence.payment, terms_days: 30 } });
+    expect(knownTerms(withPayment)).toEqual(["payment_terms"]);
+    expect(evaluability(withPayment)).toBe("terms_unknown");
+    expect(knownTerms(deal({ ...licence, usage: { ...licence.usage, territory: "France" } }))).toEqual(["territory", "ip_transfer"]);
+    expect(knownTerms(deal({ ...licence, usage: { ...licence.usage, duration_months: 6 } }))).toEqual(["duration", "ip_transfer"]);
+    expect(knownTerms(deal({ ...licence, usage: { ...licence.usage, perpetual: true } }))).toEqual(["duration", "ip_transfer"]);
+  });
+
+  it("une cession totale compte toujours", () => {
+    expect(knownTerms(deal({ ...CASE_F, ip_transfer: "full_assignment" }))).toEqual(["ip_transfer"]);
+    const withPayment = deal({ ...CASE_F, ip_transfer: "full_assignment", payment: { ...CASE_F.payment, terms_days: 30 } });
+    expect(evaluability(withPayment)).toBe("complete");
+  });
+
+  it("une offre payée en produits est comparée à la fourchette, en disant que ce ne sont pas des euros", () => {
+    const products = deal({ ...CASE_F, payment: EMPTY_DEAL.payment, in_kind_value_eur: 89 });
+    const analysis = composeAnalysis(extraction(products));
+    expect(analysis.evaluability).toBe("terms_unknown");
+    expect(analysis.estimate.total_low).toBeGreaterThan(89);
+    const html = renderAll(analysis);
+    expect(html).toContain("La valeur des produits offerts est en dessous de notre fourchette. Ce sont des produits, pas de l&#x27;argent.");
+    expect(html).toContain("Produits offerts (valeur, pas de l&#x27;argent)");
+    expect(html).not.toContain("Le montant proposé est");
+  });
+
+  it("au plus quatre éléments : rémunération, droits et durée, exclusivité, délai de paiement", () => {
+    const analysis = composeAnalysis(
+      extraction(CASE_B, {
+        input_quality: {
+          readable: true,
+          missing_critical: ["Nom de la marque", "Délai de paiement", "Exclusivité éventuelle", "Durée des droits", "Budget prévu", "Date de livraison"],
+        },
+      }),
+    );
+    expect(missingInformation(analysis)).toEqual(["Budget prévu", "Durée des droits", "Les contenus attendus : combien, de quel type, sur quelles plateformes", "Exclusivité éventuelle"]);
   });
 });

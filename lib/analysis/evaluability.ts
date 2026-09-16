@@ -55,7 +55,13 @@ function termKnown(deal: Deal, key: TermKey): boolean {
     case "exclusivity":
       return deal.exclusivity.present;
     case "ip_transfer":
-      return deal.ip_transfer !== "none" && deal.ip_transfer !== "unclear";
+      // Une cession totale est une clause lourde et explicite : elle compte.
+      // « Licence » ne compte que si l'on sait ce qu'elle couvre (durée ou
+      // territoire) : le modèle la coche dès que la marque réutilise le contenu,
+      // seule elle ne dit donc rien des conditions.
+      if (deal.ip_transfer === "full_assignment") return true;
+      if (deal.ip_transfer !== "license") return false;
+      return deal.usage.duration_months !== null || deal.usage.perpetual || deal.usage.territory !== null;
     case "revisions":
       return deal.revisions.count !== null || deal.revisions.unlimited;
   }
@@ -123,9 +129,46 @@ const TERM_HINT: Record<TermKey, RegExp> = {
   revisions: /r[ée]vision|retours?\b|modification/i,
 };
 
-// Liste affichée quand l'offre n'est pas évaluable : d'abord ce que le modèle a
-// relevé, puis les manques déterministes qu'il n'a pas signalés. Conditions
-// inconnues : les conditions ; sinon le périmètre et le prix.
+export const MAX_MISSING_ITEMS = 4;
+
+// Rang d'importance d'un manque, du plus au moins important : rémunération,
+// droits d'usage et durée, exclusivité, délai de paiement, puis le reste.
+// Les contenus attendus sont rangés avec les droits d'usage : sans eux, le
+// périmètre de l'offre n'est pas connu.
+const PRIORITY = { price: 0, usage: 1, exclusivity: 2, payment_terms: 3, other: 4 } as const;
+
+const MISSING_RANK: Record<MissingKey, number> = {
+  price: PRIORITY.price,
+  usage: PRIORITY.usage,
+  deliverables: PRIORITY.usage,
+};
+
+const TERM_RANK: Record<TermKey, number> = {
+  duration: PRIORITY.usage,
+  ip_transfer: PRIORITY.usage,
+  exclusivity: PRIORITY.exclusivity,
+  payment_terms: PRIORITY.payment_terms,
+  territory: PRIORITY.other,
+  revisions: PRIORITY.other,
+};
+
+// Rang d'un élément écrit librement par le modèle, lu dans ses mots. Le délai
+// de paiement est testé avant la rémunération : « modalités de paiement » ne
+// parle pas du montant.
+function modelItemRank(item: string): number {
+  if (/exclusivit/i.test(item)) return PRIORITY.exclusivity;
+  if (/(d[ée]lai|modalit[ée]s|conditions?|date).{0,20}(paiement|r[èe]glement)|facturation/i.test(item)) {
+    return PRIORITY.payment_terms;
+  }
+  if (/r[ée]mun[ée]ration|budget|prix|montant|tarif|cachet|€|paiement/i.test(item)) return PRIORITY.price;
+  if (/droit|usage|utilisation|dur[ée]e|licence|cession|diffusion|livrable|contenus? attendus?/i.test(item)) return PRIORITY.usage;
+  return PRIORITY.other;
+}
+
+// Liste affichée quand l'offre n'est pas évaluable : ce que le modèle a relevé
+// et les manques déterministes qu'il n'a pas signalés (conditions inconnues :
+// les conditions ; sinon le périmètre et le prix). Au plus quatre éléments,
+// les plus importants d'abord ; à importance égale, ceux du modèle d'abord.
 export function missingInformation(analysis: Pick<Analysis, "deal" | "input_quality" | "evaluability">): string[] {
   const fromModel = analysis.input_quality.missing_critical.map((item) => item.trim()).filter(Boolean);
   const notFlagged = (hint: RegExp) => !fromModel.some((item) => hint.test(item));
@@ -133,11 +176,19 @@ export function missingInformation(analysis: Pick<Analysis, "deal" | "input_qual
     analysis.evaluability === "terms_unknown"
       ? missingTermKeys(analysis.deal)
           .filter((key) => notFlagged(TERM_HINT[key]))
-          .map((key) => TERM_LABEL[key])
+          .map((key) => ({ label: TERM_LABEL[key], rank: TERM_RANK[key] }))
       : missingKeys(analysis.deal)
           .filter((key) => notFlagged(MISSING_HINT[key]))
-          .map((key) => MISSING_LABEL[key]);
-  return [...fromModel, ...added];
+          .map((key) => ({ label: MISSING_LABEL[key], rank: MISSING_RANK[key] }));
+  const candidates = [
+    ...fromModel.map((label) => ({ label, rank: modelItemRank(label), source: 0 })),
+    ...added.map((item) => ({ ...item, source: 1 })),
+  ];
+  // Tri stable : l'ordre d'origine départage le reste.
+  return candidates
+    .sort((a, b) => a.rank - b.rank || a.source - b.source)
+    .slice(0, MAX_MISSING_ITEMS)
+    .map((item) => item.label);
 }
 
 const REQUEST_ITEM: Record<Analysis["language"], Record<MissingKey, string>> = {

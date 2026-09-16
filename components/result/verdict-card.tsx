@@ -62,12 +62,12 @@ export function IncompleteCard({ missing }: { missing: string[] }) {
   );
 }
 
-// Position du montant proposé par rapport à la fourchette : une comparaison,
-// pas un jugement sur le deal.
-function offerPosition(amount: number, low: number | null, high: number | null): string | null {
+// Position d'une valeur par rapport à la fourchette : une comparaison, pas un
+// jugement sur le deal.
+function position(value: number, low: number | null, high: number | null): string | null {
   if (low === null || high === null) return null;
-  if (amount < low) return "en dessous de notre fourchette";
-  if (amount > high) return "au-dessus de notre fourchette";
+  if (value < low) return "en dessous de notre fourchette";
+  if (value > high) return "au-dessus de notre fourchette";
   return "dans notre fourchette";
 }
 
@@ -81,8 +81,18 @@ export function TermsUnknownCard({
   missing: string[];
 }) {
   const amount = deal.payment.amount_eur;
+  const inKind = deal.in_kind_value_eur;
   const range = formatEurRange(estimate.total_low, estimate.total_high);
-  const position = amount !== null ? offerPosition(amount, estimate.total_low, estimate.total_high) : null;
+  // L'argent est comparé en priorité ; une offre payée en produits est
+  // comparée sur la valeur des produits, en le disant.
+  const compared = amount ?? inKind;
+  const where = compared !== null ? position(compared, estimate.total_low, estimate.total_high) : null;
+  const comparison =
+    where === null
+      ? null
+      : amount !== null
+        ? `Le montant proposé est ${where}.`
+        : `La valeur des produits offerts est ${where}. Ce sont des produits, pas de l'argent.`;
   return (
     <MissingInfoCard
       title="Offre à préciser"
@@ -95,10 +105,11 @@ export function TermsUnknownCard({
             <dt className="text-neutral-600">Montant proposé</dt>
             <dd className="text-right font-semibold">{formatEur(amount)}</dd>
           </div>
-        ) : deal.in_kind_value_eur !== null ? (
+        ) : null}
+        {inKind !== null ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-neutral-600">Produits offerts</dt>
-            <dd className="text-right font-semibold">{formatEur(deal.in_kind_value_eur)}</dd>
+            <dt className="text-neutral-600">Produits offerts (valeur, pas de l&apos;argent)</dt>
+            <dd className="text-right font-semibold">{formatEur(inKind)}</dd>
           </div>
         ) : null}
         {range ? (
@@ -107,7 +118,7 @@ export function TermsUnknownCard({
             <dd className="text-right font-semibold">{range}</dd>
           </div>
         ) : null}
-        {position ? <p className="pt-1 text-neutral-800">Le montant proposé est {position}.</p> : null}
+        {comparison ? <p className="pt-1 text-neutral-800">{comparison}</p> : null}
       </dl>
     </MissingInfoCard>
   );
