@@ -22,6 +22,7 @@ vi.mock("@/lib/email/send", async (importOriginal) => {
 });
 
 const { POST: resilier } = await import("@/app/api/resilier/route");
+const { POST: checkout } = await import("@/app/api/checkout/route");
 
 const PRO = process.env.WHOP_PLAN_PRO ?? "";
 const ready = configured && Boolean(PRO);
@@ -85,6 +86,51 @@ function cancelRequest(accessToken?: string) {
     }),
   );
 }
+
+function checkoutRequest(plan: string, accessToken: string) {
+  const form = new URLSearchParams({ plan, consent: "on" });
+  return checkout(
+    new Request("http://localhost:3000/api/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", cookie: `sb_access_token=${accessToken}` },
+      body: form.toString(),
+    }),
+  );
+}
+
+describe.skipIf(!ready)("second abonnement Pro", () => {
+  it("un abonné Pro actif ne peut pas repayer un abonnement", async () => {
+    const subscriber = await user("pro", 0);
+    const response = await checkoutRequest("pro", subscriber.token);
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/offres?erreur=deja_pro");
+    // Ni configuration de checkout, ni trace de consentement.
+    const consents = await service(`/rest/v1/checkout_consents?user_id=eq.${subscriber.id}&select=id`);
+    expect(consents.body).toEqual([]);
+  });
+
+  it("un abonné Pro actif peut toujours acheter une recharge", async () => {
+    const subscriber = await user("pro", 0);
+    const response = await checkoutRequest("pack", subscriber.token);
+
+    // Le départ vers Whop dépend de l'API : seul compte ici le fait que la
+    // demande n'est pas refusée pour cause d'abonnement en cours.
+    expect(response.headers.get("location")).not.toBe("/offres?erreur=deja_pro");
+    const consents = await service(`/rest/v1/checkout_consents?user_id=eq.${subscriber.id}&select=plan`);
+    expect(consents.body).toEqual([{ plan: "pack" }]);
+  });
+
+  it("un Pro expiré peut reprendre un abonnement", async () => {
+    const subscriber = await user("pro", 0);
+    await service(`/rest/v1/credits?user_id=eq.${subscriber.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ period_end: "2026-09-01T05:37:47.007Z" }),
+    });
+    const response = await checkoutRequest("pro", subscriber.token);
+    expect(response.headers.get("location")).not.toBe("/offres?erreur=deja_pro");
+  });
+});
 
 describe.skipIf(!ready)("résiliation en ligne", () => {
   it("annule à la fin de la période et envoie la confirmation", async () => {

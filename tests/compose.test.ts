@@ -89,6 +89,26 @@ describe("composeAnalysis", () => {
     expect(analysis.ready_to_send_message.text).toContain(`entre ${formatEur(low!)} et ${formatEur(high!)}`);
   });
 
+  it("sépare les milliers dans le message, sur une offre à quatre chiffres", () => {
+    const base = makeExtraction();
+    const analysis = composeAnalysis(
+      makeExtraction({
+        deal: {
+          ...base.deal,
+          deliverables: [{ type: "video", platform: "tiktok", quantity: 4, format: null }],
+          usage: { ...base.deal.usage, paid_ads: true, duration_months: 12, territory: "monde entier" },
+          payment: { ...base.deal.payment, amount_eur: 1500 },
+        },
+      }),
+    );
+    const { total_low: low, total_high: high } = analysis.estimate;
+    expect(low).toBeGreaterThan(999);
+    const text = analysis.ready_to_send_message.text;
+    expect(text).toContain(`entre ${formatEur(low!)} et ${formatEur(high!)}`);
+    // Aucun montant collé : « 1260 » ne doit jamais apparaître tel quel.
+    expect(text).not.toMatch(/\d{4}/);
+  });
+
   it("estimation plus de trois fois au-dessus de l'offre : confiance high ramenée à medium, fourchette intacte", () => {
     const base = makeExtraction();
     const cheap = makeExtraction({

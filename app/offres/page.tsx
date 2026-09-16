@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/lib/auth/viewer";
-import { isProActive, type PlanState } from "@/lib/billing/plan-access";
+import { isCancelled, isProActive, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 import { PLANS } from "@/lib/billing/plans";
 import { selectRows } from "@/lib/supabase/server";
 
@@ -18,7 +18,10 @@ const ERRORS: Record<string, string> = {
   consentement: "Coche la case avant de continuer vers le paiement.",
   offre: "Cette offre n'existe pas.",
   indisponible: "Le paiement n'est pas disponible pour le moment. Réessaie dans quelques minutes.",
+  deja_pro: "Ton abonnement Pro est déjà en cours : inutile de le reprendre.",
 };
+
+const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
 export default async function PlansPage({ searchParams }: PageProps<"/offres">) {
   const params = await searchParams;
@@ -27,9 +30,12 @@ export default async function PlansPage({ searchParams }: PageProps<"/offres">) 
   // Pour un abonné Pro en cours, le Pack n'est pas une offre concurrente :
   // c'est la recharge qui prend le relais quand le quota mensuel est atteint.
   const [credits] = user
-    ? await selectRows<PlanState>("credits", `select=plan,balance,period_end&user_id=eq.${user.id}&limit=1`)
+    ? await selectRows<PlanState>("credits", `select=plan,balance,period_end,cancelled_at&user_id=eq.${user.id}&limit=1`)
     : [];
   const proActive = isProActive(credits ?? null);
+  const proCancelled = proActive && isCancelled(credits ?? null);
+  const proEndsAt = periodEndsAt(credits ?? null);
+  const proEndsAtLabel = proEndsAt ? DATE.format(proEndsAt) : null;
 
   return (
     <>
@@ -49,6 +55,8 @@ export default async function PlansPage({ searchParams }: PageProps<"/offres">) 
           {PLANS.map((plan) => {
             // Même prix, même plan Whop, même parcours : seule la présentation change.
             const asRecharge = proActive && plan.id === "pack";
+            // Abonnement en cours : on ne le revend pas, on dit où il en est.
+            const isCurrentPro = proActive && plan.id === "pro";
             const name = asRecharge ? "Recharge" : plan.name;
             const summary = asRecharge ? "3 analyses supplémentaires" : plan.summary;
             const features = asRecharge
@@ -73,7 +81,24 @@ export default async function PlansPage({ searchParams }: PageProps<"/offres">) 
                   <li key={feature}>{feature}</li>
                 ))}
               </ul>
-              {plan.id === "free" ? (
+              {isCurrentPro ? (
+                <div className="flex flex-col gap-2">
+                  <p className="rounded-xl border border-neutral-300 bg-neutral-50 p-3 text-sm font-medium">
+                    {proCancelled
+                      ? proEndsAtLabel
+                        ? `Ton offre en cours. Elle prend fin le ${proEndsAtLabel}.`
+                        : "Ton offre en cours. Elle prend fin à la fin de la période."
+                      : proEndsAtLabel
+                        ? `Ton offre en cours, jusqu'au ${proEndsAtLabel}.`
+                        : "Ton offre en cours."}
+                  </p>
+                  {proCancelled ? null : (
+                    <Link href="/resilier" className="text-center text-sm text-neutral-600 underline">
+                      Résilier votre contrat
+                    </Link>
+                  )}
+                </div>
+              ) : plan.id === "free" ? (
                 <Button asChild variant="outline" className="h-11 w-full">
                   <Link href="/analyse">Analyser un deal</Link>
                 </Button>

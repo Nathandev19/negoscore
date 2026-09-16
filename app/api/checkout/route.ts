@@ -1,7 +1,8 @@
 import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/billing/consent";
-import { insertRow } from "@/lib/supabase/server";
+import { isProActive, type PlanState } from "@/lib/billing/plan-access";
+import { insertRow, selectRows } from "@/lib/supabase/server";
 import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
 import { createCheckoutUrl, fallbackCheckoutUrl, type PlanKey } from "@/lib/whop/api";
 
@@ -24,6 +25,19 @@ export async function POST(request: Request) {
   const user = await getRequestUser(request);
   if (!user) return redirect(`/connexion?next=${encodeURIComponent("/offres")}`);
   if (consent !== "on") return redirect(`/offres?erreur=consentement&offre=${plan}`);
+
+  // Un abonnement Pro en cours ne se reprend pas : l'interface ne peut pas
+  // être la seule protection contre un double paiement.
+  if (plan === "pro") {
+    const [credits] = await selectRows<PlanState>(
+      "credits",
+      `select=plan,balance,period_end&user_id=eq.${user.id}&limit=1`,
+    );
+    if (isProActive(credits ?? null)) {
+      console.log(JSON.stringify({ event: "checkout_refused", plan, reason: "abonnement_deja_actif" }));
+      return redirect("/offres?erreur=deja_pro");
+    }
+  }
 
   // Identifiant de mesure d'audience : transmis s'il est propre, ignoré sinon.
   const analyticsId = sanitizeDistinctId(form?.get("ph_distinct_id"));

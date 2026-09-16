@@ -13,6 +13,16 @@ describe("affichage des montants", () => {
     expect(formatEur(2540).replace(/[\u00a0\u202f]/g, " ")).toBe("2 540 €");
     expect(formatEurRange(1260, 2540)?.replace(/[\u00a0\u202f]/g, " ")).toBe("1 260 € – 2 540 €");
   });
+
+  it("sépare les milliers, y compris sur un montant à quatre chiffres", () => {
+    // « 1260 » sans séparateur est le défaut qu'on ne veut plus voir.
+    for (const value of [1260, 2540, 7900, 9999]) {
+      const formatted = formatEur(value);
+      expect(formatted).not.toContain(String(value));
+      expect(formatted.replace(/[  ]/g, " ")).toMatch(/^\d \d{3} €$/);
+    }
+    expect(formatEur(999).replace(/[  ]/g, " ")).toBe("999 €");
+  });
 });
 
 describe("récap du deal", () => {
