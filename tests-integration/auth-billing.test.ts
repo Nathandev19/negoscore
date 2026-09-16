@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import sample from "@/lib/fixtures/analysis-sample.json";
 import { extractionSchema, PRICE_PLACEHOLDER } from "@/lib/llm/prompt";
+import { PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
 import { hashIp } from "@/lib/security/request";
 import {
   ANON,
@@ -302,6 +303,64 @@ describe.skipIf(!configured)("droits d'analyse", () => {
     model.extractDeal.mockRejectedValue(new ExtractionError("sortie invalide simulée"));
     expect((await analyseRequest({ ip: testIp(), cookies: { sb_access_token: u.token } })).status).toBe(502);
     expect(await balanceOf(u.id)).toBe(3);
+  });
+
+  // Quota Pro consommé : on fabrique PRO_ANALYSES_PER_PERIOD analyses dans la période.
+  async function fillProQuota(userId: string, periodEnd: string): Promise<void> {
+    const createdAt = new Date(new Date(periodEnd).getTime() - 24 * 3600 * 1000).toISOString();
+    for (let i = 0; i < PRO_ANALYSES_PER_PERIOD; i++) {
+      const deal = await insert("deals", { user_id: userId, source_type: "text", status: "analysed" });
+      deals.push(deal.id);
+      await insert("analyses", {
+        deal_id: deal.id,
+        model: "test",
+        prompt_version: "test",
+        rate_table_version: "test",
+        payload: { test: true },
+        score: 50,
+        confidence: "low",
+        created_at: createdAt,
+      });
+    }
+  }
+
+  it("pro au quota avec des crédits : l'analyse passe et consomme un crédit", async () => {
+    const u = await user();
+    const periodEnd = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString();
+    await insert("credits", { user_id: u.id, balance: 3, plan: "pro", period_end: periodEnd });
+    await fillProQuota(u.id, periodEnd);
+    model.extractDeal.mockResolvedValue(fakeExtraction());
+
+    const response = await analyseRequest({ ip: testIp(), cookies: { sb_access_token: u.token } });
+    expect(response.status).toBe(200);
+    expect(await balanceOf(u.id)).toBe(2);
+  });
+
+  it("pro au quota sans crédit : refus avec le message de l'abonnement", async () => {
+    const u = await user();
+    const periodEnd = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString();
+    await insert("credits", { user_id: u.id, balance: 0, plan: "pro", period_end: periodEnd });
+    await fillProQuota(u.id, periodEnd);
+
+    const response = await analyseRequest({ ip: testIp(), cookies: { sb_access_token: u.token } });
+    expect(response.status).toBe(402);
+    expect(await response.json()).toMatchObject({
+      paywall: true,
+      reason: "no_credit",
+      error: "Tu as atteint la limite de ton abonnement pour cette période.",
+    });
+    expect(model.extractDeal).not.toHaveBeenCalled();
+  });
+
+  it("pro au quota : un échec rend le crédit de dépassement", async () => {
+    const u = await user();
+    const periodEnd = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString();
+    await insert("credits", { user_id: u.id, balance: 2, plan: "pro", period_end: periodEnd });
+    await fillProQuota(u.id, periodEnd);
+
+    model.extractDeal.mockRejectedValue(new ExtractionError("sortie invalide simulée"));
+    expect((await analyseRequest({ ip: testIp(), cookies: { sb_access_token: u.token } })).status).toBe(502);
+    expect(await balanceOf(u.id)).toBe(2);
   });
 
   it("pro : autorisé tant que period_end est dans le futur, refusé une fois expiré", async () => {

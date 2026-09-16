@@ -32,6 +32,22 @@ async function reserveFree(ip: string): Promise<Grant | Denial> {
   return { allowed: true, plan: "free", release: () => releaseUsageGuard(key) };
 }
 
+// Un crédit acheté se réserve de la même façon partout : décrément atomique,
+// restitution à l'identique si l'analyse échoue. La colonne `plan` n'est pas
+// filtrée : elle vaut encore « pro » sur un abonnement expiré ou en dépassement.
+async function reservePackCredit(userId: string): Promise<Grant | null> {
+  const filter = `user_id=eq.${userId}`;
+  const reserved = await adjustInteger("credits", filter, "balance", -1, (balance) => balance > 0);
+  if (reserved === null) return null;
+  return {
+    allowed: true,
+    plan: "pack",
+    release: async () => {
+      await adjustInteger("credits", filter, "balance", 1, () => true);
+    },
+  };
+}
+
 type Context = { user: SessionUser | null; anonToken: string | null; ip: string };
 
 export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise<Grant | Denial> {
@@ -68,24 +84,16 @@ export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise
     if (used < PRO_ANALYSES_PER_PERIOD) {
       return { allowed: true, plan: "pro", release: async () => undefined };
     }
+    // Quota mensuel épuisé : les crédits achetés prennent le relais. Ils sont
+    // promis sans date d'expiration, ils doivent donc servir ici aussi.
+    const overflow = await reservePackCredit(user.id);
+    if (overflow) return overflow;
     return { allowed: false, reason: "no_credit", message: "Tu as atteint la limite de ton abonnement pour cette période." };
   }
 
   if (effectivePlan === "pack") {
-    // Réservation : décrément atomique, seulement si le solde est positif.
-    // Aucun filtre sur la colonne `plan` : elle vaut encore « pro » sur un
-    // abonnement expiré, et la garde sur le solde suffit.
-    const filter = `user_id=eq.${user.id}`;
-    const reserved = await adjustInteger("credits", filter, "balance", -1, (balance) => balance > 0);
-    if (reserved !== null) {
-      return {
-        allowed: true,
-        plan: "pack",
-        release: async () => {
-          await adjustInteger("credits", filter, "balance", 1, () => true);
-        },
-      };
-    }
+    const reserved = await reservePackCredit(user.id);
+    if (reserved) return reserved;
     return { allowed: false, reason: "no_credit", message: "Tu n'as plus de crédit. Choisis une offre pour continuer." };
   }
 

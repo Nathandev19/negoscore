@@ -6,7 +6,9 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { getViewer } from "@/lib/auth/viewer";
+import { isProActive, type PlanState } from "@/lib/billing/plan-access";
 import { PLANS } from "@/lib/billing/plans";
+import { selectRows } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Offres",
@@ -22,6 +24,12 @@ export default async function PlansPage({ searchParams }: PageProps<"/offres">) 
   const params = await searchParams;
   const error = typeof params.erreur === "string" ? ERRORS[params.erreur] : null;
   const user = await getViewer();
+  // Pour un abonné Pro en cours, le Pack n'est pas une offre concurrente :
+  // c'est la recharge qui prend le relais quand le quota mensuel est atteint.
+  const [credits] = user
+    ? await selectRows<PlanState>("credits", `select=plan,balance,period_end&user_id=eq.${user.id}&limit=1`)
+    : [];
+  const proActive = isProActive(credits ?? null);
 
   return (
     <>
@@ -38,18 +46,30 @@ export default async function PlansPage({ searchParams }: PageProps<"/offres">) 
           </p>
         ) : null}
         <ul className="grid gap-4 md:grid-cols-3">
-          {PLANS.map((plan) => (
+          {PLANS.map((plan) => {
+            // Même prix, même plan Whop, même parcours : seule la présentation change.
+            const asRecharge = proActive && plan.id === "pack";
+            const name = asRecharge ? "Recharge" : plan.name;
+            const summary = asRecharge ? "3 analyses supplémentaires" : plan.summary;
+            const features = asRecharge
+              ? [
+                  "Utilisables quand ton quota mensuel est atteint",
+                  "Sans date d'expiration",
+                  "Conservées si tu résilies ton abonnement",
+                ]
+              : plan.features;
+            return (
             <li key={plan.id} className="flex flex-col gap-4 rounded-xl border bg-white p-5">
               <div className="flex flex-col gap-1">
-                <h2 className="text-lg font-bold">{plan.name}</h2>
+                <h2 className="text-lg font-bold">{name}</h2>
                 <p className="text-3xl font-black tracking-tight">
                   {plan.price}
                   {plan.period ? <span className="text-base font-medium text-neutral-600"> {plan.period}</span> : null}
                 </p>
-                <p className="font-medium">{plan.summary}</p>
+                <p className="font-medium">{summary}</p>
               </div>
               <ul className="flex flex-1 list-disc flex-col gap-1 pl-5 text-sm text-neutral-700">
-                {plan.features.map((feature) => (
+                {features.map((feature) => (
                   <li key={feature}>{feature}</li>
                 ))}
               </ul>
@@ -58,14 +78,15 @@ export default async function PlansPage({ searchParams }: PageProps<"/offres">) 
                   <Link href="/analyse">Analyser un deal</Link>
                 </Button>
               ) : user ? (
-                <PlanCheckoutForm plan={plan.id} label={`Prendre ${plan.name}`} />
+                <PlanCheckoutForm plan={plan.id} label={asRecharge ? "Recharger" : `Prendre ${plan.name}`} />
               ) : (
                 <Button asChild className="h-11 w-full">
                   <Link href={`/connexion?next=${encodeURIComponent("/offres")}`}>Se connecter pour payer</Link>
                 </Button>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
         <p className="text-sm text-neutral-600">
           Paiement opéré par Whop. Voir les <Link href="/cgv" className="underline">conditions de vente</Link>.
