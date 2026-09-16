@@ -250,6 +250,60 @@ describe.skipIf(!configured)("droits d'analyse", () => {
     expect(model.extractDeal).toHaveBeenCalledTimes(2);
   });
 
+  it("pro expiré avec des crédits pack : l'analyse passe et consomme un crédit", async () => {
+    const u = await user();
+    // Ligne telle qu'elle existe en production après une résiliation : la
+    // colonne vaut encore « pro », la période est passée, le solde est acheté.
+    await insert("credits", {
+      user_id: u.id,
+      balance: 3,
+      plan: "pro",
+      period_end: "2026-09-01T05:37:47.007Z",
+    });
+    model.extractDeal.mockResolvedValue(fakeExtraction());
+
+    const response = await analyseRequest({ ip: testIp(), cookies: { sb_access_token: u.token } });
+    expect(response.status).toBe(200);
+    expect(await balanceOf(u.id)).toBe(2);
+  });
+
+  it("pro expiré sans crédit : refus explicite sur l'abonnement", async () => {
+    const u = await user();
+    await insert("credits", { user_id: u.id, balance: 0, plan: "pro", period_end: "2026-09-01T05:37:47.007Z" });
+
+    const response = await analyseRequest({ ip: testIp(), cookies: { sb_access_token: u.token } });
+    expect(response.status).toBe(402);
+    expect(await response.json()).toMatchObject({
+      paywall: true,
+      reason: "no_credit",
+      error: "Ton abonnement n'est plus actif. Choisis une offre pour continuer.",
+    });
+    expect(model.extractDeal).not.toHaveBeenCalled();
+  });
+
+  it("pro actif avec des crédits pack : l'analyse passe par l'abonnement, le solde ne bouge pas", async () => {
+    const u = await user();
+    await insert("credits", {
+      user_id: u.id,
+      balance: 3,
+      plan: "pro",
+      period_end: new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString(),
+    });
+    model.extractDeal.mockResolvedValue(fakeExtraction());
+
+    expect((await analyseRequest({ ip: testIp(), cookies: { sb_access_token: u.token } })).status).toBe(200);
+    expect(await balanceOf(u.id)).toBe(3);
+  });
+
+  it("pro expiré : un échec rend le crédit consommé", async () => {
+    const u = await user();
+    await insert("credits", { user_id: u.id, balance: 3, plan: "pro", period_end: "2026-09-01T05:37:47.007Z" });
+
+    model.extractDeal.mockRejectedValue(new ExtractionError("sortie invalide simulée"));
+    expect((await analyseRequest({ ip: testIp(), cookies: { sb_access_token: u.token } })).status).toBe(502);
+    expect(await balanceOf(u.id)).toBe(3);
+  });
+
   it("pro : autorisé tant que period_end est dans le futur, refusé une fois expiré", async () => {
     const u = await user();
     await insert("credits", {

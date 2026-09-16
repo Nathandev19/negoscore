@@ -1,5 +1,5 @@
 import type { SessionUser } from "@/lib/auth/session";
-import { isProActive, periodEndsAt } from "@/lib/billing/plan-access";
+import { displayedPlan, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 import { FREE_ANALYSES, PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
 import { hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
@@ -47,18 +47,18 @@ export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise
     return reserveFree(ip);
   }
 
-  const [credits] = await selectRows<{ plan: "free" | "pack" | "pro"; balance: number; period_end: string | null }>(
+  const [credits] = await selectRows<PlanState>(
     "credits",
     `select=plan,balance,period_end&user_id=eq.${user.id}&limit=1`,
   );
 
-  if (credits?.plan === "pro") {
+  // Le droit suit ce que le compte a réellement, pas la colonne `plan` : un
+  // abonnement expiré retombe sur ses crédits restants, comme à l'affichage.
+  const effectivePlan = displayedPlan(credits ?? null);
+
+  if (effectivePlan === "pro") {
     // period_end fait foi : la période courante est le mois qui le précède.
-    // Même lecture que l'affichage, via lib/billing/plan-access.
-    if (!isProActive(credits)) {
-      return { allowed: false, reason: "no_credit", message: "Ton abonnement n'est plus actif. Choisis une offre pour continuer." };
-    }
-    const periodEnd = periodEndsAt(credits) as Date;
+    const periodEnd = periodEndsAt(credits ?? null) as Date;
     const periodStart = new Date(periodEnd);
     periodStart.setMonth(periodStart.getMonth() - 1);
     const used = await countRows(
@@ -71,9 +71,11 @@ export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise
     return { allowed: false, reason: "no_credit", message: "Tu as atteint la limite de ton abonnement pour cette période." };
   }
 
-  if (credits?.plan === "pack") {
+  if (effectivePlan === "pack") {
     // Réservation : décrément atomique, seulement si le solde est positif.
-    const filter = `user_id=eq.${user.id}&plan=eq.pack`;
+    // Aucun filtre sur la colonne `plan` : elle vaut encore « pro » sur un
+    // abonnement expiré, et la garde sur le solde suffit.
+    const filter = `user_id=eq.${user.id}`;
     const reserved = await adjustInteger("credits", filter, "balance", -1, (balance) => balance > 0);
     if (reserved !== null) {
       return {
@@ -84,6 +86,15 @@ export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise
         },
       };
     }
+    return { allowed: false, reason: "no_credit", message: "Tu n'as plus de crédit. Choisis une offre pour continuer." };
+  }
+
+  // Plus aucun crédit : un compte qui a déjà payé ne repasse pas par l'offre
+  // gratuite, et le message dit ce qui s'est terminé.
+  if (credits?.plan === "pro") {
+    return { allowed: false, reason: "no_credit", message: "Ton abonnement n'est plus actif. Choisis une offre pour continuer." };
+  }
+  if (credits?.plan === "pack") {
     return { allowed: false, reason: "no_credit", message: "Tu n'as plus de crédit. Choisis une offre pour continuer." };
   }
 

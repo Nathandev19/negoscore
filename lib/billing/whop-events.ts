@@ -1,4 +1,5 @@
 import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
+import { isProActive } from "@/lib/billing/plan-access";
 import { PACK_ANALYSES } from "@/lib/billing/plans";
 import { planKeyFromId, type PlanKey } from "@/lib/whop/api";
 import { adjustInteger, insertIfAbsent, selectRows, updateRows } from "@/lib/supabase/server";
@@ -93,7 +94,18 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   if (type === "payment.succeeded" && plan === "pack") {
     // Le pack s'ajoute au solde existant.
     await addBalance(user.id, PACK_ANALYSES);
-    if (current.plan === "free") await updateRows("credits", `user_id=eq.${user.id}&plan=eq.free`, { plan: "pack" });
+    // Un abonnement encore actif n'est jamais déclassé par l'achat d'un pack.
+    // Un Pro expiré, lui, redevient un compte Pack avec une période remise à zéro.
+    if (current.plan === "free") {
+      await updateRows("credits", `user_id=eq.${user.id}&plan=eq.free`, { plan: "pack" });
+    } else if (current.plan === "pro" && !isProActive(current)) {
+      await updateRows("credits", `user_id=eq.${user.id}`, {
+        plan: "pack",
+        period_end: null,
+        cancelled_at: null,
+        updated_at: new Date().toISOString(),
+      });
+    }
     const total = typeof source.total === "number" ? source.total : null;
     return {
       handled: true,

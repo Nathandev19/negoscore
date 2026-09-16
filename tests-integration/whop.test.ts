@@ -188,6 +188,26 @@ describe.skipIf(!ready)("webhook Whop", () => {
     );
   });
 
+  it("pack acheté sur un Pro expiré : le compte redevient Pack", async () => {
+    const buyer = await user("pro", 0);
+    await setCredits(buyer.id, { period_end: "2026-09-01T05:37:47.007Z", cancelled_at: "2026-09-16T05:38:36.000Z" });
+
+    await send(envelope("payment.succeeded", payment(PACK, { user_id: buyer.id })));
+    expect(await credits(buyer.id)).toMatchObject({ plan: "pack", balance: 3, period_end: null, cancelled_at: null });
+  });
+
+  it("pack acheté sur un Pro actif : l'abonnement est préservé", async () => {
+    const buyer = await user("pro", 1);
+    const periodEnd = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString();
+    await setCredits(buyer.id, { period_end: periodEnd });
+
+    await send(envelope("payment.succeeded", payment(PACK, { user_id: buyer.id })));
+    const after = await credits(buyer.id);
+    expect(after.plan).toBe("pro");
+    expect(after.balance).toBe(4);
+    expect(new Date(after.period_end ?? 0).toISOString()).toBe(periodEnd);
+  });
+
   it("rattache par l'email quand les metadata manquent", async () => {
     const buyer = await user("free");
     await send(envelope("payment.succeeded", payment(PACK, null, buyer.email.toUpperCase())));
