@@ -1,6 +1,6 @@
 import { isValidElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { lockAnalysis } from "@/lib/analysis/lock";
 import { PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/preview-states";
 import { SHARE_CARD_SITE, shareCardAvailable, shareCardElement, shareCardTexts } from "@/lib/share-card/element";

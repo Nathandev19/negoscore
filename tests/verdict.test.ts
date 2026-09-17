@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FAR_BELOW_RATIO, verdictForm, verdictSentence } from "@/lib/analysis/verdict";
 import { previewAnalysis } from "@/lib/fixtures/preview-states";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { RATIO_ZERO } from "@/lib/rates/score";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 

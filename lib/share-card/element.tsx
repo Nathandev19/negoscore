@@ -86,7 +86,8 @@ function Gauge({ value, color }: { value: number; color: string }) {
         style={{
           position: "absolute",
           top: 0,
-          left: fill - MARKER_WIDTH / 2,
+          // Centré sur la valeur, retenu dans la piste à 0 et à 100.
+          left: Math.max(0, Math.min(GAUGE_WIDTH - MARKER_WIDTH, fill - MARKER_WIDTH / 2)),
           width: MARKER_WIDTH,
           height: MARKER_HEIGHT,
           borderRadius: MARKER_WIDTH / 2,

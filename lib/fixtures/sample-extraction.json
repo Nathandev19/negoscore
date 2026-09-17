@@ -1,0 +1,137 @@
+{
+  "language": "fr",
+  "confidence": "medium",
+  "input_quality": {
+    "readable": true,
+    "missing_critical": [
+      "Territoire de diffusion des pubs",
+      "Date de livraison des vidéos",
+      "Publication sur ton compte ou non"
+    ]
+  },
+  "deal": {
+    "brand": "Marque Exemple",
+    "deliverables": [
+      {
+        "type": "video",
+        "platform": "tiktok",
+        "quantity": 2,
+        "format": null
+      }
+    ],
+    "publication_required": false,
+    "usage": {
+      "organic": true,
+      "paid_ads": true,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": 6,
+      "territory": null,
+      "perpetual": false
+    },
+    "exclusivity": {
+      "present": true,
+      "duration_months": 3,
+      "category": "cosmétique"
+    },
+    "raw_footage": true,
+    "ip_transfer": "license",
+    "ai_training_rights": "absent",
+    "revisions": {
+      "count": null,
+      "unlimited": true
+    },
+    "payment": {
+      "amount_eur": 300,
+      "currency": "EUR",
+      "terms_days": 60,
+      "schedule": null
+    },
+    "in_kind_value_eur": null,
+    "deadlines": [],
+    "kill_fee": null,
+    "termination": null,
+    "governing_law": null
+  },
+  "good_points": [
+    {
+      "label": "Une offre chiffrée dès le départ",
+      "why": "Tu pars d'un montant clair, pas d'un « on verra selon les résultats ». C'est une vraie base pour négocier."
+    },
+    {
+      "label": "Des droits pub limités dans le temps",
+      "why": "6 mois, c'est borné. La marque ne te demande pas d'utiliser tes vidéos à vie."
+    },
+    {
+      "label": "Aucun droit d'entraînement IA demandé",
+      "why": "Ton visage et ta voix ne servent pas à entraîner un modèle. Garde cette ligne si un contrat arrive."
+    }
+  ],
+  "negotiate": [
+    {
+      "label": "Limiter les révisions à 2 allers-retours",
+      "why": "Au-delà, chaque nouvelle version se facture. Sinon tu risques de refaire les vidéos gratuitement pendant des semaines.",
+      "priority": 4,
+      "topic": "revisions"
+    },
+    {
+      "label": "Facturer les droits pub à part",
+      "why": "Une vidéo diffusée en pub pendant 6 mois rapporte bien plus à la marque qu'une vidéo organique. Ce droit a un prix.",
+      "priority": 1,
+      "topic": "paid_ads"
+    },
+    {
+      "label": "Faire payer l'exclusivité, ou la ramener à 1 mois",
+      "why": "3 mois sans pouvoir travailler avec une autre marque cosmétique, c'est un manque à gagner réel pour toi.",
+      "priority": 2,
+      "topic": "exclusivity"
+    },
+    {
+      "label": "Proposer le raw footage en option payante",
+      "why": "Les rushs permettent à la marque de créer d'autres pubs avec ton image. Ce n'est pas inclus dans une vidéo livrée.",
+      "priority": 3,
+      "topic": "raw_footage"
+    },
+    {
+      "label": "Paiement à 30 jours, avec 50 % à la signature",
+      "why": "60 jours, c'est long pour une petite somme. Un acompte te protège si le projet s'arrête en cours de route.",
+      "priority": 5,
+      "topic": "payment_terms"
+    }
+  ],
+  "red_flags": [
+    {
+      "label": "Révisions illimitées",
+      "severity": "high",
+      "why": "Sans limite, la marque peut te demander de refaire les vidéos autant de fois qu'elle veut, sans rien payer de plus."
+    },
+    {
+      "label": "Exclusivité non rémunérée",
+      "severity": "medium",
+      "why": "Tu bloques toute la catégorie cosmétique pendant 3 mois, et ce blocage n'est pas compté dans les 300 €."
+    },
+    {
+      "label": "Paiement à 60 jours",
+      "severity": "medium",
+      "why": "Tu avances ton temps et ton matériel, et tu attends deux mois avant de toucher ton argent."
+    },
+    {
+      "label": "Territoire des pubs non précisé",
+      "severity": "low",
+      "why": "Sans territoire, tes vidéos peuvent tourner en pub dans n'importe quel pays."
+    }
+  ],
+  "counter_offer": {
+    "changes": [
+      "Droits pub 6 mois facturés en plus de la création",
+      "Exclusivité ramenée à 1 mois",
+      "Raw footage en option payante",
+      "2 révisions incluses",
+      "Paiement à 30 jours, 50 % à la signature"
+    ]
+  },
+  "ready_to_send_message": {
+    "tone": "cordial et ferme",
+    "text": "Bonjour, merci pour votre message, ça me fait très plaisir ! Le projet m'intéresse. Pour 2 vidéos TikTok avec 6 mois de droits pub, mon tarif se situe {{CONTRE_OFFRE}}. Je vous propose une exclusivité de 1 mois, 2 révisions incluses, et le raw footage en option. Côté paiement : 50 % à la signature et le solde à 30 jours. Dites-moi si ça vous convient, et je vous envoie un devis détaillé."
+  }
+}

@@ -1,8 +1,7 @@
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { lockAnalysis, type ResultView } from "@/lib/analysis/lock";
-import sample from "@/lib/fixtures/analysis-sample.json";
-import { PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
-import type { Analysis } from "@/lib/schema";
+import sampleExtraction from "@/lib/fixtures/sample-extraction.json";
+import { extractionSchema, type Extraction } from "@/lib/llm/prompt";
 
 // États de la page de résultat pour la prévisualisation de développement
 // (app/dev/resultat) et pour les tests. Chaque analyse passe par le vrai
@@ -21,35 +20,9 @@ export const PREVIEW_STATES = [
 ] as const;
 export type PreviewState = (typeof PREVIEW_STATES)[number];
 
-const TOPICS: Record<string, Extraction["negotiate"][number]["topic"]> = {
-  "Limiter les révisions à 2 allers-retours": "revisions",
-  "Facturer les droits pub à part": "paid_ads",
-  "Faire payer l'exclusivité, ou la ramener à 1 mois": "exclusivity",
-  "Proposer le raw footage en option payante": "raw_footage",
-  "Paiement à 30 jours, avec 50 % à la signature": "payment_terms",
-};
-
+// L'extraction de l'exemple public, passée par le vrai moteur.
 export function baseExtraction(): Extraction {
-  const source = structuredClone(sample) as unknown as Analysis;
-  return {
-    language: source.language,
-    confidence: source.confidence,
-    input_quality: source.input_quality,
-    deal: source.deal,
-    good_points: source.good_points,
-    negotiate: source.negotiate.map((item) => ({
-      label: item.label,
-      why: item.why,
-      priority: item.priority,
-      topic: TOPICS[item.label] ?? "other",
-    })),
-    red_flags: source.red_flags,
-    counter_offer: { changes: source.counter_offer.changes },
-    ready_to_send_message: {
-      tone: source.ready_to_send_message.tone,
-      text: `Bonjour, merci pour votre message ! Le projet m'intéresse. Pour 2 vidéos TikTok avec 6 mois de droits pub, mon tarif se situe ${PRICE_PLACEHOLDER}. Je vous propose une exclusivité de 1 mois, 2 révisions incluses, et le raw footage en option. Dites-moi si ça vous convient.`,
-    },
-  };
+  return extractionSchema.parse(structuredClone(sampleExtraction));
 }
 
 function withAmount(extraction: Extraction, amount: number | null): Extraction {

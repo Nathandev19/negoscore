@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { extractionSchema, PRICE_PLACEHOLDER } from "@/lib/llm/prompt";
 import { PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
 import { hashIp } from "@/lib/security/request";

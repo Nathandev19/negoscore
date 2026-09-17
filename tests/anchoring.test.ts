@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { counterOfferRange, POSITION_LABEL, rangePosition } from "@/lib/analysis/anchoring";
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { BAND_LABEL } from "@/lib/display";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { extractionSchema, PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
 import { formatEur } from "@/lib/money";
 import { computeEstimate } from "@/lib/rates/engine";

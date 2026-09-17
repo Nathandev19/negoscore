@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 
 // Suppression d'une analyse et affichage après purge, sans réseau : les
 // lectures et écritures Supabase sont simulées et enregistrées.

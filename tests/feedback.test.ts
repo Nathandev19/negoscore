@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 
 // « Cette estimation te paraît juste ? » : réservé au propriétaire, une ligne
 // par analyse (modifiable), aucune donnée personnelle ni texte d'offre.

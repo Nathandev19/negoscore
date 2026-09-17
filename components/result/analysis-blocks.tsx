@@ -116,8 +116,7 @@ export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
   );
 }
 
-// example : exemple figé, dont la version de table n'est pas une vraie table de tarifs.
-export function Estimate({ estimate, example = false }: { estimate: Analysis["estimate"]; example?: boolean }) {
+export function Estimate({ estimate }: { estimate: Analysis["estimate"] }) {
   const base = formatEurRange(estimate.base_low, estimate.base_high);
   const total = formatEurRange(estimate.total_low, estimate.total_high);
   return (
@@ -169,12 +168,8 @@ export function Estimate({ estimate, example = false }: { estimate: Analysis["es
 
         <p className="text-xs text-attenue">
           Estimation fondée sur des benchmarks de marché, pas un tarif officiel.
-          {example ? null : (
-            <>
-              {" "}
-              Table de tarifs <span className="tabular-nums">{estimate.rate_table_version}</span>.
-            </>
-          )}
+          {" "}
+          Table de tarifs <span className="tabular-nums">{estimate.rate_table_version}</span>.
         </p>
       </div>
     </Section>

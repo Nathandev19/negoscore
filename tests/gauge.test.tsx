@@ -20,7 +20,7 @@ describe("jauge continue", () => {
     expect(html.match(/data-gauge-fill/g)).toHaveLength(1);
     expect(html.match(/data-gauge-marker/g)).toHaveLength(1);
     expect(html).toContain(`style="width:${value}%"`);
-    expect(html).toContain(`style="left:${value}%"`);
+    expect(html).toContain(`style="left:clamp(2px, ${value}%, calc(100% - 2px))"`);
     expect(html).toContain(BAND_STYLE[bandFor(value)].onMarque);
   });
 
@@ -36,6 +36,6 @@ describe("jauge continue", () => {
   it("exemple figé de l'accueil : affiché directement à la valeur, sans animation", () => {
     const html = render(32, false);
     expect(html).toContain("width:32%;animation:none");
-    expect(html).toContain("left:32%;animation:none");
+    expect(html).toContain("left:clamp(2px, 32%, calc(100% - 2px));animation:none");
   });
 });

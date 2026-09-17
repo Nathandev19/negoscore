@@ -21,7 +21,7 @@ import {
 } from "@/lib/analysis/evaluability";
 import { lockAnalysis } from "@/lib/analysis/lock";
 import { BAND_LABEL } from "@/lib/display";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { extractionSchema, PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
 import { computeEstimate } from "@/lib/rates/engine";
 import { computeScore } from "@/lib/rates/score";

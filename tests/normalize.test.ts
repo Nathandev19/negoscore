@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { evaluability } from "@/lib/analysis/evaluability";
 import { normalizeDeal } from "@/lib/analysis/normalize";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { extractionSchema, type Extraction } from "@/lib/llm/prompt";
 import { computeEstimate } from "@/lib/rates/engine";
 import { computeScore } from "@/lib/rates/score";

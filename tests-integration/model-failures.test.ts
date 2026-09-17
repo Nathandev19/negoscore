@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { extractionSchema, PRICE_PLACEHOLDER } from "@/lib/llm/prompt";
 import { hashIp } from "@/lib/security/request";
 import { newStoragePath } from "@/lib/storage/documents";

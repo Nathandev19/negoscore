@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { composeAnalysis } from "@/lib/analysis/compose";
-import sample from "@/lib/fixtures/analysis-sample.json";
+import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { extractionSchema, PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
 import { formatEur } from "@/lib/money";
 

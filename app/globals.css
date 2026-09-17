@@ -202,7 +202,7 @@
 }
 @keyframes gauge-marker {
   from {
-    left: 0;
+    left: 2px; /* départ dans la piste, comme le repère à 0 */
   }
 }
 .score-count {

@@ -24,14 +24,11 @@ import type { ResultView } from "@/lib/analysis/lock";
 export function AnalysisResult({
   analysis,
   unlockHref,
-  example = false,
   before,
   children,
 }: {
   analysis: ResultView;
   unlockHref: string;
-  // Exemple figé (démo) : aucune version de table affichée.
-  example?: boolean;
   // Contenu au-dessus des blocs de lecture (bandeau d'exemple).
   before?: ReactNode;
   // Contenu sous les blocs (carte, avis, suppression).
@@ -62,7 +59,7 @@ export function AnalysisResult({
         ) : analysis.evaluability === "unpriced" ? (
           <UnpricedCard confidence={analysis.confidence} />
         ) : null}
-        {incomplete ? null : <Estimate estimate={analysis.estimate} example={example} />}
+        {incomplete ? null : <Estimate estimate={analysis.estimate} />}
         <NegotiateList items={analysis.negotiate} />
         <DealRecap deal={analysis.deal} />
         {analysis.counter_offer ? (

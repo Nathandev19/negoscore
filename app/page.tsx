@@ -77,13 +77,14 @@ export default function HomePage() {
         <section className={SECTION}>
           <div className={cn(SECTION_INNER, "gap-10 lg:grid lg:grid-cols-[1fr_1.2fr] lg:items-center lg:gap-16")}>
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-bold tracking-wide text-attenue uppercase">Exemple figé</p>
+              <p className="text-xs font-bold tracking-wide text-attenue uppercase">Exemple</p>
               <h2 className="text-h1">Une offre reçue en DM, chiffrée en euros</h2>
               <p className="measure">
                 Une marque propose{" "}
                 <span className="figures text-encre">{formatEur(deal.payment.amount_eur ?? 0)}</span> pour{" "}
                 {deal.deliverables.map((d) => (d.quantity === null ? "des vidéos" : `${d.quantity} vidéo${d.quantity > 1 ? "s" : ""}`)).join(", ")}, avec droits pub
-                et exclusivité. Cet exemple ne change pas : ce n&apos;est pas une vraie analyse en cours.
+                et exclusivité. L&apos;offre est inventée, le chiffrage est celui du moteur actuel : ce n&apos;est pas une vraie
+                analyse en cours.
               </p>
               <Link href="/analyse/demo" className="link w-fit">
                 Voir l&apos;exemple complet

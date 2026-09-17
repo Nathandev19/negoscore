@@ -88,6 +88,16 @@ export function AnimatedScore({ score, animated = true }: { score: Score; animat
 // Piste en bleu foncé : le remplissage s'en détache à 3:1 au moins, quelle que
 // soit la bande (tests/design.test.ts). Le remplissage et le repère avancent au
 // même rythme linéaire que le chiffre.
+// Demi-largeur du repère (w-1 = 4 px). Le centre du repère tombe sur la valeur,
+// sauf aux extrêmes où il est retenu à 2 px du bord : le repère reste dans la
+// piste à 0 et à 100 au lieu d'en dépasser. Entre les deux (dès 1 sur une barre
+// de plus de 200 px), la position n'est pas modifiée.
+const MARKER_HALF_PX = 2;
+
+export function markerLeft(value: number): string {
+  return `clamp(${MARKER_HALF_PX}px, ${value}%, calc(100% - ${MARKER_HALF_PX}px))`;
+}
+
 export function ScoreGauge({ score, animated = true }: { score: Score; animated?: boolean }) {
   const value = Math.max(0, Math.min(100, score.value));
   const still: CSSProperties = animated ? {} : { animation: "none" };
@@ -101,7 +111,7 @@ export function ScoreGauge({ score, animated = true }: { score: Score; animated?
       <span
         data-gauge-marker
         className="gauge-marker absolute -top-1.5 h-6 w-1 -translate-x-1/2 rounded-pill bg-creme"
-        style={{ left: `${value}%`, ...still }}
+        style={{ left: markerLeft(value), ...still }}
       />
     </div>
   );

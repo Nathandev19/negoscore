@@ -5,6 +5,9 @@ import { FOOTER_COLUMNS, SiteFooter } from "@/components/site-footer";
 import { PLANS } from "@/lib/billing/plans";
 import { FAQ } from "@/lib/content/home";
 import { SELLER } from "@/lib/legal/identity";
+import { verdictSentence } from "@/lib/analysis/verdict";
+import rates from "@/lib/rates/fr-2026.2.json";
+import { sampleAnalysis } from "@/lib/sample-analysis";
 
 vi.mock("@/components/deal-input", () => ({ DealInput: () => <form aria-label="saisie" /> }));
 vi.mock("@/components/analytics/track-view", () => ({ TrackView: () => null }));
@@ -134,17 +137,20 @@ describe("page d'accueil : identité (#031)", () => {
     // Surface bleue avec grain : uniquement l'exemple de résultat.
     expect(html.match(/grain bg-marque|grain flex flex-col overflow-hidden rounded-control bg-marque/g)).toHaveLength(1);
     // L'exemple montre la phrase de verdict du moteur, sans animation.
-    expect(html).toContain("proposés. Ces droits en valent 510 à 1");
+    // Phrase recalculée par le moteur actuel sur l'exemple (plus de chiffres figés).
+    expect(html.replace(/&nbsp;|\u00a0|\u202f/g, " ")).toContain(verdictSentence(sampleAnalysis).replace(/\s/g, " "));
     expect(html).toContain("animation:none");
   });
 });
 
 describe("démo", () => {
-  it("marquée comme exemple figé, sans version de table inventée", async () => {
+  it("marquée comme exemple, chiffrée par le moteur actuel avec la vraie table de tarifs", async () => {
     const { default: DemoPage } = await import("@/app/analyse/demo/page");
     const html = renderToStaticMarkup(<DemoPage />);
-    expect(html).toContain("Exemple figé, pas une vraie analyse");
+    expect(html).toContain("Exemple, pas une vraie analyse");
+    expect(html).toContain("calculés par le moteur actuel");
     expect(html).not.toContain("demo-2026-09");
-    expect(html).not.toContain("Table de tarifs");
+    expect(html).toContain(`Table de tarifs <span class="tabular-nums">${rates.version}</span>`);
+    expect(html).not.toContain("Exclusivité cosmétique 3 mois");
   });
 });
