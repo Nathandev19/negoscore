@@ -24,7 +24,12 @@ export function computeFrLegal(deal: Deal): FrLegal {
   const applicable = deal.governing_law === null || isFrenchLaw(deal.governing_law);
 
   const amount = deal.payment.amount_eur;
-  const total = amount === null ? null : amount + (deal.in_kind_value_eur ?? 0);
+  const inKind = deal.in_kind_value_eur;
+  // Le seuil se compte « avantages en nature inclus » : une offre payée
+  // uniquement en produits peut le dépasser (mission #057). Le total est donc
+  // évalué dès qu'une des deux valeurs est écrite, et n'est inconnu que si
+  // aucune ne l'est.
+  const total = amount === null && inKind === null ? null : (amount ?? 0) + (inKind ?? 0);
   const threshold: FrLegal["threshold_1000_reached"] =
     total === null ? "unknown" : total >= WRITTEN_CONTRACT_THRESHOLD_EUR ? "yes" : "no";
 

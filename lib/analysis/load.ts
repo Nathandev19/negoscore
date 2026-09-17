@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { lockAnalysis, type ResultView } from "@/lib/analysis/lock";
+import { normalizeDeal } from "@/lib/analysis/normalize";
 import type { SessionUser } from "@/lib/auth/session";
 import { analysisSchema } from "@/lib/schema";
 import { isUuid, sameToken } from "@/lib/security/request";
@@ -64,9 +65,14 @@ async function load(id: string, viewer: Viewer): Promise<LoadedResult | null> {
 
   const parsed = analysisSchema.safeParse(row.payload);
   if (!parsed.success) return null;
+  // Analyses enregistrées avant la mission #057 : un montant ou une valeur de
+  // produits à 0 y est encore écrit. Il est ramené à « absent » ici, avant tout
+  // affichage et avant le recalcul par niveau, comme pour une analyse neuve.
+  // Les chiffres déjà calculés (fourchette, score) ne sont pas retouchés.
+  const analysis = { ...parsed.data, deal: normalizeDeal(parsed.data.deal) };
   // Le texte source ne quitte jamais le serveur : seul le fait qu'il ait été effacé est transmis.
   return {
-    analysis: access === "owner" ? parsed.data : lockAnalysis(parsed.data),
+    analysis: access === "owner" ? analysis : lockAnalysis(analysis),
     unlocked: access === "owner",
     sourceRemoved: sourceRemoved(row.deal),
     sourceType: row.deal.source_type,

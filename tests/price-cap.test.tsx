@@ -117,7 +117,10 @@ describe("plafond du score par le prix", () => {
   it("A5 — le score reste croissant avec le montant proposé, à offre identique", () => {
     for (const tier of TIERS) {
       let previous = -1;
-      for (const amount of [0, 50, 100, 150, 200, 300, 450, 600, 800, 1000, 1400, 2000, 3000, 6000]) {
+      // Depuis la mission #057, un montant à 0 n'est plus un montant : il est
+      // ramené à « absent », l'offre devient « unpriced » et n'a plus de score
+      // affiché. La suite ne compare donc que des montants réellement proposés.
+      for (const amount of [1, 50, 100, 150, 200, 300, 450, 600, 800, 1000, 1400, 2000, 3000, 6000]) {
         const analysis = composeAnalysis(offerAt(amount), { tier });
         const value = computeScore(analysis.deal, computeEstimate(analysis.deal, { tier })).value;
         expect(value, `${tier} ${amount} €`).toBeGreaterThanOrEqual(previous);
