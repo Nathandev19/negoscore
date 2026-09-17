@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { HeaderNav } from "@/components/header-nav";
 import { hasSessionHint } from "@/lib/auth/session-hint";
@@ -21,5 +22,5 @@ export function SiteHeader() {
     () => hasSessionHint(document.cookie),
     () => false,
   );
-  return <HeaderNav signedIn={signedIn} />;
+  return <HeaderNav signedIn={signedIn} pathname={usePathname()} />;
 }

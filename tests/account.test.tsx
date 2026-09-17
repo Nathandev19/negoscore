@@ -47,13 +47,14 @@ describe("en-tête", () => {
     expect(links).toContain("/compte");
     expect(links).not.toContain("/connexion");
     expect(html).toContain("Mes analyses");
-    expect(html).toContain(">Compte<");
+    expect(html).toContain(">Mon compte<");
   });
 
   it("les deux variantes ont la même hauteur : aucun saut à l'hydratation", () => {
+    // En-tête collant de 56 px, zones de liens de 32 px, dans les deux états.
     for (const html of [renderToStaticMarkup(<HeaderNav signedIn={false} />), renderToStaticMarkup(<HeaderNav signedIn />)]) {
-      expect(html).toContain('<header class="mx-auto flex h-14');
-      expect(html).toMatch(/<nav aria-label="Compte" class="flex h-8 /);
+      expect(html).toContain('<header class="sticky top-0 z-40 h-14');
+      expect(html).toMatch(/<nav aria-label="Navigation principale" class="[^"]*h-8 /);
     }
   });
 });

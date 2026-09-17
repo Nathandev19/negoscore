@@ -11,20 +11,20 @@ export function LegalPage({ title, updated, children }: { title: string; updated
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 pt-6 pb-12 sm:px-6 sm:pt-10">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-black tracking-tight">{title}</h1>
-          <p className="text-sm text-neutral-500">Dernière mise à jour : {updated}</p>
+          <h1 className="text-h1 font-extrabold tracking-tight">{title}</h1>
+          <p className="text-small text-subtle">Dernière mise à jour : {updated}</p>
         </div>
-        <div className="flex flex-col gap-8 text-neutral-800">{children}</div>
+        <div className="flex flex-col gap-8 text-copy">{children}</div>
       </main>
       <SiteFooter />
     </>
   );
 }
 
-export function LegalSection({ title, children }: { title: string; children: ReactNode }) {
+export function LegalSection({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-bold tracking-tight">{title}</h2>
+    <section id={id} className="measure flex flex-col gap-3">
+      <h2 className="text-h2 font-bold tracking-tight">{title}</h2>
       {children}
     </section>
   );

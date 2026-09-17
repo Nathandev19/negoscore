@@ -63,7 +63,7 @@ export function NegotiateList({ items }: { items: Analysis["negotiate"] }) {
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="font-semibold">{item.label}</p>
                 {impact ? (
-                  <p className="text-base font-bold text-green-800">+ {impact}</p>
+                  <p className="figures text-base font-bold text-band-good-text">+ {impact}</p>
                 ) : null}
                 <p className="text-sm text-neutral-600">{item.why}</p>
               </div>
@@ -129,7 +129,7 @@ export function Estimate({ estimate }: { estimate: Analysis["estimate"] }) {
         {total ? (
           <div>
             <p className="text-sm text-neutral-600">Fourchette estimée</p>
-            <p className="text-4xl leading-tight font-black tracking-tight text-neutral-950">
+            <p className="figures text-4xl leading-tight font-extrabold tracking-tight text-ink">
               {total}
             </p>
           </div>
@@ -139,7 +139,7 @@ export function Estimate({ estimate }: { estimate: Analysis["estimate"] }) {
           {base ? (
             <div className="flex justify-between gap-4">
               <dt className="text-neutral-600">Création (base)</dt>
-              <dd className="text-right font-medium">{base}</dd>
+              <dd className="text-right font-medium tabular-nums">{base}</dd>
             </div>
           ) : null}
           {estimate.lines.map((line) => (
@@ -151,7 +151,7 @@ export function Estimate({ estimate }: { estimate: Analysis["estimate"] }) {
                   ({line.type === "percent" ? `+${line.low} à ${line.high} %` : `+${formatEur(line.low)} à ${formatEur(line.high)}`})
                 </span>
               </dt>
-              <dd className="text-right font-medium whitespace-nowrap">
+              <dd className="text-right font-medium whitespace-nowrap tabular-nums">
                 + {formatEurRange(line.eur_low, line.eur_high)}
               </dd>
             </div>
@@ -159,7 +159,7 @@ export function Estimate({ estimate }: { estimate: Analysis["estimate"] }) {
           {total ? (
             <div className="flex justify-between gap-4 border-t pt-2 font-bold">
               <dt>Total</dt>
-              <dd className="text-right">{total}</dd>
+              <dd className="text-right tabular-nums">{total}</dd>
             </div>
           ) : null}
         </dl>
@@ -176,7 +176,8 @@ export function Estimate({ estimate }: { estimate: Analysis["estimate"] }) {
         ) : null}
 
         <p className="text-xs text-neutral-500">
-          Estimation fondée sur des benchmarks de marché, pas un tarif officiel.
+          Estimation fondée sur des benchmarks de marché, pas un tarif officiel. Table de tarifs{" "}
+          <span className="tabular-nums">{estimate.rate_table_version}</span>.
         </p>
       </div>
     </Section>

@@ -93,7 +93,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="Médiation de la consommation">
+      <LegalSection id="mediation" title="Médiation de la consommation">
         <ToFill>
           nom, adresse postale et site internet du médiateur de la consommation auprès duquel le vendeur a adhéré.
           Mention obligatoire.

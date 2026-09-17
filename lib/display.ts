@@ -19,20 +19,21 @@ export const BAND_LABEL: Record<Band, string> = {
   excellent: "Excellent deal",
 };
 
-export const BAND_COLOR: Record<Band, string> = {
-  bad: "text-red-700",
-  weak: "text-orange-700",
-  fair: "text-amber-700",
-  good: "text-green-700",
-  excellent: "text-emerald-700",
-};
-
-export const BAND_BG: Record<Band, string> = {
-  bad: "bg-red-50 border-red-200",
-  weak: "bg-orange-50 border-orange-200",
-  fair: "bg-amber-50 border-amber-200",
-  good: "bg-green-50 border-green-200",
-  excellent: "bg-emerald-50 border-emerald-200",
+// Couleurs des bandes de score : table unique, importée partout. Les valeurs
+// sont les variables de app/globals.css (fond teinté à 8 %, texte à 4,5:1
+// au moins sur ce fond, vérifié par tests/design.test.ts). Les bandes viennent
+// de bandFor() dans lib/rates/score.ts.
+export const BAND_STYLE: Record<Band, { text: string; tint: string; border: string; accent: string }> = {
+  bad: { text: "text-band-bad-text", tint: "bg-band-bad-tint", border: "border-band-bad/25", accent: "bg-band-bad" },
+  weak: { text: "text-band-weak-text", tint: "bg-band-weak-tint", border: "border-band-weak/25", accent: "bg-band-weak" },
+  fair: { text: "text-band-fair-text", tint: "bg-band-fair-tint", border: "border-band-fair/25", accent: "bg-band-fair" },
+  good: { text: "text-band-good-text", tint: "bg-band-good-tint", border: "border-band-good/25", accent: "bg-band-good" },
+  excellent: {
+    text: "text-band-excellent-text",
+    tint: "bg-band-excellent-tint",
+    border: "border-band-excellent/25",
+    accent: "bg-band-excellent",
+  },
 };
 
 export const CONFIDENCE_LABEL: Record<Analysis["confidence"], string> = {

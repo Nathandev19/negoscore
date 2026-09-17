@@ -14,7 +14,7 @@ export function CounterOffer({
   return (
     <Section title={title}>
       <div className="flex flex-col gap-3 rounded-xl border bg-white p-4">
-        {amount ? <p className="text-4xl font-black tracking-tight">{amount}</p> : null}
+        {amount ? <p className="figures text-4xl font-extrabold tracking-tight">{amount}</p> : null}
         <ul className="list-disc pl-5 text-base">
           {offer.changes.map((change) => (
             <li key={change}>{change}</li>

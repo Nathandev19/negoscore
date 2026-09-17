@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileDropZone, type SelectedFile } from "@/components/file-drop-zone";
@@ -89,6 +89,10 @@ export function DealInput() {
 
   const textLength = text.trim().length;
   const canSubmit = mode === "text" ? textLength >= MIN_TEXT_LENGTH : files[mode] !== null;
+  const reasonId = useId();
+  // Bouton désactivé : on dit pourquoi, à l'écran et au lecteur d'écran.
+  const disabledReason =
+    mode === "text" ? `${MIN_TEXT_LENGTH} caractères minimum` : mode === "photo" ? "Ajoute une photo" : "Ajoute un PDF";
 
   // Émis une seule fois par mode, au premier geste réel de l'utilisateur.
   function markInputStarted(current: Mode) {
@@ -216,9 +220,9 @@ export function DealInput() {
             }}
             placeholder="Colle ici le DM, le mail ou le brief de la marque…"
             aria-label="Message de la marque"
-            className="min-h-40 resize-y bg-white text-base md:text-base"
+            className="min-h-40 resize-y bg-surface text-base md:text-base"
           />
-          <p className="text-right text-sm text-neutral-500" aria-live="polite">
+          <p className="text-right text-small text-subtle tabular-nums" aria-live="polite">
             {textLength < MIN_TEXT_LENGTH
               ? `${textLength} caractère${textLength > 1 ? "s" : ""} · ${MIN_TEXT_LENGTH} minimum`
               : `${textLength} caractères`}
@@ -261,9 +265,20 @@ export function DealInput() {
         </div>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={!canSubmit} className="h-12 w-full text-base">
+      <Button
+        type="submit"
+        size="lg"
+        disabled={!canSubmit}
+        aria-describedby={canSubmit ? undefined : reasonId}
+        className="h-12 w-full text-base font-semibold disabled:border disabled:border-line disabled:bg-surface-soft disabled:text-copy disabled:opacity-100"
+      >
         Analyser mon deal
       </Button>
+      {canSubmit ? null : (
+        <p id={reasonId} className="text-center text-small text-subtle">
+          {disabledReason}
+        </p>
+      )}
     </form>
   );
 }
