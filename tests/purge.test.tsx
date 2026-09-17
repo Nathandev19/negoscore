@@ -53,10 +53,13 @@ describe("/api/purge", () => {
 });
 
 describe("durées de conservation", () => {
-  it("documents purgés dès 29 jours (jamais plus de 30 avec une purge quotidienne), IP 30 jours, paiements 5 ans", () => {
+  // Durées annoncées dans la politique : 30 jours pour les documents ET pour les
+  // IP hachées. La purge ne tourne qu'une fois par jour : couper à 29 jours est
+  // ce qui garantit qu'aucune des deux ne dépasse jamais 30 jours réels.
+  it("documents et IP hachées purgés dès 29 jours (jamais plus de 30 avec une purge quotidienne), paiements 5 ans", () => {
     const cutoffs = purgeCutoffs(new Date("2026-09-17T03:00:00.000Z"));
     expect(cutoffs.documents).toBe("2026-08-19T03:00:00.000Z");
-    expect(cutoffs.usageGuard).toBe("2026-08-18T03:00:00.000Z");
+    expect(cutoffs.usageGuard).toBe("2026-08-19T03:00:00.000Z");
     expect(cutoffs.paymentRecords).toBe("2021-09-17T03:00:00.000Z");
   });
 });

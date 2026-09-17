@@ -9,11 +9,13 @@ import { deleteRowsReturning, removeDocuments, selectRows, SupabaseRequestError 
 // source ont une durée de 30 jours. Idempotente : un second passage ne trouve rien.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// Durée annoncée : 30 jours. La purge tourne une fois par jour : en supprimant
-// dès 29 jours, un document ne vit jamais plus de 30 jours.
+// Durées annoncées : 30 jours. La purge tourne une fois par jour : en supprimant
+// dès 29 jours, une donnée ne vit jamais plus de 30 jours, quel que soit le
+// moment de la journée où le cron passe.
 export const DOCUMENT_RETENTION_DAYS = 30;
 export const DOCUMENT_PURGE_AFTER_DAYS = 29;
 export const IP_HASH_RETENTION_DAYS = 30;
+export const IP_HASH_PURGE_AFTER_DAYS = 29;
 export const PAYMENT_RECORD_RETENTION_YEARS = 5;
 const BATCH = 200;
 
@@ -42,7 +44,7 @@ export function purgeCutoffs(now: Date) {
   years.setUTCFullYear(years.getUTCFullYear() - PAYMENT_RECORD_RETENTION_YEARS);
   return {
     documents: new Date(now.getTime() - DOCUMENT_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
-    usageGuard: new Date(now.getTime() - IP_HASH_RETENTION_DAYS * DAY_MS).toISOString(),
+    usageGuard: new Date(now.getTime() - IP_HASH_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
     paymentRecords: years.toISOString(),
   };
 }
