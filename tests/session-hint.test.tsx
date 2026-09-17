@@ -117,11 +117,13 @@ describe("le cookie indicateur seul ne donne accès à rien", () => {
 });
 
 describe("en-tête client", () => {
-  it("rendu serveur : état inconnu, aucun lien de compte, même hauteur", async () => {
+  it("rendu serveur : « Se connecter », aucun lien de compte, même avec le cookie", async () => {
     const { SiteHeader } = await import("@/components/site-header");
+    auth.cookies.set(SESSION_HINT_COOKIE, "1");
     const html = renderToString(<SiteHeader />);
-    expect(html).not.toContain("/connexion");
-    expect(html).not.toContain("/compte");
-    expect(html).toContain('class="h-8"');
+    expect(html).toContain('href="/connexion"');
+    expect(html).toContain("Se connecter");
+    expect(html).not.toContain('href="/compte"');
+    expect(html).not.toContain('href="/historique"');
   });
 });

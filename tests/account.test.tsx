@@ -50,10 +50,11 @@ describe("en-tête", () => {
     expect(html).toContain(">Compte<");
   });
 
-  it("état inconnu (rendu statique) : aucun lien, hauteur réservée", () => {
-    const html = renderToStaticMarkup(<HeaderNav signedIn={null} />);
-    expect(hrefs(html)).toEqual(["/"]);
-    expect(html).toContain('aria-hidden="true" class="h-8"');
+  it("les deux variantes ont la même hauteur : aucun saut à l'hydratation", () => {
+    for (const html of [renderToStaticMarkup(<HeaderNav signedIn={false} />), renderToStaticMarkup(<HeaderNav signedIn />)]) {
+      expect(html).toContain('<header class="mx-auto flex h-14');
+      expect(html).toMatch(/<nav aria-label="Compte" class="flex h-8 /);
+    }
   });
 });
 

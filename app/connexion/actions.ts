@@ -6,7 +6,7 @@ import { hashIp } from "@/lib/security/request";
 import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
 import { hitUsageGuard } from "@/lib/security/usage-guard";
 
-export type LoginState = { status: "idle" | "sent" | "error"; message: string | null };
+export type LoginState = { status: "idle" | "sent" | "error"; message: string | null; email?: string };
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LINKS_PER_HOUR = 5;
@@ -41,7 +41,7 @@ export async function requestMagicLink(_previous: LoginState, formData: FormData
     if (!sent) {
       return { status: "error", message: "Le lien n'a pas pu être envoyé. Réessaie dans quelques minutes." };
     }
-    return { status: "sent", message: `C'est parti : ouvre le lien envoyé à ${email}. Il est valable une heure.` };
+    return { status: "sent", message: null, email };
   } catch {
     return { status: "error", message: "La connexion n'est pas disponible pour le moment. Réessaie plus tard." };
   }

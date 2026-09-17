@@ -1,19 +1,15 @@
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 
-// En-tête sans état. signedIn vaut null tant que le navigateur n'a pas lu
-// l'indicateur de session (page statique, avant hydratation) : la zone des
-// liens garde sa hauteur mais reste invisible, pour ne montrer ni un état faux
-// ni un saut de mise en page quand le bon état apparaît.
-export function HeaderNav({ signedIn }: { signedIn: boolean | null }) {
+// En-tête sans état. Les deux variantes ont la même hauteur (en-tête de 56 px,
+// liens de 32 px) : passer de l'une à l'autre après hydratation ne décale rien.
+export function HeaderNav({ signedIn }: { signedIn: boolean }) {
   return (
     <header className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
       <Link href="/" className="text-sm font-semibold tracking-tight">
         {BRAND.name}
       </Link>
-      {signedIn === null ? (
-        <div aria-hidden className="h-8" />
-      ) : signedIn ? (
+      {signedIn ? (
         <nav aria-label="Compte" className="flex h-8 items-center gap-4 text-sm">
           <Link href="/historique" className="font-medium underline-offset-4 hover:underline">
             Mes analyses

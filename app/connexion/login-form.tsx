@@ -13,11 +13,7 @@ export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(requestMagicLink, INITIAL);
 
   if (state.status === "sent") {
-    return (
-      <p role="status" className="rounded-xl border bg-white p-4 text-base font-medium">
-        {state.message}
-      </p>
-    );
+    return <LinkSent email={state.email ?? ""} next={next} />;
   }
 
   return (
@@ -47,5 +43,28 @@ export function LoginForm({ next }: { next: string }) {
         {pending ? "Envoi du lien…" : "Recevoir mon lien de connexion"}
       </Button>
     </form>
+  );
+}
+
+// Attente du lien : c'est l'étape où l'on perd le plus de monde. On dit que le
+// lien est parti, où, pour combien de temps, et quoi faire s'il n'arrive pas.
+export function LinkSent({ email, next }: { email: string; next: string }) {
+  return (
+    <div role="status" className="flex flex-col gap-3 rounded-xl border bg-white p-4">
+      <p className="text-lg font-bold">Regarde ta boîte mail</p>
+      <p className="text-base">
+        Lien envoyé à <span className="font-semibold break-all">{email}</span>. Ouvre-le pour te connecter : il est valable
+        une heure.
+      </p>
+      <p className="text-sm text-neutral-700">
+        Rien après une minute ? Regarde dans tes spams ou tes promotions, et vérifie l&apos;adresse.
+      </p>
+      <a
+        href={`/connexion?next=${encodeURIComponent(next)}`}
+        className="text-sm font-medium text-neutral-950 underline underline-offset-4"
+      >
+        Utiliser une autre adresse
+      </a>
+    </div>
   );
 }
