@@ -1,15 +1,12 @@
 import type { CSSProperties } from "react";
 import { verdictSentence } from "@/lib/analysis/verdict";
 import type { ResultView } from "@/lib/analysis/lock";
-import { BAND_LABEL, BAND_SEGMENTS, BAND_STYLE, EVALUABILITY_LABEL, QUANTITY_CAP_NOTE } from "@/lib/display";
+import { BAND_LABEL, BAND_STYLE, EVALUABILITY_LABEL, QUANTITY_CAP_NOTE } from "@/lib/display";
 import { hasUnknownQuantity } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 
 type Score = NonNullable<Analysis["score"]>;
-
-// Durée du remplissage à l'arrivée (jeton --duration-score de globals.css).
-export const SCORE_ANIMATION_MS = 700;
 
 // Bandeau de verdict, posé sur la surface bleue de l'en-tête des résultats.
 // Ordre de lecture sur mobile : phrase de verdict, puis score, pastille et
@@ -83,35 +80,29 @@ export function AnimatedScore({ score, animated = true }: { score: Score; animat
   );
 }
 
-// Jauge en cinq segments aux bornes de bandFor(). La part remplie prend la
-// couleur de la bande du score ; les segments se remplissent l'un après
-// l'autre, au même rythme linéaire que le chiffre.
+// Jauge : une barre continue de 0 à 100, remplie jusqu'au score dans la couleur
+// de sa bande, avec un repère crème à la valeur. Une seule règle de lecture :
+// la position dit le score. L'ancienne jauge en cinq segments proportionnels aux
+// bandes (30, 20, 20, 15, 15 points) montrait des morceaux de largeurs
+// différentes et des segments à moitié remplis, qui ne voulaient rien dire.
+// Piste en bleu foncé : le remplissage s'en détache à 3:1 au moins, quelle que
+// soit la bande (tests/design.test.ts). Le remplissage et le repère avancent au
+// même rythme linéaire que le chiffre.
 export function ScoreGauge({ score, animated = true }: { score: Score; animated?: boolean }) {
-  const fill = BAND_STYLE[score.band].onMarque;
+  const value = Math.max(0, Math.min(100, score.value));
+  const still: CSSProperties = animated ? {} : { animation: "none" };
   return (
-    <div aria-hidden className="flex h-3 w-full gap-1.5">
-      {BAND_SEGMENTS.map((segment, index) => {
-        const to = BAND_SEGMENTS[index + 1]?.from ?? 100;
-        const share = Math.max(0, Math.min(1, (score.value - segment.from) / (to - segment.from)));
-        const reached = score.value > segment.from ? Math.min(score.value, to) - segment.from : 0;
-        const style: CSSProperties =
-          score.value > 0 && animated
-            ? {
-                width: `${share * 100}%`,
-                animationDelay: `${Math.round((segment.from / score.value) * SCORE_ANIMATION_MS)}ms`,
-                animationDuration: `${Math.round((reached / score.value) * SCORE_ANIMATION_MS)}ms`,
-              }
-            : { width: `${share * 100}%`, animation: "none" };
-        return (
-          <span
-            key={segment.band}
-            className="flex h-full overflow-hidden rounded-pill bg-creme/25"
-            style={{ flexGrow: to - segment.from, flexBasis: 0 }}
-          >
-            {share > 0 ? <span className={cn("gauge-fill h-full", fill)} style={style} /> : null}
-          </span>
-        );
-      })}
+    <div aria-hidden data-gauge={value} className="relative h-3 w-full rounded-pill bg-marque-deep">
+      <span
+        data-gauge-fill
+        className={cn("gauge-grow absolute inset-y-0 left-0 rounded-pill", BAND_STYLE[score.band].onMarque)}
+        style={{ width: `${value}%`, ...still }}
+      />
+      <span
+        data-gauge-marker
+        className="gauge-marker absolute -top-1.5 h-6 w-1 -translate-x-1/2 rounded-pill bg-creme"
+        style={{ left: `${value}%`, ...still }}
+      />
     </div>
   );
 }

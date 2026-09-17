@@ -4,6 +4,7 @@
 // tests/design.test.ts.
 export const STATIC_PALETTE = {
   marque: "#1f3cff",
+  marqueDeep: "#0f22b8",
   creme: "#fff7e8",
   encre: "#14120c",
   // Aplats de bande posés sur le bleu marque.

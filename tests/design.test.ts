@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { MARK_PATHS, markSvg } from "@/components/brand/logo";
 import { GRAIN_OPACITY, GRAIN_TILE, grainDataUri } from "@/lib/design/grain";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
-import { BAND_SEGMENTS, BAND_STYLE, SEVERITY_BADGE } from "@/lib/display";
+import { BAND_STYLE, SEVERITY_BADGE } from "@/lib/display";
 import { bandFor } from "@/lib/rates/score";
 
 // Système de design (#031) : un fond de marque constant, la couleur du score
@@ -156,13 +156,15 @@ describe("bandes : aplats, jamais du texte", () => {
     });
   });
 
-  it("les segments de la jauge suivent les bornes de bandFor()", () => {
-    expect(BAND_SEGMENTS.map((s) => s.band)).toEqual([...BANDS]);
-    BAND_SEGMENTS.forEach((segment, index) => {
-      expect(bandFor(segment.from)).toBe(segment.band);
-      const next = BAND_SEGMENTS[index + 1];
-      if (next) expect(bandFor(next.from - 1)).toBe(segment.band);
-    });
+  it("jauge continue : le remplissage se détache de la piste bleu foncé à 3:1, le repère crème partout", () => {
+    const track = token("marque-deep");
+    for (const band of BANDS) {
+      const fill = token(`band-${band}-on-marque`);
+      expect(contrast(fill, track), band).toBeGreaterThanOrEqual(3);
+    }
+    // Le repère dépasse la barre : lisible sur le bleu du bandeau (grain compris) et sur la piste.
+    expect(contrastOnGrain(token("creme"), token("marque"))).toBeGreaterThanOrEqual(3);
+    expect(contrast(token("creme"), track)).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -174,6 +176,7 @@ describe("grain, signe et couleurs hors CSS", () => {
 
   it("STATIC_PALETTE est la copie exacte de globals.css", () => {
     expect(STATIC_PALETTE.marque).toBe(token("marque"));
+    expect(STATIC_PALETTE.marqueDeep).toBe(token("marque-deep"));
     expect(STATIC_PALETTE.creme).toBe(token("creme"));
     expect(STATIC_PALETTE.encre).toBe(token("encre"));
     for (const band of BANDS) expect(STATIC_PALETTE.bandOnMarque[band]).toBe(token(`band-${band}-on-marque`));
@@ -190,12 +193,12 @@ describe("grain, signe et couleurs hors CSS", () => {
     for (const file of ["app/icon.svg", ...readdirSync(path.join(root, "public", "brand")).map((f) => `public/brand/${f}`)]) {
       for (const hex of read(file).toLowerCase().match(/#[0-9a-f]{6}/g) ?? []) expect(allowed.has(hex), `${file} ${hex}`).toBe(true);
     }
-    expect(MARK_PATHS).toEqual(["M5 19.5V6", "M5 6l13.4 13.4", "M18.4 19.5V8.2", "M18.4 8.2l3-5"]);
+    expect(MARK_PATHS).toEqual(["M6 19.5V9", "M6 9L18 19.5", "M18 19.5V4.5"]);
   });
 
-  it("l'ancien signe (arc du €) a disparu du dépôt", () => {
+  it("les anciens signes (arc du €, N à quatre traits) ont disparu du dépôt", () => {
     const files = filesIn(["app", "components", "lib", "public"], /\.(tsx?|svg)$/);
-    const offenders = files.filter((file) => /euroArcPath|EURO_BAR|A 10 10 0 1 0|brand-mark/.test(readFileSync(file, "utf8")));
+    const offenders = files.filter((file) => /euroArcPath|EURO_BAR|A 10 10 0 1 0|brand-mark|M5 19\.5V6|M18\.4 8\.2|l3-5|l2\.6-3\.6/.test(readFileSync(file, "utf8")));
     expect(offenders.map((file) => path.relative(root, file))).toEqual([]);
     expect(readdirSync(path.join(root, "public", "brand")).sort()).toEqual([
       "negoscore-mark-mono.svg",
@@ -228,6 +231,8 @@ describe("usage des couleurs dans le code", () => {
       "components/ui/button.tsx",
       "components/header-nav.tsx",
       "components/result/analysis-result.tsx",
+      // Piste bleu foncé de la jauge, dans le bandeau des résultats.
+      "components/result/score-band.tsx",
       "app/page.tsx",
     ];
     const offenders = sources.filter((file) => /\bbg-marque\b/.test(readFileSync(file, "utf8"))).map(rel);

@@ -195,9 +195,14 @@
     --score-now: 0;
   }
 }
-@keyframes gauge-fill {
+@keyframes gauge-grow {
   from {
-    transform: scaleX(0);
+    width: 0;
+  }
+}
+@keyframes gauge-marker {
+  from {
+    left: 0;
   }
 }
 .score-count {
@@ -209,11 +214,11 @@
 .score-count::after {
   content: counter(score);
 }
-.gauge-fill {
-  transform-origin: left center;
-  animation-name: gauge-fill;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
+.gauge-grow {
+  animation: gauge-grow var(--duration-score) linear both;
+}
+.gauge-marker {
+  animation: gauge-marker var(--duration-score) linear both;
 }
 
 /* Longueur de ligne du corps. */

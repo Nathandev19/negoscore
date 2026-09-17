@@ -65,16 +65,6 @@ export const EVALUABILITY_LABEL: Record<Exclude<Analysis["evaluability"], "compl
   incomplete: "Informations insuffisantes",
 };
 
-// Segments de la jauge de score, dans l'ordre : première valeur de chaque
-// bande. La cohérence avec bandFor() est vérifiée par tests/design.test.ts.
-export const BAND_SEGMENTS: ReadonlyArray<{ band: Band; from: number }> = [
-  { band: "bad", from: 0 },
-  { band: "weak", from: 30 },
-  { band: "fair", from: 50 },
-  { band: "good", from: 70 },
-  { band: "excellent", from: 85 },
-];
-
 export const CONFIDENCE_LABEL: Record<Analysis["confidence"], string> = {
   high: "Confiance élevée",
   medium: "Confiance moyenne",

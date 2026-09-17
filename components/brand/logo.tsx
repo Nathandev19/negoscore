@@ -8,14 +8,17 @@ import { cn } from "@/lib/utils";
 // icônes (app/icon.svg, icon1, apple-icon), public/brand/*.svg et la carte
 // partageable en découlent (vérifié par tests/design.test.ts).
 
-// Géométrie de la mission #035, ajustée après lecture à 16 px dans le
-// navigateur : la pointe (« M18.4 8.2l2.6-3.6 ») ne dépassait le sommet du N
-// que de 1,4 unité, soit un pixel flou dans un onglet ; elle file désormais
-// jusqu'à 21,4 · 3,2 (« l3-5 »), et le trait passe de 2,3 à 2,6 pour que la
-// diagonale ne se dissolve pas en gris. Le reste du tracé est inchangé.
+// Géométrie de la mission #036 : trois traits. La jambe droite monte 4,5 unités
+// au-dessus du sommet de la gauche ; cette asymétrie, et elle seule, dit que la
+// valeur dépasse. Le quatrième trait de #035 (une pointe à un autre angle que la
+// diagonale) est supprimé : les deux diagonales se contredisaient.
+// Trait de 3 unités (2,6 demandé) après lecture au pixel à 16 px : 3 unités font
+// exactement 2 px à 16 px et 4 px à 32 px, centrés sur les jambes (x = 6 et 18).
+// À 2,6, chaque jambe tombait à cheval sur deux colonnes à 87 % et la droite
+// paraissait délavée ; à 3, les deux jambes sont des colonnes pleines.
 export const MARK_VIEWBOX = 24;
-export const MARK_PATHS = ["M5 19.5V6", "M5 6l13.4 13.4", "M18.4 19.5V8.2", "M18.4 8.2l3-5"] as const;
-export const MARK_STROKE_WIDTH = 2.6;
+export const MARK_PATHS = ["M6 19.5V9", "M6 9L18 19.5", "M18 19.5V4.5"] as const;
+export const MARK_STROKE_WIDTH = 3;
 
 export type LogoVariant = "marque" | "creme" | "mono";
 

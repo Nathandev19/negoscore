@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import type { ResultView } from "@/lib/analysis/lock";
 import { LogoMark } from "@/components/brand/logo";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
-import { BAND_LABEL, BAND_SEGMENTS, deliverablesLine, EVALUABILITY_LABEL } from "@/lib/display";
+import { BAND_LABEL, deliverablesLine, EVALUABILITY_LABEL } from "@/lib/display";
 import { formatEur, formatEurRange } from "@/lib/money";
 
 // Carte partageable (1080 × 1920), rendue par next/og. Contenu fermé : le signe
@@ -21,7 +21,7 @@ export const SHARE_CARD_SIZE = { width: 1080, height: 1920 } as const;
 export const SHARE_CARD_SITE = "negoscore.fr";
 export { SHARE_CARD_FILENAME } from "@/lib/share-card/filename";
 
-const { marque, creme, encre, bandOnMarque } = STATIC_PALETTE;
+const { marque, marqueDeep, creme, encre, bandOnMarque } = STATIC_PALETTE;
 
 // Espaces insécables du formateur (U+202F) remplacés par l'insécable simple,
 // présente dans les polices embarquées.
@@ -68,22 +68,31 @@ export function shareCardTexts(analysis: ResultView): ShareCardTexts {
 }
 
 const GAUGE_WIDTH = 936;
-const GAUGE_GAP = 10;
+const GAUGE_HEIGHT = 36;
+const MARKER_WIDTH = 12;
+const MARKER_HEIGHT = 68;
 
+// Même règle que la jauge du site : barre continue sur bleu foncé, remplie
+// jusqu'au score, repère crème à la valeur.
 function Gauge({ value, color }: { value: number; color: string }) {
-  const usable = GAUGE_WIDTH - GAUGE_GAP * (BAND_SEGMENTS.length - 1);
+  const clamped = Math.max(0, Math.min(100, value));
+  const fill = Math.round((GAUGE_WIDTH * clamped) / 100);
   return (
-    <div style={{ display: "flex", width: GAUGE_WIDTH, height: 36, gap: GAUGE_GAP }}>
-      {BAND_SEGMENTS.map((segment, index) => {
-        const to = BAND_SEGMENTS[index + 1]?.from ?? 100;
-        const width = Math.round((usable * (to - segment.from)) / 100);
-        const share = Math.max(0, Math.min(1, (value - segment.from) / (to - segment.from)));
-        return (
-          <div key={segment.band} style={{ display: "flex", width, height: 36, borderRadius: 18, overflow: "hidden", background: "rgba(255, 247, 232, 0.22)" }}>
-            <div style={{ display: "flex", width: Math.round(width * share), height: 36, background: color }} />
-          </div>
-        );
-      })}
+    <div style={{ display: "flex", position: "relative", width: GAUGE_WIDTH, height: MARKER_HEIGHT, alignItems: "center" }}>
+      <div style={{ display: "flex", width: GAUGE_WIDTH, height: GAUGE_HEIGHT, borderRadius: GAUGE_HEIGHT / 2, background: marqueDeep, overflow: "hidden" }}>
+        <div style={{ display: "flex", width: fill, height: GAUGE_HEIGHT, borderRadius: GAUGE_HEIGHT / 2, background: color }} />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: fill - MARKER_WIDTH / 2,
+          width: MARKER_WIDTH,
+          height: MARKER_HEIGHT,
+          borderRadius: MARKER_WIDTH / 2,
+          background: creme,
+        }}
+      />
     </div>
   );
 }
