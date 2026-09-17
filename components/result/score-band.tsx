@@ -3,6 +3,7 @@ import { verdictSentence } from "@/lib/analysis/verdict";
 import type { ResultView } from "@/lib/analysis/lock";
 import { BAND_LABEL, BAND_STYLE, EVALUABILITY_LABEL, QUANTITY_CAP_NOTE } from "@/lib/display";
 import { hasUnknownQuantity } from "@/lib/rates/score";
+import { TIER_LABEL } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 
@@ -13,15 +14,20 @@ type Score = NonNullable<Analysis["score"]>;
 // jauge. Sur grand écran : score, pastille et jauge à gauche, phrase à droite.
 // animated : remplissage à l'arrivée (page de résultat). L'exemple de la page
 // d'accueil est affiché directement à sa valeur.
+// showTier : rappelle le niveau de calcul, dont dépendent le score et la phrase,
+// avec un lien vers le sélecteur (#niveau, page de résultat).
 export function ScoreBand({
   analysis,
   className,
   animated = true,
+  showTier = false,
 }: {
   analysis: ResultView;
   className?: string;
   animated?: boolean;
+  showTier?: boolean;
 }) {
+  const tierNote = showTier ? <TierNote tier={analysis.profile_tier} /> : null;
   const scored = analysis.evaluability === "complete" && analysis.score !== null;
   return (
     <div className={cn("grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-12", className)}>
@@ -38,15 +44,28 @@ export function ScoreBand({
               {QUANTITY_CAP_NOTE}
             </p>
           ) : null}
+          {tierNote}
         </div>
       ) : (
-        <div className="flex">
+        <div className="flex flex-col items-start gap-4">
           <span className="headline rounded-pill bg-creme px-4 py-1.5 text-lg text-encre">
             {EVALUABILITY_LABEL[analysis.evaluability === "complete" ? "terms_unknown" : analysis.evaluability]}
           </span>
+          {tierNote}
         </div>
       )}
     </div>
+  );
+}
+
+function TierNote({ tier }: { tier: ResultView["profile_tier"] }) {
+  return (
+    <p data-tier-note className="text-small text-creme">
+      Calculé pour le niveau « {TIER_LABEL[tier].short} ».{" "}
+      <a href="#niveau" className="font-semibold underline underline-offset-2">
+        Changer
+      </a>
+    </p>
   );
 }
 

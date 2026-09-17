@@ -1,5 +1,6 @@
 import rates from "@/lib/rates/fr-2026.2.json";
 import { formatNumber } from "@/lib/display";
+import { DEFAULT_TIER, type Tier } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";
 
 // Chiffrage déterministe. Toutes les valeurs de tarif viennent de la table
@@ -8,7 +9,7 @@ import type { Analysis } from "@/lib/schema";
 type Deal = Analysis["deal"];
 type Estimate = Analysis["estimate"];
 
-export type Tier = "starter" | "confirmed" | "experienced";
+export type { Tier };
 export type Profile = { tier?: Tier };
 
 // Sujet de négociation auquel une ligne se rattache. Sert à reporter
@@ -74,8 +75,24 @@ export function countFilledFields(deal: Deal): number {
   return filled.filter(Boolean).length;
 }
 
+// Réécrit en mission #039 : c'est un argument de négociation, pas une réserve.
 export const UPLIFT_CAPPED_ASSUMPTION =
-  "Les suppléments demandés cumulés dépassent ce qu'un annonceur accepte en pratique : l'estimation a été plafonnée.";
+  "La marque demande tant de droits qu'additionnés, ils dépasseraient ce qui se paie en pratique : l'estimation s'arrête à ce plafond. Elle est donc prudente, et c'est un argument pour négocier.";
+
+// Contrôle de vraisemblance (mission #039) : le constat d'abord, la vérification
+// ensuite. Le doute porte sur la lecture de l'offre par l'outil, pas sur la
+// personne, et le texte reste vrai quand l'offre a été correctement lue.
+export const PLAUSIBILITY_ASSUMPTION =
+  "Le montant proposé fait moins du tiers du bas de notre fourchette. Un écart pareil est rare : soit l'offre est vraiment très en dessous des prix, soit notre lecture s'est trompée sur un contenu ou un droit. Vérifie dans « Le deal proposé » que les contenus et les droits sont bien ceux de l'offre.";
+
+// Textes écrits par le moteur avant la mission #039, encore présents dans les
+// analyses enregistrées. Le recalcul par niveau les reconnaît comme venant du
+// moteur (lib/analysis/recompute.ts).
+export const LEGACY_ENGINE_ASSUMPTIONS: readonly string[] = [
+  "Profil de créateur « confirmé » supposé (portfolio existant, pas débutant).",
+  "Les suppléments demandés cumulés dépassent ce qu'un annonceur accepte en pratique : l'estimation a été plafonnée.",
+  "L'estimation dépasse de plus de trois fois le montant proposé. Cet écart important peut venir d'une offre volontairement sous-évaluée, ou d'une information de l'offre mal comprise : vérifie les livrables et les droits demandés.",
+];
 
 // Au-delà de ce rapport entre borne basse estimée et montant proposé, l'écart
 // est signalé comme inhabituel.
@@ -129,10 +146,8 @@ export const UNKNOWN_QUANTITY_ASSUMPTION: Record<Deal["deliverables"][number]["t
 
 export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEstimate {
   const assumptions: string[] = [];
-  const tier: Tier = profile.tier ?? (rates.base_rates_eur.default_tier as Tier);
-  if (!profile.tier) {
-    assumptions.push("Profil de créateur « confirmé » supposé (portfolio existant, pas débutant).");
-  }
+  // Le niveau est un choix affiché sur la page de résultat, pas une hypothèse.
+  const tier: Tier = profile.tier ?? DEFAULT_TIER;
 
   // Somme pondérée des livrables : une story ou une photo ne vaut pas une vidéo.
   // Le poids de chaque type vient de la table (vidéo = 1).
@@ -318,9 +333,7 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   // Contrôle de vraisemblance : l'écart est signalé, jamais corrigé. Un deal
   // peut réellement être très sous-payé.
   if (isFarAboveOffer(deal.payment.amount_eur, totalLow)) {
-    assumptions.push(
-      "L'estimation dépasse de plus de trois fois le montant proposé. Cet écart important peut venir d'une offre volontairement sous-évaluée, ou d'une information de l'offre mal comprise : vérifie les livrables et les droits demandés.",
-    );
+    assumptions.push(PLAUSIBILITY_ASSUMPTION);
   }
 
   return {

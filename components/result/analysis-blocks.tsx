@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Section } from "@/components/result/section";
 import {
   dealRecapRows,
@@ -116,12 +117,14 @@ export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
   );
 }
 
-export function Estimate({ estimate }: { estimate: Analysis["estimate"] }) {
+// children : le choix du niveau, posé au-dessus de la fourchette qu'il change.
+export function Estimate({ estimate, children }: { estimate: Analysis["estimate"]; children?: ReactNode }) {
   const base = formatEurRange(estimate.base_low, estimate.base_high);
   const total = formatEurRange(estimate.total_low, estimate.total_high);
   return (
     <Section title="Ce que ça vaut">
       <div className="flex flex-col gap-5">
+        {children}
         {total ? (
           <div className="flex flex-col gap-1">
             <p className="text-small text-attenue">Fourchette estimée</p>

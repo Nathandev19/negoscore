@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { useTier } from "@/components/result/tier-selector";
 import { Button } from "@/components/ui/button";
 import {
   FEEDBACK_COMMENT_MAX,
@@ -9,17 +10,22 @@ import {
   type FeedbackRating,
   type StoredFeedback,
 } from "@/lib/analysis/feedback-options";
+import { DEFAULT_TIER, TIER_LABEL, type Tier } from "@/lib/rates/tier";
 import { cn } from "@/lib/utils";
 
-type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; message: string };
+type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; tier: Tier } | { kind: "error"; message: string };
 
 // « Cette estimation te paraît juste ? » : trois réponses et un commentaire
 // facultatif. Une réponse par analyse, qu'on peut changer. action : l'adresse
 // d'enregistrement (null en prévisualisation, où rien n'est envoyé).
+// L'avis porte sur les chiffres du niveau affiché, envoyé avec la réponse : après
+// un changement de niveau, « c'est enregistré » disparaît, l'avis enregistré
+// portant sur l'autre niveau.
 export function EstimateFeedback({ action, initial }: { action: string | null; initial: StoredFeedback | null }) {
   const [rating, setRating] = useState<FeedbackRating | null>(initial?.rating ?? null);
   const [comment, setComment] = useState(initial?.comment ?? "");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const tier = useTier() ?? DEFAULT_TIER;
   const legendId = useId();
   const commentId = useId();
 
@@ -27,7 +33,7 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
     event.preventDefault();
     if (!rating) return;
     if (!action) {
-      setStatus({ kind: "saved" });
+      setStatus({ kind: "saved", tier });
       return;
     }
     setStatus({ kind: "saving" });
@@ -35,10 +41,10 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
       const response = await fetch(action, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, comment }),
+        body: JSON.stringify({ rating, comment, tier }),
       });
       if (response.ok) {
-        setStatus({ kind: "saved" });
+        setStatus({ kind: "saved", tier });
         return;
       }
       const body = (await response.json().catch(() => ({}))) as { error?: unknown };
@@ -107,7 +113,9 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
           {status.kind === "saving" ? "Envoi…" : initial ? "Modifier mon avis" : "Envoyer mon avis"}
         </Button>
         <p role="status" aria-live="polite" className="text-small">
-          {status.kind === "saved" ? "Merci, c'est enregistré. Tu peux changer ta réponse à tout moment." : null}
+          {status.kind === "saved" && status.tier === tier
+            ? `Merci, c'est enregistré pour le niveau « ${TIER_LABEL[tier].short} ». Tu peux changer ta réponse à tout moment.`
+            : null}
         </p>
       </div>
       {status.kind === "error" ? (
@@ -116,7 +124,8 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
         </p>
       ) : null}
       <p className="text-xs text-attenue">
-        Seuls ta réponse, ton commentaire et les chiffres affichés ici sont enregistrés, avec l&apos;analyse.
+        Seuls ta réponse, ton commentaire, le niveau choisi et les chiffres affichés ici sont enregistrés, avec
+        l&apos;analyse.
       </p>
     </form>
   );

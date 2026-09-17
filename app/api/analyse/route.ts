@@ -6,6 +6,7 @@ import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
 import { extractDeal, extractDealFromImage, extractDealFromPdf, type ExtractResult } from "@/lib/llm/extract";
 import { classifyModelError, modelFailureMessage, rightNotUsed, UNREADABLE_OFFER_MESSAGE } from "@/lib/llm/errors";
 import { PROMPT_VERSION } from "@/lib/llm/prompt";
+import { preferredTier } from "@/lib/rates/tier-preference";
 import { ANON_COOKIE, anonCookieHeader, clientIp, hashIp, newAnonToken, readCookie, sameToken } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
 import { isStoragePath, sniffMime } from "@/lib/storage/documents";
@@ -234,7 +235,10 @@ export async function POST(request: Request) {
       });
     }
 
-    const analysis = composeAnalysis(result.extraction, { extraAssumptions });
+    // Niveau mémorisé (compte, sinon cookie du navigateur, sinon défaut de la table) :
+    // l'analyse est calculée et enregistrée à ce niveau, modifiable ensuite sur la page de résultat.
+    const tier = await preferredTier(request, user);
+    const analysis = composeAnalysis(result.extraction, { extraAssumptions, tier });
 
     // Offre illisible : le modèle n'a rien pu lire d'exploitable. Ce n'est pas
     // un résultat : rien n'est enregistré ni décompté, et on dit quoi faire.

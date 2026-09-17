@@ -7,6 +7,14 @@ export const analysisSchema = z.object({
   // recevait un score, elle est donc relue comme « complete » et s'affiche
   // comme avant. Une analyse 1.1 garde l'état sous lequel elle a été produite.
   evaluability: z.enum(["complete", "terms_unknown", "unpriced", "incomplete"]).default("complete"),
+  // Niveau avec lequel la fourchette a été calculée (mission #039, schéma 1.4).
+  // Une analyse antérieure n'a pas ce champ : elle a été calculée au niveau
+  // « confirmed », le seul utilisé jusque-là. Valeur écrite en dur, et non le
+  // niveau par défaut de la table, pour que l'historique ne change pas si ce
+  // défaut change un jour.
+  // Même liste que TIERS (lib/rates/tier.ts, vérifié par tests/tier.test.ts) :
+  // écrite ici sans alias, ce fichier est aussi exécuté tel quel par Node (pnpm eval).
+  profile_tier: z.enum(["starter", "confirmed", "experienced"]).default("confirmed"),
   language: z.enum(["fr", "en"]),
   confidence: z.enum(["high", "medium", "low"]),
   input_quality: z.object({
@@ -77,6 +85,9 @@ export const analysisSchema = z.object({
       eur_impact_low: z.number().nullable(),
       eur_impact_high: z.number().nullable(),
       priority: z.number(),
+      // Sujet du point (1.4) : permet de recalculer l'impact en euros quand le
+      // niveau change. Absent des analyses antérieures (retrouvé par recoupement).
+      topic: z.string().optional(),
     }),
   ),
   red_flags: z.array(

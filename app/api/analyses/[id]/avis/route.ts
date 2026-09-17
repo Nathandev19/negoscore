@@ -1,5 +1,6 @@
 import { feedbackInputSchema, saveFeedback } from "@/lib/analysis/feedback";
 import { loadResultForViewer } from "@/lib/analysis/load";
+import { recomputeForTier } from "@/lib/analysis/recompute";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
 
@@ -21,15 +22,17 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
 
   const body = await request.json().catch(() => null);
   const input = feedbackInputSchema.safeParse(body);
-  if (!input.success) return json(400, { error: "Choisis une réponse (200 caractères au plus pour le commentaire)." });
+  if (!input.success) return json(400, { error: "Choisis une réponse (200 caractères au plus pour le commentaire). Recharge la page si le problème continue." });
 
   try {
     const result = await loadResultForViewer(id, { user, anonToken });
     // Inexistante ou appartenant à quelqu'un d'autre : même réponse.
     if (!result) return json(404, { error: "Analyse introuvable." });
-    const outcome = await saveFeedback(id, result.analysis, input.data);
+    // Chiffres recalculés ici au niveau envoyé, jamais repris du navigateur.
+    const shown = recomputeForTier(result.analysis, input.data.tier);
+    const outcome = await saveFeedback(id, shown, input.data);
     if (outcome === "missing") return json(503, { error: UNAVAILABLE });
-    console.log(JSON.stringify({ event: "analysis_feedback_saved", rating: input.data.rating, has_comment: input.data.comment !== null }));
+    console.log(JSON.stringify({ event: "analysis_feedback_saved", rating: input.data.rating, tier: shown.profile_tier, has_comment: input.data.comment !== null }));
     return json(200, { ok: true });
   } catch (caught) {
     console.error(

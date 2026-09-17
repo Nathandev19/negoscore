@@ -2,6 +2,8 @@ import { isValidElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { lockAnalysis } from "@/lib/analysis/lock";
+import { recomputeForTier } from "@/lib/analysis/recompute";
+import { sampleAnalysis } from "@/lib/sample-analysis";
 import { PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/preview-states";
 import { SHARE_CARD_SITE, shareCardAvailable, shareCardElement, shareCardTexts } from "@/lib/share-card/element";
 import { analysisSchema } from "@/lib/schema";
@@ -11,7 +13,7 @@ import { analysisSchema } from "@/lib/schema";
 
 const db = vi.hoisted(() => ({ analyses: new Map<string, { payload: unknown; deal: Record<string, unknown> }>() }));
 const user = vi.hoisted(() => ({ current: null as { id: string; email: string } | null }));
-const rendered = vi.hoisted(() => ({ calls: 0 }));
+const rendered = vi.hoisted(() => ({ calls: 0, last: null as unknown }));
 
 vi.mock("@/lib/supabase/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/supabase/server")>()),
@@ -25,8 +27,9 @@ vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => user.cur
 // Le rendu PNG lui-même (satori) est vérifié dans le navigateur ; ici, on
 // vérifie qui y a accès.
 vi.mock("@/lib/share-card/render", () => ({
-  renderShareCard: async (_analysis: unknown, headers: Record<string, string>) => {
+  renderShareCard: async (analysis: unknown, headers: Record<string, string>) => {
     rendered.calls += 1;
+    rendered.last = analysis;
     return new Response("png", { status: 200, headers: { "Content-Type": "image/png", ...headers } });
   },
 }));
@@ -83,8 +86,8 @@ beforeEach(() => {
   db.analyses.set(ACCOUNT_ID, { payload: sensitiveAnalysis(), deal: { id: "d2", anon_token: OWNER_TOKEN, user_id: "user-a", source_type: "text", raw_text: "x", deal_documents: [] } });
 });
 
-function get(id: string, cookie: string | null) {
-  return GET(new Request(`http://localhost:3000/analyse/resultat/${id}/carte`, { headers: cookie ? { cookie } : {} }), {
+function get(id: string, cookie: string | null, query = "") {
+  return GET(new Request(`http://localhost:3000/analyse/resultat/${id}/carte${query}`, { headers: cookie ? { cookie } : {} }), {
     params: Promise.resolve({ id }),
   });
 }
@@ -100,15 +103,17 @@ describe("contenu de la carte", () => {
     }
   });
 
-  it("rien d'autre que le signe, le site, le score, la pastille, la jauge, l'offre, la valeur et les livrables", () => {
+  it("rien d'autre que le signe, le site, le score, la pastille, la jauge, l'offre, la valeur, le niveau et les livrables", () => {
     const texts = shareCardTexts(sensitiveAnalysis());
-    expect(Object.keys(texts).sort()).toEqual(["deliverables", "pill", "proposes", "score", "worth"]);
+    expect(Object.keys(texts).sort()).toEqual(["deliverables", "pill", "proposes", "score", "tier", "worth"]);
     expect(texts.score).toBe("32");
     expect(texts.pill).toBe("Deal faible");
     expect(texts.proposes?.replace(/\s/g, " ")).toBe("Elle propose 300 €");
     expect(texts.worth?.replace(/\s/g, " ")).toBe("Ça vaut 510 € – 1 100 €");
     // Le champ libre « format » n'est jamais recopié.
     expect(texts.deliverables).toBe("2 vidéos TikTok");
+    // Le niveau nomme une ligne de la table, jamais une personne.
+    expect(texts.tier).toBe("Niveau : Déjà des collabs payées");
   });
 
   it("pas de carte vide : ni « unpriced » ni « incomplete » ; les états chiffrés en ont une", () => {
@@ -161,5 +166,35 @@ describe("accès à la carte : même règle que la suppression", () => {
     expect(response.headers.get("content-disposition")).toContain("attachment");
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(rendered.calls).toBe(1);
+  });
+});
+
+describe("B2 — la carte porte le niveau choisi", () => {
+  const CURRENT_ID = "33333333-3333-4333-8333-333333333333";
+  const owner = `deal_anon_token=${OWNER_TOKEN}`;
+
+  beforeEach(() => {
+    db.analyses.set(CURRENT_ID, { payload: sampleAnalysis, deal: { id: "d3", anon_token: OWNER_TOKEN, user_id: null, source_type: "text", raw_text: "x", deal_documents: [] } });
+  });
+
+  it("?niveau= : chiffres recalculés par le serveur à ce niveau, et le niveau écrit sur la carte", async () => {
+    expect((await get(CURRENT_ID, owner, "?niveau=starter")).status).toBe(200);
+    // Auteur anonyme : vue verrouillée, recalculée au niveau demandé.
+    const expected = recomputeForTier(lockAnalysis(sampleAnalysis), "starter");
+    expect(rendered.last).toEqual(expected);
+    const texts = shareCardTexts(expected);
+    expect(texts.tier).toBe("Niveau : Je débute");
+    expect(texts.worth).not.toBe(shareCardTexts(sampleAnalysis).worth);
+  });
+
+  it("sans paramètre ou niveau inconnu : le niveau de l'analyse enregistrée", async () => {
+    await get(CURRENT_ID, owner);
+    expect(rendered.last).toEqual(lockAnalysis(sampleAnalysis));
+    await get(CURRENT_ID, owner, "?niveau=nano");
+    expect(rendered.last).toEqual(lockAnalysis(sampleAnalysis));
+  });
+
+  it("le niveau ne donne accès à rien de plus : un autre visiteur reste refusé", async () => {
+    expect((await get(CURRENT_ID, "deal_anon_token=un-autre", "?niveau=starter")).status).toBe(404);
   });
 });

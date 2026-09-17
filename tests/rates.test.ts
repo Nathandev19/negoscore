@@ -4,6 +4,7 @@ import { computeFrLegal } from "@/lib/legal/fr";
 import {
   computeEstimate,
   isFarAboveOffer,
+  PLAUSIBILITY_ASSUMPTION,
   UPLIFT_CAPPED_ASSUMPTION,
   billableUnits,
   upliftCap,
@@ -67,7 +68,8 @@ describe("computeEstimate", () => {
     expect(estimate.base_high).toBe(Math.round(base.high * billableUnits(3)));
     expect(estimate.lines).toEqual([]);
     expect(estimate.rate_table_version).toBe(rates.version);
-    expect(estimate.assumptions.some((a) => a.includes("confirmé"))).toBe(true);
+    // Le niveau est un choix affiché, plus une hypothèse (mission #039).
+    expect(estimate.assumptions.some((a) => a.includes("confirmé"))).toBe(false);
   });
 
   it("utilise le palier demandé", () => {
@@ -268,8 +270,8 @@ describe("computeEstimate", () => {
     const lowball = computeEstimate(makeDeal({ payment: { amount_eur: 50, currency: "EUR", terms_days: null, schedule: null } }));
     expect(lowball.total_low).toBe(fair.total_low);
     expect(lowball.total_high).toBe(fair.total_high);
-    expect(lowball.assumptions.some((a) => a.includes("trois fois"))).toBe(true);
-    expect(fair.assumptions.some((a) => a.includes("trois fois"))).toBe(false);
+    expect(lowball.assumptions.some((a) => a === PLAUSIBILITY_ASSUMPTION)).toBe(true);
+    expect(fair.assumptions.some((a) => a === PLAUSIBILITY_ASSUMPTION)).toBe(false);
     expect(isFarAboveOffer(100, 300)).toBe(false);
     expect(isFarAboveOffer(100, 310)).toBe(true);
     expect(isFarAboveOffer(null, 310)).toBe(false);
@@ -284,8 +286,8 @@ describe("computeEstimate", () => {
     expect(estimate.total_high).toBe(withAmount.total_high);
     expect(estimate.lines).toEqual(withAmount.lines);
     expect(estimate.assumptions.some((a) => a.includes("Aucun montant proposé"))).toBe(false);
-    expect(estimate.assumptions.some((a) => a.includes("trois fois"))).toBe(false);
-    expect(withAmount.assumptions.some((a) => a.includes("trois fois"))).toBe(true);
+    expect(estimate.assumptions.some((a) => a === PLAUSIBILITY_ASSUMPTION)).toBe(false);
+    expect(withAmount.assumptions.some((a) => a === PLAUSIBILITY_ASSUMPTION)).toBe(true);
   });
 
   it("renvoie un total null si moins de 3 champs sont renseignés", () => {

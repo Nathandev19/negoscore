@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { composeAnalysis } from "@/lib/analysis/compose";
+import { PLAUSIBILITY_ASSUMPTION } from "@/lib/rates/engine";
 import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { extractionSchema, PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
 import { formatEur } from "@/lib/money";
@@ -50,7 +51,7 @@ describe("composeAnalysis", () => {
     expect(analysis.counter_offer.amount_high).toBe(high);
     expect(analysis.ready_to_send_message.text).toContain(`entre ${formatEur(low!)} et ${formatEur(high!)}`);
     expect(analysis.ready_to_send_message.text).not.toContain("devis");
-    expect(analysis.estimate.assumptions.some((a) => a.includes("trois fois"))).toBe(false);
+    expect(analysis.estimate.assumptions.some((a) => a === PLAUSIBILITY_ASSUMPTION)).toBe(false);
     expect(analysis.fr_legal.threshold_1000_reached).toBe("unknown");
   });
 
@@ -125,7 +126,7 @@ describe("composeAnalysis", () => {
     const reference = composeAnalysis(makeExtraction({ confidence: "high" }));
     expect(analysis.confidence).toBe("medium");
     expect(analysis.estimate.total_low).toBe(reference.estimate.total_low);
-    expect(analysis.estimate.assumptions.some((a) => a.includes("trois fois"))).toBe(true);
+    expect(analysis.estimate.assumptions.some((a) => a === PLAUSIBILITY_ASSUMPTION)).toBe(true);
     expect(composeAnalysis(makeExtraction({ confidence: "low", deal: cheap.deal })).confidence).toBe("low");
   });
 

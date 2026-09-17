@@ -23,6 +23,7 @@ export default function PrivacyPage() {
             "Adresse email — création et accès au compte — exécution du contrat.",
             "Texte et documents des offres déposées — production de l'analyse — exécution du contrat.",
             "Analyses produites — affichage et historique — exécution du contrat.",
+            "Niveau choisi pour le calcul des tarifs (je débute, déjà des collabs payées, c'est mon métier) — préférence de calcul, gardée dans un cookie du navigateur et, avec un compte, sur le compte — exécution du contrat — jusqu'à ce que tu en changes, ou à la suppression du compte (cookie : 12 mois).",
             "Adresse IP sous forme hachée — limitation des abus et de l'usage gratuit — intérêt légitime — conservée 30 jours au maximum.",
             "Email de l'acheteur, montant et offre achetée — preuve de la transaction et suivi des paiements — obligation légale et intérêt légitime.",
             `Coordonnées bancaires — traitées exclusivement par Whop, jamais reçues ni conservées par ${BRAND.name}.`,

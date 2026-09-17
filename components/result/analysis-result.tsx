@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useMemo, useState, type ReactNode } from "react";
 import {
   DealRecap,
   Estimate,
@@ -9,23 +11,31 @@ import {
 } from "@/components/result/analysis-blocks";
 import { LockedCounterOfferPlaceholder, LockedMessagePlaceholder, UnlockCta } from "@/components/result/locked-blocks";
 import { ScoreBand } from "@/components/result/score-band";
+import { rememberTier, TierContext, TierSelector } from "@/components/result/tier-selector";
 import { CounterOffer, ReadyMessage } from "@/components/result/unlocked-blocks";
 import { IncompleteCard, TermsUnknownCard, UnpricedCard } from "@/components/result/verdict-card";
 import { counterOfferRange } from "@/lib/analysis/anchoring";
 import { missingInformation } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
+import { recomputeForTier, tierChangeAvailable } from "@/lib/analysis/recompute";
+import type { Tier } from "@/lib/rates/tier";
 
 // Page de résultat, sous l'en-tête bleu (SiteHeader tone="marque") :
-// 1. bandeau bleu : phrase de verdict, score, pastille, jauge ;
+// 1. bandeau bleu : phrase de verdict, score, pastille, jauge, niveau ;
 // 2. sur crème, dans cet ordre : détail du verdict si l'offre n'a pas de score,
-//    fourchette en euros, ce qu'il faut négocier, le deal proposé, puis le reste.
+//    niveau et fourchette en euros, ce qu'il faut négocier, le deal proposé, puis le reste.
 // Les blocs contre-offre et message ne sont rendus que si le serveur a laissé
 // ces champs dans l'analyse. Sinon, bloc de substitution sans contenu.
+//
+// Composant client : changer de niveau recalcule toute la page ici, dans le
+// navigateur, avec le moteur déterministe (lib/analysis/recompute.ts). Le
+// niveau affiché au chargement est celui de l'analyse enregistrée.
 export function AnalysisResult({
-  analysis,
+  analysis: stored,
   unlockHref,
   before,
   children,
+  rememberOnAccount = false,
 }: {
   analysis: ResultView;
   unlockHref: string;
@@ -33,7 +43,19 @@ export function AnalysisResult({
   before?: ReactNode;
   // Contenu sous les blocs (carte, avis, suppression).
   children?: ReactNode;
+  // Compte connecté : le niveau choisi est aussi mémorisé sur le compte.
+  rememberOnAccount?: boolean;
 }) {
+  const [tier, setTier] = useState<Tier>(stored.profile_tier);
+  const [changed, setChanged] = useState(false);
+  const analysis = useMemo(() => recomputeForTier(stored, tier), [stored, tier]);
+
+  function chooseTier(next: Tier) {
+    setTier(next);
+    setChanged(true);
+    rememberTier(next, rememberOnAccount);
+  }
+
   const locked = !analysis.counter_offer || !analysis.ready_to_send_message;
   const incomplete = analysis.evaluability === "incomplete";
   // Sans montant de contre-offre (offre incomplète, ou montant déjà au-dessus de
@@ -43,11 +65,12 @@ export function AnalysisResult({
   const priced = counterOfferRange(deal.payment.amount_eur, estimate.total_low, estimate.total_high).low !== null;
   const counterOfferTitle = incomplete || !priced ? "Ta contre-offre" : undefined;
   return (
-    <>
+    <TierContext value={analysis.profile_tier}>
       <section aria-label="Verdict" className="on-marque grain bg-marque text-creme">
         <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-10 sm:px-6 lg:pt-10 lg:pb-14">
           <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>
-          <ScoreBand analysis={analysis} />
+          {/* Après un changement de niveau, les nouvelles valeurs s'affichent sans rejouer l'animation. */}
+          <ScoreBand analysis={analysis} animated={!changed} showTier={!incomplete} />
         </div>
       </section>
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 pt-8 pb-16 sm:px-6 md:pt-12 md:pb-24 [&>*]:max-w-2xl">
@@ -59,7 +82,11 @@ export function AnalysisResult({
         ) : analysis.evaluability === "unpriced" ? (
           <UnpricedCard confidence={analysis.confidence} />
         ) : null}
-        {incomplete ? null : <Estimate estimate={analysis.estimate} />}
+        {incomplete ? null : (
+          <Estimate estimate={analysis.estimate}>
+            <TierSelector tier={analysis.profile_tier} changeable={tierChangeAvailable(stored)} onChange={chooseTier} />
+          </Estimate>
+        )}
         <NegotiateList items={analysis.negotiate} />
         <DealRecap deal={analysis.deal} />
         {analysis.counter_offer ? (
@@ -78,6 +105,6 @@ export function AnalysisResult({
         <LegalNotice legal={analysis.fr_legal} />
         {children}
       </main>
-    </>
+    </TierContext>
   );
 }

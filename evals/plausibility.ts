@@ -1,14 +1,13 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { evaluability } from "@/lib/analysis/evaluability";
 import { normalizeDeal } from "@/lib/analysis/normalize";
-import { PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/preview-states";
-import { extractionSchema } from "@/lib/llm/prompt";
-import { sampleAnalysis } from "@/lib/sample-analysis";
-import { analysisSchema, type Analysis } from "@/lib/schema";
+import { isFarAboveOffer } from "@/lib/rates/engine";
+import type { Analysis } from "@/lib/schema";
+import { collectDeals } from "./survey-deals.ts";
 
 // Mission #038 : à quelle fréquence l'alarme de vraisemblance se déclenche-t-elle ?
 // AUCUN APPEL AU MODÈLE. Toutes les analyses sont recalculées par le moteur
@@ -27,44 +26,13 @@ import { analysisSchema, type Analysis } from "@/lib/schema";
 
 const ROOT = process.cwd();
 const PRE_026 = "4afd151^";
-const ALARM_START = "L'estimation dépasse de plus de trois fois le montant proposé.";
 
 type Deal = Analysis["deal"];
 type Estimate = Analysis["estimate"];
 type Score = NonNullable<Analysis["score"]>;
-type Row = { source: string; offer: string; inStats: boolean; deal: Deal };
 
 type EngineModule = { computeEstimate: (deal: Deal) => Estimate };
 type ScoreModule = { computeScore: (deal: Deal, estimate: Estimate) => Score };
-
-function collectDeals(): Row[] {
-  const rows: Row[] = [];
-  const run = JSON.parse(readFileSync(path.join(ROOT, "evals/results/2026-09-15T07-45-12-414Z.json"), "utf8")) as {
-    reports: Array<{ id: string; runs: Array<{ fixture: string; rawOutput: string }> }>;
-  };
-  const production = run.reports.find((report) => report.id === "openai/gpt-5.6-luna");
-  for (const record of production?.runs ?? []) {
-    const extraction = extractionSchema.safeParse(JSON.parse(record.rawOutput));
-    if (extraction.success) rows.push({ source: "éval 15/09", offer: record.fixture, inStats: true, deal: extraction.data.deal });
-  }
-  for (const file of readdirSync(path.join(ROOT, "evals/results/pipeline")).filter((f) => f.endsWith(".json")).sort()) {
-    const stored = JSON.parse(readFileSync(path.join(ROOT, "evals/results/pipeline", file), "utf8")) as { analysis: unknown };
-    const parsed = analysisSchema.safeParse(stored.analysis);
-    if (!parsed.success) continue;
-    const offer = file.replace(/\.json$/, "");
-    const alreadyInEval = rows.some((row) => row.offer === offer);
-    rows.push({ source: "pipeline", offer, inStats: !alreadyInEval, deal: parsed.data.deal });
-  }
-  const nova = JSON.parse(readFileSync(path.join(ROOT, "tests/fixtures/deal-26-nova-sportswear.json"), "utf8")) as Deal;
-  rows.push({ source: "tests (#019)", offer: "26-dm-nova-sportswear", inStats: true, deal: analysisSchema.shape.deal.parse(nova) });
-  for (const state of PREVIEW_STATES) {
-    if (state === "verrouille") continue; // même analyse que « debloque »
-    const { analysis } = previewAnalysis(state);
-    rows.push({ source: "prévisualisation", offer: state, inStats: false, deal: analysis.deal });
-  }
-  rows.push({ source: "exemple public", offer: "accueil et démo", inStats: false, deal: sampleAnalysis.deal });
-  return rows;
-}
 
 // Moteur et table d'avant #026, lus dans git et écrits dans .cache (ignoré).
 async function preEngine(): Promise<{ engine: EngineModule; score: ScoreModule }> {
@@ -126,7 +94,8 @@ function summarize(amount: number | null, estimate: Estimate, state: string, sco
     low,
     high: estimate.total_high,
     ratio: amount && amount > 0 && low !== null ? Math.round((low / amount) * 100) / 100 : null,
-    alarm: estimate.assumptions.some((a) => a.startsWith(ALARM_START)),
+    // Même règle dans les deux moteurs (rapport 3) ; le texte de l'alarme a changé en #039.
+    alarm: isFarAboveOffer(amount, low),
     state,
     score,
     assumptions: estimate.assumptions,

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { computeEstimate, upliftCap, volumeDiscountFactor } from "@/lib/rates/engine";
 import { computeScore, uncappedScore } from "@/lib/rates/score";
+import { DEFAULT_TIER, TIERS, type Tier } from "@/lib/rates/tier";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 
 // Invariants du moteur de chiffrage et du score : des règles que le moteur ne
@@ -143,7 +144,10 @@ function buildPopulation(): Deal[] {
 const POPULATION = buildPopulation();
 
 // ── Outils de comparaison ───────────────────────────────────────────────────
-const estimate = (deal: Deal): Estimate => computeEstimate(deal);
+// Niveau de la créatrice (mission #039) : les invariants valent À NIVEAU CONSTANT,
+// et sont vérifiés pour chacun des trois niveaux.
+let tier: Tier = DEFAULT_TIER;
+const estimate = (deal: Deal): Estimate => computeEstimate(deal, { tier });
 const hasTotals = (e: Estimate) => e.total_low !== null && e.total_high !== null;
 
 type Violation = { label: string; deal: Deal; other: Deal; totals: string };
@@ -257,7 +261,11 @@ const SCORE_ONLY_CONSTRAINTS: Constraint[] = [
 ];
 
 // ── Invariants ──────────────────────────────────────────────────────────────
-describe("invariants du moteur de chiffrage", () => {
+describe.each(TIERS)("invariants du moteur de chiffrage, niveau %s", (level) => {
+  beforeAll(() => {
+    tier = level;
+  });
+
   it("I0 — ajouter une information ne fait jamais passer un total d'un nombre à null", () => {
     const violations: Violation[] = [];
     const additions: Array<[string, (d: Deal) => Deal]> = [
@@ -475,5 +483,32 @@ describe("invariants du moteur de chiffrage", () => {
     expect(POPULATION.length).toBeGreaterThan(400);
     expect(JSON.stringify(buildPopulation())).toBe(JSON.stringify(POPULATION));
     for (const deal of POPULATION) expect(analysisSchema.shape.deal.safeParse(deal).success).toBe(true);
+  });
+});
+
+// Entre niveaux, à deal constant : un niveau plus haut ne fait jamais baisser la
+// fourchette, et ne fait jamais monter le score (le même montant est comparé à
+// une fourchette plus haute).
+describe("I11 — niveau plus élevé, même deal", () => {
+  it("fourchette jamais plus basse, score jamais plus haut", () => {
+    const violations: Violation[] = [];
+    for (const deal of POPULATION) {
+      for (let i = 1; i < TIERS.length; i++) {
+        const lower = computeEstimate(deal, { tier: TIERS[i - 1] });
+        const higher = computeEstimate(deal, { tier: TIERS[i] });
+        if (!hasTotals(lower) || !hasTotals(higher)) continue;
+        const s1 = computeScore(deal, lower).value;
+        const s2 = computeScore(deal, higher).value;
+        if (higher.total_low! < lower.total_low! || higher.total_high! < lower.total_high! || s2 > s1) {
+          violations.push({
+            label: `${TIERS[i - 1]} → ${TIERS[i]}`,
+            deal,
+            other: deal,
+            totals: `${lower.total_low}–${lower.total_high} € (score ${s1}) puis ${higher.total_low}–${higher.total_high} € (score ${s2})`,
+          });
+        }
+      }
+    }
+    expectNone(violations);
   });
 });

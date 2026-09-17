@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TIERS } from "@/lib/rates/tier";
 
 // Réponses possibles à « Cette estimation te paraît juste ? ». Sans accès
 // serveur : importé aussi par le formulaire côté navigateur.
@@ -21,6 +22,9 @@ export const feedbackInputSchema = z.object({
     .max(FEEDBACK_COMMENT_MAX)
     .nullish()
     .transform((value) => (value && value.trim() !== "" ? value.trim() : null)),
+  // Niveau affiché au moment de l'avis (mission #039). Obligatoire : un avis
+  // « trop haute » sans le niveau ne dit rien de la table de tarifs.
+  tier: z.enum(TIERS),
 });
 
 export type FeedbackInput = z.infer<typeof feedbackInputSchema>;

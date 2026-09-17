@@ -1,20 +1,20 @@
 import type { ResultView } from "@/lib/analysis/lock";
 import type { FeedbackInput, StoredFeedback } from "@/lib/analysis/feedback-options";
-import { isMissingRelation, selectRows, upsertRow } from "@/lib/supabase/server";
+import { isMissingColumn, isMissingRelation, selectRows, upsertRow } from "@/lib/supabase/server";
 
 export { feedbackInputSchema } from "@/lib/analysis/feedback-options";
 
 // « Cette estimation te paraît juste ? » : une réponse par analyse, modifiable.
 // Stocké avec un instantané de ce qui a été montré (version de la table, score,
 // fourchette), jamais avec une donnée personnelle ni le texte de l'offre.
-// Table créée par la migration 20260917000016.
+// Table créée par la migration 20260917000016, niveau ajouté par 20260917000017.
 
 function warnMissing(operation: string) {
   console.warn(
     JSON.stringify({
       event: "analysis_feedback_missing",
       operation,
-      detail: "Table analysis_feedback absente : appliquer la migration 20260917000016.",
+      detail: "Table analysis_feedback ou colonne profile_tier absente : appliquer les migrations 20260917000016 et 20260917000017.",
     }),
   );
 }
@@ -35,12 +35,15 @@ export async function readFeedback(analysisId: string): Promise<StoredFeedback |
 }
 
 // Ligne enregistrée : uniquement la réponse et ce que l'analyse affichait.
+// analysis : l'analyse DÉJÀ recalculée au niveau de l'avis (voir la route) ; son
+// niveau est celui des chiffres enregistrés, même si le recalcul était impossible.
 export function feedbackRow(analysisId: string, analysis: ResultView, input: FeedbackInput) {
   return {
     analysis_id: analysisId,
     rating: input.rating,
     comment: input.comment,
     rate_table_version: analysis.estimate.rate_table_version,
+    profile_tier: analysis.profile_tier,
     score: analysis.score?.value ?? null,
     total_low: analysis.estimate.total_low,
     total_high: analysis.estimate.total_high,
@@ -53,7 +56,8 @@ export async function saveFeedback(analysisId: string, analysis: ResultView, inp
     await upsertRow("analysis_feedback", feedbackRow(analysisId, analysis, input), "analysis_id");
     return "saved";
   } catch (caught) {
-    if (!isMissingRelation(caught)) throw caught;
+    // Colonne profile_tier absente : l'avis est refusé plutôt qu'enregistré sans niveau.
+    if (!isMissingRelation(caught) && !isMissingColumn(caught)) throw caught;
     warnMissing("write");
     return "missing";
   }

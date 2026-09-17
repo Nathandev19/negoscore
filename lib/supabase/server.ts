@@ -49,6 +49,12 @@ export function isMissingRelation(caught: unknown): boolean {
   );
 }
 
+// Colonne inconnue de l'API (migration pas encore appliquée) : PGRST204 à
+// l'écriture, 42703 à la lecture.
+export function isMissingColumn(caught: unknown): boolean {
+  return caught instanceof SupabaseRequestError && (caught.code === "PGRST204" || caught.code === "42703");
+}
+
 async function rest<T>(path: string, init: RequestInit & { what: string }): Promise<T> {
   const { url, serviceKey } = config();
   const response = await fetch(`${url}/rest/v1/${path}`, {

@@ -7,6 +7,7 @@ import { getViewer, getViewerAccessToken } from "@/lib/auth/viewer";
 import { Button } from "@/components/ui/button";
 import { BAND_STYLE, formatEur } from "@/lib/display";
 import { bandFor } from "@/lib/rates/score";
+import { parseTier, TIER_LABEL } from "@/lib/rates/tier";
 import { cn } from "@/lib/utils";
 import { selectRowsAsUser } from "@/lib/supabase/as-user";
 
@@ -21,6 +22,8 @@ type Row = {
   score: number | null;
   amount: number | null;
   evaluability: string | null;
+  // Absent des analyses d'avant le schéma 1.4 : calculées au niveau confirmé.
+  tier: string | null;
 };
 
 // Analyse sans score : on dit pourquoi plutôt que d'afficher « —/100 ».
@@ -41,7 +44,7 @@ export default async function HistoryPage() {
   const rows = await selectRowsAsUser<Row>(
     token,
     "analyses",
-    "select=id,created_at,score,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability&order=created_at.desc&limit=100",
+    "select=id,created_at,score,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability,tier:payload->>profile_tier&order=created_at.desc&limit=100",
   );
 
   return (
@@ -63,6 +66,8 @@ export default async function HistoryPage() {
                     <span className="text-sm text-attenue">
                       {typeof row.amount === "number" ? `Offre : ${formatEur(row.amount)}` : "Montant non précisé"}
                     </span>
+                    {/* Niveau avec lequel le score ci-contre a été calculé (mission #039). */}
+                    <span className="text-sm text-attenue">Niveau : {TIER_LABEL[parseTier(row.tier) ?? "confirmed"].short}</span>
                   </span>
                   {row.score !== null ? (
                     <span className="flex items-center gap-2">

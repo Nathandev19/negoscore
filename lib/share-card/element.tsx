@@ -4,10 +4,13 @@ import { LogoMark } from "@/components/brand/logo";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
 import { BAND_LABEL, deliverablesLine, EVALUABILITY_LABEL } from "@/lib/display";
 import { formatEur, formatEurRange } from "@/lib/money";
+import { TIER_LABEL } from "@/lib/rates/tier";
 
 // Carte partageable (1080 × 1920), rendue par next/og. Contenu fermé : le signe
 // et « negoscore.fr », le score, la pastille de verdict, la jauge, « Elle
-// propose X € / Ça vaut Y – Z € » et une ligne de livrables.
+// propose X € / Ça vaut Y – Z € », le niveau de calcul et une ligne de livrables.
+// Le niveau y figure toujours (mission #039) : sans lui, la fourchette et le score
+// ne correspondent à rien de vérifiable. Il nomme un niveau, jamais une personne.
 // JAMAIS : le nom de la marque, un nom ou un email de personne, un texte
 // recopié de l'offre (vérifié par tests/share-card.test.tsx).
 //
@@ -43,7 +46,14 @@ export function shareCardAvailable(analysis: ResultView): boolean {
   );
 }
 
-export type ShareCardTexts = { pill: string; score: string | null; proposes: string | null; worth: string | null; deliverables: string | null };
+export type ShareCardTexts = {
+  pill: string;
+  score: string | null;
+  proposes: string | null;
+  worth: string | null;
+  tier: string;
+  deliverables: string | null;
+};
 
 // Tous les textes de la carte, et rien d'autre : c'est ce que le test vérifie.
 export function shareCardTexts(analysis: ResultView): ShareCardTexts {
@@ -63,6 +73,7 @@ export function shareCardTexts(analysis: ResultView): ShareCardTexts {
     score: scored ? String(score.value) : null,
     proposes: proposes ? plain(proposes) : null,
     worth: range ? plain(`Ça vaut ${range}`) : null,
+    tier: `Niveau : ${TIER_LABEL[analysis.profile_tier].short}`,
     deliverables: deliverablesLine(deal),
   };
 }
@@ -152,7 +163,10 @@ export function shareCardElement(analysis: ResultView): ReactElement {
         </div>
       </div>
 
-      {texts.deliverables ? <div style={{ display: "flex", fontSize: 50, fontWeight: 600 }}>{texts.deliverables}</div> : null}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 50, fontWeight: 600 }}>
+        <div style={{ display: "flex" }}>{texts.tier}</div>
+        {texts.deliverables ? <div style={{ display: "flex" }}>{texts.deliverables}</div> : null}
+      </div>
     </div>
   );
 }

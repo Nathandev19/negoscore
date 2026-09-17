@@ -38,6 +38,8 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
       <AnalysisResult
         analysis={result.analysis}
         unlockHref={`/connexion?next=${encodeURIComponent(`/analyse/resultat/${id}`)}`}
+        // Analyse ouverte par son compte : le niveau choisi est aussi mémorisé sur le compte.
+        rememberOnAccount={result.unlocked}
       >
         {shareCardAvailable(result.analysis) ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}
         <EstimateFeedback

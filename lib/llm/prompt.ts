@@ -29,6 +29,7 @@ export const extractionSchema = analysisSchema
   .omit({
     schema_version: true,
     evaluability: true,
+    profile_tier: true,
     estimate: true,
     score: true,
     fr_legal: true,

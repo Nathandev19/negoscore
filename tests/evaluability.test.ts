@@ -308,8 +308,8 @@ describe("analyses enregistrées avant la version 1.1", () => {
     expect(renderAll(parsed)).toContain("Deal faible");
   });
 
-  it("une nouvelle analyse est en version 1.3", () => {
-    expect(composeAnalysis(extraction(CASE_A)).schema_version).toBe("1.3");
+  it("une nouvelle analyse est en version 1.4", () => {
+    expect(composeAnalysis(extraction(CASE_A)).schema_version).toBe("1.4");
   });
 
   it("le modèle ne produit pas l'évaluabilité", () => {
