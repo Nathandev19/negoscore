@@ -8,6 +8,7 @@ import { LoadingSteps } from "@/components/loading-steps";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
 import { track } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { validateFile, type FileKind } from "@/lib/upload";
@@ -16,8 +17,13 @@ const MIN_TEXT_LENGTH = 20;
 const LOADING_DURATION_MS = 2500;
 const LOADING_STEPS = ["Lecture du message", "Extraction du deal", "Analyse et chiffrage"] as const;
 const GENERIC_ERROR = "L'analyse n'a pas abouti. Vérifie ta connexion et réessaie.";
+// Réponse du serveur sans message exploitable (coupure, délai de l'hébergeur) :
+// ce n'est pas la connexion de l'utilisateur qui est en cause.
+const SERVER_ERROR = "L'analyse est momentanément indisponible. Rien n'a été décompté, réessaie dans quelques minutes.";
 const UPLOAD_ERROR = "Le fichier n'a pas pu être envoyé. Vérifie ta connexion et réessaie.";
 const METHOD = { text: "paste", photo: "photo", pdf: "pdf" } as const;
+// Copié au build depuis ANALYSIS_PAUSED (next.config.ts).
+const PAUSED = process.env.NEXT_PUBLIC_ANALYSIS_PAUSED === "1";
 
 type Mode = "text" | FileKind;
 type AnalysisMeta = { latency_ms: number; confidence: string; score_band: string; has_price: boolean };
@@ -49,7 +55,8 @@ async function postJson(url: string, payload: unknown): Promise<Record<string, u
   }
   if (!response.ok) {
     const reason = typeof body.reason === "string" ? body.reason : `http_${response.status}`;
-    throw new FlowError(typeof body.error === "string" ? body.error : GENERIC_ERROR, response.status === 402, reason);
+    const fallback = response.status >= 500 ? SERVER_ERROR : GENERIC_ERROR;
+    throw new FlowError(typeof body.error === "string" ? body.error : fallback, response.status === 402, reason);
   }
   return body;
 }
@@ -88,11 +95,12 @@ export function DealInput() {
   const startedRef = useRef<Record<Mode, boolean>>({ text: false, photo: false, pdf: false });
 
   const textLength = text.trim().length;
-  const canSubmit = mode === "text" ? textLength >= MIN_TEXT_LENGTH : files[mode] !== null;
+  const canSubmit = !PAUSED && (mode === "text" ? textLength >= MIN_TEXT_LENGTH : files[mode] !== null);
   const reasonId = useId();
   // Bouton désactivé : on dit pourquoi, à l'écran et au lecteur d'écran.
-  const disabledReason =
-    mode === "text" ? `${MIN_TEXT_LENGTH} caractères minimum` : mode === "photo" ? "Ajoute une photo" : "Ajoute un PDF";
+  const disabledReason = PAUSED
+    ? "Analyse momentanément indisponible"
+    : mode === "text" ? `${MIN_TEXT_LENGTH} caractères minimum` : mode === "photo" ? "Ajoute une photo" : "Ajoute un PDF";
 
   // Émis une seule fois par mode, au premier geste réel de l'utilisateur.
   function markInputStarted(current: Mode) {
@@ -198,6 +206,11 @@ export function DealInput() {
         void analyse(mode);
       }}
     >
+      {PAUSED ? (
+        <p role="status" className="rounded-xl border border-band-fair/25 bg-band-fair-tint p-4 text-small font-medium text-band-fair-text">
+          {ANALYSIS_PAUSED_MESSAGE}
+        </p>
+      ) : null}
       <Tabs
         value={mode}
         onValueChange={(value) => {

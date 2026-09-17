@@ -33,7 +33,9 @@ export default function HomePage() {
           </div>
           <div className="flex flex-col gap-2">
             <DealInput />
-            <p className="text-center text-small text-subtle">Gratuit · sans compte · 30&nbsp;secondes</p>
+            <p className="text-center text-small text-subtle">
+              Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et le message.
+            </p>
           </div>
         </section>
 

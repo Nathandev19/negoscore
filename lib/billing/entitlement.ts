@@ -1,13 +1,19 @@
 import type { SessionUser } from "@/lib/auth/session";
+import { consumeFree, freeUsed, type FreeSubject } from "@/lib/billing/free-usage";
 import { displayedPlan, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 import { FREE_ANALYSES, PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
 import { hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
 import { adjustInteger, countRows, selectRows } from "@/lib/supabase/server";
 
-// Droit d'analyser, décidé uniquement côté serveur, avant l'appel au modèle.
-// Le droit est réservé avant l'appel et rendu si l'analyse échoue : une
-// analyse ratée ne consomme jamais rien.
+// Droit d'analyser, décidé uniquement côté serveur.
+//
+// Règle : aucun droit consommé sans résultat rendu. Le droit est VÉRIFIÉ avant
+// l'appel au modèle, sans rien décompter. Il n'est DÉCOMPTÉ (commit) qu'après
+// l'enregistrement d'une analyse valide. Si le modèle échoue, rien n'a été
+// écrit : il n'y a rien à rendre, même si la fonction est coupée en plein appel.
+// Si le décompte échoue (dernier crédit pris entre-temps par une autre analyse),
+// la route supprime l'analyse qu'elle vient d'enregistrer.
 
 // La gratuité se compte sur le jeton anonyme et sur le compte. L'IP, elle,
 // n'est qu'un filet anti-script : derrière une même IP publique (réseau
@@ -22,17 +28,37 @@ export type Denial = {
   reason: "free_used" | "no_credit" | "rate_limited";
   message: string;
 };
-export type Grant = { allowed: true; plan: "free" | "pack" | "pro"; release: () => Promise<void> };
+
+export type Grant = {
+  allowed: true;
+  plan: "free" | "pack" | "pro";
+  // Décompte, après l'enregistrement de l'analyse. false : plus de droit.
+  commit: () => Promise<boolean>;
+  // Annule ce que la vérification a compté (filet anti-script de l'IP).
+  release: () => Promise<void>;
+};
 
 const NO_CREDIT_MESSAGE = "Tu as utilisé ton analyse gratuite. Choisis une offre pour analyser d'autres deals.";
 const RATE_LIMITED_MESSAGE =
   "Trop d'analyses ont été lancées depuis ton réseau ces dernières heures. Réessaie plus tard, ou connecte-toi pour continuer.";
 
+const nothingToRelease = async () => undefined;
+
 function freeIpKey(ip: string): string {
   return hashIp(`free-analysis:${ip}`);
 }
 
-async function reserveFree(ip: string): Promise<Grant | Denial> {
+// Décompte d'une gratuité : compteur durable, ou, avant la migration 015,
+// nombre de deals analysés (celui qui vient d'être enregistré compris).
+async function commitFree(subject: FreeSubject): Promise<boolean> {
+  const consumed = await consumeFree(subject, FREE_ANALYSES);
+  if (consumed !== "missing") return consumed;
+  const owner = subject.kind === "anon" ? `anon_token=eq.${encodeURIComponent(subject.token)}` : `user_id=eq.${subject.id}`;
+  const analysed = await countRows("deals", `select=id&${owner}&status=eq.analysed`);
+  return analysed <= FREE_ANALYSES;
+}
+
+async function grantFree(ip: string, subject: FreeSubject): Promise<Grant | Denial> {
   const key = freeIpKey(ip);
   const guard = await hitUsageGuard(key, { limit: FREE_IP_LIMIT, windowSeconds: FREE_IP_WINDOW_SECONDS });
   if (!guard.allowed) {
@@ -50,39 +76,48 @@ async function reserveFree(ip: string): Promise<Grant | Denial> {
     );
     return { allowed: false, reason: "rate_limited", message: RATE_LIMITED_MESSAGE };
   }
-  return { allowed: true, plan: "free", release: () => releaseUsageGuard(key) };
+  return { allowed: true, plan: "free", commit: () => commitFree(subject), release: () => releaseUsageGuard(key) };
 }
 
-// Un crédit acheté se réserve de la même façon partout : décrément atomique,
-// restitution à l'identique si l'analyse échoue. La colonne `plan` n'est pas
-// filtrée : elle vaut encore « pro » sur un abonnement expiré ou en dépassement.
-async function reservePackCredit(userId: string): Promise<Grant | null> {
-  const filter = `user_id=eq.${userId}`;
-  const reserved = await adjustInteger("credits", filter, "balance", -1, (balance) => balance > 0);
-  if (reserved === null) return null;
+// Crédit acheté : vérifié maintenant, décrémenté au commit par compare-and-swap.
+// La colonne `plan` n'est pas filtrée : elle vaut encore « pro » sur un
+// abonnement expiré ou en dépassement.
+function grantPack(userId: string): Grant {
   return {
     allowed: true,
     plan: "pack",
-    release: async () => {
-      await adjustInteger("credits", filter, "balance", 1, () => true);
-    },
+    commit: async () =>
+      (await adjustInteger("credits", `user_id=eq.${userId}`, "balance", -1, (balance) => balance > 0)) !== null,
+    release: nothingToRelease,
   };
 }
 
-type Context = { user: SessionUser | null; anonToken: string | null; ip: string };
+async function freeAlreadyUsed(subject: FreeSubject): Promise<boolean> {
+  const used = await freeUsed(subject);
+  if (used !== "missing" && used >= FREE_ANALYSES) return true;
+  const owner = subject.kind === "anon" ? `anon_token=eq.${encodeURIComponent(subject.token)}` : `user_id=eq.${subject.id}`;
+  const done = await selectRows<{ id: string }>("deals", `select=id&${owner}&status=eq.analysed&limit=${FREE_ANALYSES}`);
+  return done.length >= FREE_ANALYSES;
+}
 
-export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise<Grant | Denial> {
+type Context = {
+  user: SessionUser | null;
+  // Jeton anonyme lu dans la requête : sert à savoir si la gratuité est déjà prise.
+  anonToken: string | null;
+  // Jeton sous lequel l'analyse sera enregistrée (le même, ou un nouveau posé
+  // par la route) : sert au décompte.
+  commitAnonToken?: string | null;
+  ip: string;
+};
+
+export async function reserveAnalysis({ user, anonToken, commitAnonToken, ip }: Context): Promise<Grant | Denial> {
   if (!user) {
-    // Visiteur anonyme : une analyse, comptée sur le jeton. L'IP ne sert
-    // qu'au filet anti-script, jamais à décompter la gratuité.
-    if (anonToken) {
-      const done = await selectRows<{ id: string }>(
-        "deals",
-        `select=id&anon_token=eq.${encodeURIComponent(anonToken)}&status=eq.analysed&limit=1`,
-      );
-      if (done.length > 0) return { allowed: false, reason: "free_used", message: NO_CREDIT_MESSAGE };
+    if (anonToken && (await freeAlreadyUsed({ kind: "anon", token: anonToken }))) {
+      return { allowed: false, reason: "free_used", message: NO_CREDIT_MESSAGE };
     }
-    return reserveFree(ip);
+    const token = commitAnonToken ?? anonToken;
+    if (!token) throw new Error("Jeton anonyme absent pour le décompte de la gratuité");
+    return grantFree(ip, { kind: "anon", token });
   }
 
   const [credits] = await selectRows<PlanState>(
@@ -99,23 +134,29 @@ export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise
     const periodEnd = periodEndsAt(credits ?? null) as Date;
     const periodStart = new Date(periodEnd);
     periodStart.setMonth(periodStart.getMonth() - 1);
-    const used = await countRows(
-      "analyses",
-      `select=id,deal:deals!inner(user_id)&deal.user_id=eq.${user.id}&created_at=gt.${periodStart.toISOString()}&created_at=lte.${periodEnd.toISOString()}`,
-    );
-    if (used < PRO_ANALYSES_PER_PERIOD) {
-      return { allowed: true, plan: "pro", release: async () => undefined };
+    const inPeriod = () =>
+      countRows(
+        "analyses",
+        `select=id,deal:deals!inner(user_id)&deal.user_id=eq.${user.id}&created_at=gt.${periodStart.toISOString()}&created_at=lte.${periodEnd.toISOString()}`,
+      );
+    if ((await inPeriod()) < PRO_ANALYSES_PER_PERIOD) {
+      // Le quota se compte sur les analyses enregistrées : celle-ci compte dès
+      // qu'elle existe. Le commit vérifie seulement qu'elle ne dépasse pas.
+      return {
+        allowed: true,
+        plan: "pro",
+        commit: async () => (await inPeriod()) <= PRO_ANALYSES_PER_PERIOD,
+        release: nothingToRelease,
+      };
     }
     // Quota mensuel épuisé : les crédits achetés prennent le relais. Ils sont
     // promis sans date d'expiration, ils doivent donc servir ici aussi.
-    const overflow = await reservePackCredit(user.id);
-    if (overflow) return overflow;
+    if ((credits?.balance ?? 0) > 0) return grantPack(user.id);
     return { allowed: false, reason: "no_credit", message: "Tu as atteint la limite de ton abonnement pour cette période." };
   }
 
   if (effectivePlan === "pack") {
-    const reserved = await reservePackCredit(user.id);
-    if (reserved) return reserved;
+    if ((credits?.balance ?? 0) > 0) return grantPack(user.id);
     return { allowed: false, reason: "no_credit", message: "Tu n'as plus de crédit. Choisis une offre pour continuer." };
   }
 
@@ -129,11 +170,9 @@ export async function reserveAnalysis({ user, anonToken, ip }: Context): Promise
   }
 
   // Compte gratuit : l'analyse gratuite n'est disponible que si le compte n'en a
-  // encore aucune, y compris celle faite anonymement puis rattachée.
-  const owned = await selectRows<{ id: string }>(
-    "deals",
-    `select=id&user_id=eq.${user.id}&status=eq.analysed&limit=${FREE_ANALYSES}`,
-  );
-  if (owned.length >= FREE_ANALYSES) return { allowed: false, reason: "no_credit", message: NO_CREDIT_MESSAGE };
-  return reserveFree(ip);
+  // encore consommé aucune, y compris celle faite anonymement puis rattachée,
+  // et y compris une analyse supprimée depuis (compteur durable).
+  const subject: FreeSubject = { kind: "user", id: user.id };
+  if (await freeAlreadyUsed(subject)) return { allowed: false, reason: "no_credit", message: NO_CREDIT_MESSAGE };
+  return grantFree(ip, subject);
 }

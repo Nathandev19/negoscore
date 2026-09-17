@@ -16,7 +16,16 @@ import type { ResultView } from "@/lib/analysis/lock";
 
 // Les blocs contre-offre et message ne sont rendus que si le serveur a
 // laissé ces champs dans l'analyse. Sinon, bloc de substitution sans contenu.
-export function AnalysisResult({ analysis, unlockHref }: { analysis: ResultView; unlockHref: string }) {
+export function AnalysisResult({
+  analysis,
+  unlockHref,
+  example = false,
+}: {
+  analysis: ResultView;
+  unlockHref: string;
+  // Exemple figé (démo) : aucune version de table affichée.
+  example?: boolean;
+}) {
   const locked = !analysis.counter_offer || !analysis.ready_to_send_message;
   const incomplete = analysis.evaluability === "incomplete";
   // Sans montant de contre-offre (offre incomplète, ou montant déjà au-dessus de
@@ -42,7 +51,7 @@ export function AnalysisResult({ analysis, unlockHref }: { analysis: ResultView;
       <NegotiateList items={analysis.negotiate} />
       <RedFlags items={analysis.red_flags} />
       <LegalNotice legal={analysis.fr_legal} />
-      {incomplete ? null : <Estimate estimate={analysis.estimate} />}
+      {incomplete ? null : <Estimate estimate={analysis.estimate} example={example} />}
       {analysis.counter_offer ? (
         <CounterOffer offer={analysis.counter_offer} title={counterOfferTitle} />
       ) : (

@@ -2,20 +2,16 @@ import { composeAnalysis } from "@/lib/analysis/compose";
 import type { SessionUser } from "@/lib/auth/session";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { reserveAnalysis, type Grant } from "@/lib/billing/entitlement";
-import {
-  extractDeal,
-  extractDealFromImage,
-  extractDealFromPdf,
-  ExtractionError,
-  MissingApiKeyError,
-  type ExtractResult,
-} from "@/lib/llm/extract";
+import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
+import { extractDeal, extractDealFromImage, extractDealFromPdf, type ExtractResult } from "@/lib/llm/extract";
+import { classifyModelError, modelFailureMessage, rightNotUsed, UNREADABLE_OFFER_MESSAGE } from "@/lib/llm/errors";
 import { PROMPT_VERSION } from "@/lib/llm/prompt";
 import { ANON_COOKIE, anonCookieHeader, clientIp, hashIp, newAnonToken, readCookie, sameToken } from "@/lib/security/request";
-import { hitUsageGuard } from "@/lib/security/usage-guard";
+import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
 import { isStoragePath, sniffMime } from "@/lib/storage/documents";
 import { inspectPdf } from "@/lib/storage/pdf";
 import {
+  deleteRows,
   downloadDocument,
   insertRow,
   removeDocument,
@@ -119,21 +115,60 @@ export async function POST(request: Request) {
     return fail(400, "Colle au moins 20 caractères du message de la marque.");
   }
 
+  if (analysisPaused()) {
+    // Interrupteur ANALYSIS_PAUSED : rien n'est compté, rien n'est appelé.
+    return fail(503, ANALYSIS_PAUSED_MESSAGE, { reason: "paused" });
+  }
+
+  const ip = clientIp(request);
+  const hourlyKey = hashIp(ip);
   let grant: Grant | null = null;
+  let hourlyCounted = false;
+  let document: DocumentRow | null = null;
+  let savedDealId: string | null = null;
+
+  // Abandon sans résultat : l'utilisateur retrouve exactement l'état d'avant.
+  // Le fichier déposé est supprimé, rien de ce qui a été compté ne reste.
+  async function abandon() {
+    const steps: Array<() => Promise<unknown>> = [];
+    if (document) {
+      const dealId = document.deal.id;
+      steps.push(() => removeDocument(storagePath as string));
+      steps.push(() => updateRows("deals", `id=eq.${dealId}`, { status: "failed" }));
+    }
+    if (savedDealId) {
+      const dealId = savedDealId;
+      // Deal enregistré puis décompte refusé : l'analyse part avec lui (cascade).
+      steps.push(() => deleteRows("deals", `id=eq.${dealId}`));
+    }
+    if (grant) {
+      const release = grant.release;
+      steps.push(() => release());
+    }
+    if (hourlyCounted) steps.push(() => releaseUsageGuard(hourlyKey));
+    for (const step of steps) {
+      await step().catch((error: unknown) =>
+        console.error(
+          JSON.stringify({ event: "analyse_abandon_error", detail: error instanceof Error ? error.message.slice(0, 200) : "inconnu" }),
+        ),
+      );
+    }
+  }
+
   try {
-    const ip = clientIp(request);
-    const guard = await hitUsageGuard(hashIp(ip));
+    const guard = await hitUsageGuard(hourlyKey);
     if (!guard.allowed) {
       return fail(429, `Tu as lancé 5 analyses en une heure. Réessaie dans ${guard.retryInMinutes} min.`);
     }
+    hourlyCounted = true;
 
-    let document: DocumentRow | null = null;
     if (fileMode) {
       document = await findDocument(storagePath, user, existingToken);
     }
 
-    // Droit d'analyser, vérifié et réservé AVANT tout appel au modèle.
-    const entitlement = await reserveAnalysis({ user, anonToken: existingToken, ip });
+    // Droit d'analyser VÉRIFIÉ avant tout appel au modèle. Il ne sera décompté
+    // qu'après l'enregistrement d'une analyse valide (grant.commit).
+    const entitlement = await reserveAnalysis({ user, anonToken: existingToken, commitAnonToken: anonToken, ip });
     if (!entitlement.allowed) {
       if (document) {
         // Pas de droit : le fichier déposé n'est pas conservé.
@@ -154,33 +189,60 @@ export async function POST(request: Request) {
     let result: ExtractResult;
     let rawText: string | null = null;
     let pdfPages: number | null = null;
+    const source = document?.mime === "application/pdf" ? "pdf" : document ? "image" : "text";
 
-    if (document?.mime === "application/pdf") {
-      const bytes = await readDocument(storagePath as string, document);
-      // Taille, pages, protection : refusé avant tout appel au modèle. Le
-      // fichier n'est pas conservé et le droit est rendu (bloc catch).
-      const check = inspectPdf(bytes);
-      if (!check.ok) {
-        await removeDocument(storagePath as string);
-        await updateRows("deals", `id=eq.${document.deal.id}`, { status: "rejected" });
-        console.warn(JSON.stringify({ event: "pdf_refused", reason: check.reason, bytes: bytes.byteLength }));
-        throw new HttpError(400, check.message);
+    try {
+      if (document?.mime === "application/pdf") {
+        const bytes = await readDocument(storagePath as string, document);
+        // Taille, pages, protection : refusé avant tout appel au modèle.
+        const check = inspectPdf(bytes);
+        if (!check.ok) {
+          console.warn(JSON.stringify({ event: "pdf_refused", reason: check.reason, bytes: bytes.byteLength }));
+          throw new HttpError(400, `${check.message} ${rightNotUsed(entitlement.plan)}.`);
+        }
+        pdfPages = check.pages;
+        result = await extractDealFromPdf({ base64: Buffer.from(bytes).toString("base64"), filename: "offre.pdf" });
+      } else if (document) {
+        const bytes = await readDocument(storagePath as string, document);
+        result = await extractDealFromImage({ base64: Buffer.from(bytes).toString("base64"), mimeType: document.mime });
+      } else {
+        rawText = (text as string).trim();
+        if (rawText.length > MAX_TEXT_LENGTH) {
+          rawText = rawText.slice(0, MAX_TEXT_LENGTH);
+          extraAssumptions.push("Ton texte dépassait 60 000 caractères : seul le début a été analysé.");
+        }
+        result = await extractDeal(rawText);
       }
-      pdfPages = check.pages;
-      result = await extractDealFromPdf({ base64: Buffer.from(bytes).toString("base64"), filename: "offre.pdf" });
-    } else if (document) {
-      const bytes = await readDocument(storagePath as string, document);
-      result = await extractDealFromImage({ base64: Buffer.from(bytes).toString("base64"), mimeType: document.mime });
-    } else {
-      rawText = (text as string).trim();
-      if (rawText.length > MAX_TEXT_LENGTH) {
-        rawText = rawText.slice(0, MAX_TEXT_LENGTH);
-        extraAssumptions.push("Ton texte dépassait 60 000 caractères : seul le début a été analysé.");
-      }
-      result = await extractDeal(rawText);
+    } catch (caught) {
+      const failure = classifyModelError(caught);
+      if (!failure) throw caught;
+      await abandon();
+      // Une cause, un événement. Ni texte d'offre, ni clé : fournisseur, statut, type.
+      console.error(
+        JSON.stringify({
+          event: failure.event,
+          provider: failure.provider,
+          status: failure.status,
+          error_type: failure.errorType,
+          source,
+          plan: entitlement.plan,
+          signed_in: user !== null,
+        }),
+      );
+      return fail(failure.kind === "timeout" ? 504 : failure.event === "analyse_failed_invalid_output" ? 502 : 503, modelFailureMessage(failure.kind, entitlement.plan), {
+        reason: failure.kind === "timeout" ? "model_timeout" : "model_unavailable",
+      });
     }
 
     const analysis = composeAnalysis(result.extraction, { extraAssumptions });
+
+    // Offre illisible : le modèle n'a rien pu lire d'exploitable. Ce n'est pas
+    // un résultat : rien n'est enregistré ni décompté, et on dit quoi faire.
+    if (result.extraction.input_quality.readable === false && analysis.evaluability === "incomplete") {
+      await abandon();
+      console.warn(JSON.stringify({ event: "analyse_unreadable", source, plan: entitlement.plan }));
+      return fail(422, `${UNREADABLE_OFFER_MESSAGE[source]} ${rightNotUsed(entitlement.plan)}.`, { reason: "unreadable" });
+    }
 
     let dealId: string;
     if (document) {
@@ -195,6 +257,7 @@ export async function POST(request: Request) {
         status: "analysed",
       });
       dealId = deal.id;
+      savedDealId = dealId;
     }
     const saved = await insertRow<{ id: string }>("analyses", {
       deal_id: dealId,
@@ -207,12 +270,28 @@ export async function POST(request: Request) {
       cost_cents: Number((result.costEur * 100).toFixed(4)),
       latency_ms: result.latencyMs,
     });
-    grant = null; // analyse réussie et enregistrée : le droit est consommé.
+    if (document) savedDealId = dealId;
+
+    // Analyse valide et enregistrée : le droit est décompté MAINTENANT, jamais avant.
+    if (!(await grant.commit())) {
+      // Le dernier droit a été pris entre-temps par une autre analyse : celle-ci
+      // est retirée, et l'utilisateur est prévenu comme s'il n'avait plus de droit.
+      await abandon();
+      console.warn(JSON.stringify({ event: "analyse_commit_refused", plan: entitlement.plan }));
+      return fail(402, user ? "Tu n'as plus de crédit. Choisis une offre pour continuer." : "Tu as utilisé ton analyse gratuite. Choisis une offre pour analyser d'autres deals.", {
+        paywall: true,
+        reason: user ? "no_credit" : "free_used",
+      });
+    }
+    grant = null;
+    savedDealId = null;
+    document = null;
+    hourlyCounted = false;
 
     console.log(
       JSON.stringify({
         event: "analyse",
-        source: fileMode ? (pdfPages !== null ? "pdf" : "image") : "text",
+        source,
         pdf_pages: pdfPages,
         plan: entitlement.plan,
         signed_in: user !== null,
@@ -242,33 +321,19 @@ export async function POST(request: Request) {
       cookie,
     );
   } catch (caught) {
-    if (grant) {
-      await grant.release().catch((error: unknown) =>
-        console.error(
-          JSON.stringify({ event: "entitlement_release_error", detail: error instanceof Error ? error.message.slice(0, 200) : "inconnu" }),
-        ),
-      );
-    }
+    const plan = grant?.plan ?? null;
+    await abandon();
     if (caught instanceof HttpError) return fail(caught.status, caught.message);
-    if (caught instanceof MissingApiKeyError) {
-      console.error(JSON.stringify({ event: "analyse_error", reason: "missing_api_key" }));
-      return fail(503, "Le service d'analyse n'est pas disponible pour le moment. Réessaie plus tard.");
-    }
     if (caught instanceof SupabaseConfigError || caught instanceof SupabaseRequestError) {
-      console.error(JSON.stringify({ event: "analyse_error", reason: "database", detail: caught.message.slice(0, 300) }));
-      return fail(503, "Le service d'analyse n'est pas disponible pour le moment. Réessaie plus tard.");
-    }
-    if (caught instanceof ExtractionError) {
-      console.error(JSON.stringify({ event: "analyse_error", reason: "invalid_output", detail: caught.message }));
-      return fail(502, "On n'a pas réussi à lire cette offre. Réessaie, ou envoie un texte plus complet.");
+      console.error(JSON.stringify({ event: "analyse_failed_database", detail: caught.message.slice(0, 300) }));
+      return fail(503, modelFailureMessage("unavailable", plan), { reason: "service_unavailable" });
     }
     console.error(
       JSON.stringify({
-        event: "analyse_error",
-        reason: "unexpected",
+        event: "analyse_failed_unexpected",
         detail: caught instanceof Error ? caught.message.slice(0, 300) : "inconnu",
       }),
     );
-    return fail(500, "L'analyse n'a pas abouti. Réessaie dans une minute.");
+    return fail(500, modelFailureMessage("unavailable", plan), { reason: "service_unavailable" });
   }
 }

@@ -106,8 +106,20 @@ describe("page d'accueil", () => {
     for (const plan of PLANS) expect(html).toContain(plan.price);
     expect(html).toContain("Ta première analyse est gratuite");
     expect(html).toContain("On ne lit que ce qui est écrit dans l&#x27;offre.");
-    expect(html).toContain("Gratuit · sans compte · 30");
+    expect(html).toContain("Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et le message.");
+    expect(html).not.toContain("Gratuit · sans compte");
+    expect(html).not.toContain("et un message à envoyer.");
     // Aucun témoignage, avis ou compteur inventé.
     expect(html).not.toMatch(/témoign|avis client|★|créateurs nous font|\d[\d\s]* créateurs/i);
+  });
+});
+
+describe("démo", () => {
+  it("marquée comme exemple figé, sans version de table inventée", async () => {
+    const { default: DemoPage } = await import("@/app/analyse/demo/page");
+    const html = renderToStaticMarkup(<DemoPage />);
+    expect(html).toContain("Exemple figé, pas une vraie analyse");
+    expect(html).not.toContain("demo-2026-09");
+    expect(html).not.toContain("Table de tarifs");
   });
 });

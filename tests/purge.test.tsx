@@ -73,7 +73,7 @@ describe("politique de confidentialité", () => {
       "Coordonnées bancaires — traitées exclusivement par Whop, jamais reçues ni conservées par Negoscore.",
       "Adresse IP sous forme hachée — limitation des abus et de l'usage gratuit — intérêt légitime — conservée 30 jours au maximum.",
       "Documents déposés : supprimés 30 jours après l'analyse.",
-      "Texte des offres collé dans le champ d'analyse : supprimé 30 jours après l'analyse ; l'analyse reste disponible.",
+      "Texte des offres collé dans le champ d'analyse : supprimé 30 jours après l'analyse. L'analyse, elle, reste disponible et conserve la marque, les montants et des phrases rédigées par l'outil d'analyse, qui peuvent citer le prénom de ton interlocuteur. Supprimer l'analyse efface tout.",
       "Compte et analyses : jusqu'à la suppression du compte par l'utilisateur.",
       "Journal des paiements et preuves de consentement : 5 ans, y compris après la suppression du compte.",
       "Adresses IP hachées : 30 jours au maximum.",

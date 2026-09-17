@@ -1,4 +1,5 @@
 import { attachAnonDeals, ensureAccount } from "@/lib/auth/account";
+import { mergeFreeUsage } from "@/lib/billing/free-usage";
 import { expiredCookieHeader, safeNextPath, sessionCookieHeaders, type Session } from "@/lib/auth/session";
 import { sessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
@@ -46,6 +47,16 @@ export async function completeSignIn(
   await ensureAccount(session.user);
   const anonToken = readCookie(request, ANON_COOKIE);
   const attach = await attachAnonDeals(session.user.id, anonToken);
+  // La gratuité consommée par ce navigateur suit le compte, même si l'analyse
+  // a été supprimée depuis : se connecter ne rend pas une analyse gratuite.
+  // Un échec ici ne doit jamais empêcher la connexion : il est journalisé.
+  if (anonToken && !attach.refused) {
+    await mergeFreeUsage(anonToken, session.user.id).catch((error: unknown) =>
+      console.error(
+        JSON.stringify({ event: "free_usage_merge_error", detail: error instanceof Error ? error.message.slice(0, 200) : "inconnu" }),
+      ),
+    );
+  }
   console.log(
     JSON.stringify({
       event: "auth_callback",

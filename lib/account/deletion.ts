@@ -1,4 +1,5 @@
 import { signOut, type SessionUser } from "@/lib/auth/session";
+import { deleteFreeUsage } from "@/lib/billing/free-usage";
 import { isCancelled, isProActive, type PlanState } from "@/lib/billing/plan-access";
 import {
   countRows,
@@ -72,6 +73,7 @@ export async function deleteAccount(user: SessionUser, accessToken: string | nul
   await deleteRows("deals", `user_id=eq.${user.id}`);
   await deleteRows("credits", `user_id=eq.${user.id}`);
   await deleteRows("profiles", `id=eq.${user.id}`);
+  await deleteFreeUsage(user.id);
 
   // 3. Sessions révoquées, puis identité supprimée : un jeton encore en
   //    circulation ne correspond plus à aucun utilisateur.

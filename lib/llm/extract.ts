@@ -16,6 +16,11 @@ export class ExtractionError extends Error {}
 // Un appel, plus une seule reprise si la sortie est invalide.
 const MAX_ATTEMPTS = 2;
 const TIMEOUT_MS = 55_000;
+// Échéance globale de l'extraction, reprises comprises. Elle reste sous la
+// durée maximale de la route (120 s) : en cas de dépassement, la route a
+// toujours le temps de répondre et de ne rien décompter, au lieu d'être coupée
+// par l'hébergeur au milieu de l'appel.
+export const EXTRACTION_BUDGET_MS = 95_000;
 // Au-delà, la quantité extraite est une erreur de lecture (vue en éval : 32025).
 const MAX_PLAUSIBLE_QUANTITY = 50;
 
@@ -95,6 +100,7 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"]): Promi
   if (!apiKey) throw new MissingApiKeyError(`${MODEL.envKey} absente`);
 
   const client = new OpenAI({ apiKey, timeout: TIMEOUT_MS, maxRetries: 1 });
+  const deadline = AbortSignal.timeout(EXTRACTION_BUDGET_MS);
   const schema = extractionJsonSchema();
   const started = performance.now();
   let inputTokens = 0;
@@ -110,7 +116,7 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"]): Promi
       input,
       max_output_tokens: 16000,
       text: { format: { type: "json_schema", name: "deal_analysis", schema, strict: true } },
-    });
+    }, { signal: deadline });
     inputTokens += response.usage?.input_tokens ?? 0;
     cachedInputTokens += response.usage?.input_tokens_details?.cached_tokens ?? 0;
     outputTokens += response.usage?.output_tokens ?? 0;

@@ -8,7 +8,10 @@ import { MAX_PDF_PAGES } from "@/lib/upload";
 export const STEPS = [
   { title: "Tu colles l'offre", text: "Le message, la capture ou le PDF." },
   { title: "On lit ce qui est écrit", text: "Livrables, droits, exclusivité, délais." },
-  { title: "Tu obtiens le chiffre", text: "Un score, une fourchette en euros, et un message à envoyer." },
+  {
+    title: "Tu obtiens le chiffre",
+    text: "Une fourchette en euros et, si l'offre est assez précise, un score sur 100. Avec ton email : la contre-offre et le message à envoyer.",
+  },
 ] as const;
 
 export const TRUST = [

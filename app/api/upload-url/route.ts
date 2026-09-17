@@ -1,3 +1,4 @@
+import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { DOCUMENT_TTL_DAYS, newStoragePath, validateAnnouncedFile } from "@/lib/storage/documents";
 import { ANON_COOKIE, anonCookieHeader, newAnonToken, readCookie } from "@/lib/security/request";
@@ -15,6 +16,9 @@ function error(status: number, message: string) {
 }
 
 export async function POST(request: Request) {
+  // Interrupteur ANALYSIS_PAUSED : aucun dépôt tant que l'analyse est coupée.
+  if (analysisPaused()) return Response.json({ error: ANALYSIS_PAUSED_MESSAGE, reason: "paused" }, { status: 503 });
+
   let body: unknown;
   try {
     body = await request.json();
