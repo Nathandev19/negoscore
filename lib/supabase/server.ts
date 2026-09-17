@@ -161,3 +161,39 @@ export async function removeDocument(path: string): Promise<void> {
   });
   if (!response.ok) throw await failure(response, "suppression du document");
 }
+
+// Supprime plusieurs objets du bucket en un appel. Storage renvoie les objets
+// réellement retirés : un chemin déjà absent n'est pas une erreur.
+export async function removeDocuments(paths: string[]): Promise<string[]> {
+  if (paths.length === 0) return [];
+  const { url, serviceKey } = config();
+  const response = await fetch(`${url}/storage/v1/object/${DOCUMENTS_BUCKET}`, {
+    method: "DELETE",
+    headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
+    body: JSON.stringify({ prefixes: paths }),
+    cache: "no-store",
+  });
+  if (!response.ok) throw await failure(response, "suppression des documents");
+  const removed = (await response.json().catch(() => [])) as Array<{ name?: string }>;
+  return removed.map((object) => object.name ?? "").filter(Boolean);
+}
+
+export async function deleteRows(table: string, filter: string): Promise<void> {
+  await rest(`${table}?${filter}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+    what: `suppression ${table}`,
+  });
+}
+
+// Suppression définitive d'un utilisateur Supabase Auth (API d'administration).
+export async function deleteAuthUser(userId: string): Promise<void> {
+  const { url, serviceKey } = config();
+  const response = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+    headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
+    body: JSON.stringify({ should_soft_delete: false }),
+    cache: "no-store",
+  });
+  if (!response.ok && response.status !== 404) throw await failure(response, "suppression de l'identité");
+}

@@ -28,6 +28,8 @@ export default async function CancelPage({ searchParams }: PageProps<"/resilier"
 
   const params = await searchParams;
   const error = typeof params.erreur === "string" ? ERRORS[params.erreur] : null;
+  // Arrivée depuis la suppression de compte : un abonnement prélevé se résilie d'abord.
+  const forDeletion = params.motif === "suppression";
   const justCancelled = params.etat === "resilie";
 
   const [credits] = await selectRows<PlanState>(
@@ -45,6 +47,13 @@ export default async function CancelPage({ searchParams }: PageProps<"/resilier"
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6 pb-12 sm:px-6 sm:pt-12">
         <h1 className="text-3xl font-black tracking-tight">Résilier votre contrat</h1>
+
+        {forDeletion ? (
+          <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-medium text-amber-950">
+            Ton abonnement Pro est encore actif : il continuerait d&apos;être prélevé. Résilie-le d&apos;abord, puis tu
+            pourras supprimer ton compte depuis la page Mon compte.
+          </p>
+        ) : null}
 
         {error ? (
           <p role="alert" className="text-sm font-medium text-red-700">

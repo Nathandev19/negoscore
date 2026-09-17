@@ -77,3 +77,25 @@ export function cancellationConfirmationEmail(options: { to: string; endsAt: Dat
 
   return { to, subject: `Résiliation de ton abonnement ${BRAND.name}`, text };
 }
+
+export function accountDeletionEmail(options: { to: string; siteUrl: string }): Email {
+  const { to, siteUrl } = options;
+  const text = [
+    "Bonjour,",
+    "",
+    "Ton compte est supprimé.",
+    "",
+    "Ce qui a été supprimé : ton adresse email de connexion, tes offres déposées et leurs fichiers, tes analyses, et tes crédits d'analyse restants, qui ne sont pas remboursés.",
+    "",
+    "Ce qui est conservé : l'historique de tes paiements et tes preuves de consentement au paiement, que la loi nous oblige à garder.",
+    "",
+    "Si tu n'es pas à l'origine de cette suppression, écris-nous vite.",
+    "",
+    `Tes conditions générales de vente : ${siteUrl}/cgv`,
+    `Une question : ${SELLER.email}`,
+    "",
+    signature(),
+  ].join("\n");
+
+  return { to, subject: `Suppression de ton compte ${BRAND.name}`, text };
+}
