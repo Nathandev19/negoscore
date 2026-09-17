@@ -5,7 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import robots from "@/app/robots";
 import sitemap from "@/app/sitemap";
 import nextConfig from "@/next.config";
-import { CANONICAL_ORIGIN, PRIVATE_PREFIXES, PUBLIC_PAGES } from "@/lib/seo";
+import { CANONICAL_ORIGIN, organizationJsonLd, PRIVATE_PREFIXES, PUBLIC_PAGES, softwareApplicationJsonLd, webSiteJsonLd } from "@/lib/seo";
+import { PLANS } from "@/lib/billing/plans";
 import { SITE_PREVIEW_SIZE, SITE_PREVIEW_TEXTS, sitePreviewElement } from "@/lib/share-card/site-preview";
 
 // Mission #047 : indexation, aperçus de partage, adresse canonique.
@@ -142,5 +143,54 @@ describe("C4 — un lien de résultat partagé ne révèle rien de l'offre", () 
     const page = readFileSync(path.join(resultDir, "[id]", "page.tsx"), "utf8");
     expect(page).toMatch(/export const metadata: Metadata = \{\s+title: "Résultat de l'analyse",\s+robots: \{ index: false, follow: false \},\s+\};/);
     expect(existsSync(path.join(resultDir, "[id]", "opengraph-image.tsx"))).toBe(false);
+  });
+});
+
+// Mission #051 — données structurées. Ce qui est déclaré à Google doit être
+// vrai : aucune note, aucun avis, aucun chiffre d'usage, et des prix qui
+// viennent de la source unique.
+describe("données structurées", () => {
+  const blocs = [organizationJsonLd(), webSiteJsonLd(), softwareApplicationJsonLd()];
+
+  it("chaque bloc est un JSON-LD valide, typé et rattaché au domaine canonique", () => {
+    for (const bloc of blocs) {
+      const parsed = JSON.parse(JSON.stringify(bloc)) as Record<string, unknown>;
+      expect(parsed["@context"]).toBe("https://schema.org");
+      expect(typeof parsed["@type"]).toBe("string");
+      expect(String(parsed.url)).toContain("https://www.negoscore.fr");
+    }
+    expect(organizationJsonLd().sameAs).toEqual(["https://www.tiktok.com/@negoscore"]);
+    expect(organizationJsonLd().logo).toBe("https://www.negoscore.fr/icon2");
+  });
+
+  it("aucune note, aucun avis, aucun chiffre d'usage inventé", () => {
+    const texte = JSON.stringify(blocs);
+    for (const interdit of ["aggregateRating", "review", "ratingValue", "ratingCount", "userInteractionCount", "interactionStatistic"]) {
+      expect(texte, interdit).not.toContain(interdit);
+    }
+  });
+
+  it("les prix du balisage viennent de la source unique", () => {
+    const offers = softwareApplicationJsonLd().offers;
+    expect(offers.map((offer) => offer.price)).toEqual(PLANS.map((plan) => plan.price.replace(/\s|€/g, "").replace(",", ".")));
+    expect(offers.map((offer) => offer.price)).toEqual(["0", "4.99", "12.99"]);
+    for (const offer of offers) expect(offer.priceCurrency).toBe("EUR");
+  });
+
+  it("aucun prix écrit en dur dans le code des données structurées ni dans les balises", () => {
+    const seo = readFileSync(path.join(process.cwd(), "lib/seo.ts"), "utf8");
+    expect(seo).not.toMatch(/\d+[.,]\d{2}\s*(€|EUR)?/);
+    const sources = ["app/layout.tsx", "app/tarifs/page.tsx", "components/seo/json-ld.tsx"];
+    for (const file of sources) {
+      expect(readFileSync(path.join(process.cwd(), file), "utf8"), file).not.toMatch(/aggregateRating|ratingValue|"review"/);
+    }
+  });
+
+  it("le bloc des formules est servi sur /tarifs, et seulement là", () => {
+    const pages = readdirSync(APP, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name === "page.tsx")
+      .map((entry) => path.join(entry.parentPath, entry.name))
+      .filter((file) => readFileSync(file, "utf8").includes("softwareApplicationJsonLd"));
+    expect(pages.map((file) => path.relative(APP, file).split(path.sep).join("/"))).toEqual(["tarifs/page.tsx"]);
   });
 });

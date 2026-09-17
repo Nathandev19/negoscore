@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Familjen_Grotesk } from "next/font/google";
 import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
 import { FlashBanner } from "@/components/flash-banner";
+import { JsonLd } from "@/components/seo/json-ld";
 import { BRAND } from "@/lib/brand";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
-import { CANONICAL_ORIGIN } from "@/lib/seo";
+import { CANONICAL_ORIGIN, organizationJsonLd, webSiteJsonLd } from "@/lib/seo";
 import "./globals.css";
 
 // Polices auto-hébergées par next/font, avec police de repli ajustée en taille
@@ -37,7 +38,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: STATIC_PALETTE.marque,
+  // Couleur de thème = le fond du site (mission #051). L'interface du
+  // navigateur prolonge alors la page au lieu de poser un bandeau bleu que
+  // rien ne prolonge en haut de l'écran. Le site n'a pas de mode sombre.
+  themeColor: STATIC_PALETTE.creme,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -47,6 +51,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${familjen.variable} ${bricolage.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-creme">
+        {/* L'entité derrière le site : nom, adresse canonique, logo, compte
+            public. Rien de chiffré, rien d'invérifiable (mission #051). */}
+        <JsonLd data={organizationJsonLd()} />
+        <JsonLd data={webSiteJsonLd()} />
         <AnalyticsProvider />
         {/* Confirmation de connexion ou de déconnexion, au-dessus de la page d'arrivée. */}
         <FlashBanner />

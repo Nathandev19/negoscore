@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { publicPageMetadata } from "@/lib/seo";
+import { publicPageMetadata, softwareApplicationJsonLd } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/json-ld";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PaywallView } from "@/components/analytics/paywall-view";
@@ -16,6 +17,9 @@ export const metadata: Metadata = publicPageMetadata("/tarifs");
 export default function PlansPage() {
   return (
     <>
+      {/* Les formules vendues, avec leurs prix repris de la source unique. Ni
+          note, ni avis, ni nombre d'utilisateurs : nous n'en avons pas. */}
+      <JsonLd data={softwareApplicationJsonLd()} />
       <SiteHeader />
       <PaywallView />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">

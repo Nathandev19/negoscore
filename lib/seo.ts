@@ -20,9 +20,13 @@ export type PublicPage = { path: string; title: string; description: string };
 // une description qui ont un sens hors du site. Aucune autre page ne l'est.
 export const PUBLIC_PAGES: readonly PublicPage[] = [
   {
+    // Titre et description écrits pour ce que quelqu'un tape dans un moteur
+    // (mission #051). Le H1 de la page reste la phrase de marque : le titre
+    // d'onglet répond à la question, le H1 s'adresse à qui est déjà arrivé.
     path: "/",
-    title: `${BRAND.name} — ${BRAND.tagline}`,
-    description: `Une marque te propose une collab ? Colle son message : ${BRAND.name} te dit ce qu'elle vaut en euros, ce que tu cèdes et quoi répondre. Première analyse gratuite.`,
+    title: `Combien facturer ta collab de marque ? — ${BRAND.name}`,
+    description:
+      "Colle le message d'une marque : on te dit en euros ce que le deal vaut vraiment, ce qui cloche (droits pub, exclusivité) et quoi répondre. Gratuit, sans compte.",
   },
   {
     path: "/analyse",
@@ -31,8 +35,9 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   },
   {
     path: "/analyse/demo",
-    title: "Exemple d'analyse",
-    description: "Une offre de collab inventée, chiffrée comme une vraie : fourchette en euros, score sur 100, ce qu'il faut négocier et le message à envoyer.",
+    title: "Exemple d'analyse d'une offre de marque",
+    description:
+      "Une vraie offre de marque décortiquée : ce que valent les vidéos, les droits publicitaires et l'exclusivité, et ce que la marque aurait dû proposer.",
   },
   {
     path: "/tarifs",
@@ -82,6 +87,70 @@ export const PRIVATE_PREFIXES = [
 // 17/09/2026 sur /tarifs, /cgv, /analyse/demo).
 const OG_IMAGE = { url: "/opengraph-image", ...SITE_PREVIEW_SIZE, alt: SITE_PREVIEW_ALT, type: "image/png" };
 const TWITTER_IMAGE = { url: "/twitter-image", ...SITE_PREVIEW_SIZE, alt: SITE_PREVIEW_ALT, type: "image/png" };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DONNÉES STRUCTURÉES (mission #051)
+//
+// Ce qui est déclaré ici doit être vrai et vérifiable sur la page. Sont donc
+// INTERDITS, et vérifiés par tests/seo.test.tsx : aggregateRating, review,
+// ratingValue, et tout nombre d'utilisateurs, d'analyses ou de clients. Nous
+// n'avons aucun avis et aucun chiffre réel ; un balisage inventé est une fausse
+// déclaration. Les prix viennent de la source unique (lib/billing/plans.ts).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Logo carré 512 px, fond bleu opaque (app/icon2.tsx) : Google demande une
+// image carrée d'au moins 112 px, sans transparence.
+export const ORGANIZATION_LOGO = `${CANONICAL_ORIGIN}/icon2`;
+
+export const SOCIAL_PROFILES = ["https://www.tiktok.com/@negoscore"] as const;
+
+export function organizationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: BRAND.name,
+    url: CANONICAL_ORIGIN,
+    logo: ORGANIZATION_LOGO,
+    sameAs: [...SOCIAL_PROFILES],
+  };
+}
+
+export function webSiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: BRAND.name,
+    url: CANONICAL_ORIGIN,
+    inLanguage: "fr-FR",
+  };
+}
+
+// Offres de la page /tarifs : un Offer par formule payante, construit à partir
+// de PRICE. Le prix n'est jamais réécrit ici ; il est seulement converti au
+// format attendu par schema.org (point décimal).
+function schemaPrice(displayed: string): string {
+  return displayed.replace(/\s|€/g, "").replace(",", ".");
+}
+
+export function softwareApplicationJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: BRAND.name,
+    url: `${CANONICAL_ORIGIN}/tarifs`,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    inLanguage: "fr-FR",
+    offers: PLANS.map((plan) => ({
+      "@type": "Offer",
+      name: plan.name,
+      price: schemaPrice(plan.price),
+      priceCurrency: "EUR",
+      url: `${CANONICAL_ORIGIN}/tarifs`,
+      ...(plan.period ? { category: plan.period } : {}),
+    })),
+  };
+}
 
 export function publicPageMetadata(path: string): Metadata {
   const page = PUBLIC_PAGES.find((entry) => entry.path === path);
