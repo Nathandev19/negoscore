@@ -111,9 +111,9 @@ describe("contenu de la carte", () => {
     expect(texts.deliverables).toBe("2 vidéos TikTok");
   });
 
-  it("pas de carte pour une offre incomplète (aucune fourchette) ; les autres états en ont une", () => {
+  it("pas de carte vide : ni « unpriced » ni « incomplete » ; les états chiffrés en ont une", () => {
     for (const state of PREVIEW_STATES) {
-      expect(shareCardAvailable(previewAnalysis(state).analysis), state).toBe(state !== "incomplete");
+      expect(shareCardAvailable(previewAnalysis(state).analysis), state).toBe(state !== "incomplete" && state !== "unpriced");
     }
   });
 });
@@ -143,6 +143,16 @@ describe("accès à la carte : même règle que la suppression", () => {
     user.current = { id: "user-a", email: "a@example.com" };
     const response = await get(ACCOUNT_ID, null);
     expect(response.status).toBe(200);
+  });
+
+  it("offre sans montant (« unpriced ») : même le propriétaire n'obtient pas de carte vide", async () => {
+    const base = sensitiveAnalysis();
+    db.analyses.set(ANON_ID, {
+      payload: { ...base, evaluability: "unpriced", score: null, deal: { ...base.deal, payment: { ...base.deal.payment, amount_eur: null } } },
+      deal: { id: "d1", anon_token: OWNER_TOKEN, user_id: null, source_type: "text", raw_text: "x", deal_documents: [] },
+    });
+    expect((await get(ANON_ID, `deal_anon_token=${OWNER_TOKEN}`)).status).toBe(404);
+    expect(rendered.calls).toBe(0);
   });
 
   it("l'auteur anonyme : image téléchargeable, jamais mise en cache partagé", async () => {

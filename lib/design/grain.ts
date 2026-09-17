@@ -1,7 +1,6 @@
-// Grain posé sur les surfaces bleues : un bruit SVG inline, sans image bitmap
-// ni requête réseau. Même tracé pour le site (app/globals.css, utilitaire
-// `grain`, tuile de 180 px) et pour la carte partageable (next/og, une seule
-// image à la taille de la carte). Cohérence vérifiée par tests/design.test.ts.
+// Grain posé sur les surfaces bleues du site : un bruit SVG inline, sans image
+// bitmap ni requête réseau (app/globals.css, utilitaire `grain`, tuile de
+// 180 px). La carte partageable n'en a pas : voir lib/share-card/element.tsx. Cohérence vérifiée par tests/design.test.ts.
 //
 // Opacité maximale du bruit. Les contrastes sur bleu sont calculés au pire cas :
 // un pixel du bleu mélangé à 6 % de blanc pur (le plus clair possible) ou de

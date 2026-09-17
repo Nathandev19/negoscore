@@ -1,9 +1,9 @@
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD, PHASE_PRODUCTION_SERVER } from "next/constants";
 import { describe, expect, it } from "vitest";
 import { pageExtensionsFor } from "@/next.config";
-import { activeStep, WAITING_STEPS } from "@/components/loading-steps";
+import { AFTER_READING_STEPS, checkedSteps, formatElapsed, READING_LABEL, REVEAL_TOTAL_MS } from "@/components/loading-steps";
 
 // Route de prévisualisation (app/dev) : reconnue par `next dev` seulement.
 
@@ -22,23 +22,34 @@ describe("prévisualisation de développement", () => {
   });
 });
 
-describe("écran d'attente", () => {
-  it("les quatre étapes, dans l'ordre du traitement", () => {
-    expect(WAITING_STEPS.map((s) => s.label)).toEqual([
-      "Lecture de l'offre",
-      "Identification des droits cédés",
-      "Chiffrage sur la table française",
-      "Rédaction de ta réponse",
-    ]);
+describe("écran d'attente : aucune étape cochée avant d'être franchie", () => {
+  it("lecture selon l'entrée, puis les trois étapes faites après la réponse du modèle", () => {
+    expect(READING_LABEL).toEqual({ text: "Lecture de l'offre", photo: "Lecture de la capture", pdf: "Lecture du document" });
+    expect(AFTER_READING_STEPS).toEqual(["Identification des droits cédés", "Chiffrage sur la table française", "Rédaction de ta réponse"]);
   });
 
-  it("défile au rythme médian mesuré, la dernière étape attend la réponse réelle", () => {
-    expect(activeStep(0, false)).toBe(0);
-    expect(activeStep(3_600, false)).toBe(1);
-    expect(activeStep(8_600, false)).toBe(2);
-    expect(activeStep(12_600, false)).toBe(3);
-    // Sans réponse, jamais « terminé », même très longtemps après.
-    expect(activeStep(10 * 60_000, false)).toBe(3);
-    expect(activeStep(500, true)).toBe(WAITING_STEPS.length);
+  it("pendant l'appel au modèle, rien n'est coché, quel que soit le temps écoulé", () => {
+    expect(checkedSteps(null)).toBe(0);
+  });
+
+  it("après la réponse : lecture cochée tout de suite, puis une étape tous les 180 ms, dans l'ordre", () => {
+    expect(checkedSteps(0)).toBe(1);
+    expect(checkedSteps(179)).toBe(1);
+    expect(checkedSteps(180)).toBe(2);
+    expect(checkedSteps(360)).toBe(3);
+    expect(checkedSteps(540)).toBe(4);
+    expect(checkedSteps(10_000)).toBe(4);
+    expect(REVEAL_TOTAL_MS).toBe(720);
+  });
+
+  it("plus de défilement calé sur une durée estimée", async () => {
+    const source = readFileSync(path.join(process.cwd(), "components", "loading-steps.tsx"), "utf8");
+    expect(source).not.toMatch(/14[,.]3|médian|WAITING_STEPS|ms: \d/);
+  });
+
+  it("temps écoulé affiché lisiblement", () => {
+    expect(formatElapsed(0)).toBe("0 s");
+    expect(formatElapsed(14_900)).toBe("14 s");
+    expect(formatElapsed(65_000)).toBe("1 min 05 s");
   });
 });

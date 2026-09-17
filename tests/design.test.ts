@@ -131,8 +131,12 @@ describe("contrastes (A2)", () => {
     for (const name of ["encre", "encre-douce", "attenue", "marque", "marque-deep"]) {
       expect(contrast(token(name), token("creme")), name).toBeGreaterThanOrEqual(4.5);
     }
-    // Bouton désactivé : plein atténué, texte crème.
+    // Boutons désactivés et gravité « mineur » : plein atténué, texte crème.
     expect(contrast(token("creme"), token("attenue"))).toBeGreaterThanOrEqual(4.5);
+    // Bouton principal désactivé : bleu marque désaturé, même teinte, libellé crème ≥ 4,5:1.
+    expect(contrast(token("creme"), token("marque-muted"))).toBeGreaterThanOrEqual(4.5);
+    const diff = Math.abs(hue(token("marque-muted")) - hue(token("marque")));
+    expect(Math.min(diff, 360 - diff)).toBeLessThanOrEqual(1);
     // Contour d'une action destructrice et barre d'erreur : aplat « bad » sur crème.
     expect(contrast(token("band-bad-on-creme"), token("creme"))).toBeGreaterThanOrEqual(3);
   });
@@ -145,7 +149,11 @@ describe("bandes : aplats, jamais du texte", () => {
     for (const band of BANDS) {
       expect(BAND_STYLE[band]).toEqual({ onMarque: `bg-band-${band}-on-marque`, onCreme: `bg-band-${band}-on-creme` });
     }
-    expect(Object.values(SEVERITY_BADGE).every((c) => /^bg-band-[a-z]+-on-creme$/.test(c))).toBe(true);
+    expect(SEVERITY_BADGE).toEqual({
+      high: "bg-band-bad-on-creme text-encre",
+      medium: "bg-band-weak-on-creme text-encre",
+      low: "bg-attenue text-creme",
+    });
   });
 
   it("les segments de la jauge suivent les bornes de bandFor()", () => {
@@ -159,7 +167,7 @@ describe("bandes : aplats, jamais du texte", () => {
 });
 
 describe("grain, signe et couleurs hors CSS", () => {
-  it("le grain CSS est le même tracé que celui de la carte", () => {
+  it("le grain CSS est le tracé partagé de lib/design/grain.ts", () => {
     expect(css).toContain(`url("${grainDataUri(GRAIN_TILE, GRAIN_TILE)}")`);
     expect(grainDataUri(10, 10)).not.toMatch(/#|https?:\/\/(?!www\.w3\.org)/);
   });

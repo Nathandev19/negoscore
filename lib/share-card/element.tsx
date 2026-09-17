@@ -1,7 +1,6 @@
 import type { ReactElement } from "react";
 import type { ResultView } from "@/lib/analysis/lock";
 import { EURO_BAR, euroArcPath, MARK, MARK_VIEWBOX } from "@/lib/brand-mark";
-import { grainDataUri } from "@/lib/design/grain";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
 import { BAND_LABEL, BAND_SEGMENTS, deliverablesLine, EVALUABILITY_LABEL } from "@/lib/display";
 import { formatEur, formatEurRange } from "@/lib/money";
@@ -11,6 +10,12 @@ import { formatEur, formatEurRange } from "@/lib/money";
 // propose X € / Ça vaut Y – Z € » et une ligne de livrables.
 // JAMAIS : le nom de la marque, un nom ou un email de personne, un texte
 // recopié de l'offre (vérifié par tests/share-card.test.tsx).
+//
+// Sans grain : un bruit rend chaque pixel différent et le PNG incompressible
+// (1,59 Mo avec le grain du site, 937 Ko encore avec un grain 10 fois plus
+// grossier, mesuré le 17/09/2026). Une image enregistrée et postée depuis un
+// téléphone doit rester légère ; la marque se reconnaît au bleu et à la mise en
+// page. Le grain reste sur les surfaces bleues du site.
 
 export const SHARE_CARD_SIZE = { width: 1080, height: 1920 } as const;
 export const SHARE_CARD_SITE = "negoscore.fr";
@@ -24,9 +29,18 @@ function plain(text: string): string {
   return text.replace(/\u202f/g, "\u00a0");
 }
 
-// La carte n'a de sens qu'avec une fourchette : une offre « incomplete » n'en a pas.
+// Pas de carte vide : seulement une offre chiffrée (montant proposé ou produits)
+// face à une fourchette. Ni « unpriced » (aucun montant à comparer), ni
+// « incomplete » (aucune fourchette). Le bouton disparaît dans ces cas.
 export function shareCardAvailable(analysis: ResultView): boolean {
-  return analysis.evaluability !== "incomplete" && analysis.estimate.total_low !== null && analysis.estimate.total_high !== null;
+  const { deal, estimate, evaluability } = analysis;
+  const offered = deal.payment.amount_eur !== null || deal.in_kind_value_eur !== null;
+  return (
+    (evaluability === "complete" || evaluability === "terms_unknown") &&
+    offered &&
+    estimate.total_low !== null &&
+    estimate.total_high !== null
+  );
 }
 
 export type ShareCardTexts = { pill: string; score: string | null; proposes: string | null; worth: string | null; deliverables: string | null };
@@ -101,14 +115,6 @@ export function shareCardElement(analysis: ResultView): ReactElement {
         fontFamily: "Familjen Grotesk",
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- rendu par satori, pas par le navigateur */}
-      <img
-        src={grainDataUri(SHARE_CARD_SIZE.width, SHARE_CARD_SIZE.height)}
-        width={SHARE_CARD_SIZE.width}
-        height={SHARE_CARD_SIZE.height}
-        alt=""
-        style={{ position: "absolute", top: 0, left: 0 }}
-      />
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
         <Mark size={72} />
         <div style={{ display: "flex", fontSize: 46, fontWeight: 600 }}>{SHARE_CARD_SITE}</div>

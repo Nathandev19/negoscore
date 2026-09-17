@@ -24,7 +24,8 @@ const MAX_PRICE_POINTS = 30;
 // réservé à qui est payé haut dans la fourchette.
 const FLOOR_PRICE_POINTS = 18;
 // Ratio montant proposé / borne basse en dessous duquel aucun point n'est donné.
-const RATIO_ZERO = 0.4;
+// Exporté : la phrase de verdict s'en sert pour dire « très en dessous ».
+export const RATIO_ZERO = 0.4;
 
 // Points prix selon la position du montant dans la fourchette :
 //   montant < 0,4 × bas       → 0

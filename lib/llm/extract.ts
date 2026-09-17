@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { MODEL } from "@/lib/llm/model";
+import { MODEL, type ReasoningEffort } from "@/lib/llm/model";
 import {
   buildUserMessage,
   extractionJsonSchema,
@@ -24,11 +24,17 @@ export const EXTRACTION_BUDGET_MS = 95_000;
 // Au-delà, la quantité extraite est une erreur de lecture (vue en éval : 32025).
 const MAX_PLAUSIBLE_QUANTITY = 50;
 
+// Réglages d'un appel. Sans valeur : ceux de MODEL (production).
+export type ExtractOptions = { reasoningEffort?: ReasoningEffort | null };
+
 export type ExtractResult = {
   extraction: Extraction;
   model: string;
   inputTokens: number;
   outputTokens: number;
+  // Part des jetons de sortie consacrée au raisonnement (comptée dans outputTokens).
+  reasoningTokens: number;
+  reasoningEffort: ReasoningEffort | null;
   costEur: number;
   latencyMs: number;
   schemaValidFirstTry: boolean;
@@ -55,8 +61,8 @@ function problemWith(outputText: string): { extraction: Extraction } | { problem
 
 export type ImageInput = { base64: string; mimeType: string };
 
-export function extractDeal(offerText: string): Promise<ExtractResult> {
-  return run(buildUserMessage(offerText));
+export function extractDeal(offerText: string, options: ExtractOptions = {}): Promise<ExtractResult> {
+  return run(buildUserMessage(offerText), options);
 }
 
 // Même modèle, même prompt système, même schéma : seule l'entrée change.
@@ -95,7 +101,7 @@ export function extractDealFromPdf(pdf: PdfInput): Promise<ExtractResult> {
   ]);
 }
 
-async function run(input: OpenAI.Responses.ResponseCreateParams["input"]): Promise<ExtractResult> {
+async function run(input: OpenAI.Responses.ResponseCreateParams["input"], options: ExtractOptions = {}): Promise<ExtractResult> {
   const apiKey = process.env[MODEL.envKey];
   if (!apiKey) throw new MissingApiKeyError(`${MODEL.envKey} absente`);
 
@@ -106,6 +112,8 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"]): Promi
   let inputTokens = 0;
   let cachedInputTokens = 0;
   let outputTokens = 0;
+  let reasoningTokens = 0;
+  const reasoningEffort = options.reasoningEffort === undefined ? MODEL.reasoningEffort : options.reasoningEffort;
   let schemaValidFirstTry = false;
   let lastProblem = "";
 
@@ -116,10 +124,13 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"]): Promi
       input,
       max_output_tokens: 16000,
       text: { format: { type: "json_schema", name: "deal_analysis", schema, strict: true } },
+      // Paramètre absent quand l'effort vaut null : valeur par défaut de l'API.
+      ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
     }, { signal: deadline });
     inputTokens += response.usage?.input_tokens ?? 0;
     cachedInputTokens += response.usage?.input_tokens_details?.cached_tokens ?? 0;
     outputTokens += response.usage?.output_tokens ?? 0;
+    reasoningTokens += response.usage?.output_tokens_details?.reasoning_tokens ?? 0;
 
     const result = problemWith(response.output_text);
     if ("extraction" in result) {
@@ -133,6 +144,8 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"]): Promi
         model: MODEL.id,
         inputTokens,
         outputTokens,
+        reasoningTokens,
+        reasoningEffort,
         costEur: costUsd / MODEL.usdPerEur,
         latencyMs: Math.round(performance.now() - started),
         schemaValidFirstTry,

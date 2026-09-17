@@ -79,7 +79,7 @@ export function RedFlags({ items }: { items: Analysis["red_flags"] }) {
               <p className="headline text-h3 text-encre">{item.label}</p>
               <span
                 className={cn(
-                  "inline-flex w-fit shrink-0 rounded-pill px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-encre",
+                  "inline-flex w-fit shrink-0 rounded-pill px-2.5 py-0.5 text-xs font-bold whitespace-nowrap",
                   SEVERITY_BADGE[item.severity],
                 )}
               >

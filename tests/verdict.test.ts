@@ -1,19 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { verdictForm, verdictSentence } from "@/lib/analysis/verdict";
+import { FAR_BELOW_RATIO, verdictForm, verdictSentence } from "@/lib/analysis/verdict";
 import { previewAnalysis } from "@/lib/fixtures/preview-states";
 import sample from "@/lib/fixtures/analysis-sample.json";
+import { RATIO_ZERO } from "@/lib/rates/score";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 
-// Phrase de verdict écrite par le moteur : six formes, figées ici mot pour mot.
-// Les espaces insécables du formateur (« 1 100 ») sont ramenées à des espaces
-// ordinaires pour la comparaison.
-const plain = (text: string) => text.replace(/[  ]/g, " ");
+// Phrase de verdict écrite par le moteur, figée ici mot pour mot. Les espaces
+// insécables du formateur (« 1 100 ») sont ramenées à des espaces ordinaires
+// pour la comparaison (\s les couvre en JavaScript).
+const plain = (text: string) => text.replace(/\s/g, " ");
 
-function analysis(overrides: { evaluability?: Analysis["evaluability"]; amount?: number | null; inKind?: number | null; low?: number | null; high?: number | null }): Analysis {
+type Band = NonNullable<Analysis["score"]>["band"];
+
+function analysis(overrides: {
+  evaluability?: Analysis["evaluability"];
+  amount?: number | null;
+  inKind?: number | null;
+  low?: number | null;
+  high?: number | null;
+  band?: Band | null;
+}): Analysis {
   const base = analysisSchema.parse(sample);
+  const evaluability = overrides.evaluability ?? "complete";
+  const band = overrides.band === undefined ? "good" : overrides.band;
   return {
     ...base,
-    evaluability: overrides.evaluability ?? "complete",
+    evaluability,
+    score: evaluability === "complete" && band !== null ? { value: 75, band } : null,
     deal: {
       ...base.deal,
       payment: { ...base.deal.payment, amount_eur: overrides.amount === undefined ? 300 : overrides.amount },
@@ -27,17 +40,37 @@ function analysis(overrides: { evaluability?: Analysis["evaluability"]; amount?:
   };
 }
 
-describe("les six formes de la phrase de verdict", () => {
+describe("formes de la phrase de verdict", () => {
   it("complete, sous la fourchette", () => {
-    expect(plain(verdictSentence(analysis({ amount: 300 })))).toBe("300 € proposés. Ces droits en valent 510 à 1 100.");
+    expect(plain(verdictSentence(analysis({ amount: 300, band: "bad" })))).toBe("300 € proposés. Ces droits en valent 510 à 1 100.");
   });
 
-  it("complete, dans la fourchette", () => {
-    expect(plain(verdictSentence(analysis({ amount: 800 })))).toBe("800 € proposés. C'est dans les prix pour ces droits.");
+  it("complete, dans la fourchette, bon deal", () => {
+    expect(plain(verdictSentence(analysis({ amount: 800, band: "good" })))).toBe("800 € proposés. C'est dans les prix pour ces droits.");
   });
 
-  it("complete, au-dessus", () => {
-    expect(plain(verdictSentence(analysis({ amount: 1400 })))).toBe("1 400 € proposés. C'est au-dessus de ce que ces droits valent.");
+  it("complete, au-dessus, bon deal", () => {
+    expect(plain(verdictSentence(analysis({ amount: 1400, band: "excellent" })))).toBe(
+      "1 400 € proposés. C'est au-dessus de ce que ces droits valent.",
+    );
+  });
+
+  it("B1 — dans la fourchette mais deal sous « good » : la phrase nomme les conditions", () => {
+    for (const band of ["bad", "weak", "fair"] as const) {
+      expect(plain(verdictSentence(analysis({ amount: 800, band })))).toBe(
+        "800 € proposés. C'est dans les prix pour ces droits. Mais les conditions demandées posent problème.",
+      );
+    }
+  });
+
+  it("B1 — au-dessus mais deal sous « good » : la phrase nomme les conditions", () => {
+    expect(plain(verdictSentence(analysis({ amount: 2800, low: 1070, high: 2500, band: "fair" })))).toBe(
+      "2 800 € proposés. C'est au-dessus de ce que ces droits valent. Mais les conditions demandées posent problème.",
+    );
+  });
+
+  it("B1 ne s'applique pas sous la fourchette : le prix est déjà la raison", () => {
+    expect(verdictForm(analysis({ amount: 300, band: "bad" }))).toBe("complete_below");
   });
 
   it("unpriced", () => {
@@ -52,10 +85,34 @@ describe("les six formes de la phrase de verdict", () => {
     );
   });
 
-  it("terms_unknown", () => {
-    expect(verdictSentence(analysis({ evaluability: "terms_unknown" }))).toBe(
+  it("terms_unknown, montant pas très en dessous", () => {
+    expect(verdictSentence(analysis({ evaluability: "terms_unknown", amount: 400, low: 820, high: 1950 }))).toBe(
       "Le prix est là, les conditions non. C'est là-dessus qu'il faut poser des questions.",
     );
+  });
+
+  it("B2 — terms_unknown, montant très en dessous : la phrase le dit", () => {
+    expect(plain(verdictSentence(analysis({ evaluability: "terms_unknown", amount: 300, low: 820, high: 1950 })))).toBe(
+      "300 € proposés, très en dessous de la valeur de ces droits. Et les conditions ne sont pas écrites.",
+    );
+  });
+});
+
+describe("seuil « très en dessous »", () => {
+  it("est le seuil du score où le prix ne rapporte plus aucun point : 40 % de la borne basse", () => {
+    expect(FAR_BELOW_RATIO).toBe(0.4);
+    expect(FAR_BELOW_RATIO).toBe(RATIO_ZERO);
+  });
+
+  it("strictement sous 40 % de la borne basse, pas à 40 % pile", () => {
+    const at = (amount: number) => verdictForm(analysis({ evaluability: "terms_unknown", amount, low: 1000, high: 2000 }));
+    expect(at(399)).toBe("terms_unknown_far_below");
+    expect(at(400)).toBe("terms_unknown");
+    expect(at(999)).toBe("terms_unknown");
+  });
+
+  it("une offre en produits sans montant en euros ne déclenche pas « très en dessous »", () => {
+    expect(verdictForm(analysis({ evaluability: "terms_unknown", amount: null, inKind: 50, low: 1000, high: 2000 }))).toBe("terms_unknown");
   });
 });
 
@@ -72,18 +129,17 @@ describe("bornes et cas limites", () => {
   });
 
   it("montants réels uniquement : la phrase ne cite que le montant et la fourchette de l'analyse", () => {
-    const text = plain(verdictSentence(analysis({ amount: 437, low: 612, high: 1789 })));
-    expect(text).toBe("437 € proposés. Ces droits en valent 612 à 1 789.");
+    expect(plain(verdictSentence(analysis({ amount: 437, low: 612, high: 1789 })))).toBe("437 € proposés. Ces droits en valent 612 à 1 789.");
   });
 });
 
 describe("sur les fixtures passées par le vrai moteur", () => {
   it("chaque état de prévisualisation produit la forme attendue", () => {
     expect(verdictForm(previewAnalysis("debloque").analysis)).toBe("complete_below");
-    expect(verdictForm(previewAnalysis("complete").analysis)).toBe("complete_within");
-    expect(verdictForm(previewAnalysis("au-dessus").analysis)).toBe("complete_above");
+    expect(verdictForm(previewAnalysis("complete").analysis)).toBe("complete_within_poor_terms");
+    expect(verdictForm(previewAnalysis("au-dessus").analysis)).toBe("complete_above_poor_terms");
     expect(verdictForm(previewAnalysis("unpriced").analysis)).toBe("unpriced");
     expect(verdictForm(previewAnalysis("incomplete").analysis)).toBe("incomplete");
-    expect(verdictForm(previewAnalysis("terms_unknown").analysis)).toBe("terms_unknown");
+    expect(verdictForm(previewAnalysis("terms_unknown").analysis)).toBe("terms_unknown_far_below");
   });
 });

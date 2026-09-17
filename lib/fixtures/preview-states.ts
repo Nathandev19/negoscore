@@ -28,7 +28,7 @@ const TOPICS: Record<string, Extraction["negotiate"][number]["topic"]> = {
   "Paiement à 30 jours, avec 50 % à la signature": "payment_terms",
 };
 
-function baseExtraction(): Extraction {
+export function baseExtraction(): Extraction {
   const source = structuredClone(sample) as unknown as Analysis;
   return {
     language: source.language,

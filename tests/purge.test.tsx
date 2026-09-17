@@ -75,6 +75,7 @@ describe("politique de confidentialité", () => {
       "Documents déposés : supprimés 30 jours après l'analyse.",
       "Texte des offres collé dans le champ d'analyse : supprimé 30 jours après l'analyse. L'analyse, elle, reste disponible et conserve la marque, les montants et des phrases rédigées par l'outil d'analyse, qui peuvent citer le prénom de ton interlocuteur. Supprimer l'analyse efface tout.",
       "Compte et analyses : jusqu'à la suppression du compte par l'utilisateur.",
+      "Avis sur une estimation (réponse et commentaire facultatif de 200 caractères au plus, que tu rédiges toi-même) : conservés tant que l'analyse existe, et supprimés avec elle, que tu supprimes l'analyse ou ton compte.",
       "Journal des paiements et preuves de consentement : 5 ans, y compris après la suppression du compte.",
       "Adresses IP hachées : 30 jours au maximum.",
       "Données de facturation détenues par Whop : selon ses propres durées.",

@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileDropZone, type SelectedFile } from "@/components/file-drop-zone";
-import { WaitingScreen } from "@/components/loading-steps";
+import { REVEAL_TOTAL_MS, WaitingScreen } from "@/components/loading-steps";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,8 +87,11 @@ export function DealInput() {
     pdf: null,
   });
   const [loading, setLoading] = useState(false);
-  // Réponse reçue : toutes les étapes sont cochées pendant la redirection.
-  const [finished, setFinished] = useState(false);
+  // Moment de la réponse du serveur : les étapes après la lecture ne se cochent
+  // qu'à partir de là. null tant que l'appel est en cours.
+  const [respondedAt, setRespondedAt] = useState<number | null>(null);
+  // Mode de l'analyse en cours (le libellé de lecture en dépend).
+  const [runningMode, setRunningMode] = useState<Mode>("text");
   const [notice, setNotice] = useState<{ message: string; paywall: boolean; signIn: boolean } | null>(null);
   const outcomeRef = useRef<Outcome | null>(null);
   const startedRef = useRef<Record<Mode, boolean>>({ text: false, photo: false, pdf: false });
@@ -124,14 +127,16 @@ export function DealInput() {
     setFiles((prev) => ({ ...prev, [kind]: null }));
   }
 
-  // L'écran d'attente reste affiché jusqu'à la réponse réelle, sans durée
-  // minimale : un résultat prêt s'affiche tout de suite.
+  // L'écran d'attente reste affiché jusqu'à la réponse réelle, puis le temps de
+  // cocher les étapes restantes (REVEAL_TOTAL_MS), et pas plus.
   function finish() {
     const outcome = outcomeRef.current;
     if (!outcome) return;
     if (outcome.ok) {
-      setFinished(true);
-      router.push(`/analyse/resultat/${outcome.analysisId}`);
+      // La réponse est là : les étapes restantes se cochent, puis le résultat s'affiche.
+      setRespondedAt(Date.now());
+      const target = `/analyse/resultat/${outcome.analysisId}`;
+      window.setTimeout(() => router.push(target), REVEAL_TOTAL_MS);
     } else {
       setNotice({ message: outcome.message, paywall: outcome.paywall, signIn: outcome.signIn });
       setLoading(false);
@@ -141,7 +146,8 @@ export function DealInput() {
   async function analyse(current: Mode) {
     outcomeRef.current = null;
     setNotice(null);
-    setFinished(false);
+    setRespondedAt(null);
+    setRunningMode(current);
     setLoading(true);
     const method = METHOD[current];
     track(ANALYTICS_EVENTS.analysisSubmitted, { method });
@@ -182,7 +188,7 @@ export function DealInput() {
   }
 
   if (loading) {
-    return <WaitingScreen finished={finished} />;
+    return <WaitingScreen kind={runningMode} respondedAt={respondedAt} />;
   }
 
   return (

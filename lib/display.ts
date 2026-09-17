@@ -61,12 +61,13 @@ export const SEVERITY_LABEL: Record<Severity, string> = {
   low: "Mineur",
 };
 
-// Gravité d'un red flag : pastille aux couleurs de bande (aplat sur crème),
-// texte encre.
+// Gravité d'un red flag : les deux niveaux de danger aux couleurs de bande
+// (aplat sur crème, texte encre). « Mineur » n'est pas un danger mais une
+// remarque : pastille atténuée (grise), texte crème.
 export const SEVERITY_BADGE: Record<Severity, string> = {
-  high: "bg-band-bad-on-creme",
-  medium: "bg-band-weak-on-creme",
-  low: "bg-band-fair-on-creme",
+  high: "bg-band-bad-on-creme text-encre",
+  medium: "bg-band-weak-on-creme text-encre",
+  low: "bg-attenue text-creme",
 };
 
 const DELIVERABLE_LABEL: Record<Deal["deliverables"][number]["type"], [string, string]> = {

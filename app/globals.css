@@ -32,6 +32,7 @@
   /* Marque et lecture */
   --color-marque: #1f3cff; /* fond de marque, constant, jamais dérivé du score */
   --color-marque-deep: #0f22b8; /* survol, actif */
+  --color-marque-muted: #5966c0; /* bouton principal désactivé : même teinte, saturation 45 % */
   --color-creme: #fff7e8; /* fond de lecture de toutes les pages */
   --color-encre: #14120c; /* titres, texte sur crème, texte sur les aplats */
   --color-encre-douce: #3b362a; /* corps */

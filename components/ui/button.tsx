@@ -5,15 +5,16 @@ import { Slot } from "radix-ui"
 
 // Formes d'action. default : l'action principale, plein bleu marque, une par
 // écran. outline : action secondaire, contour encre. destructive : action sans
-// retour, contour « bad ». link : lien souligné bleu. Désactivé : plein
-// atténué, texte crème. Le focus est le contour global de app/globals.css.
+// retour, contour « bad ». link : lien souligné bleu. Désactivé : bleu marque
+// désaturé pour l'action principale (la marque est visible dès l'arrivée),
+// plein atténué pour les autres ; texte crème. Le focus est le contour global de app/globals.css.
 const buttonVariants = cva(
   "inline-flex shrink-0 items-center justify-center gap-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "rounded-control border-2 border-marque bg-marque text-creme hover:border-marque-deep hover:bg-marque-deep disabled:border-attenue disabled:bg-attenue disabled:text-creme",
+          "rounded-control border-2 border-marque bg-marque text-creme hover:border-marque-deep hover:bg-marque-deep disabled:border-marque-muted disabled:bg-marque-muted disabled:text-creme",
         outline:
           "rounded-control border-2 border-encre bg-transparent text-encre hover:bg-encre hover:text-creme disabled:border-attenue disabled:bg-attenue disabled:text-creme",
         destructive:
