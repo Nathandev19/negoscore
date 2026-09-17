@@ -36,8 +36,16 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   {
     path: "/analyse/demo",
     title: "Exemple d'analyse d'une offre de marque",
+    // « offre fictive » : la page affiche elle-même que l'offre est inventée
+    // (mission #052). La description ne peut pas promettre autre chose.
     description:
-      "Une vraie offre de marque décortiquée : ce que valent les vidéos, les droits publicitaires et l'exclusivité, et ce que la marque aurait dû proposer.",
+      "Exemple d'analyse, sur une offre fictive : ce que valent les vidéos, les droits publicitaires et l'exclusivité, et ce que la marque aurait dû proposer.",
+  },
+  {
+    path: "/droits-utilisation",
+    title: "Droits d'utilisation UGC : ce que tu vends vraiment",
+    description:
+      "Une marque veut diffuser ta vidéo en pub ? Ce n'est plus de la création, c'est une licence. Durée, supports, exclusivité : ce que ça vaut et comment le facturer.",
   },
   {
     path: "/tarifs",
