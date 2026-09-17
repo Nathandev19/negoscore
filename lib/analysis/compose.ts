@@ -9,7 +9,7 @@ import { computeEstimate, isFarAboveOffer } from "@/lib/rates/engine";
 import { computeScore } from "@/lib/rates/score";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 
-export const SCHEMA_VERSION = "1.2";
+export const SCHEMA_VERSION = "1.3";
 
 export const UNPRICED_ASSUMPTION =
   "Fourchette indicative : elle est calculée à partir des contenus et des droits décrits dans l'offre. La marque n'a donné aucun montant, rien ne permet donc de la confronter à son budget.";

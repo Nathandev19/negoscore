@@ -93,7 +93,7 @@ RÈGLES ABSOLUES
 
 EXTRACTION (objet deal)
 - brand : nom de la marque tel qu'écrit, sinon null.
-- deliverables : un élément par type de contenu et par plateforme. quantity = nombre de contenus de ce type. format = durée, format ou variantes écrites (par exemple "30 s, 3 hooks"), sinon null. platform = null si la plateforme n'est pas écrite.
+- deliverables : un élément par type de contenu et par plateforme. quantity = nombre de contenus de ce type, tel qu'écrit. Si l'offre ne dit pas combien (« quelques vidéos », « du contenu », « une collab »), quantity = null : n'invente pas de nombre, n'écris jamais 0, et ajoute « Nombre de contenus attendus » dans input_quality.missing_critical. format = durée, format ou variantes écrites (par exemple "30 s, 3 hooks"), sinon null. platform = null si la plateforme n'est pas écrite.
 - publication_required : true seulement si le créateur doit publier sur son propre compte.
 - usage.organic : la marque peut publier ou republier les contenus sur ses comptes sans publicité payante.
 - usage.paid_ads : la marque peut utiliser les contenus en publicité payante.
@@ -129,7 +129,7 @@ ANALYSE (textes destinés au créateur)
 // Version du prompt enregistrée avec chaque analyse. À changer à chaque
 // modification de SYSTEM_PROMPT, IMAGE_USER_MESSAGE, PDF_USER_MESSAGE ou du
 // schéma d'extraction.
-export const PROMPT_VERSION = "2026-09-17.1";
+export const PROMPT_VERSION = "2026-09-17.2";
 
 // Consigne jointe à une image (capture ou photo d'écran). Le prompt système et
 // le schéma restent les mêmes qu'en mode texte.

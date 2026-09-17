@@ -49,7 +49,13 @@ export function countPdfPages(bytes: Uint8Array): number | null {
       if (found) count = Math.max(count ?? 0, Number(found[1]));
     }
   }
-  return count;
+  if (count !== null) return count;
+  // Repli : un dictionnaire de pages imbriqué sur plus d'un niveau échappe à la
+  // lecture ci-dessus. Ne pas trouver /Count est un manque de notre lecture, pas
+  // un fichier illisible : plutôt que de refuser un PDF valide, on compte les
+  // objets /Type /Page un à un. Aucun objet page : null, le PDF est refusé.
+  const leaves = sources.reduce((sum, source) => sum + (source.match(/\/Type\s*\/Page(?![a-zA-Z])/g)?.length ?? 0), 0);
+  return leaves > 0 ? leaves : null;
 }
 
 export function inspectPdf(bytes: Uint8Array): PdfCheck {

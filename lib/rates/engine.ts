@@ -118,6 +118,14 @@ function roundPercent(value: number): number {
   return Math.round(value * 1000) / 10;
 }
 
+// Hypothèse posée pour un livrable dont la marque ne dit pas combien elle en veut.
+export const UNKNOWN_QUANTITY_ASSUMPTION: Record<Deal["deliverables"][number]["type"], string> = {
+  video: "Nombre de vidéos non précisé : une seule vidéo supposée.",
+  photo: "Nombre de photos non précisé : une seule photo supposée.",
+  story: "Nombre de stories non précisé : une seule story supposée.",
+  live: "Nombre de lives non précisé : un seul live supposé.",
+};
+
 export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEstimate {
   const assumptions: string[] = [];
   const tier: Tier = profile.tier ?? (rates.base_rates_eur.default_tier as Tier);
@@ -127,10 +135,14 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
 
   // Somme pondérée des livrables : une story ou une photo ne vaut pas une vidéo.
   // Le poids de chaque type vient de la table (vidéo = 1).
+  // Quantité non précisée (null) : un contenu de ce type est supposé, et dit.
   let weightedUnits = deal.deliverables.reduce(
-    (sum, d) => sum + d.quantity * rates.deliverable_weights[d.type].weight,
+    (sum, d) => sum + (d.quantity ?? 1) * rates.deliverable_weights[d.type].weight,
     0,
   );
+  for (const type of new Set(deal.deliverables.filter((d) => d.quantity === null).map((d) => d.type))) {
+    assumptions.push(UNKNOWN_QUANTITY_ASSUMPTION[type]);
+  }
   if (weightedUnits <= 0) {
     weightedUnits = rates.deliverable_weights.video.weight;
     assumptions.push("Nombre de vidéos non précisé : une seule vidéo supposée.");

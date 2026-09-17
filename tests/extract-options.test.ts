@@ -45,6 +45,16 @@ describe("effort de raisonnement", () => {
     expect(result.reasoningTokens).toBe(400);
   });
 
+  it("verbosité : null par défaut, rien d'envoyé ; réglable par appel pour l'éval", async () => {
+    expect(MODEL.textVerbosity).toBeNull();
+    const result = await extractDeal("Offre de test.");
+    expect((calls.bodies[0].text as Record<string, unknown>).verbosity).toBeUndefined();
+    expect(result.textVerbosity).toBeNull();
+    await extractDeal("Offre de test.", { textVerbosity: "low" });
+    expect((calls.bodies[1].text as Record<string, unknown>).verbosity).toBe("low");
+    expect("reasoning" in calls.bodies[1]).toBe(false);
+  });
+
   it("réglable par appel pour l'éval : low puis medium envoyés explicitement", async () => {
     await extractDeal("Offre de test.", { reasoningEffort: "low" });
     await extractDeal("Offre de test.", { reasoningEffort: "medium" });

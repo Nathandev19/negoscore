@@ -82,7 +82,7 @@ export default function HomePage() {
               <p className="measure">
                 Une marque propose{" "}
                 <span className="figures text-encre">{formatEur(deal.payment.amount_eur ?? 0)}</span> pour{" "}
-                {deal.deliverables.map((d) => `${d.quantity} vidéo${d.quantity > 1 ? "s" : ""}`).join(", ")}, avec droits pub
+                {deal.deliverables.map((d) => (d.quantity === null ? "des vidéos" : `${d.quantity} vidéo${d.quantity > 1 ? "s" : ""}`)).join(", ")}, avec droits pub
                 et exclusivité. Cet exemple ne change pas : ce n&apos;est pas une vraie analyse en cours.
               </p>
               <Link href="/analyse/demo" className="link w-fit">

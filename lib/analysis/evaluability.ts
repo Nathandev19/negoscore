@@ -21,6 +21,15 @@ type Deal = Analysis["deal"];
 export type Evaluability = Analysis["evaluability"];
 
 // Périmètre connu : on sait ce qui est livré et ce que la marque en fera.
+// Un livrable dont la quantité n'est pas précisée (quantity null) COMPTE comme
+// connu : son type, sa plateforme et l'usage qui en sera fait disent ce qui est
+// demandé ; le nombre ne change que le montant, pas la nature du travail. Le
+// moteur chiffre alors un contenu par type et l'écrit dans ses hypothèses, et
+// le nombre est ajouté à ce qui manque. Le traiter comme un livrable absent
+// ferait tomber en « incomplete » (sans fourchette ni score) le DM le plus
+// courant, « quelques vidéos avec droits pub, 500 € ». Limite assumée : la
+// fourchette est alors un plancher (un seul contenu), le score peut donc être
+// généreux avec une offre qui en demandera plusieurs.
 export function scopeKnown(deal: Deal): boolean {
   const { usage } = deal;
   return (
@@ -86,12 +95,13 @@ export function evaluability(deal: Deal): Evaluability {
 }
 
 // Manques déterministes du périmètre et du prix, dans l'ordre du deal.
-export type MissingKey = "deliverables" | "usage" | "price";
+export type MissingKey = "deliverables" | "quantity" | "usage" | "price";
 
 export function missingKeys(deal: Deal): MissingKey[] {
   const { usage } = deal;
   const keys: MissingKey[] = [];
   if (deal.deliverables.length === 0) keys.push("deliverables");
+  else if (deal.deliverables.some((d) => d.quantity === null)) keys.push("quantity");
   if (!(usage.organic || usage.paid_ads || usage.whitelisting || usage.spark_ads || usage.perpetual)) keys.push("usage");
   if (!priceKnown(deal)) keys.push("price");
   return keys;
@@ -99,6 +109,7 @@ export function missingKeys(deal: Deal): MissingKey[] {
 
 const MISSING_LABEL: Record<MissingKey, string> = {
   deliverables: "Les contenus attendus : combien, de quel type, sur quelles plateformes",
+  quantity: "Le nombre de contenus attendus",
   usage: "Les droits d'utilisation : ce que la marque fera des contenus et pendant combien de temps",
   price: "La rémunération proposée",
 };
@@ -107,6 +118,7 @@ const MISSING_LABEL: Record<MissingKey, string> = {
 // répéter avec d'autres mots. Sert uniquement à l'affichage de la liste.
 const MISSING_HINT: Record<MissingKey, RegExp> = {
   deliverables: /livrable|contenu|vid[ée]o|photo|story|stories|format|nombre de/i,
+  quantity: /nombre de|combien|quantit/i,
   usage: /droit|usage|utilisation|diffusion|licence|pub/i,
   price: /r[ée]mun[ée]ration|budget|prix|montant|tarif|paiement|cachet|€/i,
 };
@@ -141,6 +153,7 @@ const MISSING_RANK: Record<MissingKey, number> = {
   price: PRIORITY.price,
   usage: PRIORITY.usage,
   deliverables: PRIORITY.usage,
+  quantity: PRIORITY.usage,
 };
 
 const TERM_RANK: Record<TermKey, number> = {
@@ -194,11 +207,13 @@ export function missingInformation(analysis: Pick<Analysis, "deal" | "input_qual
 const REQUEST_ITEM: Record<Analysis["language"], Record<MissingKey, string>> = {
   fr: {
     deliverables: "les contenus attendus (nombre, format et plateformes)",
+    quantity: "le nombre de contenus attendus",
     usage: "l'utilisation prévue des contenus (publication, publicité, durée)",
     price: "le budget prévu pour cette collaboration",
   },
   en: {
     deliverables: "the expected content (number, format and platforms)",
+    quantity: "how many pieces of content you expect",
     usage: "how the content will be used (posting, paid ads, duration)",
     price: "the budget planned for this collaboration",
   },

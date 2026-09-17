@@ -9,12 +9,19 @@
 // evals/effort.ts (latence, coût et exactitude, medium contre low).
 export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
+// Verbosité du texte envoyée à l'API (text.verbosity). null : non envoyée,
+// valeur par défaut « medium » (SDK openai 7.15, responses.d.ts). Jamais
+// mesurée sur une sortie contrainte par schéma JSON strict : evals/effort.ts
+// --experiment=verbosity. Ne pas changer sans cette mesure.
+export type TextVerbosity = "low" | "medium" | "high";
+
 export const MODEL: {
   id: string;
   envKey: string;
   pricingUsdPerMillion: { input: number; cachedInput: number; output: number };
   usdPerEur: number;
   reasoningEffort: ReasoningEffort | null;
+  textVerbosity: TextVerbosity | null;
 } = {
   id: "gpt-5.6-luna",
   envKey: "OPENAI_API_KEY",
@@ -23,4 +30,5 @@ export const MODEL: {
   // Taux de référence BCE du 11/09/2026.
   usdPerEur: 1.1592,
   reasoningEffort: null,
+  textVerbosity: null,
 };

@@ -1,31 +1,55 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { extractDeal, type ExtractResult } from "@/lib/llm/extract";
-import { MODEL, type ReasoningEffort } from "@/lib/llm/model";
+import { extractDeal, type ExtractOptions, type ExtractResult } from "@/lib/llm/extract";
+import { MODEL } from "@/lib/llm/model";
 import { checkFacts, findHallucinations, percentile } from "./scoring.ts";
 import type { Expected, FactCheck, Hallucination, Traps } from "./scoring.ts";
 
-// Éval comparative de l'effort de raisonnement (mission #032, partie F).
+// Éval comparative des réglages de latence (missions #032 F et #033 B).
 // Même fonction d'extraction que la production (lib/llm/extract.ts : prompt,
 // schéma, une reprise si la sortie est invalide), sur toutes les fixtures
-// texte, d'abord avec « medium » (la valeur par défaut de l'API, donc la
-// production actuelle, envoyée ici explicitement), puis avec « low ».
+// texte, une passe complète par variante, dans l'ordre.
+//
+//   --experiment=effort     reasoning.effort medium, puis low (mesuré le 17/09/2026)
+//   --experiment=verbosity  text.verbosity medium, puis low, effort constant medium
+//
+// Les valeurs « medium » sont les valeurs par défaut de l'API, donc la
+// production actuelle, envoyées ici explicitement. Une verbosité peut n'avoir
+// aucun effet sur une sortie contrainte par un schéma JSON strict : l'éval le
+// montrera, c'est un résultat valable.
 //
 // CONSOMME DE L'API. Sans --confirm, le script n'appelle rien : il affiche le
 // nombre d'appels et le coût estimé, puis s'arrête.
 //
-// pnpm eval:effort                       → plan seulement, aucun appel
-// pnpm eval:effort --confirm             → les 26 fixtures × 2 efforts
-// pnpm eval:effort --confirm --only=01,18
+// pnpm eval:effort                          → plan seulement, aucun appel
+// pnpm eval:verbosity                       → plan seulement, aucun appel
+// pnpm eval:verbosity --confirm             → les 26 fixtures × 2 variantes
+// pnpm eval:verbosity --confirm --only=15,16,17
 
 const ROOT = process.cwd();
 const FIXTURES_DIR = path.join(ROOT, "evals", "fixtures");
 const RESULTS_DIR = path.join(ROOT, "evals", "results");
-export const EFFORTS: ReasoningEffort[] = ["medium", "low"];
 
-// Coût moyen mesuré d'une extraction texte avec ce modèle (effort par défaut) :
-// 0,001979 $ sur 20 fixtures, evals/results/2026-09-15T07-45-12-414Z.json.
-const MEASURED_COST_USD_PER_CALL = 0.001979;
+type Variant = { id: string; options: ExtractOptions };
+
+export const EXPERIMENTS: Record<string, Variant[]> = {
+  effort: [
+    { id: "effort-medium", options: { reasoningEffort: "medium" } },
+    { id: "effort-low", options: { reasoningEffort: "low" } },
+  ],
+  verbosity: [
+    { id: "verbosity-medium", options: { reasoningEffort: "medium", textVerbosity: "medium" } },
+    { id: "verbosity-low", options: { reasoningEffort: "medium", textVerbosity: "low" } },
+  ],
+};
+
+// Le pire cas qu'on cherche à réparer : les contrats longs, détaillés fixture
+// par fixture pour qu'une moyenne ne les noie pas.
+export const LONG_CONTRACTS = ["15-contrat-cosmetique", "16-contrat-app-sport", "17-contrat-boisson"];
+
+// Coût moyen mesuré d'une extraction texte, effort medium, sur les 26 fixtures :
+// 0,040001 € au total, evals/results/effort-2026-09-17T12-50-01-154Z.json.
+const MEASURED_COST_EUR_PER_EXTRACTION = 0.040001 / 26;
 // Pire cas facturé par extraction : 2 essais (sortie invalide) × 2 requêtes
 // HTTP (une reprise réseau du SDK, maxRetries: 1).
 const WORST_CASE_REQUESTS_PER_EXTRACTION = 4;
@@ -34,7 +58,7 @@ type Fixture = { name: string; input: string; expected: Expected; traps: Traps }
 
 type Run = {
   fixture: string;
-  effort: ReasoningEffort;
+  variant: string;
   error: string | null;
   latencyMs: number;
   attempts: number;
@@ -42,6 +66,8 @@ type Run = {
   inputTokens: number;
   outputTokens: number;
   reasoningTokens: number;
+  // Coût des extractions abouties. Une extraction en échec est facturée mais
+  // son coût n'est pas connu ici : il n'est pas compté.
   costEur: number;
   facts: FactCheck[];
   hallucinations: Hallucination[];
@@ -62,32 +88,32 @@ function loadFixtures(only: string[]): Fixture[] {
     });
 }
 
-export function plan(fixtureCount: number) {
-  const extractions = fixtureCount * EFFORTS.length;
-  const estimatedUsd = extractions * MEASURED_COST_USD_PER_CALL;
+export function plan(fixtureCount: number, variants: Variant[]) {
+  const extractions = fixtureCount * variants.length;
+  const estimatedEur = extractions * MEASURED_COST_EUR_PER_EXTRACTION;
   const worstRequests = extractions * WORST_CASE_REQUESTS_PER_EXTRACTION;
   return {
     extractions,
-    estimatedUsd,
-    estimatedEur: estimatedUsd / MODEL.usdPerEur,
+    estimatedEur,
+    estimatedUsd: estimatedEur * MODEL.usdPerEur,
     worstRequests,
-    worstUsd: worstRequests * MEASURED_COST_USD_PER_CALL,
+    worstEur: worstRequests * MEASURED_COST_EUR_PER_EXTRACTION,
   };
 }
 
-async function runOne(fixture: Fixture, effort: ReasoningEffort): Promise<Run> {
+async function runOne(fixture: Fixture, variant: Variant): Promise<Run> {
   const started = performance.now();
   let result: ExtractResult | null = null;
   let error: string | null = null;
   try {
-    result = await extractDeal(fixture.input, { reasoningEffort: effort });
+    result = await extractDeal(fixture.input, variant.options);
   } catch (caught) {
     error = (caught instanceof Error ? caught.message : String(caught)).slice(0, 300);
   }
   const facts = checkFacts(result?.extraction ?? null, fixture.expected, fixture.traps);
   return {
     fixture: fixture.name,
-    effort,
+    variant: variant.id,
     error,
     latencyMs: result?.latencyMs ?? Math.round(performance.now() - started),
     attempts: result?.attempts ?? 0,
@@ -122,14 +148,19 @@ function summary(runs: Run[]) {
 
 async function main() {
   const args = process.argv.slice(2);
+  const experiment = args.find((a) => a.startsWith("--experiment="))?.slice("--experiment=".length) ?? "effort";
+  const variants = EXPERIMENTS[experiment];
+  if (!variants) throw new Error(`Expérience inconnue : ${experiment} (effort ou verbosity).`);
   const only = (args.find((a) => a.startsWith("--only="))?.slice("--only=".length) ?? "").split(",").filter(Boolean);
   const fixtures = loadFixtures(only);
-  const p = plan(fixtures.length);
+  const p = plan(fixtures.length, variants);
 
-  console.log(`Fixtures texte : ${fixtures.length} · efforts : ${EFFORTS.join(" puis ")}`);
-  console.log(`Extractions : ${p.extractions} (une par fixture et par effort).`);
-  console.log(`Coût estimé : ${p.estimatedUsd.toFixed(3)} $ (${p.estimatedEur.toFixed(3)} €), sur la base de ${MEASURED_COST_USD_PER_CALL} $ mesurés par extraction.`);
-  console.log(`Pire cas : ${p.worstRequests} requêtes facturées, ${p.worstUsd.toFixed(3)} $ (chaque extraction reprise deux fois).`);
+  console.log(`Expérience : ${experiment} · fixtures texte : ${fixtures.length} · variantes : ${variants.map((v) => v.id).join(" puis ")}`);
+  console.log(`Extractions : ${p.extractions} (une par fixture et par variante).`);
+  console.log(
+    `Coût estimé : ${p.estimatedEur.toFixed(3)} € (${p.estimatedUsd.toFixed(3)} $), sur la base de ${MEASURED_COST_EUR_PER_EXTRACTION.toFixed(6)} € mesurés par extraction (effort medium).`,
+  );
+  console.log(`Pire cas : ${p.worstRequests} requêtes facturées, ${p.worstEur.toFixed(3)} € (chaque extraction reprise deux fois).`);
 
   if (!args.includes("--confirm")) {
     console.log("Aucun appel lancé. Relancer avec --confirm pour exécuter.");
@@ -138,43 +169,65 @@ async function main() {
   if (!process.env[MODEL.envKey]) throw new Error(`${MODEL.envKey} absente : rien n'a été lancé.`);
 
   const runs: Run[] = [];
-  // Une passe complète par effort, dans l'ordre demandé : medium, puis low.
-  for (const effort of EFFORTS) {
+  // Une passe complète par variante, dans l'ordre.
+  for (const variant of variants) {
     for (const fixture of fixtures) {
-      const run = await runOne(fixture, effort);
+      const run = await runOne(fixture, variant);
       runs.push(run);
       const ok = run.facts.filter((f) => f.ok).length;
       console.log(
-        `[${effort}] ${fixture.name} — ${run.error ? `ERREUR ${run.error.slice(0, 100)}` : `${run.latencyMs} ms, sortie ${run.outputTokens} jetons (raisonnement ${run.reasoningTokens}), faits ${ok}/${run.facts.length}, hallucinations ${run.hallucinations.length}`}`,
+        `[${variant.id}] ${fixture.name} — ${run.error ? `ERREUR ${run.error.slice(0, 100)}` : `${run.latencyMs} ms, sortie ${run.outputTokens} jetons (raisonnement ${run.reasoningTokens}), faits ${ok}/${run.facts.length}, hallucinations ${run.hallucinations.length}`}`,
       );
     }
   }
 
-  const byEffort = Object.fromEntries(EFFORTS.map((effort) => [effort, summary(runs.filter((r) => r.effort === effort))]));
-  // Faits qui changent d'une passe à l'autre : c'est là que se lit le prix d'un effort plus bas.
-  const regressions = fixtures.flatMap((fixture) => {
-    const medium = runs.find((r) => r.fixture === fixture.name && r.effort === "medium");
-    const low = runs.find((r) => r.fixture === fixture.name && r.effort === "low");
-    if (!medium || !low) return [];
-    return medium.facts
-      .filter((fact) => fact.ok !== low.facts.find((f) => f.fact === fact.fact)?.ok)
-      .map((fact) => ({ fixture: fixture.name, fact: fact.fact, medium: fact.ok, low: !fact.ok }));
+  const byVariant = Object.fromEntries(variants.map((v) => [v.id, summary(runs.filter((r) => r.variant === v.id))]));
+  const [reference, candidate] = variants;
+  // Faits qui changent d'une passe à l'autre : c'est là que se lit le prix d'un réglage plus bas.
+  const differences = fixtures.flatMap((fixture) => {
+    const a = runs.find((r) => r.fixture === fixture.name && r.variant === reference.id);
+    const b = runs.find((r) => r.fixture === fixture.name && r.variant === candidate.id);
+    if (!a || !b) return [];
+    return a.facts
+      .filter((fact) => fact.ok !== b.facts.find((f) => f.fact === fact.fact)?.ok)
+      .map((fact) => ({ fixture: fixture.name, fact: fact.fact, [reference.id]: fact.ok, [candidate.id]: !fact.ok }));
   });
+  const longContracts = LONG_CONTRACTS.filter((name) => fixtures.some((f) => f.name === name)).map((name) => ({
+    fixture: name,
+    ...Object.fromEntries(
+      variants.map((v) => {
+        const run = runs.find((r) => r.fixture === name && r.variant === v.id);
+        return [v.id, run ? { latencyMs: run.latencyMs, outputTokens: run.outputTokens, reasoningTokens: run.reasoningTokens, error: run.error } : null];
+      }),
+    ),
+  }));
 
   mkdirSync(RESULTS_DIR, { recursive: true });
-  const file = path.join(RESULTS_DIR, `effort-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
-  writeFileSync(file, `${JSON.stringify({ model: MODEL.id, efforts: EFFORTS, byEffort, regressions, runs }, null, 2)}\n`);
+  const file = path.join(RESULTS_DIR, `${experiment}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+  writeFileSync(file, `${JSON.stringify({ model: MODEL.id, experiment, variants, byVariant, longContracts, differences, runs }, null, 2)}\n`);
 
-  console.log("\n| Effort | Faits exacts | Hallucinations | Schéma 1er essai | Latence p50 / p95 | Sortie moyenne (dont raisonnement) | Coût total | Erreurs |");
+  console.log("\n| Variante | Faits exacts | Hallucinations | Schéma 1er essai | Latence p50 / p95 | Sortie moyenne (dont raisonnement) | Coût total | Erreurs |");
   console.log("|---|---|---|---|---|---|---|---|");
-  for (const effort of EFFORTS) {
-    const s = byEffort[effort];
+  for (const v of variants) {
+    const s = byVariant[v.id];
     console.log(
-      `| ${effort} | ${s.factAccuracyPct} % | ${s.hallucinations} | ${s.schemaFirstTryPct} % | ${s.latencyP50Ms} / ${s.latencyP95Ms} ms | ${s.meanOutputTokens} (${s.meanReasoningTokens}) | ${s.totalCostEur} € | ${s.errors} |`,
+      `| ${v.id} | ${s.factAccuracyPct} % | ${s.hallucinations} | ${s.schemaFirstTryPct} % | ${s.latencyP50Ms} / ${s.latencyP95Ms} ms | ${s.meanOutputTokens} (${s.meanReasoningTokens}) | ${s.totalCostEur} € | ${s.errors} |`,
     );
   }
-  console.log(`\nFaits qui diffèrent entre medium et low : ${regressions.length}`);
-  for (const r of regressions) console.log(`- ${r.fixture} · ${r.fact} : medium ${r.medium ? "ok" : "faux"}, low ${r.low ? "ok" : "faux"}`);
+  console.log(`\nContrats longs (pire cas), latence et jetons de sortie par variante :`);
+  console.log(`| Fixture | ${variants.map((v) => `${v.id} latence | ${v.id} sortie`).join(" | ")} |`);
+  console.log(`|---|${variants.map(() => "---|---").join("|")}|`);
+  for (const row of longContracts) {
+    const cells = variants.map((v) => {
+      const cell = (row as Record<string, unknown>)[v.id] as { latencyMs: number; outputTokens: number; error: string | null } | null;
+      return cell && !cell.error ? `${cell.latencyMs} ms | ${cell.outputTokens}` : "erreur | —";
+    });
+    console.log(`| ${row.fixture} | ${cells.join(" | ")} |`);
+  }
+  console.log(`\nFaits qui diffèrent entre ${reference.id} et ${candidate.id} : ${differences.length}`);
+  for (const d of differences) {
+    console.log(`- ${d.fixture} · ${d.fact} : ${reference.id} ${d[reference.id] ? "ok" : "faux"}, ${candidate.id} ${d[candidate.id] ? "ok" : "faux"}`);
+  }
   console.log(`\nRésultats : ${path.relative(ROOT, file)}`);
 }
 

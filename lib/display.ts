@@ -105,7 +105,8 @@ export function deliverablesLine(deal: Deal): string | null {
     .map((d) => {
       const [one, many] = DELIVERABLE_LABEL[d.type];
       const platform = d.platform && d.platform !== "other" ? ` ${PLATFORM_LABEL[d.platform]}` : "";
-      return `${d.quantity} ${d.quantity > 1 ? many : one}${platform}`;
+      // Nombre non précisé : le pluriel, sans chiffre inventé.
+      return d.quantity === null ? `${capitalizeFirst(many)}${platform}, nombre non précisé` : `${d.quantity} ${d.quantity > 1 ? many : one}${platform}`;
     })
     .join(" · ");
 }
@@ -122,9 +123,10 @@ export function dealRecapRows(deal: Deal): RecapRow[] {
           value: deal.deliverables
             .map((d) => {
               const [one, many] = DELIVERABLE_LABEL[d.type];
-              const parts = [`${d.quantity} ${d.quantity > 1 ? many : one}`];
+              const parts = [d.quantity === null ? many : `${d.quantity} ${d.quantity > 1 ? many : one}`];
               if (d.platform) parts.push(PLATFORM_LABEL[d.platform]);
               if (d.format) parts.push(`(${d.format})`);
+              if (d.quantity === null) parts.push("(nombre non précisé)");
               return parts.join(" ");
             })
             .join(", "),

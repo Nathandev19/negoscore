@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { MODEL, type ReasoningEffort } from "@/lib/llm/model";
+import { MODEL, type ReasoningEffort, type TextVerbosity } from "@/lib/llm/model";
 import {
   buildUserMessage,
   extractionJsonSchema,
@@ -24,8 +24,22 @@ export const EXTRACTION_BUDGET_MS = 95_000;
 // Au-delà, la quantité extraite est une erreur de lecture (vue en éval : 32025).
 const MAX_PLAUSIBLE_QUANTITY = 50;
 
+// Quantité d'un livrable, à la frontière du modèle. Deux cas à ne pas confondre :
+//   - null ou 0 : la marque n'a pas dit combien (vu en éval : « quelques vidéos »
+//     → 0). C'est une information manquante : la quantité devient null, et le
+//     moteur suppose un contenu en l'écrivant dans ses hypothèses ;
+//   - négative, non entière ou au-delà de 50 : c'est une erreur de lecture, la
+//     sortie est rejetée (le modèle est rappelé une fois).
+export type QuantityCheck = { kind: "unknown" } | { kind: "count"; value: number } | { kind: "aberrant"; value: number };
+
+export function checkQuantity(quantity: number | null): QuantityCheck {
+  if (quantity === null || quantity === 0) return { kind: "unknown" };
+  if (!Number.isInteger(quantity) || quantity < 0 || quantity > MAX_PLAUSIBLE_QUANTITY) return { kind: "aberrant", value: quantity };
+  return { kind: "count", value: quantity };
+}
+
 // Réglages d'un appel. Sans valeur : ceux de MODEL (production).
-export type ExtractOptions = { reasoningEffort?: ReasoningEffort | null };
+export type ExtractOptions = { reasoningEffort?: ReasoningEffort | null; textVerbosity?: TextVerbosity | null };
 
 export type ExtractResult = {
   extraction: Extraction;
@@ -35,6 +49,7 @@ export type ExtractResult = {
   // Part des jetons de sortie consacrée au raisonnement (comptée dans outputTokens).
   reasoningTokens: number;
   reasoningEffort: ReasoningEffort | null;
+  textVerbosity: TextVerbosity | null;
   costEur: number;
   latencyMs: number;
   schemaValidFirstTry: boolean;
@@ -52,11 +67,14 @@ function problemWith(outputText: string): { extraction: Extraction } | { problem
   if (!parsed.success) {
     return { problem: parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join(" ; ") };
   }
-  const implausible = parsed.data.deal.deliverables.find(
-    (d) => !Number.isInteger(d.quantity) || d.quantity < 1 || d.quantity > MAX_PLAUSIBLE_QUANTITY,
-  );
-  if (implausible) return { problem: `quantité invraisemblable : ${implausible.quantity}` };
-  return { extraction: parsed.data };
+  const checks = parsed.data.deal.deliverables.map((d) => checkQuantity(d.quantity));
+  const aberrant = checks.find((check) => check.kind === "aberrant");
+  if (aberrant) return { problem: `quantité invraisemblable : ${aberrant.value}` };
+  const deliverables = parsed.data.deal.deliverables.map((d, index) => ({
+    ...d,
+    quantity: checks[index].kind === "unknown" ? null : d.quantity,
+  }));
+  return { extraction: { ...parsed.data, deal: { ...parsed.data.deal, deliverables } } };
 }
 
 export type ImageInput = { base64: string; mimeType: string };
@@ -114,6 +132,7 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"], option
   let outputTokens = 0;
   let reasoningTokens = 0;
   const reasoningEffort = options.reasoningEffort === undefined ? MODEL.reasoningEffort : options.reasoningEffort;
+  const textVerbosity = options.textVerbosity === undefined ? MODEL.textVerbosity : options.textVerbosity;
   let schemaValidFirstTry = false;
   let lastProblem = "";
 
@@ -123,7 +142,11 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"], option
       instructions: SYSTEM_PROMPT,
       input,
       max_output_tokens: 16000,
-      text: { format: { type: "json_schema", name: "deal_analysis", schema, strict: true } },
+      text: {
+        format: { type: "json_schema", name: "deal_analysis", schema, strict: true },
+        // Absent quand la verbosité vaut null : valeur par défaut de l'API.
+        ...(textVerbosity ? { verbosity: textVerbosity } : {}),
+      },
       // Paramètre absent quand l'effort vaut null : valeur par défaut de l'API.
       ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
     }, { signal: deadline });
@@ -146,6 +169,7 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"], option
         outputTokens,
         reasoningTokens,
         reasoningEffort,
+        textVerbosity,
         costEur: costUsd / MODEL.usdPerEur,
         latencyMs: Math.round(performance.now() - started),
         schemaValidFirstTry,

@@ -1,0 +1,4031 @@
+{
+  "model": "gpt-5.6-luna",
+  "efforts": [
+    "medium",
+    "low"
+  ],
+  "byEffort": {
+    "medium": {
+      "runs": 26,
+      "errors": 0,
+      "factAccuracyPct": 99.3,
+      "hallucinations": 0,
+      "schemaFirstTryPct": 100,
+      "retries": 0,
+      "latencyP50Ms": 16142,
+      "latencyP95Ms": 23714,
+      "meanOutputTokens": 1306,
+      "meanReasoningTokens": 400,
+      "totalCostEur": 0.040001
+    },
+    "low": {
+      "runs": 26,
+      "errors": 1,
+      "factAccuracyPct": 96.4,
+      "hallucinations": 0,
+      "schemaFirstTryPct": 100,
+      "retries": 0,
+      "latencyP50Ms": 9552,
+      "latencyP95Ms": 16361,
+      "meanOutputTokens": 1022,
+      "meanReasoningTokens": 109,
+      "totalCostEur": 0.031226
+    }
+  },
+  "regressions": [
+    {
+      "fixture": "01-dm-cosmetique",
+      "fact": "must_flag:exclusiv",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "fact": "brand",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "fact": "payment.amount_eur",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "fact": "payment.terms_days",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "fact": "usage.paid_ads",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "fact": "usage.duration_months",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "fact": "usage.territory",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "fact": "exclusivity.present",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "fact": "raw_footage",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "fact": "must_flag:budget|montant|tarif|remuner|prix",
+      "medium": true,
+      "low": false
+    },
+    {
+      "fixture": "05-dm-spark-ads",
+      "fact": "usage.duration_months",
+      "medium": false,
+      "low": true
+    },
+    {
+      "fixture": "12-brief-jeu-mobile",
+      "fact": "ai_training_rights",
+      "medium": false,
+      "low": true
+    }
+  ],
+  "runs": [
+    {
+      "fixture": "01-dm-cosmetique",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 14259,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2040,
+      "outputTokens": 1267,
+      "reasoningTokens": 355,
+      "costEur": 0.0016635610766045548,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Aubépine Cosmétiques"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.unlimited",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 300
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 60
+        },
+        {
+          "fact": "ai_training_rights",
+          "ok": true,
+          "actual": "absent"
+        },
+        {
+          "fact": "must_flag:revision|illimit",
+          "ok": true
+        },
+        {
+          "fact": "must_flag:exclusiv",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "02-dm-produit-offert",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 15393,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2053,
+      "outputTokens": 1136,
+      "reasoningTokens": 515,
+      "costEur": 0.0012317460317460317,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Quiétile"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 1,
+              "format": "Reel"
+            },
+            {
+              "type": "story",
+              "platform": "instagram",
+              "quantity": 3,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": 89
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:remuner|pas paye|gratuit|aucun paiement|sans paiement|budget|argent|cachet",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 11695,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2028,
+      "outputTokens": 988,
+      "reasoningTokens": 395,
+      "costEur": 0.001074223602484472,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Frimousse Lab"
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:budget|montant|tarif|remuner|prix",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "04-dm-vague-droits",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 13150,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2002,
+      "outputTokens": 1162,
+      "reasoningTokens": 400,
+      "costEur": 0.0012498619737750171,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Ondulia"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 1,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 150
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:duree|combien de temps|mois|limite",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "05-dm-spark-ads",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 13859,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2043,
+      "outputTokens": 1124,
+      "reasoningTokens": 334,
+      "costEur": 0.0012175983436853003,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Nomadelle"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 400
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.spark_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": false,
+          "actual": null
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:spark|boost",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "06-dm-whitelisting",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 13662,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2046,
+      "outputTokens": 1174,
+      "reasoningTokens": 306,
+      "costEur": 0.0012698757763975155,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Lunabrosse"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 3,
+              "format": "Reels"
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 750
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 45
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 1
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:whitelist|acces a ton compte|depuis ton compte",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "07-email-biscuits",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 17843,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2150,
+      "outputTokens": 1540,
+      "reasoningTokens": 575,
+      "costEur": 0.0016667011732229122,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Les Délices de Marthe"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": null,
+              "quantity": 2,
+              "format": "30 secondes"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "France uniquement"
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "revisions.unlimited",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 500
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:rush|raw",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "08-email-chargeur",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 17963,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2103,
+      "outputTokens": 1362,
+      "reasoningTokens": 466,
+      "costEur": 0.001474327122153209,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Voltarys"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "youtube",
+              "quantity": 1,
+              "format": "YouTube Shorts"
+            },
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 1,
+              "format": "TikTok"
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 600
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 60
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 12
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "toute l'Europe"
+        },
+        {
+          "fact": "revisions.unlimited",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:revision|retour|illimit|validation",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "09-email-vetements",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 17303,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2078,
+      "outputTokens": 1290,
+      "reasoningTokens": 360,
+      "costEur": 0.001395479641131815,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Atelier Pèlerine"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "photo",
+              "platform": "instagram",
+              "quantity": 4,
+              "format": null
+            },
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 350
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": 200
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "10-email-voyage",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 18131,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2108,
+      "outputTokens": 1417,
+      "reasoningTokens": 453,
+      "costEur": 0.0015321256038647343,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Escales Douces"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 900
+        },
+        {
+          "fact": "payment.schedule",
+          "ok": true,
+          "actual": "50 % à la signature et 50 % à la livraison"
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "kill_fee",
+          "ok": true,
+          "actual": "En cas d'annulation de la part de la marque après le tournage, versement de 30 % du montant."
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "must_flag:exclusiv",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "11-brief-serum",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 23608,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2161,
+      "outputTokens": 1777,
+      "reasoningTokens": 688,
+      "costEur": 0.0019139406487232579,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Hydrelune"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": "30 à 60 secondes, 2 hooks par vidéo"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 1200
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "France"
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "exclusivity.category",
+          "ok": true,
+          "actual": "soins visage"
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "must_flag:rush|raw|exclusiv|whitelist",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "12-brief-jeu-mobile",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 17424,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2082,
+      "outputTokens": 1403,
+      "reasoningTokens": 361,
+      "costEur": 0.0015131469979296065,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "DRAGONNERIE"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 5,
+              "format": "verticales de 15 à 20 secondes"
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 1500
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 45
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.spark_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "monde"
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 1
+        },
+        {
+          "fact": "ai_training_rights",
+          "ok": false,
+          "actual": "absent"
+        },
+        {
+          "fact": "must_flag:intelligence artificielle|variante|l'ia| ia ",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "13-brief-linge",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 14810,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2057,
+      "outputTokens": 1122,
+      "reasoningTokens": 308,
+      "costEur": 0.001217943409247757,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Terre & Lin"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 2,
+              "format": null
+            },
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 800
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 12
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "14-brief-sans-budget",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 15023,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2053,
+      "outputTokens": 1083,
+      "reasoningTokens": 304,
+      "costEur": 0.00117688060731539,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "VITALUNE"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 4,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "must_flag:exclusiv",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "15-contrat-cosmetique",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 23714,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 8622,
+      "outputTokens": 2039,
+      "reasoningTokens": 443,
+      "costEur": 0.0032998964803312627,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "MAISON VELOUTINE"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": "30 à 45 secondes, format vertical"
+            },
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 2,
+              "format": "Reels"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 1800
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 45
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": 120
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 12
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "ip_transfer",
+          "ok": true,
+          "actual": "license"
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "ai_training_rights",
+          "ok": true,
+          "actual": "absent"
+        },
+        {
+          "fact": "governing_law",
+          "ok": true,
+          "actual": "Droit français ; tribunaux de Paris compétents."
+        },
+        {
+          "fact": "must_flag:exclusiv|whitelist",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "16-contrat-app-sport",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 22989,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 7586,
+      "outputTokens": 1962,
+      "reasoningTokens": 481,
+      "costEur": 0.00304144237405107,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "PULSORIA"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 6,
+              "format": "vertical, 20 à 30 secondes, 3 hooks par vidéo, avec et sans sous-titres"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 2400
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 60
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.spark_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "ensemble des États membres de l'Union européenne"
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.unlimited",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "ip_transfer",
+          "ok": true,
+          "actual": "license"
+        },
+        {
+          "fact": "ai_training_rights",
+          "ok": true,
+          "actual": "present"
+        },
+        {
+          "fact": "governing_law",
+          "ok": true,
+          "actual": "Droit français ; recherche d'une solution amiable pendant trente (30) jours, puis saisine des juridictions françaises compétentes."
+        },
+        {
+          "fact": "must_flag:intelligence artificielle|entrain|l'ia| ia ",
+          "ok": true
+        },
+        {
+          "fact": "must_flag:revision|modification|illimit|validation",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "17-contrat-boisson",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 26473,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 7734,
+      "outputTokens": 2148,
+      "reasoningTokens": 495,
+      "costEur": 0.0032595238095238094,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Nectarelle SRL"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 4,
+              "format": "Reels de 15 à 60 secondes"
+            },
+            {
+              "type": "story",
+              "platform": "instagram",
+              "quantity": 4,
+              "format": "Stories pouvant comporter plusieurs séquences"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 3500
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 90
+        },
+        {
+          "fact": "ip_transfer",
+          "ok": true,
+          "actual": "full_assignment"
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 24
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "le monde entier"
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 12
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "governing_law",
+          "ok": true,
+          "actual": "Droit belge ; compétence exclusive des tribunaux de Liège après une tentative de résolution amiable de trente jours"
+        },
+        {
+          "fact": "must_flag:cession|cede|propriet|tes droits",
+          "ok": true
+        },
+        {
+          "fact": "must_flag:exclusiv",
+          "ok": true
+        },
+        {
+          "fact": "must_flag:90 jours|delai de paiement|paiement",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "18-piege-perpetuite",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 19376,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2176,
+      "outputTokens": 1333,
+      "reasoningTokens": 435,
+      "costEur": 0.0014569013112491372,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Maison Orvelle"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": "verticales, 30 secondes environ"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 450
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:perpetu|a vie|sans limite|sans fin|duree de protection|illimite|pour toujours|definiti|70 ans",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "19-piege-cession",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 17652,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2113,
+      "outputTokens": 1372,
+      "reasoningTokens": 516,
+      "costEur": 0.0014864044168391994,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Brindille & Co"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": "20-30 s"
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 600
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "ip_transfer",
+          "ok": true,
+          "actual": "full_assignment"
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:propriet|cession|cede|appartien|tes droits",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "20-email-anglais",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 17188,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2092,
+      "outputTokens": 1180,
+      "reasoningTokens": 307,
+      "costEur": 0.0012840234644582473,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Luminelle Labs"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": "20–40 seconds each"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 500
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "France and Belgium"
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 1
+        },
+        {
+          "fact": "must_flag:rush|raw",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "21-dm-court-sans-usage",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 13689,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1988,
+      "outputTokens": 938,
+      "reasoningTokens": 271,
+      "costEur": 0.0010155624568668046,
+      "facts": [
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 300
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "22-dm-court-publication",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 13098,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1984,
+      "outputTokens": 986,
+      "reasoningTokens": 373,
+      "costEur": 0.0010645617667356798,
+      "facts": [
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 1,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 250
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "23-dm-court-repost",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 17407,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1984,
+      "outputTokens": 1217,
+      "reasoningTokens": 445,
+      "costEur": 0.0013036922015182883,
+      "facts": [
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 1,
+              "format": null
+            },
+            {
+              "type": "story",
+              "platform": "instagram",
+              "quantity": 3,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 400
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "24-dm-court-pub-meta",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 14547,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1983,
+      "outputTokens": 1048,
+      "reasoningTokens": 320,
+      "costEur": 0.0011285714285714287,
+      "facts": [
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "other",
+              "quantity": 3,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 500
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "25-dm-court-produits",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 10140,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1978,
+      "outputTokens": 685,
+      "reasoningTokens": 158,
+      "costEur": 0.0007519323671497585,
+      "facts": [
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": 150
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "26-dm-nova-sportswear",
+      "effort": "medium",
+      "error": null,
+      "latencyMs": 16142,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2058,
+      "outputTokens": 1212,
+      "reasoningTokens": 332,
+      "costEur": 0.0013112836438923395,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "NOVA Sportswear"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 1,
+              "format": null
+            },
+            {
+              "type": "story",
+              "platform": "instagram",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "France"
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 1
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 600
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "01-dm-cosmetique",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 11966,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2040,
+      "outputTokens": 1084,
+      "reasoningTokens": 180,
+      "costEur": 0.001474120082815735,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Aubépine Cosmétiques"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.unlimited",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 300
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 60
+        },
+        {
+          "fact": "ai_training_rights",
+          "ok": true,
+          "actual": "absent"
+        },
+        {
+          "fact": "must_flag:revision|illimit",
+          "ok": true
+        },
+        {
+          "fact": "must_flag:exclusiv",
+          "ok": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "02-dm-produit-offert",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 10132,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2053,
+      "outputTokens": 885,
+      "reasoningTokens": 135,
+      "costEur": 0.0009719116632160112,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Quiétile"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 1,
+              "format": null
+            },
+            {
+              "type": "story",
+              "platform": "instagram",
+              "quantity": 3,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": 89
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:remuner|pas paye|gratuit|aucun paiement|sans paiement|budget|argent|cachet",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "03-dm-vague-budget",
+      "effort": "low",
+      "error": "Sortie invalide après 2 essais : quantité invraisemblable : 0",
+      "latencyMs": 16215,
+      "attempts": 0,
+      "schemaValidFirstTry": false,
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "reasoningTokens": 0,
+      "costEur": 0,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": false
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": false
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": false
+        },
+        {
+          "fact": "usage.territory",
+          "ok": false
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": false
+        },
+        {
+          "fact": "must_flag:budget|montant|tarif|remuner|prix",
+          "ok": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "04-dm-vague-droits",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 9090,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2002,
+      "outputTokens": 755,
+      "reasoningTokens": 109,
+      "costEur": 0.0008285369220151829,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Ondulia"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 1,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 150
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:duree|combien de temps|mois|limite",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "05-dm-spark-ads",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 9536,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2043,
+      "outputTokens": 895,
+      "reasoningTokens": 109,
+      "costEur": 0.0009805383022774329,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Nomadelle"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 400
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.spark_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 1
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:spark|boost",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "06-dm-whitelisting",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 10616,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2046,
+      "outputTokens": 1047,
+      "reasoningTokens": 125,
+      "costEur": 0.0011384057971014492,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Lunabrosse"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 3,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 750
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 45
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 1
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:whitelist|acces a ton compte|depuis ton compte",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "07-email-biscuits",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 8634,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2150,
+      "outputTokens": 920,
+      "reasoningTokens": 78,
+      "costEur": 0.0010248792270531402,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Les Délices de Marthe"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": null,
+              "quantity": 2,
+              "format": "30 secondes"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "France uniquement"
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "revisions.unlimited",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 500
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:rush|raw",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "08-email-chargeur",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 8016,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2103,
+      "outputTokens": 835,
+      "reasoningTokens": 0,
+      "costEur": 0.0009287784679089027,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Voltarys"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "youtube",
+              "quantity": 1,
+              "format": "YouTube Shorts"
+            },
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 1,
+              "format": "TikTok"
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 600
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 60
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 12
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "toute l'Europe"
+        },
+        {
+          "fact": "revisions.unlimited",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:revision|retour|illimit|validation",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "09-email-vetements",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 9335,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2078,
+      "outputTokens": 939,
+      "reasoningTokens": 110,
+      "costEur": 0.0010321256038647343,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Atelier Pèlerine"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "photo",
+              "platform": "instagram",
+              "quantity": 4,
+              "format": null
+            },
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 350
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": 200
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "10-email-voyage",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 9790,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2108,
+      "outputTokens": 1001,
+      "reasoningTokens": 107,
+      "costEur": 0.0011014837819185647,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Escales Douces"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 900
+        },
+        {
+          "fact": "payment.schedule",
+          "ok": true,
+          "actual": "50 % à la signature et 50 % à la livraison"
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "kill_fee",
+          "ok": true,
+          "actual": "En cas d'annulation de leur part après le tournage, versement de 30 % du montant."
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "must_flag:exclusiv",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "11-brief-serum",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 10397,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2161,
+      "outputTokens": 1190,
+      "reasoningTokens": 146,
+      "costEur": 0.001306280193236715,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Hydrelune"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": "30 à 60 secondes, 2 hooks par vidéo"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 1200
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "France"
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "exclusivity.category",
+          "ok": true,
+          "actual": "soins visage"
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "must_flag:rush|raw|exclusiv|whitelist",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "12-brief-jeu-mobile",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 11270,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2082,
+      "outputTokens": 1071,
+      "reasoningTokens": 175,
+      "costEur": 0.0011694616977225673,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "DRAGONNERIE"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 5,
+              "format": "15 à 20 secondes, vertical"
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 1500
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 45
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.spark_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "monde"
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 1
+        },
+        {
+          "fact": "ai_training_rights",
+          "ok": true,
+          "actual": "unclear"
+        },
+        {
+          "fact": "must_flag:intelligence artificielle|variante|l'ia| ia ",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "13-brief-linge",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 10056,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2057,
+      "outputTokens": 984,
+      "reasoningTokens": 105,
+      "costEur": 0.0010750862663906143,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Terre & Lin"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 2,
+              "format": null
+            },
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 800
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 12
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "14-brief-sans-budget",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 8117,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2053,
+      "outputTokens": 820,
+      "reasoningTokens": 0,
+      "costEur": 0.0009046238785369222,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "VITALUNE"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 4,
+              "format": "UGC, non publiées sur ton compte"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "must_flag:exclusiv",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "15-contrat-cosmetique",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 16361,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 8622,
+      "outputTokens": 1831,
+      "reasoningTokens": 167,
+      "costEur": 0.0030845755693581778,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "MAISON VELOUTINE"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": "vertical, 30 à 45 secondes"
+            },
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 2,
+              "format": "Reels"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 1800
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 45
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": 120
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 12
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "ip_transfer",
+          "ok": true,
+          "actual": "license"
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "ai_training_rights",
+          "ok": true,
+          "actual": "absent"
+        },
+        {
+          "fact": "governing_law",
+          "ok": true,
+          "actual": "Droit français ; les litiges sont soumis aux tribunaux de Paris après tentative de résolution amiable."
+        },
+        {
+          "fact": "must_flag:exclusiv|whitelist",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "16-contrat-app-sport",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 15636,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 7586,
+      "outputTokens": 1786,
+      "reasoningTokens": 150,
+      "costEur": 0.002859247757073844,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "PULSORIA"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 6,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 2400
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 60
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.spark_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 6
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "l'ensemble des États membres de l'Union européenne"
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.unlimited",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "ip_transfer",
+          "ok": true,
+          "actual": "license"
+        },
+        {
+          "fact": "ai_training_rights",
+          "ok": true,
+          "actual": "present"
+        },
+        {
+          "fact": "governing_law",
+          "ok": true,
+          "actual": "Droit français. Recherche d'une solution amiable pendant trente (30) jours, puis saisine des juridictions françaises compétentes."
+        },
+        {
+          "fact": "must_flag:intelligence artificielle|entrain|l'ia| ia ",
+          "ok": true
+        },
+        {
+          "fact": "must_flag:revision|modification|illimit|validation",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "17-contrat-boisson",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 27431,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 7734,
+      "outputTokens": 1875,
+      "reasoningTokens": 170,
+      "costEur": 0.0029769151138716358,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Nectarelle SRL"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 4,
+              "format": "Reels de 15 à 60 secondes"
+            },
+            {
+              "type": "story",
+              "platform": "instagram",
+              "quantity": 4,
+              "format": "Stories pouvant comporter plusieurs séquences successives"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 3500
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 90
+        },
+        {
+          "fact": "ip_transfer",
+          "ok": true,
+          "actual": "full_assignment"
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.whitelisting",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 24
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "le monde entier"
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 12
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "governing_law",
+          "ok": true,
+          "actual": "Droit belge ; tribunaux de Liège après une tentative de solution amiable de 30 jours"
+        },
+        {
+          "fact": "must_flag:cession|cede|propriet|tes droits",
+          "ok": true
+        },
+        {
+          "fact": "must_flag:exclusiv",
+          "ok": true
+        },
+        {
+          "fact": "must_flag:90 jours|delai de paiement|paiement",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "18-piege-perpetuite",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 10856,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2176,
+      "outputTokens": 1091,
+      "reasoningTokens": 113,
+      "costEur": 0.0012063837129054522,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Maison Orvelle"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": "verticales, 30 secondes environ"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 450
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:perpetu|a vie|sans limite|sans fin|duree de protection|illimite|pour toujours|definiti|70 ans",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "19-piege-cession",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 9465,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2113,
+      "outputTokens": 1038,
+      "reasoningTokens": 162,
+      "costEur": 0.0011406487232574188,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Brindille & Co"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": "20-30 s"
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 600
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 2
+        },
+        {
+          "fact": "ip_transfer",
+          "ok": true,
+          "actual": "full_assignment"
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "must_flag:propriet|cession|cede|appartien|tes droits",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "20-email-anglais",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 7739,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2092,
+      "outputTokens": 782,
+      "reasoningTokens": 0,
+      "costEur": 0.000872015182884748,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "Luminelle Labs"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 3,
+              "format": "20–40 seconds each"
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 500
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "France and Belgium"
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "revisions.count",
+          "ok": true,
+          "actual": 1
+        },
+        {
+          "fact": "must_flag:rush|raw",
+          "ok": true
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "21-dm-court-sans-usage",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 8116,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1988,
+      "outputTokens": 720,
+      "reasoningTokens": 87,
+      "costEur": 0.0007898895790200138,
+      "facts": [
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 300
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "raw_footage",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "22-dm-court-publication",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 11544,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1984,
+      "outputTokens": 678,
+      "reasoningTokens": 93,
+      "costEur": 0.0007457211870255349,
+      "facts": [
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 1,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 250
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "23-dm-court-repost",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 8861,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1984,
+      "outputTokens": 776,
+      "reasoningTokens": 124,
+      "costEur": 0.0008471704623878537,
+      "facts": [
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "instagram",
+              "quantity": 1,
+              "format": null
+            },
+            {
+              "type": "story",
+              "platform": "instagram",
+              "quantity": 3,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 400
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "24-dm-court-pub-meta",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 7857,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1983,
+      "outputTokens": 874,
+      "reasoningTokens": 71,
+      "costEur": 0.0009484472049689442,
+      "facts": [
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "other",
+              "quantity": 3,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 500
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.perpetual",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "25-dm-court-produits",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 5511,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 1978,
+      "outputTokens": 597,
+      "reasoningTokens": 54,
+      "costEur": 0.0006608350586611455,
+      "facts": [
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": null
+        },
+        {
+          "fact": "in_kind_value_eur",
+          "ok": true,
+          "actual": 150
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        }
+      ],
+      "hallucinations": []
+    },
+    {
+      "fixture": "26-dm-nova-sportswear",
+      "effort": "low",
+      "error": null,
+      "latencyMs": 9552,
+      "attempts": 1,
+      "schemaValidFirstTry": true,
+      "inputTokens": 2058,
+      "outputTokens": 1064,
+      "reasoningTokens": 165,
+      "costEur": 0.0011580745341614907,
+      "facts": [
+        {
+          "fact": "brand",
+          "ok": true,
+          "actual": "NOVA Sportswear"
+        },
+        {
+          "fact": "deliverables",
+          "ok": true,
+          "actual": [
+            {
+              "type": "video",
+              "platform": "tiktok",
+              "quantity": 1,
+              "format": null
+            },
+            {
+              "type": "story",
+              "platform": "instagram",
+              "quantity": 2,
+              "format": null
+            }
+          ]
+        },
+        {
+          "fact": "publication_required",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.organic",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "usage.paid_ads",
+          "ok": true,
+          "actual": false
+        },
+        {
+          "fact": "usage.duration_months",
+          "ok": true,
+          "actual": 3
+        },
+        {
+          "fact": "usage.territory",
+          "ok": true,
+          "actual": "France"
+        },
+        {
+          "fact": "exclusivity.present",
+          "ok": true,
+          "actual": true
+        },
+        {
+          "fact": "exclusivity.duration_months",
+          "ok": true,
+          "actual": 1
+        },
+        {
+          "fact": "payment.amount_eur",
+          "ok": true,
+          "actual": 600
+        },
+        {
+          "fact": "payment.terms_days",
+          "ok": true,
+          "actual": 30
+        }
+      ],
+      "hallucinations": []
+    }
+  ]
+}

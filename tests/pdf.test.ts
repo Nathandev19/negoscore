@@ -46,6 +46,17 @@ describe("PDF : contrôles avant l'appel au modèle", () => {
     expect(inspectPdf(new TextEncoder().encode("%PDF-1.4\n%%EOF\n"))).toMatchObject({ ok: false, reason: "unreadable" });
   });
 
+  it("arbre de pages imbriqué sur plusieurs niveaux (/Count illisible) : les pages sont comptées une à une, le PDF n'est pas refusé", () => {
+    const pdf = new TextEncoder().encode(
+      "%PDF-1.7\n" +
+        "2 0 obj\n<< /Type /Pages /Kids [3 0 R 4 0 R] /Resources << /Font << /F1 << /Type /Font >> >> >> /Count 2 >>\nendobj\n" +
+        "3 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\n" +
+        "4 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\n%%EOF\n",
+    );
+    expect(countPdfPages(pdf)).toBe(2);
+    expect(inspectPdf(pdf)).toEqual({ ok: true, pages: 2 });
+  });
+
   it("compte les pages quand l'arbre est dans un flux compressé (/ObjStm)", () => {
     const inner = Buffer.from("<< /Type /Pages /Kids [4 0 R] /Count 37 >>", "latin1");
     const compressed = deflateSync(inner);

@@ -19,7 +19,11 @@ export const analysisSchema = z.object({
       z.object({
         type: z.enum(["video", "photo", "story", "live"]),
         platform: z.enum(["tiktok", "instagram", "youtube", "other"]).nullable(),
-        quantity: z.number(),
+        // null : la marque ne dit pas combien elle en veut (« quelques vidéos »).
+        // C'est une information manquante, pas une erreur : le moteur suppose un
+        // contenu et l'écrit dans ses hypothèses. Ajouté en 1.3 ; une analyse
+        // antérieure a toujours un nombre.
+        quantity: z.number().nullable(),
         format: z.string().nullable(),
       }),
     ),

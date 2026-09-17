@@ -345,8 +345,10 @@ describe("invariants du moteur de chiffrage", () => {
       const [first] = deal.deliverables;
       if (first) {
         const more = clone(deal);
-        more.deliverables[0] = { ...first, quantity: first.quantity + 1 };
-        checkNotCheaper(violations, `quantité ${first.quantity} → ${first.quantity + 1} (${first.type})`, deal, more);
+        // Population générée avec des nombres ; une quantité non précisée vaut un contenu.
+        const count = first.quantity ?? 1;
+        more.deliverables[0] = { ...first, quantity: count + 1 };
+        checkNotCheaper(violations, `quantité ${count} → ${count + 1} (${first.type})`, deal, more);
       }
       const platform = deal.deliverables.find((x) => x.platform !== null)?.platform ?? null;
       const story = { ...clone(deal), deliverables: [...deal.deliverables, { type: "story" as const, platform, quantity: 1, format: null }] };
