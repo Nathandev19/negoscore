@@ -149,3 +149,80 @@ describe("page Merci : compte déjà crédité", () => {
     expect(isCredited(null)).toBe(false);
   });
 });
+
+// Mission #050 partie D — les résidus de l'ancienne configuration sont effacés
+// au premier chargement, sans toucher aux cookies du site.
+describe("nettoyage des résidus de mesure", () => {
+  function fakeBrowser(cookies: string[], local: Record<string, string>, session: Record<string, string>) {
+    const jar = new Map(cookies.map((c) => [c.split("=")[0], c.split("=")[1] ?? ""]));
+    const expired: string[] = [];
+    const store = (data: Record<string, string>) => {
+      const fake: Record<string, unknown> = {
+        ...data,
+        removeItem: (key: string) => {
+          delete fake[key];
+        },
+      };
+      return fake;
+    };
+    const doc = {
+      get cookie() {
+        return [...jar].map(([name, value]) => `${name}=${value}`).join("; ");
+      },
+      set cookie(written: string) {
+        const name = written.split("=")[0];
+        if (/Max-Age=0/.test(written)) {
+          expired.push(name);
+          jar.delete(name);
+        }
+      },
+    };
+    vi.stubGlobal("document", doc);
+    vi.stubGlobal("window", {
+      doNotTrack: null,
+      location: { hostname: "www.negoscore.fr" },
+      localStorage: store(local),
+      sessionStorage: store(session),
+    });
+    return { jar, expired };
+  }
+
+  it("efface les cookies ph_ et les clés posthog, et rien d'autre", async () => {
+    const { jar, expired } = fakeBrowser(
+      ["ph_phc_abc_posthog=jeton", "sb_access_token=session", "ns_session=1", "negoscore_niveau=starter", "deal_anon_token=jeton"],
+      { "ph_phc_abc_posthog": "x", POSTHOG_state: "y", negoscore_brouillon: "mon texte" },
+      { posthog_surveys: "z", autre: "intact" },
+    );
+    const { clearAnalyticsResidue } = await freshModule();
+    clearAnalyticsResidue();
+
+    expect([...jar.keys()]).toEqual(["sb_access_token", "ns_session", "negoscore_niveau", "deal_anon_token"]);
+    expect(expired.every((name) => name.startsWith("ph_"))).toBe(true);
+    expect(Object.keys(window.localStorage).filter((k) => typeof window.localStorage[k] === "string")).toEqual([
+      "negoscore_brouillon",
+    ]);
+    expect(Object.keys(window.sessionStorage).filter((k) => typeof window.sessionStorage[k] === "string")).toEqual(["autre"]);
+  });
+
+  it("ne lève rien quand le stockage est inaccessible", async () => {
+    vi.stubGlobal("document", {
+      get cookie(): string {
+        throw new Error("cookies bloqués");
+      },
+      set cookie(_: string) {
+        throw new Error("cookies bloqués");
+      },
+    });
+    vi.stubGlobal("window", {
+      location: { hostname: "www.negoscore.fr" },
+      get localStorage(): Storage {
+        throw new Error("stockage bloqué");
+      },
+      get sessionStorage(): Storage {
+        throw new Error("stockage bloqué");
+      },
+    });
+    const { clearAnalyticsResidue } = await freshModule();
+    expect(() => clearAnalyticsResidue()).not.toThrow();
+  });
+});

@@ -11,7 +11,7 @@ import {
   volumeDiscountFactor,
 } from "@/lib/rates/engine";
 import rates from "@/lib/rates/fr-2026.3.json";
-import { computeScore } from "@/lib/rates/score";
+import { computeScore, uncappedScore } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
 import extracted17 from "./fixtures/deal-17-contrat-boisson.json";
 
@@ -338,11 +338,14 @@ describe("computeScore", () => {
     const deal = makeDeal({ payment: { amount_eur: 70, currency: "EUR", terms_days: null, schedule: null } });
     const estimate = computeEstimate(deal);
     expect([estimate.total_low, estimate.total_high]).toEqual([100, 180]);
-    expect(computeScore(deal, estimate).value).toBe(50 + 9 + 5);
+    expect(uncappedScore(deal, estimate).value).toBe(50 + 9 + 5);
+    // Mission #050 : 70 € pour un plancher à 100 €, soit 70 %, donc 59 au plus.
+    expect(computeScore(deal, estimate).value).toBe(59);
     const confirmedDeal = makeDeal({ payment: { amount_eur: 175, currency: "EUR", terms_days: null, schedule: null } });
     const confirmed = computeEstimate(confirmedDeal, { tier: "confirmed" });
     expect([confirmed.total_low, confirmed.total_high]).toEqual([250, 500]);
-    expect(computeScore(confirmedDeal, confirmed).value).toBe(50 + 9 + 5);
+    expect(uncappedScore(confirmedDeal, confirmed).value).toBe(50 + 9 + 5);
+    expect(computeScore(confirmedDeal, confirmed).value).toBe(59);
   });
 });
 

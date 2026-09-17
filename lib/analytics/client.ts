@@ -17,6 +17,45 @@ function doNotTrack(): boolean {
   return signals.some((value) => value === "1" || value === "yes");
 }
 
+// Résidus laissés par l'ancienne configuration (mission #050) : un visiteur déjà
+// venu garde un cookie ph_… jusqu'à 12 mois, alors que la politique de
+// confidentialité annonce désormais qu'aucune mesure n'écrit sur l'appareil.
+// Nettoyage silencieux au premier chargement : rien n'est affiché, rien n'est
+// envoyé, et un stockage inaccessible (navigation privée, blocage) ne remonte
+// aucune erreur. Seuls les noms de la mesure sont touchés.
+const RESIDUE_PREFIX = "ph_";
+const RESIDUE_KEY = "posthog";
+
+export function clearAnalyticsResidue(): void {
+  try {
+    const names = document.cookie
+      .split(";")
+      .map((part) => part.split("=")[0]?.trim() ?? "")
+      .filter((name) => name.startsWith(RESIDUE_PREFIX));
+    for (const name of names) {
+      // Le cookie a pu être posé sur l'hôte ou sur le domaine parent : on
+      // expire les variantes, sans toucher à autre chose que ce nom.
+      const host = window.location.hostname;
+      const parent = host.split(".").slice(-2).join(".");
+      for (const domain of [null, host, `.${host}`, `.${parent}`]) {
+        document.cookie = `${name}=; Max-Age=0; path=/${domain ? `; domain=${domain}` : ""}`;
+      }
+    }
+  } catch {
+    // Cookies inaccessibles : il n'y a rien à nettoyer et rien à signaler.
+  }
+  for (const storage of ["localStorage", "sessionStorage"] as const) {
+    try {
+      const store = window[storage];
+      for (const key of Object.keys(store)) {
+        if (key.toLowerCase().includes(RESIDUE_KEY)) store.removeItem(key);
+      }
+    } catch {
+      // Stockage bloqué : idem.
+    }
+  }
+}
+
 export function initAnalytics(): void {
   if (ready || typeof window === "undefined") return;
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;

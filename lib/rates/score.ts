@@ -9,6 +9,12 @@ type Score = NonNullable<Analysis["score"]>;
 // réels « trop basse / juste / trop haute » soient exploitables. Toute
 // modification avant cela rendrait ces avis incomparables entre eux.
 //
+// UNE SEULE EXCEPTION, le 17/09/2026 (mission #050) : l'ajout du plafond par le
+// prix (PRICE_CAPS ci-dessous). Aucune composante de points n'a été touchée à
+// cette occasion — ni la base, ni les points prix, ni les malus, ni les bonus,
+// ni les seuils de libellés : seule une borne supérieure a été ajoutée. Le gel
+// s'applique de nouveau ensuite.
+//
 // Score déterministe sur 100.
 // Base 50, puis ajustements additifs, puis borne entre 0 et 100.
 //
@@ -80,10 +86,65 @@ export function hasUnknownQuantity(deal: Deal): boolean {
   return deal.deliverables.some((d) => d.quantity === null);
 }
 
-// Score avec le plafond de quantité inconnue appliqué.
+// PLAFOND PAR LE PRIX (mission #050). r = montant proposé / borne basse de la
+// fourchette. Les 50 points de base sont inconditionnels : sans ce plafond, une
+// offre payée à moitié pouvait afficher « Deal correct », voire « Bon deal ».
+// Le plafond ne retire aucun point, il borne le score par le haut : une offre
+// très en dessous du prix ne peut pas être annoncée comme correcte, quelles que
+// soient ses autres qualités.
+//   r < 0,40          → 29 au plus (« Mauvais deal »)
+//   0,40 ≤ r < 0,60   → 39 au plus (« Deal faible »)
+//   0,60 ≤ r < 0,85   → 59 au plus (« Deal correct »)
+//   r ≥ 0,85          → aucun plafond
+// Sans fourchette exploitable (montant absent, borne basse absente ou nulle),
+// aucun plafond prix : le score ne peut pas être comparé à un prix qui n'a pas
+// été chiffré.
+export const PRICE_CAPS: ReadonlyArray<{ readonly minRatio: number; readonly cap: number }> = [
+  { minRatio: 0.6, cap: 59 },
+  { minRatio: 0.4, cap: 39 },
+  { minRatio: 0, cap: 29 },
+];
+
+// Au-dessus de ce rapport, le prix ne plafonne plus rien.
+export const PRICE_CAP_FREE_RATIO = 0.85;
+
+// Part du plancher réellement payée par l'offre. null quand elle n'est pas
+// calculable : c'est le cas A4, aucun plafond prix ne s'applique alors.
+export function priceRatio(deal: Deal, estimate: Estimate): number | null {
+  const amount = deal.payment.amount_eur;
+  const low = estimate.total_low;
+  if (amount === null || low === null || !(low > 0)) return null;
+  return amount / low;
+}
+
+export function priceScoreCap(ratio: number | null): number | null {
+  if (ratio === null || ratio >= PRICE_CAP_FREE_RATIO) return null;
+  return PRICE_CAPS.find((step) => ratio >= step.minRatio)?.cap ?? null;
+}
+
+// Plafond prix réellement appliqué, c'est-à-dire qui a fait baisser le score :
+// null s'il n'y en a pas, ou s'il ne mordait pas. Sert à expliquer la note sur
+// la page de résultat (mission #050, partie B), jamais à la calculer.
+export function appliedPriceCap(deal: Deal, estimate: Estimate): { cap: number; ratio: number; percent: number } | null {
+  const ratio = priceRatio(deal, estimate);
+  const cap = priceScoreCap(ratio);
+  if (cap === null || ratio === null) return null;
+  return withoutPriceCap(deal, estimate) > cap ? { cap, ratio, percent: Math.round(ratio * 100) } : null;
+}
+
+// Score plafonné par la quantité inconnue seulement : point de comparaison pour
+// savoir si le plafond prix mord.
+function withoutPriceCap(deal: Deal, estimate: Estimate): number {
+  const raw = uncappedScore(deal, estimate).value;
+  return hasUnknownQuantity(deal) ? Math.min(raw, UNKNOWN_QUANTITY_SCORE_CAP) : raw;
+}
+
+// Score avec les deux plafonds appliqués : quantité inconnue et prix. Quand les
+// deux existent, le plus bas l'emporte. Ce sont des bornes supérieures : elles
+// ne peuvent que faire baisser le score, jamais le monter.
 export function computeScore(deal: Deal, estimate: Estimate): Score {
-  const raw = uncappedScore(deal, estimate);
-  const value = hasUnknownQuantity(deal) ? Math.min(raw.value, UNKNOWN_QUANTITY_SCORE_CAP) : raw.value;
+  const priceCap = priceScoreCap(priceRatio(deal, estimate));
+  const value = Math.min(withoutPriceCap(deal, estimate), priceCap ?? Number.POSITIVE_INFINITY);
   return { value, band: bandFor(value) };
 }
 

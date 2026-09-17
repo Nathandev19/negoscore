@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 import { verdictSentence } from "@/lib/analysis/verdict";
 import type { ResultView } from "@/lib/analysis/lock";
-import { BAND_LABEL, BAND_STYLE, EVALUABILITY_LABEL, QUANTITY_CAP_NOTE } from "@/lib/display";
-import { hasUnknownQuantity } from "@/lib/rates/score";
+import { BAND_LABEL, BAND_STYLE, EVALUABILITY_LABEL, priceCapNote, QUANTITY_CAP_NOTE } from "@/lib/display";
+import { appliedPriceCap, hasUnknownQuantity } from "@/lib/rates/score";
 import { TIER_LABEL } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,7 @@ export function ScoreBand({
 }) {
   const tierNote = showTier ? <TierNote tier={analysis.profile_tier} /> : null;
   const scored = analysis.evaluability === "complete" && analysis.score !== null;
+  const priceCap = appliedPriceCap(analysis.deal, analysis.estimate);
   return (
     <div className={cn("grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-12", className)}>
       <p className="headline text-verdict text-balance text-creme lg:order-last">{verdictSentence(analysis)}</p>
@@ -46,6 +47,13 @@ export function ScoreBand({
           {hasUnknownQuantity(analysis.deal) ? (
             <p data-score-cap className="measure text-small font-semibold text-creme">
               {QUANTITY_CAP_NOTE}
+            </p>
+          ) : null}
+          {/* Plafond par le prix (mission #050) : affiché seulement quand il a
+              vraiment fait baisser la note, avec la part réellement payée. */}
+          {priceCap ? (
+            <p data-price-cap className="measure text-small font-semibold text-creme">
+              {priceCapNote(priceCap.percent)}
             </p>
           ) : null}
           {tierNote}

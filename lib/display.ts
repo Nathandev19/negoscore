@@ -58,6 +58,14 @@ export const BAND_STYLE: Record<Band, { onMarque: string; onCreme: string }> = {
 export const QUANTITY_CAP_NOTE =
   "La marque ne dit pas combien de contenus elle veut : le chiffrage en compte un seul, la note ne peut donc pas dépasser « Deal correct ».";
 
+// Raison affichée près du score quand il est plafonné par le prix proposé
+// (lib/rates/score.ts, PRICE_CAPS, mission #050). Le pourcentage est celui de
+// cette offre : cette phrase n'est jamais reprise sur la carte partageable ni
+// sur l'image d'aperçu, qui ne disent rien du montant.
+export function priceCapNote(percent: number): string {
+  return `Le montant proposé représente ${percent} % du bas de la fourchette. Le score ne peut pas monter plus haut.`;
+}
+
 // Pastille de verdict quand l'offre n'a pas de score.
 export const EVALUABILITY_LABEL: Record<Exclude<Analysis["evaluability"], "complete">, string> = {
   unpriced: "Offre à chiffrer",
