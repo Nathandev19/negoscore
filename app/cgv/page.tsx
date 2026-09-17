@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/lib/seo";
-import { Facts, LegalPage, LegalSection, ToFill } from "@/components/legal/legal-page";
+import { Facts, LegalPage, LegalSection } from "@/components/legal/legal-page";
+import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
 import { PRICE, PRO_PERIOD } from "@/lib/billing/plans";
 import { BRAND } from "@/lib/brand";
 import { SELLER } from "@/lib/legal/identity";
@@ -34,11 +35,15 @@ export default function TermsPage() {
         <Facts
           items={[
             "Gratuit : une analyse, sans paiement.",
-            "Relance gratuite : une analyse dont le résultat est incomplet, faute d'informations suffisantes dans l'offre de la marque, peut être relancée une fois, sur la même offre complétée, dans les 14 jours suivant l'analyse, sans frais et sans décompter d'analyse, quelle que soit la formule.",
+            // Périmètre exact de lib/analysis/retry.ts : seule une analyse
+            // « incomplete » ouvre la relance, et la fenêtre vient de
+            // RETRY_WINDOW_DAYS (mission #061).
+            `Relance gratuite : une analyse qui n'a pas pu être chiffrée, parce que l'offre de la marque ne dit pas assez quels contenus elle demande ni ce qu'elle en fera, peut être relancée une fois, sur la même offre complétée, dans les ${RETRY_WINDOW_DAYS} jours suivant l'analyse, sans frais et sans décompter d'analyse, quelle que soit la formule. Une offre sans montant ou sans conditions écrites, elle, est bien chiffrée : elle n'ouvre pas de relance.`,
             // Prix pris dans la source unique (lib/billing/plans.ts) : le texte des
             // CGV ne peut pas diverger de ce qui est vendu.
             `Pack Deal : ${PRICE.pack} — trois analyses, sans date d'expiration.`,
-            `Pro : ${PRICE.pro} ${PRO_PERIOD} — trente analyses par mois, historique des analyses, résiliable à tout moment.`,
+            `Pro : ${PRICE.pro} ${PRO_PERIOD} — trente analyses par mois, résiliable à tout moment.`,
+            "L'historique des analyses est ouvert à tout compte, quelle que soit la formule : il n'est pas réservé à une formule payante.",
           ]}
         />
         <p>
@@ -99,10 +104,12 @@ export default function TermsPage() {
       </LegalSection>
 
       <LegalSection id="mediation" title="Médiation de la consommation">
-        <ToFill>
-          nom, adresse postale et site internet du médiateur de la consommation auprès duquel le vendeur a adhéré.
-          Mention obligatoire.
-        </ToFill>
+        <p>
+          Conformément aux articles L612-1 et suivants du code de la consommation, tu peux recourir gratuitement à un
+          médiateur de la consommation en vue de la résolution amiable d&apos;un litige qui nous opposerait.
+          L&apos;adhésion à un médiateur est en cours : ses coordonnées seront publiées ici dès qu&apos;elle sera
+          effective, et te seront communiquées sur simple demande à {SELLER.email}.
+        </p>
       </LegalSection>
 
       <LegalSection title="Droit applicable">

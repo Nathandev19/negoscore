@@ -7,7 +7,9 @@ import type { Analysis } from "@/lib/schema";
 type Deal = Analysis["deal"];
 type FrLegal = Analysis["fr_legal"];
 
-const WRITTEN_CONTRACT_THRESHOLD_EUR = 1000;
+// Seuil du contrat écrit obligatoire. Exporté depuis la mission #061 : la page
+// /produits-offerts l'affiche, elle ne le réécrit pas.
+export const WRITTEN_CONTRACT_THRESHOLD_EUR = 1000;
 
 const DISCLAIMER = "C'est une information générale, pas un conseil juridique.";
 

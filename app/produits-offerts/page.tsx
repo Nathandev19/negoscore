@@ -3,6 +3,8 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { WRITTEN_CONTRACT_THRESHOLD_EUR } from "@/lib/legal/fr";
+import { formatEur } from "@/lib/money";
 import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = publicPageMetadata("/produits-offerts");
@@ -35,7 +37,10 @@ export default function GiftedProductsPage() {
           <p>
             Dès qu&apos;il y a une contrepartie attendue — une vidéo, une story, une mention — le produit n&apos;est
             plus un cadeau. C&apos;est un paiement en nature, dans une relation commerciale. La loi du 9 juin 2023 sur
-            l&apos;influence commerciale impose d&apos;ailleurs un contrat écrit pour ce type de partenariat.
+            l&apos;influence commerciale encadre ces partenariats, et impose un contrat écrit dès que la collaboration
+            dépasse {formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)} cumulés sur l&apos;année avec la même marque, avantages
+            en nature compris. En dessous, l&apos;écrit n&apos;est pas obligatoire — mais rien ne t&apos;empêche de le
+            demander.
           </p>
           <p>Ça a deux conséquences.</p>
           <p>
@@ -130,8 +135,8 @@ export default function GiftedProductsPage() {
         <Section title="Vérifie ce qu'on te propose">
           <p>
             Colle le message tel que tu l&apos;as reçu, avec la valeur des produits annoncée. On te dit ce que
-            l&apos;offre vaut en euros, ce qu&apos;elle demande vraiment, et quoi répondre. La première analyse est
-            gratuite et sans compte.
+            l&apos;offre vaut en euros et ce qu&apos;elle demande vraiment : c&apos;est gratuit et sans compte. La
+            réponse à envoyer, mot pour mot, se débloque avec ton email.
           </p>
           <Button asChild size="lg" className="mt-1 h-12 w-full text-base sm:w-fit">
             <Link href="/analyse">Analyser mon deal</Link>

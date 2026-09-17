@@ -98,6 +98,10 @@ export default function PricingGuidePage() {
             que tu as déjà postée. Compte +25 à +35 % par mois, pour chacun. Six mois de whitelisting, ce n&apos;est pas
             +50 % : c&apos;est de l&apos;ordre de +150 %.
           </p>
+          <p>
+            Deux lignes plus rares, mais réellement facturées : les rushs bruts, si la marque veut tes fichiers source,
+            +35 à +45 % ; et les variantes d&apos;accroche ou de CTA, 40 à 60 € l&apos;unité.
+          </p>
           <p>Exclusivité — tu t&apos;interdis les marques concurrentes :</p>
           <RateTable
             head={["Durée", "À ajouter"]}
@@ -177,8 +181,8 @@ export default function PricingGuidePage() {
             .
           </p>
           <p>
-            Colle le message que tu as reçu. On te donne la fourchette pour ton offre précise, ce qui cloche dedans, et
-            quoi répondre. La première analyse est gratuite et sans compte.
+            Colle le message que tu as reçu. On te donne la fourchette pour ton offre précise et ce qui cloche dedans :
+            c&apos;est gratuit et sans compte. La réponse à envoyer, mot pour mot, se débloque avec ton email.
           </p>
           <Button asChild size="lg" className="mt-1 h-12 w-full text-base sm:w-fit">
             <Link href="/analyse">Analyser mon deal</Link>

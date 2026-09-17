@@ -5,6 +5,7 @@ import { deleteRowsReturning, removeDocuments, selectRows, SupabaseRequestError,
 //   - documents déposés : 30 jours (lignes deal_documents ET fichiers du bucket) ;
 //   - texte collé des offres (deals.raw_text) : 30 jours, remplacé par NULL ;
 //     le deal et son analyse restent consultables ;
+//   - analyses lancées sans compte : 30 jours, deal et analyse supprimés ;
 //   - adresses IP hachées (usage_guard) : 30 jours au maximum ;
 //   - journal des paiements (whop_events) et preuves de consentement : 5 ans.
 // Les deals et les analyses ne sont JAMAIS supprimés ici : seule la matière
@@ -22,6 +23,13 @@ export const SOURCE_TEXT_PURGE_AFTER_DAYS = 29;
 export const IP_HASH_RETENTION_DAYS = 30;
 export const IP_HASH_PURGE_AFTER_DAYS = 29;
 export const PAYMENT_RECORD_RETENTION_YEARS = 5;
+// Analyses lancées sans compte (mission #061) : le navigateur qui les a lancées
+// n'y a accès que 30 jours (durée du cookie deal_anon_token). Passé ce délai,
+// personne ne peut plus les consulter ni les supprimer, alors qu'elles portent
+// la marque, les montants et parfois le prénom d'un tiers. Elles sont donc
+// supprimées, deal compris — jamais celles rattachées à un compte.
+export const ANON_ANALYSIS_RETENTION_DAYS = 30;
+export const ANON_ANALYSIS_PURGE_AFTER_DAYS = 29;
 const BATCH = 200;
 
 // Portée explicite : quand elle est fournie, SEULES les lignes désignées sont
@@ -33,6 +41,8 @@ export type PurgeScope = {
   documentIds?: string[];
   // Deals dont le texte collé peut être effacé.
   sourceTextDealIds?: string[];
+  // Deals sans compte, supprimés en entier au bout de 30 jours.
+  anonDealIds?: string[];
   usageGuardIds?: string[];
   whopEventIds?: string[];
   consentIds?: string[];
@@ -42,6 +52,7 @@ export type PurgeReport = {
   documents: number;
   files_removed: number;
   source_texts: number;
+  anon_analyses: number;
   usage_guard: number;
   whop_events: number;
   checkout_consents: number;
@@ -54,6 +65,7 @@ export function purgeCutoffs(now: Date) {
     documents: new Date(now.getTime() - DOCUMENT_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
     sourceTexts: new Date(now.getTime() - SOURCE_TEXT_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
     usageGuard: new Date(now.getTime() - IP_HASH_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
+    anonAnalyses: new Date(now.getTime() - ANON_ANALYSIS_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
     paymentRecords: years.toISOString(),
   };
 }
@@ -138,6 +150,21 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
       ? []
       : await deleteRowsReturning("usage_guard", `window_start=lt.${encodeURIComponent(cutoffs.usageGuard)}${guardScope}`, "id");
 
+  // Analyses sans compte : le deal part en entier, l'analyse suit en cascade.
+  // Les fichiers déposés ont déjà été retirés du stockage par la purge des
+  // documents ci-dessus : un document est toujours créé avant son deal, il est
+  // donc toujours plus vieux que la même limite. Les deals rattachés à un
+  // compte ne sont jamais touchés (user_id=is.null).
+  const anonScope = scopeFilter(scope, scope?.anonDealIds, "id");
+  const anonDeals =
+    anonScope === null
+      ? []
+      : await deleteRowsReturning(
+          "deals",
+          `user_id=is.null&created_at=lt.${encodeURIComponent(cutoffs.anonAnalyses)}${anonScope}`,
+          "id",
+        );
+
   const eventScope = scopeFilter(scope, scope?.whopEventIds, "event_id");
   const whopEvents = eventScope === null ? [] : await purgeWhopEvents(cutoffs.paymentRecords, eventScope);
 
@@ -155,6 +182,7 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
     documents,
     files_removed: filesRemoved,
     source_texts: sourceTexts.length,
+    anon_analyses: anonDeals.length,
     usage_guard: usageGuard.length,
     whop_events: whopEvents.length,
     checkout_consents: consents.length,

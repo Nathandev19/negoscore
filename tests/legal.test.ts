@@ -56,11 +56,12 @@ describe("pages légales", () => {
     expect(page).toContain("Les crédits achetés séparément restent acquis.");
   });
 
-  it("un seul [[À COMPLÉTER]] subsiste, celui du médiateur", () => {
+  it("plus aucun marqueur d'inachèvement : la section Médiation est écrite", () => {
     const withMarker = filesIn("app").filter((file) => readFileSync(file, "utf8").includes("<ToFill>"));
-    expect(withMarker.map((file) => path.relative(ROOT, file).split(path.sep).join("/"))).toEqual(["app/cgv/page.tsx"]);
-    expect(legalPages.cgv.match(/<ToFill>/g)).toHaveLength(1);
-    expect(legalPages.cgv.replace(/\s+/g, " ")).toContain("médiateur de la consommation auprès duquel le vendeur a adhéré");
+    expect(withMarker).toEqual([]);
+    const cgv = legalPages.cgv.replace(/\s+/g, " ");
+    expect(cgv).toContain("articles L612-1 et suivants du code de la consommation");
+    expect(cgv).toContain("adhésion à un médiateur est en cours");
   });
 
   it("aucun renvoi vers la plateforme européenne de règlement en ligne des litiges", () => {

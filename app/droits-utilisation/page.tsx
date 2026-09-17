@@ -106,9 +106,9 @@ export default function UsageRightsPage() {
             <li>Trois mois d&apos;exclusivité sur la catégorie : compte 30 % à 50 % en plus.</li>
           </ul>
           <p>
-            Un exemple concret. Trois vidéos TikTok chez un créateur qui débute, ça vaut entre 300 et 540 € de création.
-            Ajoute six mois de droits pub et trois mois d&apos;exclusivité, et l&apos;offre juste monte entre 540 et
-            1 190 €. La marque, elle, en a proposé 300.
+            Un exemple concret. Trois vidéos TikTok et une story chez un créateur qui débute, ça vaut entre 300 et 540 €
+            de création. Ajoute six mois de droits pub et trois mois d&apos;exclusivité, et l&apos;offre juste monte
+            entre 540 et 1 190 €. La marque, elle, en a proposé 300.
           </p>
         </Section>
 
@@ -145,8 +145,8 @@ export default function UsageRightsPage() {
 
         <Section title="Vérifie ton offre">
           <p>
-            Colle le message que la marque t&apos;a envoyé. On te dit ce que le deal vaut en euros, ce qui manque, et
-            quoi répondre. La première analyse est gratuite et sans compte.
+            Colle le message que la marque t&apos;a envoyé. On te dit ce que le deal vaut en euros et ce qui manque
+            dedans : c&apos;est gratuit et sans compte. La réponse à envoyer, mot pour mot, se débloque avec ton email.
           </p>
           <Button asChild size="lg" className="mt-1 h-12 w-full text-base sm:w-fit">
             <Link href="/analyse">Analyser mon deal</Link>

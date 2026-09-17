@@ -99,6 +99,39 @@ describe("page /combien-facturer", () => {
     }
   });
 
+  // Mission #061 : /droits-utilisation cite le même exemple. Il est recalculé
+  // ici aussi, pour que les deux guides ne puissent plus diverger de la table.
+  it("le guide des droits cite les mêmes chiffres, recalculés depuis la table", async () => {
+    const { default: UsageRightsPage } = await import("@/app/droits-utilisation/page");
+    const rights = renderToStaticMarkup(<UsageRightsPage />)
+      .replaceAll("&#x27;", "'")
+      .replaceAll(" ", " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ");
+    const exemple = deal({
+      deliverables: [
+        { type: "video", platform: "tiktok", quantity: 3, format: null },
+        { type: "story", platform: "tiktok", quantity: 1, format: null },
+      ],
+      usage: { organic: true, paid_ads: true, whitelisting: false, spark_ads: false, perpetual: false, duration_months: 6, territory: null },
+      exclusivity: { present: true, duration_months: 3, category: "catégorie" },
+      payment: { amount_eur: 300, currency: "EUR", terms_days: null, schedule: null },
+    });
+    const estimate = computeEstimate(exemple, { tier: "starter" });
+    expect(rights).toContain(
+      `Trois vidéos TikTok et une story chez un créateur qui débute, ça vaut entre ${nombre(estimate.base_low as number)} et ${nombre(estimate.base_high as number)} € de création`,
+    );
+    expect(rights).toContain(
+      `l'offre juste monte entre ${nombre(estimate.total_low as number)} et ${nombre(estimate.total_high as number)} €`,
+    );
+    const ads = rates.multipliers.paid_ads_6m;
+    const exclusivite = rates.multipliers.exclusivity_3m;
+    expect(rights).toContain(`Six mois de droits publicitaires : compte ${Math.round(ads.low * 100)} % à ${Math.round(ads.high * 100)} %`);
+    expect(rights).toContain(
+      `Trois mois d'exclusivité sur la catégorie : compte ${Math.round(exclusivite.low * 100)} % à ${Math.round(exclusivite.high * 100)} %`,
+    );
+  });
+
   it("l'exemple complet est celui que le moteur calcule vraiment", () => {
     const exemple = deal({
       deliverables: [

@@ -31,8 +31,9 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
       { href: "/mentions-legales", label: "Mentions légales" },
       { href: "/confidentialite", label: "Politique de confidentialité" },
       { href: "/cgv", label: "CGV" },
-      // « Médiateur » (/cgv#mediation) revient quand la section des CGV sera remplie :
-      // elle est encore en [[À COMPLÉTER]], le lien mènerait à un emplacement vide.
+      // « Médiateur » (/cgv#mediation) reviendra quand l'adhésion à un médiateur
+      // sera effective et ses coordonnées publiées. La section existe déjà dans
+      // les CGV et dit où en est l'adhésion (mission #061).
     ],
   },
 ];

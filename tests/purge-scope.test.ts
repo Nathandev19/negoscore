@@ -56,7 +56,7 @@ describe("portée de la purge", () => {
     await runPurge(NOW);
     expect(db.selects).toHaveLength(1);
     expect(db.selects[0]).not.toContain("id=in.");
-    expect(db.deletes.map((d) => d.table)).toEqual(["usage_guard", "whop_events", "checkout_consents"]);
+    expect(db.deletes.map((d) => d.table)).toEqual(["usage_guard", "deals", "whop_events", "checkout_consents"]);
     for (const { filter } of db.deletes) expect(filter).not.toMatch(/(^|&)(id|event_id)=in\./);
     expect(db.updates).toHaveLength(1);
     expect(db.updates[0].filter).not.toContain("id=in.");
@@ -87,12 +87,22 @@ describe("portée de la purge", () => {
     expect(scopeFilter(undefined, undefined, "id")).toBe("");
   });
 
-  it("jamais de suppression de deals ni d'analyses : seul le texte collé est effacé", async () => {
+  // Mission #061 : les deals SANS COMPTE de plus de 30 jours sont supprimés,
+  // avec leur analyse en cascade. Tout le reste est inchangé : aucune analyse
+  // n'est supprimée directement, et un deal rattaché à un compte n'est jamais
+  // touché — seul son texte collé est effacé.
+  it("seuls les deals sans compte sont supprimés, jamais la table des analyses", async () => {
     await runPurge(NOW);
     await runPurge(NOW, { documentIds: ["d"], sourceTextDealIds: ["t"], usageGuardIds: ["g"], whopEventIds: ["e"], consentIds: ["c"] });
     for (const query of [...db.selects, ...db.deletes.map((d) => d.table)]) {
-      expect(query).not.toMatch(/^(deals|analyses)\b/);
+      expect(query).not.toMatch(/^analyses\b/);
     }
+    const dealsSupprimes = db.deletes.filter((d) => d.table === "deals");
+    // Premier appel sans portée : une suppression. Second appel : la catégorie
+    // n'est pas dans la portée, donc rien.
+    expect(dealsSupprimes).toHaveLength(1);
+    expect(dealsSupprimes[0].filter).toContain("user_id=is.null");
+    expect(decodeURIComponent(dealsSupprimes[0].filter)).toContain("created_at=lt.2026-08-19T03:00:00.000Z");
     expect(db.updates).toHaveLength(2);
     for (const update of db.updates) {
       expect(update.table).toBe("deals");

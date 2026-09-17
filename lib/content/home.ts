@@ -22,11 +22,15 @@ export const TRUST = [
   },
   {
     title: "Ce que le score lit, et ce qu'il ne peut pas savoir",
-    text: "Il lit le prix, le délai de paiement, les droits cédés, l'exclusivité et les révisions écrits dans l'offre. Il ne peut pas savoir si la marque paiera à temps ni si le brief va déraper : aucune offre ne dépasse 90/100.",
+    // Liste complétée (mission #061) : l'entraînement IA et les rushs non
+    // couverts sont deux malus réellement appliqués (lib/rates/score.ts).
+    text: "Il lit le prix, le délai de paiement, les droits cédés, l'exclusivité, les révisions, l'usage de tes contenus pour entraîner une IA et les rushs bruts demandés sans être payés, écrits dans l'offre. Il ne peut pas savoir si la marque paiera à temps ni si le brief va déraper : aucune offre ne dépasse 90/100.",
   },
   {
     title: "Tes offres effacées au bout de 30 jours",
-    text: "Le texte collé, les captures et les PDF sont effacés au bout de 30 jours au plus ; l'analyse reste. La purge tourne tous les jours, et tu peux supprimer une analyse à tout moment depuis sa page.",
+    // « À tout moment » était faux sans compte (mission #061) : le navigateur
+    // perd l'accès à son analyse au bout de 30 jours, et la purge l'efface.
+    text: "Le texte collé, les captures et les PDF sont effacés au bout de 30 jours au plus ; l'analyse reste. La purge tourne tous les jours, et tu peux supprimer une analyse depuis sa page tant que tu y as accès : avec ton compte, sans limite de temps ; sans compte, pendant 30 jours, après quoi elle est effacée d'elle-même.",
   },
   {
     title: "Pas un conseil juridique",
@@ -54,7 +58,7 @@ export const FAQ = [
   {
     question: "Qu'est-ce que vous faites de mes documents ?",
     answer:
-      "Ils servent à produire ton analyse, grâce à un prestataire d'analyse automatisée, et à rien d'autre. Le texte collé et les fichiers déposés sont effacés au bout de 30 jours au plus ; l'analyse, elle, reste. Avec ou sans compte, tu peux supprimer une analyse à tout moment depuis sa page de résultat.",
+      "Ils servent à produire ton analyse, grâce à un prestataire d'analyse automatisée (OpenAI, États-Unis), et à rien d'autre. Une capture ou un PDF part en entier : ce qui est à l'écran autour de l'offre part avec. Le texte collé et les fichiers déposés sont effacés au bout de 30 jours au plus ; l'analyse, elle, reste tant que ton compte existe. Sans compte, elle est effacée au bout de 30 jours, et tu peux la supprimer toi-même depuis sa page jusque-là.",
   },
   {
     question: "C'est un conseil juridique ?",

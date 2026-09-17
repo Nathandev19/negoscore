@@ -7,6 +7,7 @@ import { REVEAL_TOTAL_MS, WaitingScreen } from "@/components/loading-steps";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { clearPendingKey, pendingKey } from "@/lib/analysis/pending-key";
+import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
 
 const MIN_TEXT_LENGTH = 20;
 // Message d'échec (mission #060) : il n'affirme plus que la relance gratuite
@@ -49,7 +50,8 @@ export function RetryPanel({ state, originId }: { state: RetryPanelState; origin
           </p>
         ) : state.kind === "expired" ? (
           <p className="text-small text-encre">
-            La relance gratuite était possible pendant 14 jours après l&apos;analyse : ce délai est passé. Une nouvelle
+            La relance gratuite était possible pendant {RETRY_WINDOW_DAYS} jours après l&apos;analyse : ce délai est
+            passé. Une nouvelle
             analyse consommera un droit.
           </p>
         ) : (

@@ -33,7 +33,7 @@ export const PLANS = [
     price: PRICE.pack,
     period: null,
     summary: `${PACK_ANALYSES} analyses`,
-    features: ["Analyse complète à chaque crédit", "Historique de tes analyses"],
+    features: ["Analyse complète à chaque crédit", "Contre-offre et message inclus"],
   },
   {
     id: "pro",
@@ -41,7 +41,7 @@ export const PLANS = [
     price: PRICE.pro,
     period: PRO_PERIOD,
     summary: `Jusqu'à ${PRO_ANALYSES_PER_PERIOD} analyses par mois`,
-    features: ["Analyse complète à chaque fois", "Historique de tes analyses"],
+    features: ["Analyse complète à chaque fois", "Contre-offre et message inclus"],
   },
 ] as const;
 
