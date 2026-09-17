@@ -186,6 +186,16 @@ export async function deleteRows(table: string, filter: string): Promise<void> {
   });
 }
 
+// Supprime les lignes du filtre et renvoie la valeur de `key` pour chacune,
+// pour journaliser ce qui a réellement été supprimé.
+export async function deleteRowsReturning(table: string, filter: string, key: string): Promise<string[]> {
+  const rows = await rest<Array<Record<string, unknown>> | null>(`${table}?${filter}&select=${key}`, {
+    method: "DELETE",
+    what: `suppression ${table}`,
+  });
+  return (rows ?? []).map((row) => String(row[key]));
+}
+
 // Suppression définitive d'un utilisateur Supabase Auth (API d'administration).
 export async function deleteAuthUser(userId: string): Promise<void> {
   const { url, serviceKey } = config();

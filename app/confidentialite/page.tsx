@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Confidentialité" };
 // Textes fournis par l'éditeur, repris mot pour mot.
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Politique de confidentialité" updated="16 septembre 2026">
+    <LegalPage title="Politique de confidentialité" updated="17 septembre 2026">
       <LegalSection title="Responsable du traitement">
         <p>
           {SELLER.name}, {SELLER.address.replace(", France", "")}.
@@ -23,8 +23,9 @@ export default function PrivacyPage() {
             "Adresse email — création et accès au compte — exécution du contrat.",
             "Texte et documents des offres déposées — production de l'analyse — exécution du contrat.",
             "Analyses produites — affichage et historique — exécution du contrat.",
-            "Adresse IP sous forme hachée — limitation des abus et de l'usage gratuit — intérêt légitime.",
-            `Données de paiement — traitées exclusivement par Whop, jamais reçues ni conservées par ${BRAND.name}.`,
+            "Adresse IP sous forme hachée — limitation des abus et de l'usage gratuit — intérêt légitime — conservée 30 jours au maximum.",
+            "Email de l'acheteur, montant et offre achetée — preuve de la transaction et suivi des paiements — obligation légale et intérêt légitime.",
+            `Coordonnées bancaires — traitées exclusivement par Whop, jamais reçues ni conservées par ${BRAND.name}.`,
             "Mesure d'audience — statistiques d'usage anonymes — intérêt légitime.",
           ]}
         />
@@ -35,10 +36,21 @@ export default function PrivacyPage() {
           items={[
             "Documents déposés : supprimés 30 jours après l'analyse.",
             "Compte et analyses : jusqu'à la suppression du compte par l'utilisateur.",
-            "Données de facturation : conservées par Whop selon ses propres durées.",
-            "Preuves de consentement au paiement : conservées pendant la durée de prescription applicable aux contrats de consommation.",
+            "Journal des paiements et preuves de consentement : 5 ans, y compris après la suppression du compte.",
+            "Adresses IP hachées : 30 jours au maximum.",
+            "Données de facturation détenues par Whop : selon ses propres durées.",
           ]}
         />
+      </LegalSection>
+
+      <LegalSection title="Suppression de ton compte">
+        <p>
+          Tu peux supprimer ton compte depuis la page Mon compte, à tout moment et sans justification. Sont supprimés
+          immédiatement : ton identifiant de connexion, ton adresse email, les offres que tu as déposées, les documents
+          téléversés et les analyses produites. Sont conservés : le journal des paiements et les preuves de consentement
+          liées à tes achats, pendant 5 ans, afin de pouvoir justifier d&apos;une transaction en cas de litige. Les crédits
+          d&apos;analyse non utilisés sont perdus et ne sont pas remboursés.
+        </p>
       </LegalSection>
 
       <LegalSection title="Sous-traitants">

@@ -1,0 +1,37 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+import { runPurge } from "@/lib/privacy/purge";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+// Purge quotidienne, appelée par Vercel Cron (vercel.json). Vercel envoie
+// « Authorization: Bearer <CRON_SECRET> » quand la variable CRON_SECRET est
+// définie : sans ce secret exact, rien n'est fait.
+
+function authorized(request: Request): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  const header = request.headers.get("authorization") ?? "";
+  // Comparaison à temps constant, sur des empreintes de même longueur.
+  const expected = createHash("sha256").update(`Bearer ${secret}`).digest();
+  const received = createHash("sha256").update(header).digest();
+  return timingSafeEqual(expected, received);
+}
+
+export async function GET(request: Request) {
+  if (!authorized(request)) {
+    console.warn(JSON.stringify({ event: "purge_refused" }));
+    return Response.json({ error: "non autorisé" }, { status: 401 });
+  }
+  try {
+    const report = await runPurge();
+    console.log(JSON.stringify({ event: "purge", ...report }));
+    return Response.json(report);
+  } catch (caught) {
+    console.error(
+      JSON.stringify({ event: "purge_error", detail: caught instanceof Error ? caught.message.slice(0, 300) : "inconnu" }),
+    );
+    return Response.json({ error: "purge incomplète" }, { status: 500 });
+  }
+}

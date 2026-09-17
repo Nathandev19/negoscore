@@ -149,12 +149,18 @@ describe.skipIf(!ready)("webhook Whop", () => {
     const buyer = await user("pack", 2);
     await send(envelope("payment.succeeded", payment(PACK, { user_id: buyer.id })));
     expect(await credits(buyer.id)).toMatchObject({ balance: 5, plan: "pack" });
-    expect(analytics.capture).toHaveBeenCalledWith("purchase_completed", buyer.id, {
+    // Sans identifiant navigateur : identifiant aléatoire, jamais le compte ni l'email.
+    expect(analytics.capture).toHaveBeenCalledWith("purchase_completed", expect.any(String), {
       plan: "pack",
       amount: 4.99,
       currency: "eur",
       attribution: "account",
     });
+    const [, distinctId] = analytics.capture.mock.calls.at(-1) as [string, string];
+    expect(distinctId).not.toBe(buyer.id);
+    expect(distinctId).not.toContain(buyer.email);
+    expect(distinctId).not.toContain("@");
+    expect(distinctId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 
   it("rattache l'achat au parcours quand le navigateur a transmis son identifiant", async () => {
@@ -175,7 +181,7 @@ describe.skipIf(!ready)("webhook Whop", () => {
     expect(await credits(buyer.id)).toMatchObject({ balance: 3, plan: "pack" });
   });
 
-  it("ignore un identifiant de mesure douteux et retombe sur le compte", async () => {
+  it("ignore un identifiant de mesure douteux, sans jamais retomber sur le compte", async () => {
     analytics.capture.mockClear();
     const buyer = await user("free");
     await send(
@@ -183,9 +189,18 @@ describe.skipIf(!ready)("webhook Whop", () => {
     );
     expect(analytics.capture).toHaveBeenCalledWith(
       "purchase_completed",
-      buyer.id,
+      expect.any(String),
       expect.objectContaining({ attribution: "account" }),
     );
+    const [, distinctId] = analytics.capture.mock.calls.at(-1) as [string, string];
+    expect(distinctId).not.toBe(buyer.id);
+    expect(distinctId).not.toBe("lea@exemple.fr");
+    expect(distinctId).not.toContain(buyer.email);
+
+    // Deux achats sans identifiant navigateur ne partagent pas d'identifiant.
+    await send(envelope("payment.succeeded", payment(PACK, { user_id: buyer.id })));
+    const [, second] = analytics.capture.mock.calls.at(-1) as [string, string];
+    expect(second).not.toBe(distinctId);
   });
 
   it("pack acheté sur un Pro expiré : le compte redevient Pack", async () => {

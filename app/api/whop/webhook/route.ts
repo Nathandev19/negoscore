@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { ANALYTICS_EVENTS, captureServerEvent } from "@/lib/analytics/server";
 import { applyWhopEvent, type WhopEvent } from "@/lib/billing/whop-events";
 import { sendEmail } from "@/lib/email/send";
@@ -65,9 +66,11 @@ export async function POST(request: Request) {
 
     if (outcome.handled && outcome.userId && outcome.plan && parsed.type === "payment.succeeded") {
       // Revenu mesuré côté serveur, jamais depuis le navigateur. L'identifiant
-      // anonyme du navigateur prime : sans lui, l'achat ne rejoindrait pas le
-      // parcours mesuré. À défaut, l'identifiant de compte sert de repli.
-      await captureServerEvent(ANALYTICS_EVENTS.purchaseCompleted, outcome.analyticsId ?? outcome.userId, {
+      // anonyme du navigateur rattache l'achat au parcours mesuré. À défaut, un
+      // identifiant aléatoire à usage unique : jamais l'identifiant de compte ni
+      // l'email, la mesure d'audience reste anonyme. L'achat n'est alors pas
+      // rattaché au parcours ; attribution « account » signale ce cas.
+      await captureServerEvent(ANALYTICS_EVENTS.purchaseCompleted, outcome.analyticsId ?? randomUUID(), {
         plan: outcome.plan,
         amount: outcome.amount ?? null,
         currency: outcome.currency ?? null,

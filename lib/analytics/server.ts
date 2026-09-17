@@ -2,7 +2,8 @@ import { ANALYTICS_EVENTS, type AnalyticsEvent, type AnalyticsProperties } from 
 
 // Envoi d'événements depuis le serveur. Sert au revenu : purchase_completed
 // ne doit pas dépendre du retour de l'utilisateur sur le site.
-// L'identifiant envoyé est l'identifiant de compte, jamais l'email.
+// L'identifiant envoyé est anonyme : identifiant du navigateur ou identifiant
+// aléatoire, jamais l'identifiant de compte ni l'email.
 
 const DEFAULT_HOST = "https://eu.i.posthog.com";
 
