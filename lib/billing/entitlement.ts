@@ -4,7 +4,7 @@ import { displayedPlan, periodEndsAt, type PlanState } from "@/lib/billing/plan-
 import { FREE_ANALYSES, PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
 import { hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
-import { adjustInteger, countRows, selectRows } from "@/lib/supabase/server";
+import { adjustInteger, countRows, isMissingColumn, selectRows } from "@/lib/supabase/server";
 
 // Droit d'analyser, décidé uniquement côté serveur.
 //
@@ -31,7 +31,9 @@ export type Denial = {
 
 export type Grant = {
   allowed: true;
-  plan: "free" | "pack" | "pro";
+  // "retry" : relance gratuite d'une analyse incomplète (lib/analysis/retry.ts),
+  // accordée par la route, jamais par reserveAnalysis.
+  plan: "free" | "pack" | "pro" | "retry";
   // Décompte, après l'enregistrement de l'analyse. false : plus de droit.
   commit: () => Promise<boolean>;
   // Annule ce que la vérification a compté (filet anti-script de l'IP).
@@ -43,6 +45,23 @@ const RATE_LIMITED_MESSAGE =
   "Trop d'analyses ont été lancées depuis ton réseau ces dernières heures. Réessaie plus tard, ou connecte-toi pour continuer.";
 
 const nothingToRelease = async () => undefined;
+
+// Analyses du compte sur la période, relances gratuites exclues (is_retry,
+// migration 018) : une relance d'analyse incomplète ne consomme pas le quota.
+// Sans la migration, la colonne n'existe pas et aucune relance n'a pu être
+// enregistrée : on compte toutes les analyses, comme avant.
+async function analysesInPeriod(userId: string, start: Date, end: Date): Promise<number> {
+  const query = `select=id,deal:deals!inner(user_id)&deal.user_id=eq.${userId}&created_at=gt.${start.toISOString()}&created_at=lte.${end.toISOString()}`;
+  try {
+    // Lecture plutôt que comptage : une requête HEAD ne renvoie pas le code d'erreur
+    // qui distingue une colonne absente. Le quota est petit, la lecture aussi.
+    const rows = await selectRows<{ id: string }>("analyses", `${query}&is_retry=is.false&limit=${PRO_ANALYSES_PER_PERIOD + 1}`);
+    return rows.length;
+  } catch (caught) {
+    if (!isMissingColumn(caught)) throw caught;
+    return countRows("analyses", query);
+  }
+}
 
 function freeIpKey(ip: string): string {
   return hashIp(`free-analysis:${ip}`);
@@ -134,11 +153,7 @@ export async function reserveAnalysis({ user, anonToken, commitAnonToken, ip }: 
     const periodEnd = periodEndsAt(credits ?? null) as Date;
     const periodStart = new Date(periodEnd);
     periodStart.setMonth(periodStart.getMonth() - 1);
-    const inPeriod = () =>
-      countRows(
-        "analyses",
-        `select=id,deal:deals!inner(user_id)&deal.user_id=eq.${user.id}&created_at=gt.${periodStart.toISOString()}&created_at=lte.${periodEnd.toISOString()}`,
-      );
+    const inPeriod = () => analysesInPeriod(user.id, periodStart, periodEnd);
     if ((await inPeriod()) < PRO_ANALYSES_PER_PERIOD) {
       // Le quota se compte sur les analyses enregistrées : celle-ci compte dès
       // qu'elle existe. Le commit vérifie seulement qu'elle ne dépasse pas.

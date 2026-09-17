@@ -60,8 +60,9 @@ export function classifyModelError(caught: unknown): ModelFailure | null {
   return null;
 }
 
-export function rightNotUsed(plan: "free" | "pack" | "pro" | null): string {
+export function rightNotUsed(plan: "free" | "pack" | "pro" | "retry" | null): string {
   if (plan === null) return "Rien n'a été décompté";
+  if (plan === "retry") return "Ta relance gratuite n'a pas été utilisée";
   return plan === "free"
     ? "Ton analyse gratuite n'a pas été utilisée"
     : plan === "pro"
@@ -70,7 +71,7 @@ export function rightNotUsed(plan: "free" | "pack" | "pro" | null): string {
 }
 
 // Messages affichés : jamais de code d'erreur, jamais la faute de l'utilisateur.
-export function modelFailureMessage(kind: ModelFailureKind, plan: "free" | "pack" | "pro" | null): string {
+export function modelFailureMessage(kind: ModelFailureKind, plan: "free" | "pack" | "pro" | "retry" | null): string {
   const right = rightNotUsed(plan);
   return kind === "timeout"
     ? `L'analyse a pris trop de temps et n'a pas abouti. ${right}, réessaie dans quelques minutes.`

@@ -36,6 +36,7 @@ export function AnalysisResult({
   before,
   children,
   rememberOnAccount = false,
+  retry,
 }: {
   analysis: ResultView;
   unlockHref: string;
@@ -45,6 +46,8 @@ export function AnalysisResult({
   children?: ReactNode;
   // Compte connecté : le niveau choisi est aussi mémorisé sur le compte.
   rememberOnAccount?: boolean;
+  // Offre incomplète : relance gratuite, juste sous la liste de ce qui manque.
+  retry?: ReactNode;
 }) {
   const [tier, setTier] = useState<Tier>(stored.profile_tier);
   // Changement de niveau : le bandeau est remonté (key) pour rejouer l'animation,
@@ -79,7 +82,10 @@ export function AnalysisResult({
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 pt-8 pb-16 sm:px-6 md:pt-12 md:pb-24 [&>*]:max-w-2xl">
         {before}
         {incomplete ? (
-          <IncompleteCard missing={missingInformation(analysis)} />
+          <>
+            <IncompleteCard missing={missingInformation(analysis)} />
+            {retry}
+          </>
         ) : analysis.evaluability === "terms_unknown" ? (
           <TermsUnknownCard deal={analysis.deal} estimate={analysis.estimate} missing={missingInformation(analysis)} />
         ) : analysis.evaluability === "unpriced" ? (

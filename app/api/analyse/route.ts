@@ -1,7 +1,8 @@
 import { composeAnalysis } from "@/lib/analysis/compose";
 import type { SessionUser } from "@/lib/auth/session";
 import { getRequestUser } from "@/lib/auth/request-user";
-import { reserveAnalysis, type Grant } from "@/lib/billing/entitlement";
+import { claimRetry, RETRY_MESSAGES, sameOffer, type RetryClaim } from "@/lib/analysis/retry";
+import { reserveAnalysis, type Denial, type Grant } from "@/lib/billing/entitlement";
 import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
 import { extractDeal, extractDealFromImage, extractDealFromPdf, type ExtractResult } from "@/lib/llm/extract";
 import { classifyModelError, modelFailureMessage, rightNotUsed, UNREADABLE_OFFER_MESSAGE } from "@/lib/llm/errors";
@@ -103,12 +104,18 @@ export async function POST(request: Request) {
   } catch {
     return fail(400, "Requête illisible. Recharge la page et réessaie.");
   }
-  const { text, storagePath } = (typeof body === "object" && body !== null ? body : {}) as {
+  const { text, storagePath, retryOf } = (typeof body === "object" && body !== null ? body : {}) as {
     text?: unknown;
     storagePath?: unknown;
+    // Relance gratuite d'une analyse incomplète : identifiant de l'analyse d'origine.
+    retryOf?: unknown;
   };
 
   const fileMode = typeof storagePath === "string";
+  const retryMode = retryOf !== undefined && retryOf !== null;
+  if (retryMode && fileMode) {
+    return fail(400, "La relance se fait en collant le texte de l'offre complétée.");
+  }
   if (fileMode && !isStoragePath(storagePath)) {
     return fail(400, "Fichier introuvable. Dépose-le à nouveau.");
   }
@@ -169,7 +176,18 @@ export async function POST(request: Request) {
 
     // Droit d'analyser VÉRIFIÉ avant tout appel au modèle. Il ne sera décompté
     // qu'après l'enregistrement d'une analyse valide (grant.commit).
-    const entitlement = await reserveAnalysis({ user, anonToken: existingToken, commitAnonToken: anonToken, ip });
+    // Relance d'une analyse incomplète (lib/analysis/retry.ts) : aucun droit
+    // réservé ni décompté. La relance est réservée sur l'analyse d'origine, et
+    // la réservation est levée par abandon() si l'analyse n'aboutit pas.
+    let retry: RetryClaim | null = null;
+    if (retryMode) {
+      const claim = await claimRetry(retryOf, { user, anonToken: existingToken });
+      if (!claim.ok) return fail(claim.status, claim.message, { reason: claim.reason });
+      retry = claim;
+    }
+    const entitlement: Grant | Denial = retry
+      ? { allowed: true, plan: "retry", commit: async () => true, release: retry.release }
+      : await reserveAnalysis({ user, anonToken: existingToken, commitAnonToken: anonToken, ip });
     if (!entitlement.allowed) {
       if (document) {
         // Pas de droit : le fichier déposé n'est pas conservé.
@@ -248,6 +266,15 @@ export async function POST(request: Request) {
       return fail(422, `${UNREADABLE_OFFER_MESSAGE[source]} ${rightNotUsed(entitlement.plan)}.`, { reason: "unreadable" });
     }
 
+    // Relance : elle vaut pour la même offre. Une autre marque que celle de
+    // l'analyse d'origine n'est pas facturée, mais pas rendue non plus : la
+    // relance reste disponible, et la personne lance une analyse normale.
+    if (retry && !sameOffer(retry.originalBrand, analysis.deal.brand)) {
+      await abandon();
+      console.warn(JSON.stringify({ event: "analyse_retry_different_offer" }));
+      return fail(422, `${RETRY_MESSAGES.different_offer} ${rightNotUsed(entitlement.plan)}.`, { reason: "retry_different_offer" });
+    }
+
     let dealId: string;
     if (document) {
       dealId = document.deal.id;
@@ -273,6 +300,9 @@ export async function POST(request: Request) {
       confidence: analysis.confidence,
       cost_cents: Number((result.costEur * 100).toFixed(4)),
       latency_ms: result.latencyMs,
+      // Colonnes de la migration 018, écrites seulement pour une relance : une
+      // analyse normale s'enregistre même si la migration n'est pas appliquée.
+      ...(retry ? { retry_of: retry.originalId, is_retry: true } : {}),
     });
     if (document) savedDealId = dealId;
 
@@ -299,6 +329,7 @@ export async function POST(request: Request) {
         pdf_pages: pdfPages,
         plan: entitlement.plan,
         signed_in: user !== null,
+        retry: retry !== null,
         model: result.model,
         input_tokens: result.inputTokens,
         output_tokens: result.outputTokens,
@@ -320,6 +351,7 @@ export async function POST(request: Request) {
           // Sans verdict, la bande est remplacée par l'état : « unpriced » ou « incomplete ».
           score_band: analysis.score?.band ?? analysis.evaluability,
           has_price: analysis.deal.payment.amount_eur !== null,
+          retry: retry !== null,
         },
       },
       cookie,
