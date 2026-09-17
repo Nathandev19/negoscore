@@ -4,6 +4,7 @@ import { LoginForm } from "@/app/connexion/login-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { safeNextPath } from "@/lib/auth/session";
+import { signedInRedirectPath } from "@/lib/auth/sign-in";
 import { getViewer } from "@/lib/auth/viewer";
 
 export const metadata: Metadata = {
@@ -19,8 +20,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/connexion"
   // Déjà connecté (session vérifiée auprès de Supabase, jamais l'indicateur
   // d'affichage) : pas de formulaire, on va là où il voulait aller, sinon au compte.
   if (await getViewer()) {
-    const target = safeNextPath(requested, "/compte");
-    redirect(target.startsWith("/connexion") ? "/compte" : target);
+    redirect(signedInRedirectPath(requested));
   }
   const linkError = params.erreur === "lien";
 

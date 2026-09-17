@@ -75,13 +75,32 @@ export async function exchangeCode(code: string, verifier: string): Promise<Sess
   return response.ok ? toSession(await response.json()) : null;
 }
 
-// Lien au format token_hash (modèle d'email personnalisé).
-export async function verifyTokenHash(tokenHash: string, type: string): Promise<Session | null> {
+export type VerifyOutcome = { session: Session; error: null } | { session: null; error: { status: number; code: string } };
+
+// Lien au format token_hash (modèle d'email personnalisé), équivalent REST de
+// supabase.auth.verifyOtp({ token_hash, type }). Aucun vérificateur PKCE
+// requis : le lien fonctionne depuis n'importe quel navigateur. La cause d'un
+// échec est renvoyée pour être journalisée (lien expiré, déjà servi…).
+export async function verifyOtpTokenHash(tokenHash: string, type: string): Promise<VerifyOutcome> {
   const response = await authFetch("/verify", {
     method: "POST",
     body: JSON.stringify({ token_hash: tokenHash, type }),
   });
-  return response.ok ? toSession(await response.json()) : null;
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    // corps vide ou non JSON
+  }
+  const session = response.ok ? toSession(body) : null;
+  if (session) return { session, error: null };
+  const b = (body ?? {}) as { error_code?: unknown; error?: unknown; code?: unknown };
+  const code = [b.error_code, b.error, b.code].find((value) => typeof value === "string") as string | undefined;
+  return { session: null, error: { status: response.status, code: code ?? (response.ok ? "session_absente" : "inconnu") } };
+}
+
+export async function verifyTokenHash(tokenHash: string, type: string): Promise<Session | null> {
+  return (await verifyOtpTokenHash(tokenHash, type)).session;
 }
 
 export async function refreshSession(refreshToken: string): Promise<Session | null> {

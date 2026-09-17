@@ -1,27 +1,21 @@
-import { attachAnonDeals, ensureAccount } from "@/lib/auth/account";
 import {
   exchangeCode,
   expiredCookieHeader,
   safeNextPath,
-  sessionCookieHeaders,
   VERIFIER_COOKIE,
   verifyTokenHash,
   type Session,
 } from "@/lib/auth/session";
-import { sessionHintCookieHeader } from "@/lib/auth/session-hint";
-import { ANON_COOKIE, readCookie } from "@/lib/security/request";
+import { completeSignIn, redirectResponse } from "@/lib/auth/sign-in";
+import { readCookie } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
-// Retour du magic link. Échange le code (PKCE) ou vérifie le token_hash,
-// crée le profil à la première connexion, rattache l'analyse anonyme au
-// compte puis efface le cookie anonyme.
-
-function redirect(location: string, cookies: string[] = []): Response {
-  const headers = new Headers({ Location: location, "Cache-Control": "no-store" });
-  for (const cookie of cookies) headers.append("Set-Cookie", cookie);
-  return new Response(null, { status: 303, headers });
-}
+// Retour du magic link au format PKCE ({{ .ConfirmationURL }}) : ne fonctionne
+// que dans le navigateur qui a demandé le lien, où le vérificateur est en
+// cookie. Conservée pendant la bascule vers /auth/confirm, qui fonctionne
+// depuis n'importe quel navigateur : les liens déjà envoyés restent valables
+// une heure. Crée le profil à la première connexion et rattache l'analyse anonyme.
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -30,7 +24,7 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
   const clearVerifier = expiredCookieHeader(VERIFIER_COOKIE, "/auth");
-  const failed = redirect(`/connexion?erreur=lien&next=${encodeURIComponent(next)}`, [clearVerifier]);
+  const failed = redirectResponse(`/connexion?erreur=lien&next=${encodeURIComponent(next)}`, [clearVerifier]);
 
   let session: Session | null = null;
   try {
@@ -42,19 +36,7 @@ export async function GET(request: Request) {
       session = await verifyTokenHash(tokenHash, type);
     }
     if (!session) return failed;
-
-    await ensureAccount(session.user);
-    const anonToken = readCookie(request, ANON_COOKIE);
-    const attach = await attachAnonDeals(session.user.id, anonToken);
-    console.log(
-      JSON.stringify({ event: "auth_callback", attached_deals: attach.attached, attach_refused: attach.refused }),
-    );
-
-    const cookies = [...sessionCookieHeaders(session), sessionHintCookieHeader(), clearVerifier];
-    if (anonToken) cookies.push(expiredCookieHeader(ANON_COOKIE));
-    // ?connexion=ok sert à la mesure d'audience, le paramètre est retiré côté client.
-    const target = `${next}${next.includes("?") ? "&" : "?"}connexion=ok`;
-    return redirect(target, cookies);
+    return await completeSignIn(request, session, next, { extraCookies: [clearVerifier], source: "callback" });
   } catch (caught) {
     console.error(
       JSON.stringify({
