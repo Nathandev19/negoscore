@@ -92,6 +92,12 @@ export default function PricingGuidePage() {
               ["À vie", "+150 à +250 %"],
             ]}
           />
+          <p>
+            Deux cas reviennent souvent et se facturent au mois, pas au forfait : le whitelisting, quand la marque
+            diffuse ses pubs depuis ton compte et sous ton nom, et les Spark Ads, quand elle sponsorise une publication
+            que tu as déjà postée. Compte +25 à +35 % par mois, pour chacun. Six mois de whitelisting, ce n&apos;est pas
+            +50 % : c&apos;est de l&apos;ordre de +150 %.
+          </p>
           <p>Exclusivité — tu t&apos;interdis les marques concurrentes :</p>
           <RateTable
             head={["Durée", "À ajouter"]}
@@ -107,6 +113,12 @@ export default function PricingGuidePage() {
           <p>
             Cession totale des droits — tu ne possèdes plus rien : +100 à +200 %. Ce n&apos;est plus une collaboration,
             c&apos;est une vente.
+          </p>
+          <p>
+            Ces suppléments ne s&apos;additionnent pas à l&apos;infini. L&apos;ensemble des majorations est plafonné à
+            +150 % du prix de création, et ce plafond ne monte à +250 % que si la marque demande l&apos;usage à vie ou
+            la cession totale des droits. Si tu additionnes tout et que tu dépasses, c&apos;est le plafond qui
+            s&apos;applique.
           </p>
         </Section>
 
@@ -157,8 +169,12 @@ export default function PricingGuidePage() {
         <Section title="Le vrai chiffre, c'est celui de ton offre">
           <p>
             Une grille te donne un ordre de grandeur. Elle ne sait pas que ta marque a écrit «&nbsp;droits
-            d&apos;utilisation inclus&nbsp;» sans dire combien de temps, ni qu&apos;elle compte 40 % du paiement en
-            produits.
+            d&apos;utilisation inclus&nbsp;» sans dire combien de temps, ni qu&apos;elle compte 40 % du{" "}
+            {/* Seul lien vers le guide des produits offerts (mission #055) : aucun mot du texte n'a changé. */}
+            <Link href="/produits-offerts" className="link">
+              paiement en produits
+            </Link>
+            .
           </p>
           <p>
             Colle le message que tu as reçu. On te donne la fourchette pour ton offre précise, ce qui cloche dedans, et

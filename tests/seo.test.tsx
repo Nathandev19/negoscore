@@ -44,6 +44,8 @@ describe("robots.txt et sitemap.xml", () => {
       "https://www.negoscore.fr/analyse/demo",
       // Mission #054 : deuxième page de contenu.
       "https://www.negoscore.fr/combien-facturer",
+      // Mission #055 : troisième guide.
+      "https://www.negoscore.fr/produits-offerts",
       // Mission #052 : page publique ajoutée au sitemap.
       "https://www.negoscore.fr/droits-utilisation",
       "https://www.negoscore.fr/tarifs",

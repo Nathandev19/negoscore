@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import PricingGuidePage from "@/app/combien-facturer/page";
 import sitemap from "@/app/sitemap";
 import { FOOTER_COLUMNS } from "@/components/site-footer";
-import { billableUnits, computeEstimate } from "@/lib/rates/engine";
+import { billableUnits, computeEstimate, upliftCap } from "@/lib/rates/engine";
 import rates from "@/lib/rates/fr-2026.3.json";
 import { TIERS } from "@/lib/rates/tier";
 import { CANONICAL_ORIGIN, publicPageMetadata, PUBLIC_PAGES } from "@/lib/seo";
@@ -141,7 +141,7 @@ describe("page /combien-facturer", () => {
     expect(meta.title).toBe("Tarifs UGC : combien facturer une vidéo, une story, une photo");
     expect(sitemap().map((entry) => entry.url)).toContain(`${CANONICAL_ORIGIN}/combien-facturer`);
     const guides = FOOTER_COLUMNS.find((colonne) => colonne.title === "Guides");
-    expect(guides?.links.map((lien) => lien.href)).toEqual(["/combien-facturer", "/droits-utilisation"]);
+    expect(guides?.links.map((lien) => lien.href)).toEqual(["/combien-facturer", "/droits-utilisation", "/produits-offerts"]);
     expect(FOOTER_COLUMNS.find((colonne) => colonne.title === "Produit")?.links.map((lien) => lien.href)).not.toContain(
       "/droits-utilisation",
     );
@@ -152,5 +152,45 @@ describe("page /combien-facturer", () => {
     const descriptions = PUBLIC_PAGES.map((page) => page.description);
     expect(new Set(titres).size).toBe(titres.length);
     expect(new Set(descriptions).size).toBe(descriptions.length);
+  });
+});
+
+// Mission #055 — les deux paragraphes ajoutés au guide : whitelisting et Spark
+// Ads facturés au mois, et plafond des majorations cumulées. Les valeurs sont
+// relues dans la table, le texte casse si elle change.
+describe("guide des tarifs — compléments #055", () => {
+  it("whitelisting et Spark Ads : le pourcentage mensuel est celui de la table, pour les deux", () => {
+    const { whitelisting_per_month: white, spark_ads_per_month: spark } = rates.multipliers;
+    expect([white.low, white.high]).toEqual([spark.low, spark.high]);
+    expect(texte).toContain(`Compte +${Math.round(white.low * 100)} à +${Math.round(white.high * 100)} % par mois, pour chacun`);
+  });
+
+  it("six mois de whitelisting : la valeur annoncée est bien celle que le moteur facture", () => {
+    const mois = 6;
+    const { whitelisting_per_month: white } = rates.multipliers;
+    const cap = rates.uplift_caps.standard.max_cumulative_uplift;
+    const brutLow = white.low * mois;
+    const brutHigh = white.high * mois;
+    // Le plafond standard ramène les deux bornes à +150 % quand le whitelisting est seul.
+    const applique = [Math.min(brutLow, cap), Math.min(brutHigh, cap)];
+    expect(applique).toEqual([1.5, 1.5]);
+    expect(texte).toContain("ce n'est pas +50 % : c'est de l'ordre de +150 %");
+  });
+
+  it("le plafond des majorations cumulées est celui de la table, et le cas « lourd » aussi", () => {
+    expect(rates.uplift_caps.standard.max_cumulative_uplift).toBe(1.5);
+    expect(rates.uplift_caps.heavy.max_cumulative_uplift).toBe(2.5);
+    expect(texte).toContain("plafonné à +150 % du prix de création");
+    expect(texte).toContain("ne monte à +250 % que si la marque demande l'usage à vie ou la cession totale des droits");
+    // Le plafond « lourd » ne se déclenche que sur ces deux cas.
+    const perpetuel = deal({ usage: { organic: true, paid_ads: true, whitelisting: false, spark_ads: false, perpetual: true, duration_months: null, territory: null } });
+    const cession = deal({ ip_transfer: "full_assignment" });
+    expect(upliftCap(perpetuel)).toBe(2.5);
+    expect(upliftCap(cession)).toBe(2.5);
+    expect(upliftCap(deal())).toBe(1.5);
+  });
+
+  it("un seul lien vers /produits-offerts, dans le corps de la page", () => {
+    expect([...html.matchAll(/href="\/produits-offerts"/g)].filter((m) => html.indexOf("<footer") > (m.index ?? 0))).toHaveLength(1);
   });
 });

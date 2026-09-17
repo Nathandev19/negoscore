@@ -23,8 +23,10 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
     // Titre et description écrits pour ce que quelqu'un tape dans un moteur
     // (mission #051). Le H1 de la page reste la phrase de marque : le titre
     // d'onglet répond à la question, le H1 s'adresse à qui est déjà arrivé.
+    // L'accueil vise « mon offre vaut combien », le guide vise « combien je
+    // dois facturer » (mission #055) : deux intentions, deux titres.
     path: "/",
-    title: `Combien facturer ta collab de marque ? — ${BRAND.name}`,
+    title: `Cette collab vaut combien ? Analyse ton offre — ${BRAND.name}`,
     description:
       "Colle le message d'une marque : on te dit en euros ce que le deal vaut vraiment, ce qui cloche (droits pub, exclusivité) et quoi répondre. Gratuit, sans compte.",
   },
@@ -46,6 +48,12 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
     title: "Tarifs UGC : combien facturer une vidéo, une story, une photo",
     description:
       "Les fourchettes par vidéo selon ton niveau, ce que valent les droits publicitaires et l'exclusivité, et pourquoi trois vidéos ne coûtent pas trois fois une vidéo.",
+  },
+  {
+    path: "/produits-offerts",
+    title: "Collab contre produits offerts : ça vaut quoi ?",
+    description:
+      "Une marque te paie en produits. Ce que ça vaut vraiment, quand c'est acceptable, quand ça ne l'est jamais, et pourquoi il faut quand même le déclarer.",
   },
   {
     path: "/droits-utilisation",

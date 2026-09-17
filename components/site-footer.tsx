@@ -22,6 +22,7 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
     links: [
       { href: "/combien-facturer", label: "Combien facturer" },
       { href: "/droits-utilisation", label: "Droits d'utilisation" },
+      { href: "/produits-offerts", label: "Produits offerts" },
     ],
   },
   {
