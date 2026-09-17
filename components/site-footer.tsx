@@ -20,14 +20,14 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
       { href: "/mentions-legales", label: "Mentions légales" },
       { href: "/confidentialite", label: "Politique de confidentialité" },
       { href: "/cgv", label: "CGV" },
-      { href: "/cgv#mediation", label: "Médiateur" },
+      // « Médiateur » (/cgv#mediation) revient quand la section des CGV sera remplie :
+      // elle est encore en [[À COMPLÉTER]], le lien mènerait à un emplacement vide.
     ],
   },
 ];
 
 const LINK = "rounded-sm text-copy underline-offset-4 transition-colors duration-150 hover:text-brand-strong hover:underline";
 
-// Rendu statique : l'année est celle de la construction du site.
 export function SiteFooter() {
   return (
     <footer className="border-t border-line bg-surface-soft">
@@ -66,7 +66,7 @@ export function SiteFooter() {
           <p className="measure">Analyse éducative fondée sur des benchmarks de marché. Ce n&apos;est pas un conseil juridique.</p>
           <p className="flex items-center gap-2">
             <Logo variant="mark" size={18} />
-            <span>© {new Date().getFullYear()}</span>
+            <span>{BRAND.name}</span>
           </p>
         </div>
       </div>

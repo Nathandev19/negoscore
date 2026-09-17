@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import Image from "next/image";
 import { FileTextIcon, ImageIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ACCEPTED_TYPES, formatFileSize, type FileKind } from "@/lib/upload";
+import { ACCEPTED_TYPES, formatFileSize, MAX_PDF_PAGES, type FileKind } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 
 export type SelectedFile = { file: File; previewUrl: string | null };
@@ -24,7 +24,7 @@ const COPY: Record<FileKind, { title: string; hint: string }> = {
   },
   pdf: {
     title: "Dépose le brief ou le contrat",
-    hint: "PDF · 10 Mo max",
+    hint: `PDF · 10 Mo et ${MAX_PDF_PAGES} pages max`,
   },
 };
 

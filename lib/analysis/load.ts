@@ -4,24 +4,58 @@ import { analysisSchema } from "@/lib/schema";
 import { isUuid, sameToken } from "@/lib/security/request";
 import { selectRows } from "@/lib/supabase/server";
 
-type Row = { payload: unknown; deal: { anon_token: string | null; user_id: string | null } };
+type Viewer = { user: SessionUser | null; anonToken: string | null };
 
-// Lecture autorisée : le propriétaire connecté, ou le navigateur anonyme qui
-// a lancé une analyse encore non rattachée. Déverrouillée : propriétaire connecté uniquement.
-export async function loadResultForViewer(
-  id: string,
-  viewer: { user: SessionUser | null; anonToken: string | null },
-): Promise<{ analysis: ResultView; unlocked: boolean } | null> {
+type DealRef = {
+  id: string;
+  anon_token: string | null;
+  user_id: string | null;
+  source_type: "text" | "image" | "pdf";
+  raw_text: string | null;
+  deal_documents: Array<{ id: string }>;
+};
+
+type Row = { payload: unknown; deal: DealRef };
+
+// Rattachement serveur, seule base d'autorisation : le propriétaire connecté,
+// ou le navigateur anonyme (cookie httpOnly) d'une analyse encore non rattachée.
+export function viewerOwnsDeal(deal: Pick<DealRef, "anon_token" | "user_id">, viewer: Viewer): "owner" | "anonymous" | null {
+  if (deal.user_id !== null) return viewer.user !== null && deal.user_id === viewer.user.id ? "owner" : null;
+  return sameToken(deal.anon_token, viewer.anonToken) ? "anonymous" : null;
+}
+
+// Matière première effacée par la purge des 30 jours : texte collé remis à
+// NULL, ou fichier déposé supprimé. L'analyse, elle, reste.
+function sourceRemoved(deal: DealRef): boolean {
+  return deal.source_type === "text" ? deal.raw_text === null : deal.deal_documents.length === 0;
+}
+
+export type LoadedResult = {
+  analysis: ResultView;
+  unlocked: boolean;
+  sourceRemoved: boolean;
+  sourceType: DealRef["source_type"];
+};
+
+export async function loadResultForViewer(id: string, viewer: Viewer): Promise<LoadedResult | null> {
   if (!isUuid(id)) return null;
-  const rows = await selectRows<Row>("analyses", `select=payload,deal:deals!inner(anon_token,user_id)&id=eq.${id}&limit=1`);
+  const rows = await selectRows<Row>(
+    "analyses",
+    `select=payload,deal:deals!inner(id,anon_token,user_id,source_type,raw_text,deal_documents(id))&id=eq.${id}&limit=1`,
+  );
   const row = rows[0];
   if (!row) return null;
 
-  const owner = viewer.user !== null && row.deal.user_id === viewer.user.id;
-  const anonymousOwner = row.deal.user_id === null && sameToken(row.deal.anon_token, viewer.anonToken);
-  if (!owner && !anonymousOwner) return null;
+  const access = viewerOwnsDeal(row.deal, viewer);
+  if (!access) return null;
 
   const parsed = analysisSchema.safeParse(row.payload);
   if (!parsed.success) return null;
-  return owner ? { analysis: parsed.data, unlocked: true } : { analysis: lockAnalysis(parsed.data), unlocked: false };
+  // Le texte source ne quitte jamais le serveur : seul le fait qu'il ait été effacé est transmis.
+  return {
+    analysis: access === "owner" ? parsed.data : lockAnalysis(parsed.data),
+    unlocked: access === "owner",
+    sourceRemoved: sourceRemoved(row.deal),
+    sourceType: row.deal.source_type,
+  };
 }

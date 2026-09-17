@@ -62,12 +62,15 @@ describe("pied de page", () => {
     }
     const hrefs = all.map((l) => l.href);
     for (const column of FOOTER_COLUMNS) for (const link of column.links) expect(hrefs).toContain(link.href);
-    for (const href of ["/#methode", "/offres", "/analyse", "/mentions-legales", "/confidentialite", "/cgv", "/cgv#mediation", `mailto:${SELLER.email}`]) {
+    for (const href of ["/#methode", "/offres", "/analyse", "/mentions-legales", "/confidentialite", "/cgv", `mailto:${SELLER.email}`]) {
       expect(hrefs).toContain(href);
     }
+    // Section Médiation des CGV encore à compléter : pas de lien vers un emplacement vide.
+    expect(hrefs).not.toContain("/cgv#mediation");
     expect(html).toContain("est édité par un auto-entrepreneur immatriculé en France.");
     expect(html).toContain("Analyse éducative fondée sur des benchmarks de marché. Ce n&#x27;est pas un conseil juridique.");
-    expect(html).toContain(String(new Date().getFullYear()));
+    // Aucune année figée à la construction du site.
+    expect(html).not.toMatch(/©|\b20\d\d\b/);
     expect(html).not.toContain(SELLER.siret);
     expect(html.match(/<h2/g)).toHaveLength(3);
   });

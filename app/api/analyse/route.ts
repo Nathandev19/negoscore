@@ -5,6 +5,7 @@ import { reserveAnalysis, type Grant } from "@/lib/billing/entitlement";
 import {
   extractDeal,
   extractDealFromImage,
+  extractDealFromPdf,
   ExtractionError,
   MissingApiKeyError,
   type ExtractResult,
@@ -13,6 +14,7 @@ import { PROMPT_VERSION } from "@/lib/llm/prompt";
 import { ANON_COOKIE, anonCookieHeader, clientIp, hashIp, newAnonToken, readCookie, sameToken } from "@/lib/security/request";
 import { hitUsageGuard } from "@/lib/security/usage-guard";
 import { isStoragePath, sniffMime } from "@/lib/storage/documents";
+import { inspectPdf } from "@/lib/storage/pdf";
 import {
   downloadDocument,
   insertRow,
@@ -128,13 +130,6 @@ export async function POST(request: Request) {
     let document: DocumentRow | null = null;
     if (fileMode) {
       document = await findDocument(storagePath, user, existingToken);
-      if (document.mime === "application/pdf") {
-        // Aucune bibliothèque PDF dans le projet : le document est supprimé
-        // tout de suite plutôt que conservé sans être analysé. Rien n'est consommé.
-        await removeDocument(storagePath);
-        await updateRows("deals", `id=eq.${document.deal.id}`, { status: "unsupported" });
-        return fail(501, "L'analyse de PDF arrive bientôt. En attendant, copie le texte du contrat et colle-le.");
-      }
     }
 
     // Droit d'analyser, vérifié et réservé AVANT tout appel au modèle.
@@ -158,8 +153,22 @@ export async function POST(request: Request) {
     const extraAssumptions: string[] = [];
     let result: ExtractResult;
     let rawText: string | null = null;
+    let pdfPages: number | null = null;
 
-    if (document) {
+    if (document?.mime === "application/pdf") {
+      const bytes = await readDocument(storagePath as string, document);
+      // Taille, pages, protection : refusé avant tout appel au modèle. Le
+      // fichier n'est pas conservé et le droit est rendu (bloc catch).
+      const check = inspectPdf(bytes);
+      if (!check.ok) {
+        await removeDocument(storagePath as string);
+        await updateRows("deals", `id=eq.${document.deal.id}`, { status: "rejected" });
+        console.warn(JSON.stringify({ event: "pdf_refused", reason: check.reason, bytes: bytes.byteLength }));
+        throw new HttpError(400, check.message);
+      }
+      pdfPages = check.pages;
+      result = await extractDealFromPdf({ base64: Buffer.from(bytes).toString("base64"), filename: "offre.pdf" });
+    } else if (document) {
       const bytes = await readDocument(storagePath as string, document);
       result = await extractDealFromImage({ base64: Buffer.from(bytes).toString("base64"), mimeType: document.mime });
     } else {
@@ -203,7 +212,8 @@ export async function POST(request: Request) {
     console.log(
       JSON.stringify({
         event: "analyse",
-        source: fileMode ? "image" : "text",
+        source: fileMode ? (pdfPages !== null ? "pdf" : "image") : "text",
+        pdf_pages: pdfPages,
         plan: entitlement.plan,
         signed_in: user !== null,
         model: result.model,

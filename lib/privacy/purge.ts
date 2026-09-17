@@ -1,12 +1,15 @@
-import { deleteRowsReturning, removeDocuments, selectRows, SupabaseRequestError } from "@/lib/supabase/server";
+import { deleteRowsReturning, removeDocuments, selectRows, SupabaseRequestError, updateRows } from "@/lib/supabase/server";
 
 // Purge quotidienne des données dont la durée de conservation est écoulée,
 // telle qu'annoncée dans la politique de confidentialité :
 //   - documents déposés : 30 jours (lignes deal_documents ET fichiers du bucket) ;
+//   - texte collé des offres (deals.raw_text) : 30 jours, remplacé par NULL ;
+//     le deal et son analyse restent consultables ;
 //   - adresses IP hachées (usage_guard) : 30 jours au maximum ;
 //   - journal des paiements (whop_events) et preuves de consentement : 5 ans.
-// Les deals et les analyses ne sont JAMAIS supprimés ici : seuls les documents
-// source ont une durée de 30 jours. Idempotente : un second passage ne trouve rien.
+// Les deals et les analyses ne sont JAMAIS supprimés ici : seule la matière
+// première (documents et texte collé) a une durée de 30 jours. Idempotente :
+// un second passage ne trouve rien.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // Durées annoncées : 30 jours. La purge tourne une fois par jour : en supprimant
@@ -14,6 +17,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // moment de la journée où le cron passe.
 export const DOCUMENT_RETENTION_DAYS = 30;
 export const DOCUMENT_PURGE_AFTER_DAYS = 29;
+export const SOURCE_TEXT_RETENTION_DAYS = 30;
+export const SOURCE_TEXT_PURGE_AFTER_DAYS = 29;
 export const IP_HASH_RETENTION_DAYS = 30;
 export const IP_HASH_PURGE_AFTER_DAYS = 29;
 export const PAYMENT_RECORD_RETENTION_YEARS = 5;
@@ -26,6 +31,8 @@ const BATCH = 200;
 // Sans portée, la purge porte sur toute la base (appel quotidien du cron).
 export type PurgeScope = {
   documentIds?: string[];
+  // Deals dont le texte collé peut être effacé.
+  sourceTextDealIds?: string[];
   usageGuardIds?: string[];
   whopEventIds?: string[];
   consentIds?: string[];
@@ -34,6 +41,7 @@ export type PurgeScope = {
 export type PurgeReport = {
   documents: number;
   files_removed: number;
+  source_texts: number;
   usage_guard: number;
   whop_events: number;
   checkout_consents: number;
@@ -44,6 +52,7 @@ export function purgeCutoffs(now: Date) {
   years.setUTCFullYear(years.getUTCFullYear() - PAYMENT_RECORD_RETENTION_YEARS);
   return {
     documents: new Date(now.getTime() - DOCUMENT_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
+    sourceTexts: new Date(now.getTime() - SOURCE_TEXT_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
     usageGuard: new Date(now.getTime() - IP_HASH_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
     paymentRecords: years.toISOString(),
   };
@@ -109,6 +118,18 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
   const { documents, filesRemoved } =
     documentScope === null ? { documents: 0, filesRemoved: 0 } : await purgeDocuments(cutoffs.documents, documentScope);
 
+  // Texte collé : effacé, jamais le deal ni son analyse. Le filtre raw_text non
+  // nul rend l'opération idempotente.
+  const textScope = scopeFilter(scope, scope?.sourceTextDealIds, "id");
+  const sourceTexts =
+    textScope === null
+      ? []
+      : await updateRows<{ id: string }>(
+          "deals",
+          `raw_text=not.is.null&created_at=lt.${encodeURIComponent(cutoffs.sourceTexts)}${textScope}&select=id`,
+          { raw_text: null },
+        );
+
   // Une fenêtre de limitation dure au plus 24 h : une ligne dont la fenêtre a
   // commencé il y a plus de 30 jours n'est plus utilisée.
   const guardScope = scopeFilter(scope, scope?.usageGuardIds, "id");
@@ -133,6 +154,7 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
   return {
     documents,
     files_removed: filesRemoved,
+    source_texts: sourceTexts.length,
     usage_guard: usageGuard.length,
     whop_events: whopEvents.length,
     checkout_consents: consents.length,

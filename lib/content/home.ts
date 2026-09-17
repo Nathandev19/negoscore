@@ -1,5 +1,6 @@
 import { PLANS } from "@/lib/billing/plans";
 import rates from "@/lib/rates/fr-2026.2.json";
+import { MAX_PDF_PAGES } from "@/lib/upload";
 
 // Textes de la page d'accueil. Les prix et la version de la table viennent du
 // code (lib/billing/plans.ts, lib/rates) : jamais réécrits à la main.
@@ -20,8 +21,8 @@ export const TRUST = [
     text: "Il lit le prix, le délai de paiement, les droits cédés, l'exclusivité et les révisions écrits dans l'offre. Il ne peut pas savoir si la marque paiera à temps ni si le brief va déraper : aucune offre ne dépasse 90/100.",
   },
   {
-    title: "Tes documents supprimés au bout de 30 jours",
-    text: "Captures et fichiers déposés sont effacés au bout de 30 jours au plus. La purge tourne tous les jours.",
+    title: "Tes offres effacées au bout de 30 jours",
+    text: "Le texte collé, les captures et les PDF sont effacés au bout de 30 jours au plus ; l'analyse reste. La purge tourne tous les jours, et tu peux supprimer une analyse à tout moment depuis sa page.",
   },
   {
     title: "Pas un conseil juridique",
@@ -39,7 +40,7 @@ export const FAQ = [
   {
     question: "Ça marche pour quel type d'offre ?",
     answer:
-      "Les offres de collaboration envoyées par une marque : message privé, email, brief ou contrat, en français ou en anglais. Tu peux coller le texte ou envoyer une capture d'écran. L'analyse de PDF n'est pas encore disponible : copie le texte du PDF et colle-le.",
+      `Les offres de collaboration envoyées par une marque : message privé, email, brief ou contrat, en français ou en anglais. Tu peux coller le texte, envoyer une capture d'écran ou déposer le PDF (${MAX_PDF_PAGES} pages et 10 Mo au plus, sans mot de passe). Un PDF scanné est lu comme une image.`,
   },
   {
     question: "Et si l'offre ne donne pas de montant ?",
@@ -49,7 +50,7 @@ export const FAQ = [
   {
     question: "Qu'est-ce que vous faites de mes documents ?",
     answer:
-      "Ils servent à produire ton analyse, grâce à un prestataire d'analyse automatisée, et à rien d'autre. Les fichiers déposés sont supprimés au bout de 30 jours au plus. Le texte de l'offre reste attaché à ton analyse ; si tu as un compte, le supprimer efface tes offres et tes analyses.",
+      "Ils servent à produire ton analyse, grâce à un prestataire d'analyse automatisée, et à rien d'autre. Le texte collé et les fichiers déposés sont effacés au bout de 30 jours au plus ; l'analyse, elle, reste. Avec ou sans compte, tu peux supprimer une analyse à tout moment depuis sa page de résultat.",
   },
   {
     question: "C'est un conseil juridique ?",

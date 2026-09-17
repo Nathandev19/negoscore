@@ -35,6 +35,7 @@ export default function PrivacyPage() {
         <Facts
           items={[
             "Documents déposés : supprimés 30 jours après l'analyse.",
+            "Texte des offres collé dans le champ d'analyse : supprimé 30 jours après l'analyse ; l'analyse reste disponible.",
             "Compte et analyses : jusqu'à la suppression du compte par l'utilisateur.",
             "Journal des paiements et preuves de consentement : 5 ans, y compris après la suppression du compte.",
             "Adresses IP hachées : 30 jours au maximum.",
@@ -50,6 +51,11 @@ export default function PrivacyPage() {
           téléversés et les analyses produites. Sont conservés : le journal des paiements et les preuves de consentement
           liées à tes achats, pendant 5 ans, afin de pouvoir justifier d&apos;une transaction en cas de litige. Les crédits
           d&apos;analyse non utilisés sont perdus et ne sont pas remboursés.
+        </p>
+        <p>
+          Avec ou sans compte, tu peux aussi supprimer une analyse depuis sa page de résultat, avec le navigateur ou le
+          compte qui l&apos;a lancée : l&apos;analyse, le texte de l&apos;offre et le fichier déposé sont supprimés
+          immédiatement.
         </p>
       </LegalSection>
 

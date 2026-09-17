@@ -115,6 +115,10 @@ describe.skipIf(!configured)("purge avec portée, contre la base de production",
       payload: { test: true },
       created_at: ago(400),
     });
+    // Deals à texte collé : 30 jours (texte effacé) et 28 jours (intact), le premier avec son analyse.
+    const oldText = await insert("deals", { user_id: user.id, source_type: "text", raw_text: "offre de test ancienne", status: "analysed", created_at: ago(30) });
+    const oldTextAnalysis = await insert("analyses", { deal_id: oldText.id, model: "test", prompt_version: "test", rate_table_version: "test", payload: { test: true } });
+    const recentText = await insert("deals", { user_id: user.id, source_type: "text", raw_text: "offre de test récente", status: "analysed", created_at: ago(28) });
     const thirtyDays = await seedDocument(deal.id, 30);
     const twentyEight = await seedDocument(deal.id, 28);
     const oldGuard = await seedUsageGuard(31);
@@ -127,6 +131,7 @@ describe.skipIf(!configured)("purge avec portée, contre la base de production",
 
     const scope: PurgeScope = {
       documentIds: [thirtyDays.id, twentyEight.id],
+      sourceTextDealIds: [oldText.id, recentText.id],
       usageGuardIds: [oldGuard, recentGuard],
       whopEventIds: [sixYears, fourYears],
       consentIds: [oldConsent, recentConsent],
@@ -134,7 +139,12 @@ describe.skipIf(!configured)("purge avec portée, contre la base de production",
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const report = await runPurge(new Date(), scope);
     warn.mockRestore();
-    expect(report).toEqual({ documents: 1, files_removed: 1, usage_guard: 1, whop_events: 1, checkout_consents: 1 });
+    expect(report).toEqual({ documents: 1, files_removed: 1, source_texts: 1, usage_guard: 1, whop_events: 1, checkout_consents: 1 });
+
+    // Texte collé de 30 jours : effacé, le deal et son analyse restent ; de 28 jours : intact.
+    expect(await rows(`/rest/v1/deals?id=eq.${oldText.id}&select=raw_text,status`)).toEqual([{ raw_text: null, status: "analysed" }]);
+    expect(await rows(`/rest/v1/analyses?id=eq.${oldTextAnalysis.id}&select=id`)).toHaveLength(1);
+    expect(await rows(`/rest/v1/deals?id=eq.${recentText.id}&select=raw_text`)).toEqual([{ raw_text: "offre de test récente" }]);
 
     // Document de 30 jours : ligne ET fichier supprimés ; de 28 jours : intact.
     expect(await rows(`/rest/v1/deal_documents?id=eq.${thirtyDays.id}&select=id`)).toEqual([]);
@@ -153,7 +163,7 @@ describe.skipIf(!configured)("purge avec portée, contre la base de production",
     expect(await rows(`/rest/v1/analyses?id=eq.${analysis.id}&select=id`)).toHaveLength(1);
 
     const again = await runPurge(new Date(), scope);
-    expect(again).toEqual({ documents: 0, files_removed: 0, usage_guard: 0, whop_events: 0, checkout_consents: 0 });
+    expect(again).toEqual({ documents: 0, files_removed: 0, source_texts: 0, usage_guard: 0, whop_events: 0, checkout_consents: 0 });
     expect(await rows(`/rest/v1/deals?id=eq.${deal.id}&select=id`)).toHaveLength(1);
     expect(await rows(`/rest/v1/analyses?id=eq.${analysis.id}&select=id`)).toHaveLength(1);
   });
@@ -167,10 +177,12 @@ describe.skipIf(!configured)("purge avec portée, contre la base de production",
     const guardOut = await seedUsageGuard(60);
     const eventOut = await seedWhopEvent(7 * 365);
     const consentOut = await seedConsent(user.id, 7 * 365);
+    const textOut = await insert("deals", { user_id: user.id, source_type: "text", raw_text: "hors portée", status: "analysed", created_at: ago(60) });
 
     const report = await runPurge(new Date(), { documentIds: [inScope.id] });
 
-    expect(report).toEqual({ documents: 1, files_removed: 1, usage_guard: 0, whop_events: 0, checkout_consents: 0 });
+    expect(report).toEqual({ documents: 1, files_removed: 1, source_texts: 0, usage_guard: 0, whop_events: 0, checkout_consents: 0 });
+    expect(await rows(`/rest/v1/deals?id=eq.${textOut.id}&select=raw_text`)).toEqual([{ raw_text: "hors portée" }]);
     expect(await rows(`/rest/v1/deal_documents?id=eq.${inScope.id}&select=id`)).toEqual([]);
     // Échus, mais hors portée : intacts, ligne comme fichier.
     expect(await rows(`/rest/v1/deal_documents?id=eq.${outOfScope.id}&select=id`)).toHaveLength(1);

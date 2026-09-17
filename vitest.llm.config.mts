@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
-    include: ["tests-integration/extraction-invariants.test.ts"],
+    include: ["tests-integration/extraction-invariants.test.ts", "tests-integration/extraction-pdf.test.ts"],
     env: { RUN_LLM_INVARIANTS: "1" },
     testTimeout: 180_000,
     hookTimeout: 180_000,

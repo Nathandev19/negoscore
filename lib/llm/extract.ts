@@ -5,6 +5,7 @@ import {
   extractionJsonSchema,
   extractionSchema,
   IMAGE_USER_MESSAGE,
+  PDF_USER_MESSAGE,
   SYSTEM_PROMPT,
   type Extraction,
 } from "@/lib/llm/prompt";
@@ -61,6 +62,29 @@ export function extractDealFromImage(image: ImageInput): Promise<ExtractResult> 
       content: [
         { type: "input_text", text: IMAGE_USER_MESSAGE },
         { type: "input_image", image_url: `data:${image.mimeType};base64,${image.base64}`, detail: "high" },
+      ],
+    },
+  ]);
+}
+
+export type PdfInput = { base64: string; filename: string };
+
+// PDF en entrée directe (bloc input_file) : le fournisseur envoie au modèle le
+// texte extrait et l'image de chaque page. Même modèle, même prompt système,
+// même schéma. Les jetons du PDF sont comptés dans usage.input_tokens : le
+// calcul du coût reste le même. Doc : developers.openai.com/api/docs/guides/pdf-files
+export function extractDealFromPdf(pdf: PdfInput): Promise<ExtractResult> {
+  return run([
+    {
+      role: "user",
+      content: [
+        { type: "input_text", text: PDF_USER_MESSAGE },
+        {
+          type: "input_file",
+          filename: pdf.filename,
+          file_data: `data:application/pdf;base64,${pdf.base64}`,
+          detail: "high",
+        },
       ],
     },
   ]);

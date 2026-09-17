@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { TrackView } from "@/components/analytics/track-view";
@@ -32,6 +33,18 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
           analysis={result.analysis}
           unlockHref={`/connexion?next=${encodeURIComponent(`/analyse/resultat/${id}`)}`}
         />
+        {result.sourceRemoved ? (
+          <p role="note" className="rounded-xl border border-line bg-surface-soft p-4 text-small">
+            {result.sourceType === "text"
+              ? "Le texte d'origine de cette offre a été supprimé au bout de 30 jours, comme prévu. L'analyse reste disponible."
+              : "Le fichier d'origine de cette offre a été supprimé au bout de 30 jours, comme prévu. L'analyse reste disponible."}
+          </p>
+        ) : null}
+        <p className="text-center text-small">
+          <Link href={`/analyse/resultat/${id}/supprimer`} className="text-subtle underline underline-offset-4 hover:text-ink">
+            Supprimer cette analyse
+          </Link>
+        </p>
       </main>
       <SiteFooter />
     </>
