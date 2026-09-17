@@ -53,9 +53,9 @@ describe("/api/purge", () => {
 });
 
 describe("durées de conservation", () => {
-  it("30 jours pour les documents et les IP hachées, 5 ans pour les paiements", () => {
+  it("documents purgés dès 29 jours (jamais plus de 30 avec une purge quotidienne), IP 30 jours, paiements 5 ans", () => {
     const cutoffs = purgeCutoffs(new Date("2026-09-17T03:00:00.000Z"));
-    expect(cutoffs.documents).toBe("2026-08-18T03:00:00.000Z");
+    expect(cutoffs.documents).toBe("2026-08-19T03:00:00.000Z");
     expect(cutoffs.usageGuard).toBe("2026-08-18T03:00:00.000Z");
     expect(cutoffs.paymentRecords).toBe("2021-09-17T03:00:00.000Z");
   });
