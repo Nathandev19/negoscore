@@ -5,10 +5,11 @@ import {
   computeEstimate,
   isFarAboveOffer,
   UPLIFT_CAPPED_ASSUMPTION,
+  billableUnits,
   upliftCap,
   volumeDiscountFactor,
 } from "@/lib/rates/engine";
-import rates from "@/lib/rates/fr-2026.1.json";
+import rates from "@/lib/rates/fr-2026.2.json";
 import { computeScore } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
 import extracted17 from "./fixtures/deal-17-contrat-boisson.json";
@@ -62,8 +63,8 @@ describe("computeEstimate", () => {
       deliverables: [{ type: "video", platform: "tiktok", quantity: 3, format: null }],
     });
     const estimate = computeEstimate(deal);
-    expect(estimate.base_low).toBe(Math.round(base.low * 3 * volumeDiscountFactor(3)));
-    expect(estimate.base_high).toBe(Math.round(base.high * 3 * volumeDiscountFactor(3)));
+    expect(estimate.base_low).toBe(Math.round(base.low * billableUnits(3)));
+    expect(estimate.base_high).toBe(Math.round(base.high * billableUnits(3)));
     expect(estimate.lines).toEqual([]);
     expect(estimate.rate_table_version).toBe(rates.version);
     expect(estimate.assumptions.some((a) => a.includes("confirmé"))).toBe(true);
@@ -145,8 +146,8 @@ describe("computeEstimate", () => {
     });
     const units = 2 * w.video.weight + 3 * w.story.weight + 1 * w.photo.weight;
     const estimate = computeEstimate(deal);
-    expect(estimate.base_low).toBe(Math.round(base.low * units * volumeDiscountFactor(units)));
-    expect(estimate.base_high).toBe(Math.round(base.high * units * volumeDiscountFactor(units)));
+    expect(estimate.base_low).toBe(Math.round(base.low * billableUnits(units)));
+    expect(estimate.base_high).toBe(Math.round(base.high * billableUnits(units)));
     expect(w.story.weight).toBeLessThan(w.video.weight);
     expect(w.photo.weight).toBeLessThan(w.video.weight);
   });
@@ -157,29 +158,62 @@ describe("computeEstimate", () => {
     const units = 4 * w.video.weight + 4 * w.story.weight;
     const estimate = computeEstimate(deal);
     // #002 : 7 900–23 400 €. #003 : 4 930–14 630 €. Plafond heavy + dégressivité.
-    expect(estimate.base_low).toBe(Math.round(base.low * units * volumeDiscountFactor(units)));
-    expect(estimate.total_low).toBe(3500);
-    expect(estimate.total_high).toBe(7000);
+    // fr-2026.2 : 5 unités pondérées facturées 4,3 au lieu de 4 (paliers) :
+    // 3 500–7 000 € devient 3 760–7 530 €.
+    expect(units).toBe(5);
+    expect(estimate.base_low).toBe(Math.round(base.low * billableUnits(units)));
+    expect(estimate.total_low).toBe(3760);
+    expect(estimate.total_high).toBe(7530);
     expect(estimate.assumptions).toContain(UPLIFT_CAPPED_ASSUMPTION);
     expect(estimate.total_low! / deal.payment.amount_eur!).toBeLessThanOrEqual(3);
   });
 
-  it("dégressivité aux quatre paliers", () => {
-    const tiers = rates.volume_discount.tiers;
-    expect(volumeDiscountFactor(1)).toBe(tiers[0].factor);
-    expect(volumeDiscountFactor(2)).toBe(tiers[0].factor);
-    expect(volumeDiscountFactor(2.25)).toBe(tiers[1].factor);
-    expect(volumeDiscountFactor(4)).toBe(tiers[1].factor);
-    expect(volumeDiscountFactor(5)).toBe(tiers[2].factor);
-    expect(volumeDiscountFactor(8)).toBe(tiers[2].factor);
-    expect(volumeDiscountFactor(9)).toBe(tiers[3].factor);
-    expect(new Set(tiers.map((t) => t.factor)).size).toBe(4);
+  it("dégressivité continue : table de contrôle des unités facturées", () => {
+    // Unités pondérées → unités facturées. Aux anciennes bornes (2, 4, 8), les
+    // mêmes unités qu'avec les paliers de fr-2026.1 : aucun prix n'y change.
+    const control: Array<[number, number]> = [
+      [0, 0],
+      [1, 1.0],
+      [2, 2.0],
+      [3, 2.8],
+      [4, 3.6],
+      [5, 4.3],
+      [8, 6.4],
+      [9, 7.1],
+      [12, 9.2],
+    ];
+    for (const [weighted, billed] of control) expect(billableUnits(weighted), `${weighted} unités`).toBeCloseTo(billed, 10);
+    expect(billableUnits(-1)).toBe(0);
+    // Anciens paliers : 2 × 1,0 / 4 × 0,9 / 8 × 0,8.
+    expect(billableUnits(2)).toBeCloseTo(2 * 1.0, 10);
+    expect(billableUnits(4)).toBeCloseTo(4 * 0.9, 10);
+    expect(billableUnits(8)).toBeCloseTo(8 * 0.8, 10);
+    // Plus de falaise : 9 unités pondérées se facturent plus que 8.
+    expect(billableUnits(9)).toBeGreaterThan(billableUnits(8));
+    expect(volumeDiscountFactor(0)).toBe(1);
+    expect(volumeDiscountFactor(2)).toBeCloseTo(1, 10);
+    expect(volumeDiscountFactor(12)).toBeCloseTo(9.2 / 12, 10);
 
     const tenVideos = computeEstimate(
       makeDeal({ deliverables: [{ type: "video", platform: "tiktok", quantity: 10, format: null }] }),
     );
-    expect(tenVideos.base_low).toBe(Math.round(base.low * 10 * tiers[3].factor));
+    expect(tenVideos.base_low).toBe(Math.round(base.low * billableUnits(10)));
+    expect(tenVideos.base_low).toBe(Math.round(base.low * 7.8));
     expect(tenVideos.assumptions.some((a) => a.includes("volume"))).toBe(true);
+  });
+
+  it("à vie : jamais moins de mois facturés que la durée écrite, et l'hypothèse le dit", () => {
+    const whitelisting = (duration: number | null, perpetual: boolean) =>
+      computeEstimate(makeDeal({ usage: { ...makeDeal().usage, whitelisting: true, duration_months: duration, perpetual } }));
+    expect(lineFor(makeDeal({ usage: { ...makeDeal().usage, whitelisting: true, perpetual: true } }), "whitelisting")?.label).toBe(
+      "Whitelisting 12 mois",
+    );
+    const perpetual24 = whitelisting(24, true);
+    expect(perpetual24.lines.find((l) => l.topic === "whitelisting")?.label).toBe("Whitelisting 24 mois");
+    expect(perpetual24.assumptions).toContain("Whitelisting ou Spark Ads à vie chiffrés sur 24 mois.");
+    expect(whitelisting(null, true).assumptions).toContain("Whitelisting ou Spark Ads à vie chiffrés sur 12 mois.");
+    expect(whitelisting(6, true).assumptions).toContain("Whitelisting ou Spark Ads à vie chiffrés sur 12 mois.");
+    expect(perpetual24.total_low!).toBeGreaterThanOrEqual(whitelisting(24, false).total_low!);
   });
 
   it("plafond standard : la majoration cumulée ne dépasse pas le plafond, lignes réduites en proportion", () => {

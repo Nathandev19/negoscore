@@ -1,5 +1,5 @@
 {
-  "version": "fr-2026.1",
+  "version": "fr-2026.2",
   "disclaimer": "Estimation fondée sur des benchmarks de marché. Ce ne sont pas des tarifs officiels.",
   "base_rates_eur": {
     "starter": { "low": 100, "high": 180, "confidence": "medium" },
@@ -14,12 +14,14 @@
     "story": { "weight": 0.25, "confidence": "low" }
   },
   "volume_discount": {
-    "tiers": [
-      { "max_weighted_units": 2, "factor": 1.0 },
-      { "max_weighted_units": 4, "factor": 0.9 },
-      { "max_weighted_units": 8, "factor": 0.8 },
-      { "max_weighted_units": null, "factor": 0.7 }
+    "shape": "piecewise_linear_billable_units",
+    "anchors": [
+      { "weighted_units": 0, "billable_units": 0 },
+      { "weighted_units": 2, "billable_units": 2.0 },
+      { "weighted_units": 4, "billable_units": 3.6 },
+      { "weighted_units": 8, "billable_units": 6.4 }
     ],
+    "marginal_factor_beyond_last_anchor": 0.7,
     "confidence": "low"
   },
   "uplift_caps": {
@@ -53,7 +55,7 @@
     "live": "Aligné sur la vidéo faute d'observations distinctes : à recalibrer.",
     "photo": "Valeur interpolée, peu d'offres UGC chiffrent la photo seule : à recalibrer.",
     "story": "Valeur interpolée, peu d'offres UGC chiffrent la story seule : à recalibrer.",
-    "volume_discount": "Facteurs dégressifs par volume de livrables pondérés, interpolés à partir de lots observés : à recalibrer.",
+    "volume_discount": "Unités facturées en fonction affine par morceaux des unités pondérées, ancrées sur les anciens paliers (2, 4, 8) pour ne changer aucun prix à ces volumes ; interpolées à partir de lots observés : à recalibrer.",
     "uplift_standard": "Majoration cumulée maximale (+150 %) au-delà de laquelle un annonceur refuse en pratique, interpolée : à recalibrer.",
     "uplift_heavy": "Majoration cumulée maximale (+250 %) quand l'offre demande une utilisation à vie ou une cession totale, interpolée : à recalibrer.",
     "paid_ads_1m": "Valeur interpolée à partir du palier 3 mois : à recalibrer.",

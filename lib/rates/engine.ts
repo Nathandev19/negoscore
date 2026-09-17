@@ -1,4 +1,4 @@
-import rates from "@/lib/rates/fr-2026.1.json";
+import rates from "@/lib/rates/fr-2026.2.json";
 import type { Analysis } from "@/lib/schema";
 
 // Chiffrage déterministe. Toutes les valeurs de tarif viennent de la table
@@ -84,11 +84,28 @@ export function isFarAboveOffer(amountEur: number | null, totalLow: number | nul
   return amountEur !== null && amountEur > 0 && totalLow !== null && totalLow > PLAUSIBILITY_RATIO * amountEur;
 }
 
+// Unités facturées en fonction des unités pondérées : fonction affine par
+// morceaux, continue et croissante, entre les ancres de la table, puis pente
+// fixe au-delà de la dernière. Un livrable de plus ne fait donc jamais baisser
+// le prix (les anciens paliers faisaient payer 9 unités moins cher que 8).
+export function billableUnits(weightedUnits: number): number {
+  if (weightedUnits <= 0) return 0;
+  const { anchors, marginal_factor_beyond_last_anchor: beyond } = rates.volume_discount;
+  for (let i = 1; i < anchors.length; i++) {
+    const from = anchors[i - 1];
+    const to = anchors[i];
+    if (weightedUnits <= to.weighted_units) {
+      const slope = (to.billable_units - from.billable_units) / (to.weighted_units - from.weighted_units);
+      return from.billable_units + slope * (weightedUnits - from.weighted_units);
+    }
+  }
+  const last = anchors[anchors.length - 1];
+  return last.billable_units + beyond * (weightedUnits - last.weighted_units);
+}
+
+// Facteur moyen appliqué au volume : sert à annoncer la dégressivité.
 export function volumeDiscountFactor(weightedUnits: number): number {
-  const tier = rates.volume_discount.tiers.find(
-    (t) => t.max_weighted_units === null || weightedUnits <= t.max_weighted_units,
-  );
-  return tier?.factor ?? 1;
+  return weightedUnits > 0 ? billableUnits(weightedUnits) / weightedUnits : 1;
 }
 
 // Plafond « heavy » quand l'offre demande une utilisation à vie ou une cession totale.
@@ -123,14 +140,14 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   }
 
   // Dégressivité : un lot se négocie moins cher à l'unité.
-  const discount = volumeDiscountFactor(weightedUnits);
-  if (discount < 1) {
+  const billed = billableUnits(weightedUnits);
+  if (volumeDiscountFactor(weightedUnits) < 1) {
     assumptions.push("Tarif unitaire réduit pour tenir compte du volume de contenus demandés.");
   }
 
   const baseRate = rates.base_rates_eur[tier];
-  const baseLow = Math.round(baseRate.low * weightedUnits * discount);
-  const baseHigh = Math.round(baseRate.high * weightedUnits * discount);
+  const baseLow = Math.round(baseRate.low * billed);
+  const baseHigh = Math.round(baseRate.high * billed);
   const lines: EstimateLine[] = [];
 
   // Majorations en pourcentage de la base, collectées puis plafonnées ensemble.
@@ -160,13 +177,15 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     }
   }
 
+  // À vie : au moins 12 mois, et jamais moins que la durée écrite, pour qu'un
+  // droit à vie ne coûte jamais moins cher que le même droit à durée fixe.
   const monthlyRightMonths = usage.perpetual
-    ? PERPETUAL_MONTHS_CAP
+    ? Math.max(PERPETUAL_MONTHS_CAP, usage.duration_months ?? 0)
     : (usage.duration_months ?? ASSUMED_MONTHS);
-  if ((usage.whitelisting || usage.spark_ads) && usage.duration_months === null) {
+  if ((usage.whitelisting || usage.spark_ads) && (usage.perpetual || usage.duration_months === null)) {
     assumptions.push(
       usage.perpetual
-        ? `Whitelisting ou Spark Ads à vie chiffrés sur ${PERPETUAL_MONTHS_CAP} mois.`
+        ? `Whitelisting ou Spark Ads à vie chiffrés sur ${monthlyRightMonths} mois.`
         : `Durée du whitelisting ou des Spark Ads non précisée : ${ASSUMED_MONTHS} mois supposés.`,
     );
   }
