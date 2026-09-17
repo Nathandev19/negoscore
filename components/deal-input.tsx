@@ -14,10 +14,16 @@ import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
 import { clearDraft, readDraft, saveDraft, subscribeDraft } from "@/lib/draft";
+import { clearPendingKey, pendingKey } from "@/lib/analysis/pending-key";
 import { validateFile, type FileKind } from "@/lib/upload";
 
 const MIN_TEXT_LENGTH = 20;
-const GENERIC_ERROR = "L'analyse n'a pas abouti. Vérifie ta connexion et réessaie.";
+// Message d'échec (mission #060) : il ne promet plus que rien n'a été
+// décompté — l'analyse a pu aboutir côté serveur sans nous parvenir. Relancer
+// avec le même bouton rejoue la MÊME clé : si elle était partie, le résultat
+// revient sans rien décompter de plus.
+const GENERIC_ERROR =
+  "L'analyse n'a pas abouti. Vérifie ta connexion, puis appuie de nouveau sur « Analyser mon deal » : si elle était déjà partie, tu retrouves ton résultat sans rien payer de plus.";
 // Réponse du serveur sans message exploitable (coupure, délai de l'hébergeur) :
 // ce n'est pas la connexion de l'utilisateur qui est en cause.
 const SERVER_ERROR = "L'analyse est momentanément indisponible. Rien n'a été décompté, réessaie dans quelques minutes.";
@@ -60,6 +66,22 @@ async function postJson(url: string, payload: unknown): Promise<Record<string, u
     throw new FlowError(typeof body.error === "string" ? body.error : fallback, response.status === 402, reason);
   }
   return body;
+}
+
+// Reprise automatique d'une requête perdue en route (mission #060). Seules les
+// coupures réseau sont rejouées : une réponse du serveur, même en erreur, est
+// une décision et ne se rejoue pas. La clé d'idempotence étant la même, une
+// analyse déjà produite est simplement rendue.
+const RETRY_DELAY_MS = 1500;
+
+async function withNetworkRetry<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (caught) {
+    if (caught instanceof FlowError) throw caught;
+    await new Promise((resolve) => window.setTimeout(resolve, RETRY_DELAY_MS));
+    return call();
+  }
 }
 
 // Photo ou PDF : URL signée demandée au serveur, dépôt direct dans le stockage,
@@ -194,6 +216,8 @@ export function DealInput({ note }: { note?: string } = {}) {
       // La réponse est là : les étapes restantes se cochent, puis le résultat s'affiche.
       setRespondedAt(Date.now());
       clearDraft();
+      // Résultat acquis : il n'y a plus rien à rejouer (mission #060).
+      clearPendingKey("analyse");
       const target = `/analyse/resultat/${outcome.analysisId}`;
       window.setTimeout(() => router.push(target), REVEAL_TOTAL_MS);
     } else if (outcome.paywall) {
@@ -216,8 +240,12 @@ export function DealInput({ note }: { note?: string } = {}) {
     track(ANALYTICS_EVENTS.analysisSubmitted, { method });
     try {
       const selected = current === "text" ? null : files[current];
-      const payload = selected && current !== "text" ? { storagePath: await uploadFile(current, selected.file) } : { text };
-      const { analysisId, meta } = await postJson("/api/analyse", payload);
+      const source = selected && current !== "text" ? { storagePath: await uploadFile(current, selected.file) } : { text };
+      // Clé gardée par le navigateur : la reprise ci-dessous et un nouvel appui
+      // sur le bouton renvoient la même, et le serveur rend alors le résultat
+      // déjà produit au lieu d'en payer un second (mission #060).
+      const payload = { ...source, idempotencyKey: pendingKey("analyse") };
+      const { analysisId, meta } = await withNetworkRetry(() => postJson("/api/analyse", payload));
       if (typeof analysisId === "string") {
         const info = meta as AnalysisMeta | undefined;
         track(ANALYTICS_EVENTS.analysisCompleted, {

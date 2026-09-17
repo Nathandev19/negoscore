@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { recoverPendingWhopEvents } from "@/lib/billing/webhook-recovery";
 import { runPurge } from "@/lib/privacy/purge";
 
 export const runtime = "nodejs";
@@ -25,7 +26,18 @@ export async function GET(request: Request) {
     return Response.json({ error: "non autorisé" }, { status: 401 });
   }
   try {
-    const report = await runPurge();
+    // Rattrapage des paiements d'abord (mission #060) : un compte non crédité
+    // attend, la purge non. Branché sur ce cron, pas sur un second.
+    const paiements = await recoverPendingWhopEvents().catch((caught: unknown) => {
+      console.error(
+        JSON.stringify({
+          event: "whop_rattrapage_error",
+          detail: caught instanceof Error ? caught.message.slice(0, 200) : "inconnu",
+        }),
+      );
+      return null;
+    });
+    const report = { ...(await runPurge()), paiements };
     console.log(JSON.stringify({ event: "purge", ...report }));
     return Response.json(report);
   } catch (caught) {

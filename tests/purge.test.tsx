@@ -6,6 +6,9 @@ import { COOKIES } from "@/lib/legal/cookies";
 import { purgeCutoffs } from "@/lib/privacy/purge";
 
 const purge = vi.hoisted(() => ({ run: vi.fn() }));
+// Rattrapage des paiements branché sur le même cron (mission #060).
+const recovery = vi.hoisted(() => ({ run: vi.fn() }));
+vi.mock("@/lib/billing/webhook-recovery", () => ({ recoverPendingWhopEvents: recovery.run }));
 vi.mock("@/lib/privacy/purge", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/privacy/purge")>()),
   runPurge: purge.run,
@@ -20,6 +23,8 @@ function call(authorization?: string) {
 
 beforeEach(() => {
   purge.run.mockReset();
+  recovery.run.mockReset();
+  recovery.run.mockResolvedValue({ repris: 0, traites: 0, echecs: 0 });
   purge.run.mockResolvedValue({ documents: 0, files_removed: 0, source_texts: 0, usage_guard: 0, whop_events: 0, checkout_consents: 0 });
   vi.stubEnv("CRON_SECRET", "secret-de-test");
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -37,6 +42,7 @@ describe("/api/purge", () => {
       expect((await call(header)).status, String(header)).toBe(401);
     }
     expect(purge.run).not.toHaveBeenCalled();
+    expect(recovery.run).not.toHaveBeenCalled();
   });
 
   it("refuse tout appel si CRON_SECRET n'est pas défini", async () => {
@@ -50,7 +56,15 @@ describe("/api/purge", () => {
     purge.run.mockResolvedValue({ documents: 2, files_removed: 2, source_texts: 3, usage_guard: 5, whop_events: 0, checkout_consents: 0 });
     const response = await call("Bearer secret-de-test");
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ documents: 2, files_removed: 2, source_texts: 3, usage_guard: 5, whop_events: 0, checkout_consents: 0 });
+    expect(await response.json()).toEqual({
+      documents: 2,
+      files_removed: 2,
+      source_texts: 3,
+      usage_guard: 5,
+      whop_events: 0,
+      checkout_consents: 0,
+      paiements: { repris: 0, traites: 0, echecs: 0 },
+    });
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('"event":"purge"'));
   });
 });

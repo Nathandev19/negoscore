@@ -4,7 +4,7 @@ import { applyWhopEvent, type WhopEvent } from "@/lib/billing/whop-events";
 import { sendEmail } from "@/lib/email/send";
 import { purchaseConfirmationEmail } from "@/lib/email/templates";
 import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
-import { insertRow, SupabaseRequestError, updateRows } from "@/lib/supabase/server";
+import { insertRow, selectRows, SupabaseRequestError, updateRows } from "@/lib/supabase/server";
 import { readWebhookHeaders, verifyWhopSignature } from "@/lib/whop/webhook";
 
 export const runtime = "nodejs";
@@ -41,18 +41,29 @@ export async function POST(request: Request) {
     await insertRow("whop_events", { event_id: parsed.id, type: parsed.type, payload: JSON.parse(rawBody) });
   } catch (caught) {
     if (caught instanceof SupabaseRequestError && (caught.status === 409 || caught.code === "23505")) {
-      console.log(JSON.stringify({ event: "whop_webhook_duplicate", type: parsed.type }));
-      return ok({ received: true, duplicate: true });
+      // Événement déjà enregistré. Il n'est un doublon que s'il a été TRAITÉ :
+      // sans processed_at, c'est une tentative interrompue, et la reprise de
+      // Whop doit pouvoir la terminer (mission #060).
+      const [row] = await selectRows<{ processed_at: string | null }>(
+        "whop_events",
+        `select=processed_at&event_id=eq.${encodeURIComponent(parsed.id)}&limit=1`,
+      );
+      if (row?.processed_at) {
+        console.log(JSON.stringify({ event: "whop_webhook_duplicate", type: parsed.type }));
+        return ok({ received: true, duplicate: true });
+      }
+      console.warn(JSON.stringify({ event: "whop_webhook_reprise", type: parsed.type }));
+    } else {
+      console.error(
+        JSON.stringify({
+          event: "whop_webhook_error",
+          reason: "enregistrement",
+          detail: caught instanceof Error ? caught.message.slice(0, 200) : "inconnu",
+        }),
+      );
+      // Erreur de stockage : on demande un rejeu.
+      return ok({ error: "enregistrement impossible" }, 500);
     }
-    console.error(
-      JSON.stringify({
-        event: "whop_webhook_error",
-        reason: "enregistrement",
-        detail: caught instanceof Error ? caught.message.slice(0, 200) : "inconnu",
-      }),
-    );
-    // Erreur de stockage : on demande un rejeu.
-    return ok({ error: "enregistrement impossible" }, 500);
   }
 
   try {
@@ -107,8 +118,16 @@ export async function POST(request: Request) {
         detail: caught instanceof Error ? caught.message.slice(0, 200) : "inconnu",
       }),
     );
-    // L'événement est déjà enregistré : on répond 200 pour ne pas faire
-    // rejouer un traitement partiel. La ligne reste sans processed_at.
-    return ok({ received: true, handled: false });
+    // Traitement échoué : on répond 500 pour que Whop REJOUE (mission #060).
+    // Un paiement encaissé doit toujours finir par créditer ; répondre 200
+    // condamnait l'événement, puisque la ligne reste sans processed_at et que
+    // rien ne serait revenu la chercher. Le crédit ne peut pas être accordé
+    // deux fois : il passe par whop_event_credit, qui marque et crédite dans
+    // la même transaction. Politique de reprise Whop : 12 reprises après le
+    // premier envoi (30 s, 2 min, 8 min, 30 min, 1 h, 3 h, 6 h, puis toutes
+    // les 12 h), sur environ 71 heures, pour tout ce qui n'est pas un 2xx en
+    // moins de 5 secondes. Le rattrapage quotidien
+    // (lib/billing/webhook-recovery.ts) prend le relais au-delà.
+    return ok({ received: true, handled: false, retry: true }, 500);
   }
 }

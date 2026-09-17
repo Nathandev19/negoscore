@@ -2,7 +2,7 @@ import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
 import { isProActive } from "@/lib/billing/plan-access";
 import { PACK_ANALYSES } from "@/lib/billing/plans";
 import { planKeyFromId, type PlanKey } from "@/lib/whop/api";
-import { adjustInteger, insertIfAbsent, selectRows, updateRows } from "@/lib/supabase/server";
+import { adjustInteger, insertIfAbsent, isMissingRelation, rpc, selectRows, updateRows } from "@/lib/supabase/server";
 
 // Effets d'un événement Whop sur les crédits. Tout passe par la clé
 // service_role : un utilisateur ne modifie jamais son solde.
@@ -68,6 +68,29 @@ async function addBalance(userId: string, delta: number): Promise<number | null>
   return adjustInteger("credits", `user_id=eq.${userId}`, "balance", delta, (balance) => balance + delta >= 0);
 }
 
+// Crédit d'un achat : accordé une fois et une seule par événement (mission
+// #060). La fonction SQL marque l'événement et ajoute le solde dans la même
+// transaction — un rejeu ne peut donc pas créditer deux fois, et un crédit
+// échoué n'est jamais marqué comme fait. Tant que la migration 019 n'est pas
+// appliquée, on retombe sur l'ajout simple d'avant.
+async function creditOnce(eventId: string, userId: string, amount: number): Promise<void> {
+  try {
+    const credited = await rpc<boolean>("whop_event_credit", {
+      p_event_id: eventId,
+      p_user_id: userId,
+      p_amount: amount,
+    });
+    if (credited === false) {
+      console.log(JSON.stringify({ event: "whop_credit_deja_accorde" }));
+    }
+    return;
+  } catch (caught) {
+    if (!isMissingRelation(caught)) throw caught;
+    console.warn(JSON.stringify({ event: "whop_credit_fonction_absente" }));
+  }
+  await addBalance(userId, amount);
+}
+
 function planOf(data: Record<string, unknown>): PlanKey | null {
   return planKeyFromId(text(record(data.plan).id));
 }
@@ -92,8 +115,9 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   const analyticsId = sanitizeDistinctId(record(source.metadata).ph_distinct_id);
 
   if (type === "payment.succeeded" && plan === "pack") {
-    // Le pack s'ajoute au solde existant.
-    await addBalance(user.id, PACK_ANALYSES);
+    // Le pack s'ajoute au solde existant, UNE SEULE FOIS par événement, même
+    // si Whop rejoue ou si le rattrapage quotidien repasse (mission #060).
+    await creditOnce(event.id, user.id, PACK_ANALYSES);
     // Un abonnement encore actif n'est jamais déclassé par l'achat d'un pack.
     // Un Pro expiré, lui, redevient un compte Pack avec une période remise à zéro.
     if (current.plan === "free") {

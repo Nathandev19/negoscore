@@ -6,9 +6,16 @@ import { useRouter } from "next/navigation";
 import { REVEAL_TOTAL_MS, WaitingScreen } from "@/components/loading-steps";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { clearPendingKey, pendingKey } from "@/lib/analysis/pending-key";
 
 const MIN_TEXT_LENGTH = 20;
-const GENERIC_ERROR = "La relance n'a pas abouti. Vérifie ta connexion et réessaie : ta relance gratuite n'a pas été utilisée.";
+// Message d'échec (mission #060) : il n'affirme plus que la relance gratuite
+// est intacte — elle a pu partir sans que la réponse revienne. Réappuyer
+// renvoie la même clé d'idempotence, donc le résultat déjà produit s'il existe.
+const GENERIC_ERROR =
+  "La relance n'a pas abouti. Vérifie ta connexion, puis appuie de nouveau : si elle était déjà partie, tu retrouves ton résultat sans perdre ta relance gratuite.";
+// Une seule reprise automatique, et seulement sur une coupure réseau.
+const RETRY_DELAY_MS = 1500;
 
 // État sérialisable, calculé par la page serveur (lib/analysis/retry.ts).
 export type RetryPanelState =
@@ -70,15 +77,20 @@ export function RetryPanel({ state, originId }: { state: RetryPanelState; origin
       setRunning(false);
       return;
     }
+    // Même clé à chaque tentative : une relance déjà partie est rendue, elle
+    // n'est jamais payée deux fois (mission #060).
+    const payload = JSON.stringify({ text, retryOf: originId, idempotencyKey: pendingKey("relance") });
+    const send = () =>
+      fetch("/api/analyse", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload });
     try {
-      const response = await fetch("/api/analyse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, retryOf: originId }),
+      const response = await send().catch(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, RETRY_DELAY_MS));
+        return send();
       });
       const body = (await response.json().catch(() => ({}))) as { analysisId?: unknown; error?: unknown };
       if (response.ok && typeof body.analysisId === "string") {
         setRespondedAt(Date.now());
+        clearPendingKey("relance");
         const target = `/analyse/resultat/${body.analysisId}`;
         window.setTimeout(() => router.push(target), REVEAL_TOTAL_MS);
         return;

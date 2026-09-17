@@ -2,6 +2,7 @@ import { composeAnalysis } from "@/lib/analysis/compose";
 import type { SessionUser } from "@/lib/auth/session";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { claimRetry, RETRY_MESSAGES, sameOffer, type RetryClaim } from "@/lib/analysis/retry";
+import { readIdempotencyKey, replayableAnalysis } from "@/lib/analysis/idempotency";
 import { reserveAnalysis, type Denial, type Grant } from "@/lib/billing/entitlement";
 import { NO_FREE_LEFT_MESSAGE, rightHintCookieHeader } from "@/lib/billing/right-hint";
 import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
@@ -17,6 +18,7 @@ import {
   deleteRows,
   downloadDocument,
   insertRow,
+  isMissingColumn,
   removeDocument,
   selectRows,
   SupabaseConfigError,
@@ -108,12 +110,15 @@ export async function POST(request: Request) {
   } catch {
     return fail(400, "Requête illisible. Recharge la page et réessaie.");
   }
-  const { text, storagePath, retryOf } = (typeof body === "object" && body !== null ? body : {}) as {
+  const { text, storagePath, retryOf, idempotencyKey } = (typeof body === "object" && body !== null ? body : {}) as {
     text?: unknown;
     storagePath?: unknown;
     // Relance gratuite d'une analyse incomplète : identifiant de l'analyse d'origine.
     retryOf?: unknown;
+    // Clé tirée par le navigateur avant l'envoi (mission #060).
+    idempotencyKey?: unknown;
   };
+  const key = readIdempotencyKey(idempotencyKey);
 
   const fileMode = typeof storagePath === "string";
   const retryMode = retryOf !== undefined && retryOf !== null;
@@ -134,6 +139,9 @@ export async function POST(request: Request) {
 
   const ip = clientIp(request);
   const hourlyKey = hashIp(ip);
+  // Clé écrite sur le deal à l'enregistrement, sauf si elle appartient déjà à
+  // quelqu'un d'autre (voir le rejeu ci-dessous).
+  let keyToWrite: string | null = key;
   let grant: Grant | null = null;
   let hourlyCounted = false;
   let document: DocumentRow | null = null;
@@ -164,6 +172,22 @@ export async function POST(request: Request) {
           JSON.stringify({ event: "analyse_abandon_error", detail: error instanceof Error ? error.message.slice(0, 200) : "inconnu" }),
         ),
       );
+    }
+  }
+
+  // Rejeu (mission #060) : cette demande a déjà été traitée, on rend le même
+  // résultat. Avant le filet horaire, avant le droit, avant le modèle : une
+  // reprise après coupure réseau ne coûte rien de plus.
+  if (key) {
+    const replay = await replayableAnalysis(key, { user, anonToken: existingToken });
+    if (replay.kind === "analysis") {
+      console.log(JSON.stringify({ event: "analyse_rejouee", signed_in: user !== null }));
+      return json(200, { analysisId: replay.analysisId, meta: { replayed: true } }, cookie);
+    }
+    if (replay.kind === "taken") {
+      // Clé déjà employée ailleurs : on ne dit pas par qui, et on ne la réécrit
+      // pas. Le navigateur en tirera une neuve à la prochaine tentative.
+      keyToWrite = null;
     }
   }
 
@@ -279,18 +303,40 @@ export async function POST(request: Request) {
       return fail(422, `${RETRY_MESSAGES.different_offer} ${rightNotUsed(entitlement.plan)}.`, { reason: "retry_different_offer" });
     }
 
+    // La clé d'idempotence est écrite avec le deal. Deux cas la font sauter
+    // sans rien casser : la migration 019 pas encore appliquée (colonne
+    // absente), et une clé prise entre-temps par une autre demande (index
+    // unique). L'analyse, elle, est enregistrée dans tous les cas.
+    async function withKey<T>(write: (extra: Record<string, unknown>) => Promise<T>): Promise<T> {
+      if (!keyToWrite) return write({});
+      try {
+        return await write({ idempotency_key: keyToWrite });
+      } catch (caught) {
+        const duplicate = caught instanceof SupabaseRequestError && caught.code === "23505";
+        if (!duplicate && !isMissingColumn(caught)) throw caught;
+        console.warn(JSON.stringify({ event: "idempotency_ecriture_ignoree", reason: duplicate ? "cle_prise" : "colonne_absente" }));
+        keyToWrite = null;
+        return write({});
+      }
+    }
+
     let dealId: string;
     if (document) {
       dealId = document.deal.id;
-      await updateRows("deals", `id=eq.${dealId}`, { status: "analysed", ...(user ? { user_id: user.id } : {}) });
+      await withKey((extra) =>
+        updateRows("deals", `id=eq.${dealId}`, { status: "analysed", ...(user ? { user_id: user.id } : {}), ...extra }),
+      );
     } else {
-      const deal = await insertRow<{ id: string }>("deals", {
-        user_id: user?.id ?? null,
-        anon_token: anonToken,
-        source_type: "text",
-        raw_text: rawText,
-        status: "analysed",
-      });
+      const deal = await withKey((extra) =>
+        insertRow<{ id: string }>("deals", {
+          user_id: user?.id ?? null,
+          anon_token: anonToken,
+          source_type: "text",
+          raw_text: rawText,
+          status: "analysed",
+          ...extra,
+        }),
+      );
       dealId = deal.id;
       savedDealId = dealId;
     }
