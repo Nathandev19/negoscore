@@ -5,8 +5,27 @@ type Estimate = Analysis["estimate"];
 // Le score calculé existe toujours ; c'est l'analyse qui peut ne pas en porter.
 type Score = NonNullable<Analysis["score"]>;
 
+// ÉCHELLE FIGÉE LE 17/09/2026 (mission #042), jusqu'à ce que les premiers avis
+// réels « trop basse / juste / trop haute » soient exploitables. Toute
+// modification avant cela rendrait ces avis incomparables entre eux.
+//
 // Score déterministe sur 100.
 // Base 50, puis ajustements additifs, puis borne entre 0 et 100.
+//
+// 18 points sur 30 au plancher de la fourchette. La fourchette dit ce que valent
+// les droits demandés : être payé à sa borne basse, c'est ne pas être floué, pas
+// être bien payé. Sans autre ajustement, le plancher donne 68, encore « Deal
+// correct » ; il faut un prix plus haut dans la fourchette, ou de bonnes
+// conditions (paiement rapide, usage organique), pour passer « Bon deal ». Avec
+// 30 points dès le plancher, le juste minimum serait noté comme une excellente
+// offre et il n'y aurait plus rien à négocier sur le prix.
+//
+// 30 points dès la borne haute, sans distinction au-delà. Le score répond à une
+// question : « dois-je négocier ? ». Au-dessus du haut de la fourchette, la
+// réponse sur le prix est non, complètement : être payé 1,1 fois ou 3 fois le
+// haut ne change rien à ce qu'il reste à faire. Distinguer au-delà donnerait
+// l'impression qu'un meilleur prix reste à obtenir, alors que les seuls leviers
+// restants sont les conditions, que les autres ajustements mesurent déjà.
 //
 // Plafond de fait à 90 (50 + 30 prix + 5 paiement rapide + 5 organique),
 // conservé volontairement. Le score ne lit que ce qui est écrit dans l'offre :
