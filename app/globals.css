@@ -249,17 +249,15 @@
   }
 }
 
-/* État de chargement des pages dynamiques (components/page-loading.tsx) :
-   visible seulement si le rendu serveur dépasse 400 ms. */
-.page-loading {
-  animation: page-loading-appear 1ms linear 400ms both;
+/* Os des squelettes de chargement (components/ui/skeleton.tsx, mission #048) :
+   pulsation lente de l'opacité. Mouvement réduit : la règle globale ci-dessous
+   ramène l'animation à une seule itération instantanée, l'os reste fixe. */
+.skeleton {
+  animation: skeleton-pulse 1600ms ease-in-out infinite;
 }
-@keyframes page-loading-appear {
-  from {
-    visibility: hidden;
-  }
-  to {
-    visibility: visible;
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.55;
   }
 }
 

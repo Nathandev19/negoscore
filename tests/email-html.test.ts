@@ -115,3 +115,16 @@ describe("contenu", () => {
     expect(email.html).not.toContain("/resilier");
   });
 });
+
+describe("mission #048 — aucune mention de TVA dans l'email d'achat", () => {
+  it("ni « 293 B », ni « TVA », ni « TTC », dans le texte brut comme dans le HTML, pour chaque formule", () => {
+    for (const plan of ["pack", "pro"] as const) {
+      for (const amount of [4.99, null]) {
+        const email = purchaseConfirmationEmail({ to: "a@b.fr", plan, amount, currency: amount === null ? null : "eur", date, siteUrl: SITE });
+        for (const version of [email.text, email.html ?? ""]) {
+          expect(version).not.toMatch(/293\s*B|TVA|TTC|\bHT\b/);
+        }
+      }
+    }
+  });
+});

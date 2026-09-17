@@ -1,6 +1,6 @@
-import { PageLoading } from "@/components/page-loading";
+import { DeleteAnalysisView } from "@/components/result/delete-analysis-view";
 
-// Page dynamique : voir components/page-loading.tsx.
+// Squelette de la confirmation de suppression (mission #048).
 export default function Loading() {
-  return <PageLoading />;
+  return <DeleteAnalysisView data={null} />;
 }

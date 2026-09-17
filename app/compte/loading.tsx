@@ -1,6 +1,6 @@
-import { PageLoading } from "@/components/page-loading";
+import { AccountView } from "@/components/account/account-view";
 
-// Page dynamique : voir components/page-loading.tsx.
+// Squelette de Mon compte (mission #048). Couvre aussi /compte/supprimer.
 export default function Loading() {
-  return <PageLoading />;
+  return <AccountView data={null} />;
 }

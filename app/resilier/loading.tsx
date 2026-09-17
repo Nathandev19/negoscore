@@ -1,6 +1,6 @@
-import { PageLoading } from "@/components/page-loading";
+import { CancelView } from "@/components/account/cancel-view";
 
-// Page dynamique : voir components/page-loading.tsx.
+// Squelette de Résilier votre contrat (mission #048).
 export default function Loading() {
-  return <PageLoading />;
+  return <CancelView data={null} />;
 }

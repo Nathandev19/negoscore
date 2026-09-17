@@ -1,6 +1,6 @@
-import { PageLoading } from "@/components/page-loading";
+import { ResultSkeleton } from "@/components/result/result-skeleton";
 
-// Page dynamique : voir components/page-loading.tsx.
+// Squelette de la page de résultat : voir components/result/result-skeleton.tsx.
 export default function Loading() {
-  return <PageLoading tone="marque" />;
+  return <ResultSkeleton />;
 }

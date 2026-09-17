@@ -37,8 +37,12 @@ function amountValue(plan: PlanKey, amount: number | null, currency: string | nu
   return currency && currency.toLowerCase() !== "eur" ? `${value} ${currency.toUpperCase()}` : `${value} €`;
 }
 
-// ADDED (#044) : prix TTC, sans TVA applicable (mention de l'éditeur).
-const TAX_LINE = `Prix TTC. ${SELLER.vatNotice}`;
+// Aucune mention de TVA dans cet email (mission #048) : Whop, vendeur de
+// référence, affiche sa propre ligne de taxe au paiement. « Prix TTC. TVA non
+// applicable, article 293 B du CGI » contredisait ce que l'acheteur venait de
+// voir. Rien n'est affirmé à la place tant que le régime appliqué par Whop
+// n'est pas confirmé par écrit. Les CGV et mentions légales gardent la mention
+// 293 B, qui décrit le statut de l'entreprise.
 
 export function purchaseConfirmationEmail(options: {
   to: string;
@@ -66,7 +70,6 @@ export function purchaseConfirmationEmail(options: {
     `Formule : ${PLAN_NAME[plan]}`,
     `Montant : ${value}`,
     `Date : ${DATE.format(date)}`,
-    TAX_LINE,
     "",
     `Ce que tu as obtenu : ${PLAN_OBTAINED[plan]}`,
     "",
@@ -93,7 +96,6 @@ export function purchaseConfirmationEmail(options: {
         { label: "Ce que tu as obtenu", value: PLAN_OBTAINED[plan] },
       ],
     },
-    { kind: "small", text: TAX_LINE },
     { kind: "paragraph", text: next },
     { kind: "button", label: "Analyser un deal", url: analyseUrl },
     ...(plan === "pro"

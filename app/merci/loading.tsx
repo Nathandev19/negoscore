@@ -1,6 +1,6 @@
-import { PageLoading } from "@/components/page-loading";
+import { ThanksView } from "@/components/account/thanks-view";
 
-// Page dynamique : voir components/page-loading.tsx.
+// Squelette de la page Merci (mission #048).
 export default function Loading() {
-  return <PageLoading />;
+  return <ThanksView />;
 }

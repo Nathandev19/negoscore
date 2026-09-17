@@ -1,6 +1,6 @@
-import { PageLoading } from "@/components/page-loading";
+import { HistoryView } from "@/components/account/history-view";
 
-// Page dynamique : voir components/page-loading.tsx.
+// Squelette de Tes analyses (mission #048).
 export default function Loading() {
-  return <PageLoading />;
+  return <HistoryView rows={null} />;
 }
