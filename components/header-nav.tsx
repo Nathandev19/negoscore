@@ -21,16 +21,44 @@ export function navItems(signedIn: boolean): { main: NavItem[]; account: NavItem
   };
 }
 
-// Liens de navigation en encre douce, soulignés au survol et sur la page courante.
-// « Analyser un deal » est un lien souligné, pas un bouton : l'action primaire
+export type HeaderTone = "creme" | "marque";
+
+// Deux tons : crème partout, bleu marque (avec grain) en tête des pages de
+// résultat, où l'en-tête se prolonge dans le bandeau de verdict.
+// « Analyser un deal » est un lien souligné, pas un bouton : l'action principale
 // de chaque écran est dans la page (formulaire, déblocage), jamais dans l'en-tête.
-const LINK =
-  "text-encre-douce decoration-1 underline-offset-4 transition-colors duration-150 hover:text-encre hover:underline aria-[current=page]:text-encre aria-[current=page]:underline";
-const CTA = "font-semibold text-encre underline decoration-1 underline-offset-4 hover:decoration-2";
+const TONE: Record<HeaderTone, { header: string; link: string; cta: string; toggle: string; panel: string; row: string }> = {
+  creme: {
+    header: "border-b border-filet bg-creme",
+    link: "text-encre-douce decoration-2 underline-offset-4 transition-colors duration-150 hover:text-encre hover:underline aria-[current=page]:text-encre aria-[current=page]:underline",
+    cta: "font-semibold text-marque underline decoration-2 underline-offset-4 hover:text-marque-deep",
+    toggle: "border-encre text-encre",
+    panel: "border-b-2 border-encre bg-creme",
+    row: "border-filet",
+  },
+  marque: {
+    header: "on-marque grain bg-marque",
+    link: "text-creme decoration-2 underline-offset-4 hover:underline aria-[current=page]:underline",
+    cta: "font-semibold text-creme underline decoration-2 underline-offset-4",
+    toggle: "border-creme text-creme",
+    panel: "on-marque grain bg-marque",
+    row: "border-creme/30",
+  },
+};
 
 // En-tête sans lecture de session : la page le rend statique. Hauteur fixe de
 // 56 px quel que soit l'état ; le menu mobile s'ouvre par-dessus le contenu.
-export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pathname?: string | null }) {
+export function HeaderNav({
+  signedIn,
+  pathname = null,
+  tone = "creme",
+}: {
+  signedIn: boolean;
+  pathname?: string | null;
+  tone?: HeaderTone;
+}) {
+  const LINK = TONE[tone].link;
+  const CTA = TONE[tone].cta;
   const { main, account, cta } = navItems(signedIn);
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -79,10 +107,10 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
   }
 
   return (
-    <header className="sticky top-0 z-40 h-14 border-b border-filet bg-papier">
+    <header className={cn("sticky top-0 z-40 h-14", TONE[tone].header)}>
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" aria-label="Accueil">
-          <Logo />
+          <Logo tone={tone === "marque" ? "on-marque" : "on-creme"} />
         </Link>
 
         <nav aria-label="Navigation principale" className="hidden h-8 items-center gap-6 text-small lg:flex">
@@ -109,7 +137,7 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
             aria-expanded={open}
             aria-controls={panelId}
             onClick={() => setOpen((value) => !value)}
-            className="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-control border border-attenue px-3 text-sm font-semibold text-encre"
+            className={cn("inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-control border-2 px-3 text-sm font-semibold", TONE[tone].toggle)}
           >
             {open ? "Fermer" : "Menu"}
             <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -124,7 +152,7 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
             ref={panelRef}
             id={panelId}
             hidden={!open}
-            className="absolute inset-x-0 top-14 border-b border-encre bg-papier px-4 pt-2 pb-4 sm:px-6"
+            className={cn("absolute inset-x-0 top-14 px-4 pt-2 pb-4 sm:px-6", TONE[tone].panel)}
           >
             <nav aria-label="Navigation mobile" className="mx-auto flex max-w-6xl flex-col">
               {[...main, account].map((item) => (
@@ -133,7 +161,7 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
                   href={item.href}
                   aria-current={current(item.href)}
                   onClick={() => setOpen(false)}
-                  className={cn(LINK, "flex min-h-11 items-center border-b border-filet text-base font-medium")}
+                  className={cn(LINK, "flex min-h-11 items-center border-b text-base font-medium", TONE[tone].row)}
                 >
                   {item.label}
                 </Link>

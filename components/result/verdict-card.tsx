@@ -1,16 +1,17 @@
 import type { ReactNode } from "react";
+import { Section } from "@/components/result/section";
 import { POSITION_LABEL, rangePosition } from "@/lib/analysis/anchoring";
 import { CONFIDENCE_LABEL, formatEur, formatEurRange } from "@/lib/display";
 import type { Analysis } from "@/lib/schema";
 
-// Bloc de verdict quand l'offre n'est pas évaluable : pas de score, pas de
-// libellé de qualité. Voir lib/analysis/evaluability.ts.
+// Détail du verdict quand l'offre n'a pas de score. Le libellé (« Offre à
+// chiffrer »…) est la pastille du bandeau bleu ; ici, l'explication et ce qui
+// manque. Voir lib/analysis/evaluability.ts.
 
 export function UnpricedCard({ confidence }: { confidence: Analysis["confidence"] }) {
   return (
-    <section aria-label="Offre à chiffrer" className="flex flex-col gap-3 border-y border-encre py-6">
-      <p className="verdict text-verdict text-encre">Offre à chiffrer</p>
-      <p className="measure text-encre-douce">
+    <section aria-label="Offre à chiffrer" className="flex flex-col gap-2">
+      <p className="measure text-lg text-encre">
         Cette offre ne précise pas de rémunération. Voici ce qu&apos;elle vaut d&apos;après nos références, à confirmer
         avec la marque.
       </p>
@@ -32,19 +33,19 @@ function MissingInfoCard({
   children?: ReactNode;
 }) {
   return (
-    <section aria-label={title} className="flex flex-col gap-3 border-y border-encre py-6">
-      <p className="verdict text-verdict text-encre">{title}</p>
-      <p className="measure text-encre-douce">{text}</p>
+    <section aria-label={title} className="flex flex-col gap-4">
+      <p className="measure text-lg text-encre">{text}</p>
       {children}
       {missing.length > 0 ? (
-        <div className="mt-3 flex flex-col gap-1">
-          <p className="font-semibold text-encre">Ce qui manque :</p>
-          <ul className="list-disc pl-5 text-encre-douce">
+        <Section title="Ce qui manque">
+          <ul className="flex flex-col divide-y divide-filet border-y border-filet">
             {missing.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item} className="py-2.5 font-semibold text-encre">
+                {item}
+              </li>
             ))}
           </ul>
-        </div>
+        </Section>
       ) : null}
     </section>
   );
@@ -114,7 +115,7 @@ export function TermsUnknownCard({
             <dd className="figures text-right text-encre">{range}</dd>
           </div>
         ) : null}
-        {comparison ? <p className="py-2 text-encre-douce">{comparison}</p> : null}
+        {comparison ? <p className="py-2 font-semibold text-encre">{comparison}</p> : null}
       </dl>
     </MissingInfoCard>
   );

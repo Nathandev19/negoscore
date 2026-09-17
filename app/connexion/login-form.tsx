@@ -35,7 +35,7 @@ export function LoginForm({ next }: { next: string }) {
         className="h-12"
       />
       {state.status === "error" ? (
-        <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
+        <p role="alert" className="alert-bad py-1 text-sm">
           {state.message}
         </p>
       ) : null}
@@ -50,7 +50,7 @@ export function LoginForm({ next }: { next: string }) {
 // lien est parti, où, pour combien de temps, et quoi faire s'il n'arrive pas.
 export function LinkSent({ email, next }: { email: string; next: string }) {
   return (
-    <div role="status" className="flex flex-col gap-3 border-y border-encre py-5">
+    <div role="status" className="flex flex-col gap-3 rounded-control border-2 border-encre p-5">
       <p className="font-display text-h2 font-bold text-encre">Regarde ta boîte mail</p>
       <p className="text-base">
         Lien envoyé à <span className="font-semibold break-all">{email}</span>. Ouvre-le pour te connecter : il est valable

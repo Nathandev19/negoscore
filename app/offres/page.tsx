@@ -48,7 +48,7 @@ export default async function PlansPage({ searchParams }: PageProps<"/offres">) 
           <p>Commence gratuitement. Passe à une offre quand tu reçois plus de deals.</p>
         </div>
         {error ? (
-          <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
+          <p role="alert" className="alert-bad py-1 text-sm">
             {error}
           </p>
         ) : null}
@@ -95,7 +95,7 @@ export default async function PlansPage({ searchParams }: PageProps<"/offres">) 
               </div>
               {isCurrentPro ? (
                 <div className="flex flex-col gap-1">
-                  <p className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
+                  <p className="alert-bad py-1 text-sm">
                     {proCancelled
                       ? proEndsAtLabel
                         ? `Ton offre en cours. Elle prend fin le ${proEndsAtLabel}.`

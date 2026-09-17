@@ -47,7 +47,7 @@ export default async function DeleteAccountPage({ searchParams }: PageProps<"/co
         <p className="text-lg font-semibold text-encre">La suppression est définitive. Elle ne peut pas être annulée.</p>
 
         {error ? (
-          <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
+          <p role="alert" className="alert-bad py-1 text-sm">
             {error}
           </p>
         ) : null}
@@ -74,7 +74,7 @@ export default async function DeleteAccountPage({ searchParams }: PageProps<"/co
         </section>
 
         {balance > 0 || proEndsAt ? (
-          <p className="border-y border-encre py-3 text-sm font-semibold text-encre">
+          <p className="alert-bad py-1 text-sm">
             {balance > 0
               ? `Il te reste ${balance} crédit${balance > 1 ? "s" : ""} d'analyse non consommé${balance > 1 ? "s" : ""}. ${balance > 1 ? "Ils seront perdus et ne sont" : "Il sera perdu et n'est"} pas remboursé${balance > 1 ? "s" : ""}.`
               : null}
@@ -100,7 +100,7 @@ export default async function DeleteAccountPage({ searchParams }: PageProps<"/co
             required
             className="h-11"
           />
-          <Button type="submit" size="lg" className="h-12 w-full text-base">
+          <Button type="submit" variant="destructive" size="lg" className="h-12 w-full text-base">
             Supprimer définitivement mon compte
           </Button>
         </form>

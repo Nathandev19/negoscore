@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileDropZone, type SelectedFile } from "@/components/file-drop-zone";
-import { LoadingSteps } from "@/components/loading-steps";
+import { WaitingScreen } from "@/components/loading-steps";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,8 +14,6 @@ import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { validateFile, type FileKind } from "@/lib/upload";
 
 const MIN_TEXT_LENGTH = 20;
-const LOADING_DURATION_MS = 2500;
-const LOADING_STEPS = ["Lecture du message", "Extraction du deal", "Analyse et chiffrage"] as const;
 const GENERIC_ERROR = "L'analyse n'a pas abouti. Vérifie ta connexion et réessaie.";
 // Réponse du serveur sans message exploitable (coupure, délai de l'hébergeur) :
 // ce n'est pas la connexion de l'utilisateur qui est en cause.
@@ -89,9 +87,10 @@ export function DealInput() {
     pdf: null,
   });
   const [loading, setLoading] = useState(false);
+  // Réponse reçue : toutes les étapes sont cochées pendant la redirection.
+  const [finished, setFinished] = useState(false);
   const [notice, setNotice] = useState<{ message: string; paywall: boolean; signIn: boolean } | null>(null);
   const outcomeRef = useRef<Outcome | null>(null);
-  const stepsDoneRef = useRef(false);
   const startedRef = useRef<Record<Mode, boolean>>({ text: false, photo: false, pdf: false });
 
   const textLength = text.trim().length;
@@ -125,28 +124,24 @@ export function DealInput() {
     setFiles((prev) => ({ ...prev, [kind]: null }));
   }
 
-  // On affiche le résultat quand l'analyse est revenue ET que les étapes
-  // de chargement ont défilé, dans n'importe quel ordre.
-  const finish = useCallback(() => {
+  // L'écran d'attente reste affiché jusqu'à la réponse réelle, sans durée
+  // minimale : un résultat prêt s'affiche tout de suite.
+  function finish() {
     const outcome = outcomeRef.current;
-    if (!outcome || !stepsDoneRef.current) return;
+    if (!outcome) return;
     if (outcome.ok) {
+      setFinished(true);
       router.push(`/analyse/resultat/${outcome.analysisId}`);
     } else {
       setNotice({ message: outcome.message, paywall: outcome.paywall, signIn: outcome.signIn });
       setLoading(false);
     }
-  }, [router]);
-
-  const onStepsDone = useCallback(() => {
-    stepsDoneRef.current = true;
-    finish();
-  }, [finish]);
+  }
 
   async function analyse(current: Mode) {
     outcomeRef.current = null;
-    stepsDoneRef.current = false;
     setNotice(null);
+    setFinished(false);
     setLoading(true);
     const method = METHOD[current];
     track(ANALYTICS_EVENTS.analysisSubmitted, { method });
@@ -187,14 +182,7 @@ export function DealInput() {
   }
 
   if (loading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-papier px-6">
-        <div className="flex w-full max-w-sm flex-col gap-8">
-          <p className="font-display text-h2 font-bold tracking-tight text-encre">On analyse ton deal</p>
-          <LoadingSteps steps={LOADING_STEPS} durationMs={LOADING_DURATION_MS} onDone={onStepsDone} />
-        </div>
-      </div>
-    );
+    return <WaitingScreen finished={finished} />;
   }
 
   return (
@@ -207,7 +195,7 @@ export function DealInput() {
       }}
     >
       {PAUSED ? (
-        <p role="status" className="border-y border-encre py-3 text-small font-semibold text-encre">
+        <p role="status" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
           {ANALYSIS_PAUSED_MESSAGE}
         </p>
       ) : null}
@@ -256,7 +244,7 @@ export function DealInput() {
       </Tabs>
 
       {notice ? (
-        <div role="alert" className="flex flex-col gap-2 border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
+        <div role="alert" className="flex flex-col gap-2 alert-bad py-1 text-sm">
           <p>{notice.message}</p>
           {notice.signIn ? (
             <p>

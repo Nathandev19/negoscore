@@ -1,10 +1,9 @@
-import { gaugeArcPath, MARK, MARK_VIEWBOX, needleEnd } from "@/lib/brand-mark";
-import { ICON_PALETTE } from "@/lib/design/icon-palette";
+import { EURO_BAR, euroArcPath, MARK, MARK_VIEWBOX } from "@/lib/brand-mark";
+import { STATIC_PALETTE } from "@/lib/design/static-palette";
 
-// Signe rendu pour les icônes PNG : fond papier, jauge encre à 72.
+// Signe rendu pour les icônes PNG : € crème sur bleu marque.
 export function MarkImage({ size }: { size: number }) {
-  const [nx, ny] = needleEnd(72);
-  const inner = Math.round(size * 0.82);
+  const inner = Math.round(size * 0.8);
   return (
     <div
       style={{
@@ -13,21 +12,20 @@ export function MarkImage({ size }: { size: number }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: ICON_PALETTE.papier,
+        background: STATIC_PALETTE.marque,
       }}
     >
       <svg width={inner} height={inner} viewBox={`0 0 ${MARK_VIEWBOX} ${MARK_VIEWBOX}`} fill="none">
-        <path d={gaugeArcPath()} stroke={ICON_PALETTE.encre} strokeWidth={MARK.stroke} strokeLinecap="round" />
+        <path d={euroArcPath()} stroke={STATIC_PALETTE.creme} strokeWidth={MARK.stroke} strokeLinecap="round" />
         <line
-          x1={MARK.center}
-          y1={MARK.center}
-          x2={nx}
-          y2={ny}
-          stroke={ICON_PALETTE.encre}
-          strokeWidth={MARK.needleStroke}
+          x1={EURO_BAR.x1}
+          y1={EURO_BAR.y}
+          x2={EURO_BAR.x2}
+          y2={EURO_BAR.y}
+          stroke={STATIC_PALETTE.creme}
+          strokeWidth={MARK.stroke}
           strokeLinecap="round"
         />
-        <circle cx={MARK.center} cy={MARK.center} r={MARK.hub} fill={ICON_PALETTE.encre} />
       </svg>
     </div>
   );

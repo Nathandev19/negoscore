@@ -31,7 +31,7 @@ export default async function DeleteAnalysisPage({ params, searchParams }: PageP
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         <h1 className="text-h1 font-extrabold">Supprimer cette analyse</h1>
         {query.erreur === "indisponible" ? (
-          <p role="alert" className="border-l border-encre py-1 pl-3 text-small font-semibold text-encre">
+          <p role="alert" className="alert-bad py-1 text-small">
             La suppression n&apos;a pas pu aboutir. Réessaie dans quelques minutes.
           </p>
         ) : null}
@@ -41,7 +41,7 @@ export default async function DeleteAnalysisPage({ params, searchParams }: PageP
         </p>
         <form action={`/api/analyses/${id}/supprimer`} method="post" className="flex flex-col gap-3">
           <input type="hidden" name="confirmation" value="oui" />
-          <Button type="submit" size="lg" className="h-12 w-full text-base">
+          <Button type="submit" variant="destructive" size="lg" className="h-12 w-full text-base">
             Supprimer définitivement
           </Button>
         </form>

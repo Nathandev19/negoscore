@@ -117,22 +117,25 @@ describe("page d'accueil", () => {
   });
 });
 
-describe("page d'accueil : langage visuel (#030)", () => {
-  it("une seule action primaire par section, une seule offre mise en avant, aucune carte arrondie", async () => {
+describe("page d'accueil : identité (#031)", () => {
+  it("une seule action principale bleue par section, une seule offre mise en avant, le bleu seulement sur l'exemple", async () => {
     const { default: HomePage } = await import("@/app/page");
     const html = renderToStaticMarkup(<HomePage />);
     const sections = html.split("<section").slice(1);
     for (const section of sections) {
-      expect((section.match(/bg-encre text-papier/g) ?? []).length, section.slice(0, 80)).toBeLessThanOrEqual(1);
+      expect((section.match(/border-marque bg-marque text-creme/g) ?? []).length, section.slice(0, 80)).toBeLessThanOrEqual(1);
     }
     expect(html.match(/border-encre py-8/g)).toHaveLength(1);
-    expect(html).not.toMatch(/rounded-(?!control)|shadow|bg-surface|brand/);
+    expect(html).not.toMatch(/shadow|gradient|papier|Instrument|serif/);
     // Comment ça marche : liste typographique, pas de pastille ni de cadre.
     const method = sections.find((section) => section.includes('id="methode"')) ?? "";
     expect(method).toContain("<ol");
-    expect(method).not.toMatch(/rounded|bg-papier-eleve|<svg/);
-    // L'exemple est la seule zone sur papier élevé.
-    expect(html.match(/bg-papier-eleve/g)).toHaveLength(1);
+    expect(method).not.toMatch(/rounded|bg-marque|<svg/);
+    // Surface bleue avec grain : uniquement l'exemple de résultat.
+    expect(html.match(/grain bg-marque|grain flex flex-col overflow-hidden rounded-control bg-marque/g)).toHaveLength(1);
+    // L'exemple montre la phrase de verdict du moteur, sans animation.
+    expect(html).toContain("proposés. Ces droits en valent 510 à 1");
+    expect(html).toContain("animation:none");
   });
 });
 

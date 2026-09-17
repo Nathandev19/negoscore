@@ -1,20 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Instrument_Sans, Instrument_Serif } from "next/font/google";
+import { Bricolage_Grotesque, Familjen_Grotesk } from "next/font/google";
 import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
 import { BRAND } from "@/lib/brand";
-import { ICON_PALETTE } from "@/lib/design/icon-palette";
+import { STATIC_PALETTE } from "@/lib/design/static-palette";
 import "./globals.css";
 
 // Polices auto-hébergées par next/font, avec police de repli ajustée en taille
 // (adjustFontFallback) : pas de décalage de mise en page à leur arrivée.
-const instrumentSans = Instrument_Sans({ subsets: ["latin"], display: "swap", variable: "--font-instrument-sans" });
-const bricolage = Bricolage_Grotesque({ subsets: ["latin"], display: "swap", variable: "--font-bricolage" });
-// Réservée aux phrases de verdict et aux citations en exergue.
-const instrumentSerif = Instrument_Serif({
+const familjen = Familjen_Grotesk({ subsets: ["latin"], display: "swap", variable: "--font-familjen" });
+// Police variable : on charge aussi les axes de taille optique et de largeur,
+// pour régler la largeur au maximum de l'axe (font-stretch: 100%).
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: "400",
   display: "swap",
-  variable: "--font-instrument-serif",
+  axes: ["opsz", "wdth"],
+  variable: "--font-bricolage",
 });
 
 export const metadata: Metadata = {
@@ -28,16 +28,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: ICON_PALETTE.papier,
+  themeColor: STATIC_PALETTE.marque,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
-      className={`${instrumentSans.variable} ${bricolage.variable} ${instrumentSerif.variable} h-full antialiased`}
+      className={`${familjen.variable} ${bricolage.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-papier">
+      <body className="flex min-h-full flex-col bg-creme">
         <AnalyticsProvider />
         {children}
       </body>

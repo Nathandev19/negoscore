@@ -12,14 +12,18 @@ export const metadata: Metadata = {
 export default function DemoResultPage() {
   return (
     <>
-      <SiteHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-12 px-4 pt-6 pb-16 sm:px-6 md:pt-12 md:pb-24">
-        <p role="note" className="border-y border-encre py-3 text-small font-medium text-encre">
-          Exemple figé, pas une vraie analyse : l&apos;offre est inventée et les montants ne sont pas recalculés. Pour
-          chiffrer ton offre, colle-la sur la page Analyser un deal.
-        </p>
-        <AnalysisResult analysis={lockAnalysis(sampleAnalysis)} unlockHref="/connexion?next=%2Fanalyse" example />
-      </main>
+      <SiteHeader tone="marque" />
+      <AnalysisResult
+        analysis={lockAnalysis(sampleAnalysis)}
+        unlockHref="/connexion?next=%2Fanalyse"
+        example
+        before={
+          <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
+            Exemple figé, pas une vraie analyse : l&apos;offre est inventée et les montants ne sont pas recalculés. Pour
+            chiffrer ton offre, colle-la sur la page Analyser un deal.
+          </p>
+        }
+      />
       <SiteFooter />
     </>
   );

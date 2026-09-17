@@ -15,11 +15,11 @@ export function DealRecap({ deal }: { deal: Analysis["deal"] }) {
   if (rows.length === 0) return null;
   return (
     <Section title="Le deal proposé">
-      <dl className="flex flex-col divide-y divide-filet border-b border-filet">
+      <dl className="flex flex-col divide-y divide-filet border-y border-filet">
         {rows.map((row) => (
           <div key={row.label} className="flex justify-between gap-4 py-2.5">
             <dt className="text-small text-attenue">{row.label}</dt>
-            <dd className="text-right text-small font-medium text-encre first-letter:uppercase">{row.value}</dd>
+            <dd className="text-right text-small font-semibold text-encre first-letter:uppercase">{row.value}</dd>
           </div>
         ))}
       </dl>
@@ -51,13 +51,13 @@ export function NegotiateList({ items }: { items: Analysis["negotiate"] }) {
         {sortByPriority(items).map((item, index) => {
           const impact = formatEurRange(item.eur_impact_low, item.eur_impact_high);
           return (
-            <li key={item.label} className="grid grid-cols-[2rem_1fr] gap-x-3 py-3 first:pt-0">
-              <span aria-hidden className="figures text-2xl leading-none text-attenue">
+            <li key={item.label} className="grid grid-cols-[2.25rem_1fr] gap-x-3 py-3 first:pt-0">
+              <span aria-hidden className="figures text-3xl leading-none text-attenue">
                 {index + 1}
               </span>
               <div className="flex min-w-0 flex-col gap-1">
                 <p className="font-semibold text-encre">{item.label}</p>
-                {impact ? <p className="figures text-base text-encre">+ {impact}</p> : null}
+                {impact ? <p className="figures text-lg text-encre">+ {impact}</p> : null}
                 <p className="text-small">{item.why}</p>
               </div>
             </li>
@@ -75,11 +75,11 @@ export function RedFlags({ items }: { items: Analysis["red_flags"] }) {
       <ul className="flex flex-col divide-y divide-filet">
         {items.map((item) => (
           <li key={item.label} className="flex flex-col gap-1.5 py-3 first:pt-0">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="font-display text-h3 font-bold text-encre">{item.label}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="headline text-h3 text-encre">{item.label}</p>
               <span
                 className={cn(
-                  "inline-flex w-fit shrink-0 border px-2 py-0.5 text-xs font-semibold whitespace-nowrap",
+                  "inline-flex w-fit shrink-0 rounded-pill px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-encre",
                   SEVERITY_BADGE[item.severity],
                 )}
               >
@@ -126,7 +126,7 @@ export function Estimate({ estimate, example = false }: { estimate: Analysis["es
         {total ? (
           <div className="flex flex-col gap-1">
             <p className="text-small text-attenue">Fourchette estimée</p>
-            <p className="figures text-4xl leading-tight tracking-tight text-encre sm:text-5xl">{total}</p>
+            <p className="figures text-5xl leading-none text-encre sm:text-6xl">{total}</p>
           </div>
         ) : null}
 
@@ -134,7 +134,7 @@ export function Estimate({ estimate, example = false }: { estimate: Analysis["es
           {base ? (
             <div className="flex justify-between gap-4 py-2">
               <dt className="text-attenue">Création (base)</dt>
-              <dd className="text-right font-medium text-encre tabular-nums">{base}</dd>
+              <dd className="text-right font-semibold text-encre tabular-nums">{base}</dd>
             </div>
           ) : null}
           {estimate.lines.map((line) => (
@@ -143,7 +143,7 @@ export function Estimate({ estimate, example = false }: { estimate: Analysis["es
                 {line.label}{" "}
                 ({line.type === "percent" ? `+${line.low} à ${line.high} %` : `+${formatEur(line.low)} à ${formatEur(line.high)}`})
               </dt>
-              <dd className="text-right font-medium whitespace-nowrap text-encre tabular-nums">
+              <dd className="text-right font-semibold whitespace-nowrap text-encre tabular-nums">
                 + {formatEurRange(line.eur_low, line.eur_high)}
               </dd>
             </div>

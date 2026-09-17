@@ -8,7 +8,7 @@ function Placeholder({ lines }: { lines: number }) {
   return (
     <div className="flex flex-col gap-3 border-y border-filet py-4" aria-hidden>
       {Array.from({ length: lines }, (_, i) => (
-        <div key={i} className="h-3 bg-filet" style={{ width: `${90 - i * 12}%` }} />
+        <div key={i} className="h-3 rounded-pill bg-filet" style={{ width: `${90 - i * 12}%` }} />
       ))}
       <p className="text-small font-semibold text-encre">Verrouillé</p>
     </div>

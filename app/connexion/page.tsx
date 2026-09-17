@@ -35,7 +35,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/connexion"
           </p>
         </div>
         {linkError ? (
-          <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
+          <p role="alert" className="alert-bad py-1 text-sm">
             Ce lien a expiré ou a déjà servi. Demande un nouveau lien.
           </p>
         ) : null}

@@ -1,22 +1,20 @@
 import { BRAND } from "@/lib/brand";
-import { gaugeArcPath, MARK, MARK_VIEWBOX, needleEnd } from "@/lib/brand-mark";
+import { EURO_BAR, euroArcPath, MARK, MARK_VIEWBOX } from "@/lib/brand-mark";
 import { cn } from "@/lib/utils";
 
 type LogoProps = {
-  // Valeur pointée par l'index, de 0 à 100. 72 pour la version statique.
-  value?: number;
   // Hauteur du signe en pixels.
   size?: number;
-  // full : signe + nom en encre. mark : signe seul. mono : signe + nom en couleur du texte.
-  variant?: "full" | "mark" | "mono";
+  // full : signe + nom. mark : signe seul.
+  variant?: "full" | "mark";
+  // Couleur : bleu sur crème, crème sur bleu.
+  tone?: "on-creme" | "on-marque";
   className?: string;
 };
 
-// Le signe : une jauge, en encre comme tout ce qui n'est pas un score.
-// Le nom est du vrai texte, pas un tracé.
-export function Logo({ value = 72, size = 28, variant = "full", className }: LogoProps) {
-  const [nx, ny] = needleEnd(value);
-  const color = "currentColor";
+// Le signe : un € dessiné comme une jauge. Le nom est du vrai texte, pas un tracé.
+export function Logo({ size = 28, variant = "full", tone = "on-creme", className }: LogoProps) {
+  const toneClass = tone === "on-marque" ? "text-creme" : "text-marque";
   const mark = (
     <svg
       width={size}
@@ -28,24 +26,30 @@ export function Logo({ value = 72, size = 28, variant = "full", className }: Log
       aria-label={variant === "mark" ? BRAND.name : undefined}
       className="shrink-0"
     >
-      <path d={gaugeArcPath()} stroke={color} strokeWidth={MARK.stroke} strokeLinecap="round" />
+      <path d={euroArcPath()} stroke="currentColor" strokeWidth={MARK.stroke} strokeLinecap="round" />
       <line
-        x1={MARK.center}
-        y1={MARK.center}
-        x2={nx}
-        y2={ny}
-        stroke={color}
-        strokeWidth={MARK.needleStroke}
+        x1={EURO_BAR.x1}
+        y1={EURO_BAR.y}
+        x2={EURO_BAR.x2}
+        y2={EURO_BAR.y}
+        stroke="currentColor"
+        strokeWidth={MARK.stroke}
         strokeLinecap="round"
       />
-      <circle cx={MARK.center} cy={MARK.center} r={MARK.hub} fill={color} />
     </svg>
   );
-  if (variant === "mark") return <span className={cn("inline-flex text-encre", className)}>{mark}</span>;
+  if (variant === "mark") return <span className={cn("inline-flex", toneClass, className)}>{mark}</span>;
   return (
-    <span className={cn("inline-flex items-center gap-2", variant === "mono" ? "text-current" : "text-encre", className)}>
+    <span className={cn("inline-flex items-center gap-2", toneClass, className)}>
       {mark}
-      <span className="font-display text-lg leading-none font-bold tracking-tight">{BRAND.name}</span>
+      <span
+        className={cn(
+          "headline text-xl leading-none",
+          tone === "on-marque" ? "text-creme" : "text-encre",
+        )}
+      >
+        {BRAND.name}
+      </span>
     </span>
   );
 }

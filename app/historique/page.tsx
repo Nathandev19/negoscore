@@ -65,9 +65,12 @@ export default async function HistoryPage() {
                     </span>
                   </span>
                   {row.score !== null ? (
-                    <span className={cn("figures text-2xl", BAND_STYLE[bandFor(row.score)].text)}>
-                      {row.score}
-                      <span className="font-sans text-sm font-medium text-attenue">/100</span>
+                    <span className="flex items-center gap-2">
+                      <span aria-hidden className={cn("size-3 shrink-0 rounded-pill", BAND_STYLE[bandFor(row.score)].onCreme)} />
+                      <span className="figures text-2xl text-encre">
+                        {row.score}
+                        <span className="font-sans text-sm font-medium text-attenue">/100</span>
+                      </span>
                     </span>
                   ) : (
                     <span className="text-sm font-semibold text-encre">{NO_SCORE_LABEL[row.evaluability ?? ""] ?? "—"}</span>

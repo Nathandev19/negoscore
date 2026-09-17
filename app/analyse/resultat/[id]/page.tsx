@@ -4,11 +4,15 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { TrackView } from "@/components/analytics/track-view";
 import { AnalysisResult } from "@/components/result/analysis-result";
+import { EstimateFeedback } from "@/components/result/estimate-feedback";
+import { ShareCardLink } from "@/components/result/share-card-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { readFeedback } from "@/lib/analysis/feedback";
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { getViewer } from "@/lib/auth/viewer";
+import { shareCardAvailable } from "@/lib/share-card/element";
 import { ANON_COOKIE } from "@/lib/security/request";
 
 export const metadata: Metadata = {
@@ -22,16 +26,23 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   const user = await getViewer();
   const result = await loadResultForViewer(id, { user, anonToken });
   if (!result) notFound();
+  // Avis déjà donné : pré-rempli. Table absente (migration 016 non appliquée) :
+  // le formulaire s'affiche vide et l'envoi répondra que c'est indisponible.
+  const feedback = await readFeedback(id).catch(() => null);
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader tone="marque" />
       <TrackView event={ANALYTICS_EVENTS.resultViewed} />
       {result.unlocked ? null : <TrackView event={ANALYTICS_EVENTS.paywallEmailShown} />}
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-12 px-4 pt-6 pb-16 sm:px-6 md:pt-12 md:pb-24">
-        <AnalysisResult
-          analysis={result.analysis}
-          unlockHref={`/connexion?next=${encodeURIComponent(`/analyse/resultat/${id}`)}`}
+      <AnalysisResult
+        analysis={result.analysis}
+        unlockHref={`/connexion?next=${encodeURIComponent(`/analyse/resultat/${id}`)}`}
+      >
+        {shareCardAvailable(result.analysis) ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}
+        <EstimateFeedback
+          action={`/api/analyses/${id}/avis`}
+          initial={feedback === "missing" ? null : feedback}
         />
         {result.sourceRemoved ? (
           <p role="note" className="border-y border-filet py-3 text-small">
@@ -45,7 +56,7 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
             Supprimer cette analyse
           </Link>
         </p>
-      </main>
+      </AnalysisResult>
       <SiteFooter />
     </>
   );

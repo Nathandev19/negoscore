@@ -1,5 +1,5 @@
 import { hashIp } from "@/lib/security/request";
-import { deleteRows, rpc, selectRows, SupabaseRequestError } from "@/lib/supabase/server";
+import { deleteRows, isMissingRelation, rpc, selectRows } from "@/lib/supabase/server";
 
 // Compteur durable des analyses gratuites (migration 015, table free_usage).
 // Il survit à la suppression d'une analyse : une gratuité consommée le reste.
@@ -16,11 +16,6 @@ export function freeSubjectHash(subject: FreeSubject): string {
   return hashIp(subject.kind === "anon" ? `free-usage:anon:${subject.token}` : `free-usage:user:${subject.id}`);
 }
 
-function isMissing(caught: unknown): boolean {
-  // Table ou fonction inconnue de l'API : 404 (PGRST205, PGRST202) ou 42P01.
-  return caught instanceof SupabaseRequestError && (caught.status === 404 || caught.code === "42P01" || caught.code === "PGRST205" || caught.code === "PGRST202");
-}
-
 function warnMissing(operation: string) {
   console.warn(JSON.stringify({ event: "free_usage_missing", operation, detail: "Table free_usage absente : appliquer la migration 20260917000015." }));
 }
@@ -30,7 +25,7 @@ export async function freeUsed(subject: FreeSubject): Promise<number | "missing"
     const [row] = await selectRows<{ used: number }>("free_usage", `select=used&subject_hash=eq.${freeSubjectHash(subject)}&limit=1`);
     return row?.used ?? 0;
   } catch (caught) {
-    if (!isMissing(caught)) throw caught;
+    if (!isMissingRelation(caught)) throw caught;
     warnMissing("read");
     return "missing";
   }
@@ -41,7 +36,7 @@ export async function consumeFree(subject: FreeSubject, limit: number): Promise<
   try {
     return (await rpc<boolean>("free_usage_consume", { p_subject_hash: freeSubjectHash(subject), p_limit: limit })) === true;
   } catch (caught) {
-    if (!isMissing(caught)) throw caught;
+    if (!isMissingRelation(caught)) throw caught;
     warnMissing("consume");
     return "missing";
   }
@@ -55,7 +50,7 @@ export async function mergeFreeUsage(anonToken: string, userId: string): Promise
       p_into: freeSubjectHash({ kind: "user", id: userId }),
     });
   } catch (caught) {
-    if (!isMissing(caught)) throw caught;
+    if (!isMissingRelation(caught)) throw caught;
     warnMissing("merge");
   }
 }
@@ -65,6 +60,6 @@ export async function deleteFreeUsage(userId: string): Promise<void> {
   try {
     await deleteRows("free_usage", `subject_hash=eq.${freeSubjectHash({ kind: "user", id: userId })}`);
   } catch (caught) {
-    if (!isMissing(caught)) throw caught;
+    if (!isMissingRelation(caught)) throw caught;
   }
 }

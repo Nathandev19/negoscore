@@ -9,14 +9,17 @@
 /* ─────────────────────────────────────────────────────────────────────────────
    SYSTÈME DE DESIGN — source unique des couleurs, polices et formes.
 
-   LA SEULE COULEUR SATURÉE DU SITE EST CELLE DU SCORE.
-   Tout le reste est encre sur papier : aucune couleur de marque, aucun dégradé,
-   aucune ombre portée. La hiérarchie se fait par la typographie, les filets et
-   le rythme vertical.
+   UN FOND DE MARQUE CONSTANT, LA COULEUR DU SCORE PAR-DESSUS.
+   Le bleu marque ne change jamais, quel que soit le deal. Il ne sert qu'à
+   l'en-tête des pages de résultat, au bouton d'action principal, aux liens et
+   au focus. La crème est le fond de lecture. Les couleurs de bande ne sont
+   jamais du texte ni un fond de page : ce sont des APLATS (pastille de
+   verdict, jauge, pastille de gravité), toujours portant du texte encre.
 
-   La palette par défaut de Tailwind, ses ombres et ses rayons sont retirés :
-   une classe hors système (bg-neutral-50, shadow-sm, rounded-xl…) ne produit
-   rien. Contrastes vérifiés par tests/design.test.ts.
+   Aucune couleur ne peut faire 3:1 à la fois contre le bleu et contre la
+   crème : chaque bande a donc deux niveaux, même teinte, calés sur le fond
+   réel. La palette par défaut de Tailwind et ses ombres sont retirées.
+   Contrastes vérifiés par tests/design.test.ts, grain compris.
    ───────────────────────────────────────────────────────────────────────────── */
 @theme {
   --color-*: initial;
@@ -26,77 +29,80 @@
   --text-shadow-*: initial;
   --radius-*: initial;
 
-  /* Encre et papier */
-  --color-encre: #141310; /* titres, actions — noir chaud */
-  --color-encre-douce: #3a352d; /* corps de texte */
-  --color-attenue: #6b655c; /* légendes, mentions */
-  --color-papier: #faf8f4; /* fond de toutes les pages */
-  --color-papier-eleve: #ffffff; /* réservé aux vraies cartes de données */
-  --color-filet: #e3ded4; /* le seul trait : 1 px */
+  /* Marque et lecture */
+  --color-marque: #1f3cff; /* fond de marque, constant, jamais dérivé du score */
+  --color-marque-deep: #0f22b8; /* survol, actif */
+  --color-creme: #fff7e8; /* fond de lecture de toutes les pages */
+  --color-encre: #14120c; /* titres, texte sur crème, texte sur les aplats */
+  --color-encre-douce: #3b362a; /* corps */
+  --color-attenue: #6e6759; /* légendes, bouton désactivé */
+  --color-filet: #e4dcc9;
 
-  /* Bandes de score : la seule couleur du site, parce qu'elle porte une information.
-     base : la couleur de la bande. tint : base à 8 % sur le papier.
-     text : texte de bande, assombri (teinte conservée) jusqu'à 4,5:1 sur la
-     teinte ET sur le papier. */
-  --color-band-bad: #c41e3a;
-  --color-band-bad-tint: #f6e7e5;
-  --color-band-bad-text: #c41e3a;
-  --color-band-weak: #e8590c;
-  --color-band-weak-tint: #f9ebe1;
-  --color-band-weak-text: #ba470a;
-  --color-band-fair: #a47500;
-  --color-band-fair-tint: #f3eee0;
-  --color-band-fair-text: #8e6500;
-  --color-band-good: #2b8a3e;
-  --color-band-good-tint: #e9efe5;
-  --color-band-good-text: #267b37;
-  --color-band-excellent: #1c7c54;
-  --color-band-excellent-tint: #e8eee7;
-  --color-band-excellent-text: #1c7a53;
+  /* Bandes : couleur de référence, puis les deux aplats réellement affichés.
+     on-marque : ≥ 3:1 contre le bleu, grain compris (pire pixel).
+     on-creme : ≥ 3:1 contre la crème.
+     Texte posé dessus : encre, ≥ 4,5:1 sur les dix aplats. */
+  --color-band-bad: #ff3b4e;
+  --color-band-bad-on-marque: #ff9da6;
+  --color-band-bad-on-creme: #ff3b4e;
+  --color-band-weak: #ff7a1a;
+  --color-band-weak-on-marque: #ffa360;
+  --color-band-weak-on-creme: #ee6400;
+  --color-band-fair: #ffc400;
+  --color-band-fair-on-marque: #ffc400;
+  --color-band-fair-on-creme: #b18800;
+  --color-band-good: #22c55e;
+  --color-band-good-on-marque: #25d465;
+  --color-band-good-on-creme: #1ca34e;
+  --color-band-excellent: #00d49a;
+  --color-band-excellent-on-marque: #00d49a;
+  --color-band-excellent-on-creme: #00a276;
 
-  /* Polices : variables posées par next/font dans app/layout.tsx.
-     display : titres, montants, score. sans : corps et interface.
-     serif : phrases de verdict et citations en exergue, rien d'autre. */
-  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-display: var(--font-bricolage), var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+  /* Polices : variables posées par next/font dans app/layout.tsx. Aucun serif. */
+  --font-sans: var(--font-familjen), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-familjen), ui-sans-serif, system-ui, sans-serif;
 
-  /* Formes : 0 partout, 6 px pour les seuls contrôles (bouton, champ, onglet). */
-  --radius-control: 6px;
+  /* Formes : contrôles à 8 px, pastilles en pilule. */
+  --radius-control: 8px;
+  --radius-pill: 999px;
 
-  /* Échelle typographique, mobile d'abord. */
-  --text-display: clamp(2.25rem, 7vw, 3.75rem);
-  --text-display--line-height: 1.02;
-  --text-display--letter-spacing: -0.025em;
-  --text-h1: clamp(1.875rem, 5vw, 2.75rem);
-  --text-h1--line-height: 1.08;
-  --text-h1--letter-spacing: -0.02em;
-  --text-h2: 1.5rem;
-  --text-h2--line-height: 1.2;
+  /* Échelle typographique, mobile d'abord. Titres très serrés. */
+  --text-display: clamp(2.5rem, 9vw, 4.5rem);
+  --text-display--line-height: 0.95;
+  --text-display--letter-spacing: -0.045em;
+  --text-h1: clamp(2rem, 6vw, 3rem);
+  --text-h1--line-height: 1;
+  --text-h1--letter-spacing: -0.04em;
+  --text-h2: 1.625rem;
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.03em;
   --text-h3: 1.125rem;
-  --text-h3--line-height: 1.3;
+  --text-h3--line-height: 1.25;
+  --text-h3--letter-spacing: -0.01em;
   --text-body: 1rem;
-  --text-body--line-height: 1.6;
+  --text-body--line-height: 1.55;
   --text-small: 0.875rem;
-  --text-small--line-height: 1.5;
-  --text-verdict: clamp(1.625rem, 4.5vw, 2.25rem);
-  --text-verdict--line-height: 1.15;
+  --text-small--line-height: 1.45;
+  --text-verdict: clamp(1.5rem, 5vw, 2.25rem);
+  --text-verdict--line-height: 1.05;
+  --text-verdict--letter-spacing: -0.035em;
 
-  /* Mouvement : deux durées seulement. */
+  /* Mouvement : deux durées, plus le remplissage unique du score. */
   --duration-hover: 150ms;
   --duration-reveal: 400ms;
+  --duration-score: 700ms;
 }
 
-/* Jetons des composants shadcn, ramenés à l'encre et au papier. */
+/* Jetons des composants shadcn, ramenés à la palette. */
 @theme inline {
-  --color-background: var(--color-papier);
+  --color-background: var(--color-creme);
   --color-foreground: var(--color-encre);
-  --color-primary: var(--color-encre);
-  --color-primary-foreground: var(--color-papier);
+  --color-primary: var(--color-marque);
+  --color-primary-foreground: var(--color-creme);
   --color-muted-foreground: var(--color-attenue);
   --color-border: var(--color-filet);
   --color-input: var(--color-filet);
-  --color-ring: var(--color-encre);
+  --color-ring: var(--color-marque);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -108,54 +114,110 @@
     scroll-padding-top: 4.5rem; /* en-tête collant : les ancres ne passent pas dessous */
   }
   body {
-    @apply bg-papier font-sans text-body text-encre-douce;
+    @apply bg-creme font-sans text-body text-encre-douce;
   }
   h1,
   h2,
   h3 {
-    @apply font-display text-encre;
+    @apply font-display font-extrabold text-encre;
+    font-stretch: 100%; /* maximum de l'axe wdth de Bricolage Grotesque (75 à 100) */
   }
   ::selection {
-    background: var(--color-encre);
-    color: var(--color-papier);
+    background: var(--color-marque);
+    color: var(--color-creme);
   }
-  /* Focus : contour encre de 2 px, décalé de 2 px. Le décalage laisse voir le
-     papier entre l'élément et le contour : lisible sur un fond papier comme
-     autour d'un bouton encre. Aucun anneau coloré. */
+  /* Focus : contour bleu marque de 2 px, décalé de 2 px. Sur une surface bleue,
+     le contour passe en crème (classe .on-marque sur la surface). */
   :focus-visible {
-    outline: 2px solid var(--color-encre);
+    outline: 2px solid var(--color-marque);
     outline-offset: 2px;
   }
+  .on-marque :focus-visible {
+    outline-color: var(--color-creme);
+  }
 }
 
-/* Chiffres : montants en euros et score. */
+/* Titres et chiffres : Bricolage Grotesque 800, serré, largeur maximale. */
+@utility headline {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: 100%;
+  letter-spacing: -0.04em;
+}
+
+/* Montants et scores : toujours en chiffres tabulaires. */
 @utility figures {
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 800;
+  font-stretch: 100%;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
 }
 
-/* Phrase de verdict ou citation en exergue : le seul usage de la serif. */
-@utility verdict {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  letter-spacing: -0.01em;
+/* Grain : bruit SVG en superposition, surfaces bleues uniquement.
+   Même tracé que lib/design/grain.ts (vérifié par test). */
+@utility grain {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)' opacity='0.06'/></svg>");
 }
 
-/* Lien : souligné, en encre. */
+/* Lien : bleu marque, souligné. */
 @utility link {
-  color: var(--color-encre);
+  color: var(--color-marque);
+  font-weight: 600;
   text-decoration-line: underline;
-  text-decoration-thickness: 1px;
+  text-decoration-thickness: 2px;
   text-underline-offset: 4px;
   &:hover {
-    text-decoration-thickness: 2px;
+    color: var(--color-marque-deep);
   }
+}
+
+/* Message d'erreur : barre d'aplat « bad » à gauche, texte encre. */
+@utility alert-bad {
+  border-left: 4px solid var(--color-band-bad-on-creme);
+  padding-left: 0.75rem;
+  color: var(--color-encre);
+  font-weight: 600;
+}
+
+/* Arrivée sur un résultat : le score monte de 0 à sa valeur et la jauge se
+   remplit, une fois, en 700 ms. Rien d'autre ne bouge. Le chiffre est un
+   compteur CSS animé par une propriété enregistrée : sans animation (ancien
+   navigateur, mouvement réduit), il s'affiche directement à sa valeur. */
+@property --score-now {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+@keyframes score-count {
+  from {
+    --score-now: 0;
+  }
+}
+@keyframes gauge-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+.score-count {
+  --score-now: var(--score-target);
+  counter-reset: score var(--score-now);
+  animation: score-count var(--duration-score) linear both;
+  font-variant-numeric: tabular-nums;
+}
+.score-count::after {
+  content: counter(score);
+}
+.gauge-fill {
+  transform-origin: left center;
+  animation-name: gauge-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
 }
 
 /* Longueur de ligne du corps. */
 @utility measure {
-  max-width: 68ch;
+  max-width: 66ch;
 }
 
 /* Une seule règle de mouvement : rien ne bouge si l'utilisateur le demande. */
@@ -164,6 +226,7 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;

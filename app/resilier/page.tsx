@@ -49,14 +49,14 @@ export default async function CancelPage({ searchParams }: PageProps<"/resilier"
         <h1 className="text-h1 font-extrabold">Résilier votre contrat</h1>
 
         {forDeletion ? (
-          <p role="status" className="border-y border-encre py-3 text-sm font-semibold text-encre">
+          <p role="status" className="border-l-4 border-encre py-1 pl-3 text-sm font-semibold text-encre">
             Ton abonnement Pro est encore actif : il continuerait d&apos;être prélevé. Résilie-le d&apos;abord, puis tu
             pourras supprimer ton compte depuis la page Mon compte.
           </p>
         ) : null}
 
         {error ? (
-          <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
+          <p role="alert" className="alert-bad py-1 text-sm">
             {error}
           </p>
         ) : null}

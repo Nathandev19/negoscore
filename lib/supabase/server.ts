@@ -40,6 +40,15 @@ async function failure(response: Response, what: string): Promise<SupabaseReques
   return new SupabaseRequestError(`${what} : HTTP ${response.status}${detail ? ` ${detail.slice(0, 200)}` : ""}`, response.status, code);
 }
 
+// Table ou fonction inconnue de l'API (migration pas encore appliquée) :
+// 404 (PGRST205, PGRST202) ou 42P01.
+export function isMissingRelation(caught: unknown): boolean {
+  return (
+    caught instanceof SupabaseRequestError &&
+    (caught.status === 404 || caught.code === "42P01" || caught.code === "PGRST205" || caught.code === "PGRST202")
+  );
+}
+
 async function rest<T>(path: string, init: RequestInit & { what: string }): Promise<T> {
   const { url, serviceKey } = config();
   const response = await fetch(`${url}/rest/v1/${path}`, {
@@ -60,6 +69,16 @@ async function rest<T>(path: string, init: RequestInit & { what: string }): Prom
 export async function insertRow<T>(table: string, row: Record<string, unknown>): Promise<T> {
   const rows = await rest<T[]>(table, { method: "POST", body: JSON.stringify(row), what: `insertion ${table}` });
   return rows[0];
+}
+
+// Insère la ligne, ou remplace ses colonnes si la clé `onConflict` existe déjà.
+export async function upsertRow(table: string, row: Record<string, unknown>, onConflict: string): Promise<void> {
+  await rest(`${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
+    method: "POST",
+    body: JSON.stringify(row),
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    what: `écriture ${table}`,
+  });
 }
 
 // Insère la ligne si sa clé primaire n'existe pas encore, sinon ne fait rien.

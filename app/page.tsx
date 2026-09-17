@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { TrackView } from "@/components/analytics/track-view";
 import { DealInput } from "@/components/deal-input";
-import { ScoreCard } from "@/components/result/score-card";
+import { ScoreBand } from "@/components/result/score-band";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
@@ -12,14 +12,14 @@ import { formatEur, formatEurRange } from "@/lib/display";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 import { cn } from "@/lib/utils";
 
-// Rythme : serré à l'intérieur d'un groupe (8 à 12 px), large entre les
-// groupes (64 px sur mobile, 96 px au-delà). Un seul fond, le papier ; les
-// sections sont séparées par un filet pleine largeur.
+// Rythme : serré à l'intérieur d'un groupe, large entre les groupes (64 px sur
+// mobile, 96 px au-delà). Fond crème ; le bleu marque n'apparaît que sur
+// l'exemple de résultat, le bouton principal et les liens.
 const SECTION = "border-t border-filet";
 const SECTION_INNER = "mx-auto flex w-full max-w-6xl flex-col px-4 py-16 sm:px-6 md:py-24";
 
 export default function HomePage() {
-  const { score, confidence, estimate, red_flags, deal } = sampleAnalysis;
+  const { score, estimate, red_flags, deal } = sampleAnalysis;
   const total = formatEurRange(estimate.total_low, estimate.total_high);
 
   return (
@@ -66,44 +66,47 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
-            <blockquote className="verdict measure text-verdict text-encre">
+            <blockquote className="headline measure text-verdict text-encre">
               On ne lit que ce qui est écrit dans l&apos;offre. Ce qui n&apos;y figure pas n&apos;est ni deviné ni
               reproché à la marque.
             </blockquote>
           </div>
         </section>
 
-        {/* C3 — la seule zone sur papier élevé, cernée de la couleur du score. */}
+        {/* C3 — l'exemple reprend l'en-tête bleu d'une page de résultat : c'est le produit. */}
         <section className={SECTION}>
-          <div className={cn(SECTION_INNER, "gap-10 lg:grid lg:grid-cols-2 lg:items-center lg:gap-16")}>
+          <div className={cn(SECTION_INNER, "gap-10 lg:grid lg:grid-cols-[1fr_1.2fr] lg:items-center lg:gap-16")}>
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-semibold tracking-wide text-attenue uppercase">Exemple figé</p>
-              <h2 className="text-h1 font-extrabold">Une offre reçue en DM, chiffrée en euros</h2>
+              <p className="text-xs font-bold tracking-wide text-attenue uppercase">Exemple figé</p>
+              <h2 className="text-h1">Une offre reçue en DM, chiffrée en euros</h2>
               <p className="measure">
                 Une marque propose{" "}
                 <span className="figures text-encre">{formatEur(deal.payment.amount_eur ?? 0)}</span> pour{" "}
                 {deal.deliverables.map((d) => `${d.quantity} vidéo${d.quantity > 1 ? "s" : ""}`).join(", ")}, avec droits pub
                 et exclusivité. Cet exemple ne change pas : ce n&apos;est pas une vraie analyse en cours.
               </p>
-              <Link href="/analyse/demo" className="link w-fit font-semibold">
+              <Link href="/analyse/demo" className="link w-fit">
                 Voir l&apos;exemple complet
               </Link>
             </div>
             {score ? (
-              <ScoreCard score={score} confidence={confidence}>
+              <div className="on-marque grain flex flex-col overflow-hidden rounded-control bg-marque text-creme">
+                <ScoreBand analysis={sampleAnalysis} animated={false} className="p-5 sm:p-7 lg:grid-cols-1 lg:gap-6" />
                 {total ? (
-                  <div className="flex flex-col gap-1 border-t border-filet p-5 sm:p-6">
-                    <p className="text-small text-attenue">Ce que ça vaut vraiment</p>
-                    <p className="figures text-4xl tracking-tight text-encre sm:text-5xl">{total}</p>
+                  <div className="flex flex-col gap-1 border-t border-creme/30 px-5 py-4 sm:px-7">
+                    <p className="text-small">Ce que ça vaut vraiment</p>
+                    <p className="figures text-4xl text-creme sm:text-5xl">{total}</p>
                   </div>
                 ) : null}
                 {red_flags[0] ? (
-                  <div className="flex flex-col gap-1 border-t border-filet p-5 sm:p-6">
-                    <p className="text-small text-attenue">Point à surveiller</p>
-                    <p className="font-display text-h3 font-bold text-encre">{red_flags[0].label}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-creme/30 px-5 py-4 sm:px-7">
+                    <p className="headline text-h3 text-creme">{red_flags[0].label}</p>
+                    <span className="rounded-pill bg-band-bad-on-marque px-2.5 py-0.5 text-xs font-bold text-encre">
+                      Point à surveiller
+                    </span>
                   </div>
                 ) : null}
-              </ScoreCard>
+              </div>
             ) : null}
           </div>
         </section>

@@ -35,9 +35,9 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
 
   if (selected) {
     return (
-      <div className="flex flex-col gap-3 rounded-control border border-attenue p-3">
+      <div className="flex flex-col gap-3 rounded-control border-2 border-encre p-3">
         {selected.previewUrl ? (
-          <div className="relative h-44 w-full overflow-hidden bg-papier">
+          <div className="relative h-44 w-full overflow-hidden bg-creme">
             <Image
               src={selected.previewUrl}
               alt="Aperçu de ta capture"
@@ -77,8 +77,8 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
           if (file) onSelect(file);
         }}
         className={cn(
-          "flex h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-control border border-dashed px-4 text-center transition-colors",
-          dragging ? "border-encre" : "border-attenue",
+          "flex h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-control border-2 border-dashed px-4 text-center transition-colors",
+          dragging ? "border-marque" : "border-encre",
         )}
       >
         <span className="text-base font-medium text-encre">{COPY[kind].title}</span>
@@ -98,7 +98,7 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
         }}
       />
       {error ? (
-        <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
+        <p role="alert" className="alert-bad py-1 text-sm">
           {error}
         </p>
       ) : null}

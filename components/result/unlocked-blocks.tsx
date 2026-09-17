@@ -14,7 +14,7 @@ export function CounterOffer({
   return (
     <Section title={title}>
       <div className="flex flex-col gap-3">
-        {amount ? <p className="figures text-4xl tracking-tight text-encre sm:text-5xl">{amount}</p> : null}
+        {amount ? <p className="figures text-5xl leading-none text-encre sm:text-6xl">{amount}</p> : null}
         <ul className="list-disc pl-5">
           {offer.changes.map((change) => (
             <li key={change}>{change}</li>
@@ -30,7 +30,7 @@ export function ReadyMessage({ message }: { message: Analysis["ready_to_send_mes
   return (
     <Section title="Ton message prêt à envoyer">
       <p className="text-small text-attenue">Ton : {message.tone}</p>
-      <p className="border-l border-encre py-1 pl-4 text-lg leading-relaxed whitespace-pre-line text-encre">
+      <p className="border-l-4 border-encre py-1 pl-4 text-lg leading-relaxed whitespace-pre-line text-encre">
         {message.text}
       </p>
       <CopyButton text={message.text} />

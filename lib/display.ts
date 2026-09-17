@@ -19,22 +19,24 @@ export const BAND_LABEL: Record<Band, string> = {
   excellent: "Excellent deal",
 };
 
-// Couleurs des bandes de score : table unique, importée partout, et seule
-// couleur saturée du site. Les valeurs sont les variables de app/globals.css
-// (teinte à 8 % sur le papier, texte à 4,5:1 au moins sur la teinte et sur le
-// papier, vérifié par tests/design.test.ts). Les bandes viennent de bandFor()
-// dans lib/rates/score.ts.
-export const BAND_STYLE: Record<Band, { text: string; tint: string; border: string; accent: string }> = {
-  bad: { text: "text-band-bad-text", tint: "bg-band-bad-tint", border: "border-band-bad", accent: "bg-band-bad" },
-  weak: { text: "text-band-weak-text", tint: "bg-band-weak-tint", border: "border-band-weak", accent: "bg-band-weak" },
-  fair: { text: "text-band-fair-text", tint: "bg-band-fair-tint", border: "border-band-fair", accent: "bg-band-fair" },
-  good: { text: "text-band-good-text", tint: "bg-band-good-tint", border: "border-band-good", accent: "bg-band-good" },
-  excellent: {
-    text: "text-band-excellent-text",
-    tint: "bg-band-excellent-tint",
-    border: "border-band-excellent",
-    accent: "bg-band-excellent",
-  },
+// Couleurs des bandes de score : table unique, importée partout. Les bandes
+// ne sont jamais du texte : ce sont des aplats, avec un niveau par fond réel
+// (onMarque sur le bleu, onCreme sur la crème) et du texte encre dessus.
+// Valeurs dans app/globals.css, contrastes vérifiés par tests/design.test.ts.
+// Les bandes viennent de bandFor() dans lib/rates/score.ts.
+export const BAND_STYLE: Record<Band, { onMarque: string; onCreme: string }> = {
+  bad: { onMarque: "bg-band-bad-on-marque", onCreme: "bg-band-bad-on-creme" },
+  weak: { onMarque: "bg-band-weak-on-marque", onCreme: "bg-band-weak-on-creme" },
+  fair: { onMarque: "bg-band-fair-on-marque", onCreme: "bg-band-fair-on-creme" },
+  good: { onMarque: "bg-band-good-on-marque", onCreme: "bg-band-good-on-creme" },
+  excellent: { onMarque: "bg-band-excellent-on-marque", onCreme: "bg-band-excellent-on-creme" },
+};
+
+// Pastille de verdict quand l'offre n'a pas de score.
+export const EVALUABILITY_LABEL: Record<Exclude<Analysis["evaluability"], "complete">, string> = {
+  unpriced: "Offre à chiffrer",
+  terms_unknown: "Offre à préciser",
+  incomplete: "Informations insuffisantes",
 };
 
 // Segments de la jauge de score, dans l'ordre : première valeur de chaque
@@ -59,12 +61,12 @@ export const SEVERITY_LABEL: Record<Severity, string> = {
   low: "Mineur",
 };
 
-// Gravité d'un red flag : en encre, sans couleur (la couleur est réservée au
-// score). Du plus marqué au plus discret : plein, cerné, atténué.
+// Gravité d'un red flag : pastille aux couleurs de bande (aplat sur crème),
+// texte encre.
 export const SEVERITY_BADGE: Record<Severity, string> = {
-  high: "border-encre bg-encre text-papier",
-  medium: "border-encre text-encre",
-  low: "border-filet text-attenue",
+  high: "bg-band-bad-on-creme",
+  medium: "bg-band-weak-on-creme",
+  low: "bg-band-fair-on-creme",
 };
 
 const DELIVERABLE_LABEL: Record<Deal["deliverables"][number]["type"], [string, string]> = {
@@ -93,6 +95,19 @@ const AI_TRAINING_LABEL: Record<Deal["ai_training_rights"], string | null> = {
   present: "Demandé",
   unclear: "Pas clair",
 };
+
+// Livrables en une ligne, sans le champ libre « format » : utilisé sur la carte
+// partageable, qui ne doit porter aucun texte recopié de l'offre.
+export function deliverablesLine(deal: Deal): string | null {
+  if (deal.deliverables.length === 0) return null;
+  return deal.deliverables
+    .map((d) => {
+      const [one, many] = DELIVERABLE_LABEL[d.type];
+      const platform = d.platform && d.platform !== "other" ? ` ${PLATFORM_LABEL[d.platform]}` : "";
+      return `${d.quantity} ${d.quantity > 1 ? many : one}${platform}`;
+    })
+    .join(" · ");
+}
 
 export type RecapRow = { label: string; value: string };
 

@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
-import { HeaderNav } from "@/components/header-nav";
+import { HeaderNav, type HeaderTone } from "@/components/header-nav";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 
 // Composant client : les pages publiques restent statiques. L'état vient de
@@ -16,11 +16,11 @@ import { hasSessionHint } from "@/lib/auth/session-hint";
 // déconnexion, suppression) : aucun abonnement n'est nécessaire.
 const subscribe = () => () => undefined;
 
-export function SiteHeader() {
+export function SiteHeader({ tone = "creme" }: { tone?: HeaderTone }) {
   const signedIn = useSyncExternalStore(
     subscribe,
     () => hasSessionHint(document.cookie),
     () => false,
   );
-  return <HeaderNav signedIn={signedIn} pathname={usePathname()} />;
+  return <HeaderNav signedIn={signedIn} pathname={usePathname()} tone={tone} />;
 }

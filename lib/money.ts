@@ -18,3 +18,10 @@ export function formatEurRange(low: number | null, high: number | null, language
   if (high !== null) return formatEur(high, language);
   return null;
 }
+
+// Nombre seul, avec exactement le séparateur de milliers de formatEur
+// (« 1 100 »). Dérivé du format monétaire : le format numérique fr-FR ne groupe
+// pas les nombres à quatre chiffres dans tous les moteurs (« 1070 »).
+export function formatAmount(value: number): string {
+  return formatEur(value).replace(/\s*€$/, "");
+}
