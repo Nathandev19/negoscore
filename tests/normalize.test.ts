@@ -59,7 +59,10 @@ describe("normalizeDeal", () => {
 
   it("sans publication sur le compte, rien ne change", () => {
     const deal = { ...POSTS_ON_OWN_ACCOUNT, publication_required: false };
-    expect(normalizeDeal(deal)).toBe(deal);
+    // Depuis la mission #058, la normalisation reconstruit toujours le deal
+    // (quantités et durées à 0 ramenées à null) : c'est l'égalité des valeurs
+    // qui compte, plus celle des références.
+    expect(normalizeDeal(deal)).toStrictEqual(deal);
   });
 
   it("ne passe jamais un drapeau de vrai à faux", () => {

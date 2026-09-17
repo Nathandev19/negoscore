@@ -1,4 +1,5 @@
 import rates from "@/lib/rates/fr-2026.3.json";
+import { isForeignCurrency } from "@/lib/analysis/normalize";
 import { formatNumber } from "@/lib/display";
 import { DEFAULT_TIER, type Tier } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";
@@ -93,6 +94,11 @@ export const LEGACY_ENGINE_ASSUMPTIONS: readonly string[] = [
   "Les suppléments demandés cumulés dépassent ce qu'un annonceur accepte en pratique : l'estimation a été plafonnée.",
   "L'estimation dépasse de plus de trois fois le montant proposé. Cet écart important peut venir d'une offre volontairement sous-évaluée, ou d'une information de l'offre mal comprise : vérifie les livrables et les droits demandés.",
 ];
+
+// Offre chiffrée dans une autre devise que l'euro : la fourchette reste
+// calculée, mais le montant n'y est pas confronté (mission #058).
+export const FOREIGN_CURRENCY_ASSUMPTION =
+  "Le montant de cette offre n'est pas en euros : il n'est pas comparé à la fourchette, qui est en euros. Convertis-le au cours du jour avant de te décider, et demande dans quelle devise tu seras payée.";
 
 // Au-delà de ce rapport entre borne basse estimée et montant proposé, l'écart
 // est signalé comme inhabituel.
@@ -328,6 +334,13 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     totalLow = null;
     totalHigh = null;
     assumptions.push("Trop peu d'informations dans l'offre pour donner une fourchette totale fiable.");
+  }
+
+  // Montant proposé dans une autre devise que l'euro (mission #058) : il n'est
+  // pas comparé à la fourchette, et on dit pourquoi. Le montant lui-même a déjà
+  // été mis de côté par normalizeDeal ; la devise, elle, reste dans le deal.
+  if (isForeignCurrency(deal.payment.currency)) {
+    assumptions.push(FOREIGN_CURRENCY_ASSUMPTION);
   }
 
   // Contrôle de vraisemblance : l'écart est signalé, jamais corrigé. Un deal

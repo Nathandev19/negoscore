@@ -16,23 +16,55 @@ type Deal = Analysis["deal"];
 // whitelisting, de Spark Ads, d'une durée ou d'un territoire : les ajouter
 // serait inventer des droits que l'offre n'accorde pas. Et un drapeau n'est
 // jamais repassé de vrai à faux : on complète, on ne contredit pas l'extraction.
-// Zéro n'est pas un prix : c'est une absence d'information (mission #057).
-// Une valeur de produits à 0 rendait l'offre « chiffrée » et faisait écrire
-// « 0 € en produits proposés » ; un montant à 0 faisait pire, il donnait un
-// rapport prix / plancher de 0 et plafonnait le score à 29 comme si la marque
-// avait vraiment proposé quelque chose. Les deux valent donc null ici, et tous
-// les lecteurs du deal les voient absents.
+
+// ZÉRO N'EST PAS UNE VALEUR, c'est une absence d'information (missions #057 et
+// #058). Le prompt demande déjà null, mais rien ne le garantit : la protection
+// est ici, dans le code, et le prompt n'est pas touché.
+//   payment.amount_eur      0 donnait un rapport prix / plancher de 0, donc un
+//                           score plafonné à 29 comme si la marque avait proposé
+//                           quelque chose (#057) ;
+//   in_kind_value_eur       0 rendait l'offre « chiffrée » et faisait écrire
+//                           « 0 € en produits proposés » (#057) ;
+//   deliverables.quantity   0 contournait le plafond de score à 69 réservé aux
+//                           quantités inconnues, alors que le moteur chiffrait
+//                           déjà un seul contenu (#058) ;
+//   usage.duration_months   0 comptait comme une condition connue et facturait
+//                           un mois de droits pub (#058) ;
+//   exclusivity.duration_months  0 facturait une exclusivité d'un mois (#058).
 function stated(value: number | null): number | null {
   return value === 0 ? null : value;
 }
 
+// DEVISE ÉTRANGÈRE (mission #058). Rien dans le code ne lisait payment.currency :
+// un montant écrit en dollars, s'il arrivait dans amount_eur, était comparé à une
+// fourchette en euros et affiché avec un « € ». Le test est volontairement une
+// liste de devises reconnues, pas l'inverse : une graphie inattendue de l'euro
+// (« EUR HT », « euros ») reste donc traitée comme des euros, et seule une
+// devise clairement étrangère fait tomber le montant.
+const FOREIGN_CURRENCY =
+  /\$|£|¥|₣|\b(usd|gbp|chf|cad|aud|nzd|jpy|cny|hkd|sgd|sek|nok|dkk|pln|czk|huf|ron|bgn|try|rub|brl|inr|mad|tnd|aed|zar)\b|dollars?|pounds?|sterling|yen|francs?\s+suisses?/i;
+
+export function isForeignCurrency(currency: string | null): boolean {
+  return currency !== null && FOREIGN_CURRENCY.test(currency);
+}
+
 export function normalizeDeal(deal: Deal): Deal {
-  const amount = stated(deal.payment.amount_eur);
-  const inKind = stated(deal.in_kind_value_eur);
-  const normalized: Deal =
-    amount === deal.payment.amount_eur && inKind === deal.in_kind_value_eur
-      ? deal
-      : { ...deal, payment: { ...deal.payment, amount_eur: amount }, in_kind_value_eur: inKind };
-  if (!normalized.publication_required || normalized.usage.organic) return normalized;
-  return { ...normalized, usage: { ...normalized.usage, organic: true } };
+  const { payment, usage, exclusivity } = deal;
+  // Montant en devise étrangère : il ne peut pas être comparé à une fourchette
+  // en euros, il est donc traité comme un montant absent. Le moteur ajoute
+  // l'hypothèse qui le dit (lib/rates/engine.ts).
+  const amount = isForeignCurrency(payment.currency) ? null : stated(payment.amount_eur);
+  return {
+    ...deal,
+    deliverables: deal.deliverables.map((deliverable) => ({ ...deliverable, quantity: stated(deliverable.quantity) })),
+    usage: {
+      ...usage,
+      // Publier sur son propre compte est un usage organique.
+      organic: usage.organic || deal.publication_required,
+      duration_months: stated(usage.duration_months),
+    },
+    exclusivity: { ...exclusivity, duration_months: stated(exclusivity.duration_months) },
+    payment: { ...payment, amount_eur: amount },
+    in_kind_value_eur: stated(deal.in_kind_value_eur),
+  };
 }

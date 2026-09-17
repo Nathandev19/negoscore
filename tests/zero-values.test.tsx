@@ -3,13 +3,13 @@ import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { TermsUnknownCard } from "@/components/result/verdict-card";
-import { evaluability, priceKnown } from "@/lib/analysis/evaluability";
+import { evaluability, knownTerms, priceKnown } from "@/lib/analysis/evaluability";
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { verdictForm, verdictSentence } from "@/lib/analysis/verdict";
 import { dealRecapRows } from "@/lib/display";
 import { computeFrLegal } from "@/lib/legal/fr";
-import { computeEstimate, countFilledFields } from "@/lib/rates/engine";
-import { appliedPriceCap, computeScore, priceRatio } from "@/lib/rates/score";
+import { computeEstimate, countFilledFields, FOREIGN_CURRENCY_ASSUMPTION } from "@/lib/rates/engine";
+import { appliedPriceCap, computeScore, hasUnknownQuantity, priceRatio, UNKNOWN_QUANTITY_SCORE_CAP } from "@/lib/rates/score";
 import { shareCardTexts } from "@/lib/share-card/element";
 import type { Analysis } from "@/lib/schema";
 
@@ -183,5 +183,77 @@ describe("B — un 0 vaut une absence, partout où le champ est lu", () => {
   it("les analyses déjà enregistrées avec un 0 sont nettoyées au chargement", () => {
     const source = readFileSync(path.join(process.cwd(), "lib/analysis/load.ts"), "utf8");
     expect(source).toContain("normalizeDeal(parsed.data.deal)");
+  });
+});
+
+// Mission #058 — trois champs de plus où 0 vaut absence, et les devises.
+describe("A — quantité, durée d'usage et durée d'exclusivité à 0", () => {
+  const brut = (part: Partial<Deal>): Deal => ({ ...deal(), ...part }) as Deal;
+
+  it("quantité à 0 : même fourchette, même score, même plafond que null", () => {
+    const zero = normalizeDeal(brut({ deliverables: [{ type: "video", platform: "tiktok", quantity: 0, format: null }] }));
+    const absent = normalizeDeal(brut({ deliverables: [{ type: "video", platform: "tiktok", quantity: null, format: null }] }));
+    expect(zero.deliverables[0].quantity).toBeNull();
+    expect(hasUnknownQuantity(zero)).toBe(true);
+    const e0 = computeEstimate(zero);
+    const eNull = computeEstimate(absent);
+    expect([e0.total_low, e0.total_high]).toEqual([eNull.total_low, eNull.total_high]);
+    expect(e0.assumptions).toEqual(eNull.assumptions);
+    expect(computeScore(zero, e0)).toEqual(computeScore(absent, eNull));
+    expect(evaluability(zero)).toBe(evaluability(absent));
+    // Le plafond des quantités inconnues s'applique désormais aussi à 0.
+    const paye = { payment: paiement(2000), usage: { organic: true, paid_ads: false, whitelisting: false, spark_ads: false, perpetual: false, duration_months: null, territory: "France" } };
+    const bienPaye = normalizeDeal(brut({ ...paye, deliverables: [{ type: "video", platform: "tiktok", quantity: 0, format: null }] }));
+    expect(computeScore(bienPaye, computeEstimate(bienPaye)).value).toBeLessThanOrEqual(UNKNOWN_QUANTITY_SCORE_CAP);
+  });
+
+  it("durée d'usage à 0 : hypothèse des 3 mois, et condition non connue", () => {
+    const zero = normalizeDeal(brut({ usage: { organic: true, paid_ads: true, whitelisting: false, spark_ads: false, perpetual: false, duration_months: 0, territory: null } }));
+    const absent = normalizeDeal(brut({ usage: { organic: true, paid_ads: true, whitelisting: false, spark_ads: false, perpetual: false, duration_months: null, territory: null } }));
+    expect(zero.usage.duration_months).toBeNull();
+    const e0 = computeEstimate(zero);
+    expect([e0.total_low, e0.total_high]).toEqual(((e) => [e.total_low, e.total_high])(computeEstimate(absent)));
+    expect(e0.assumptions).toContain("Durée des droits pub non précisée : 3 mois supposés.");
+    expect(e0.lines.map((l) => l.label)).toContain("Droits pub 3 mois");
+    expect(knownTerms(zero)).not.toContain("duration");
+    expect(knownTerms(zero)).toEqual(knownTerms(absent));
+    expect(evaluability(zero)).toBe(evaluability(absent));
+  });
+
+  it("durée d'exclusivité à 0 : plus facturée un mois, mêmes chiffres que null", () => {
+    const zero = normalizeDeal(brut({ exclusivity: { present: true, duration_months: 0, category: "soins" } }));
+    const absent = normalizeDeal(brut({ exclusivity: { present: true, duration_months: null, category: "soins" } }));
+    expect(zero.exclusivity.duration_months).toBeNull();
+    const e0 = computeEstimate(zero);
+    const eNull = computeEstimate(absent);
+    expect([e0.total_low, e0.total_high]).toEqual([eNull.total_low, eNull.total_high]);
+    expect(e0.lines.map((l) => l.label)).toEqual(eNull.lines.map((l) => l.label));
+    expect(e0.lines.map((l) => l.label)).toContain("Exclusivité 3 mois");
+    expect(computeScore(zero, e0)).toEqual(computeScore(absent, eNull));
+  });
+});
+
+describe("B — montant dans une autre devise que l'euro", () => {
+  it("une devise étrangère met le montant de côté et le dit", () => {
+    for (const devise of ["USD", "usd", "$", "GBP", "£", "CHF", "dollars", "CAD"]) {
+      const d = normalizeDeal({ ...deal(), payment: { amount_eur: 300, currency: devise, terms_days: 30, schedule: null } } as Deal);
+      expect(d.payment.amount_eur, devise).toBeNull();
+      expect(computeEstimate(d).assumptions, devise).toContain(FOREIGN_CURRENCY_ASSUMPTION);
+      expect(priceKnown(d), devise).toBe(false);
+    }
+  });
+
+  it("l'euro, quelle que soit sa graphie, garde son montant", () => {
+    for (const devise of ["EUR", "eur", "euro", "euros", "€", "EUR HT", ""]) {
+      const d = normalizeDeal({ ...deal(), payment: { amount_eur: 300, currency: devise, terms_days: 30, schedule: null } } as Deal);
+      expect(d.payment.amount_eur, devise).toBe(300);
+      expect(computeEstimate(d).assumptions, devise).not.toContain(FOREIGN_CURRENCY_ASSUMPTION);
+    }
+  });
+
+  it("sans montant, une devise étrangère n'invente rien mais l'explique quand même", () => {
+    const d = normalizeDeal({ ...deal(), payment: { amount_eur: null, currency: "USD", terms_days: null, schedule: null } } as Deal);
+    expect(computeEstimate(d).assumptions).toContain(FOREIGN_CURRENCY_ASSUMPTION);
+    expect(evaluability(d)).toBe("unpriced");
   });
 });
