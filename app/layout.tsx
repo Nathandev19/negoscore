@@ -4,6 +4,7 @@ import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
 import { FlashBanner } from "@/components/flash-banner";
 import { BRAND } from "@/lib/brand";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
+import { CANONICAL_ORIGIN } from "@/lib/seo";
 import "./globals.css";
 
 // Polices auto-hébergées par next/font, avec police de repli ajustée en taille
@@ -18,12 +19,19 @@ const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
 });
 
+// Valeurs communes à toutes les pages. Les pages publiques précisent titre,
+// description, adresse canonique et aperçu (lib/seo.ts) ; les pages privées
+// gardent cet aperçu générique, sans aucune donnée d'analyse, et sont en noindex.
 export const metadata: Metadata = {
+  metadataBase: new URL(CANONICAL_ORIGIN),
   title: {
     default: `${BRAND.name} — ${BRAND.tagline}`,
     template: `%s — ${BRAND.name}`,
   },
   description: BRAND.tagline,
+  applicationName: BRAND.name,
+  openGraph: { type: "website", locale: "fr_FR", siteName: BRAND.name },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

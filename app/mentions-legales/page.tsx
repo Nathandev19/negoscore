@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
 import { BRAND } from "@/lib/brand";
 import { SELLER } from "@/lib/legal/identity";
 
-export const metadata: Metadata = { title: "Mentions légales" };
+export const metadata: Metadata = publicPageMetadata("/mentions-legales");
 
 // Textes fournis par l'éditeur, repris mot pour mot.
 export default function LegalNoticePage() {

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import { DealInput } from "@/components/deal-input";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
-export const metadata: Metadata = {
-  title: "Analyser un deal",
-};
+export const metadata: Metadata = publicPageMetadata("/analyse");
 
 export default function AnalysePage() {
   return (

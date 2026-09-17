@@ -25,5 +25,13 @@ export default function config(phase: string): NextConfig {
     // liens existent dans des emails déjà envoyés. Les paramètres (?erreur=…)
     // sont transmis tels quels.
     redirects: async () => [{ source: "/offres", destination: "/tarifs", permanent: true }],
+    // Routes privées qui ne sont pas des pages (images, API, étapes de connexion) :
+    // jamais indexées, même si une adresse circule (mission #047). Les pages
+    // privées portent en plus robots noindex dans leurs métadonnées.
+    headers: async () =>
+      ["/analyse/resultat/:path*", "/api/:path*", "/auth/:path*"].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
   };
 }

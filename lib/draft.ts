@@ -27,7 +27,11 @@ export function readDraft(store: DraftStorage | null = storage(), now = Date.now
     const raw = store?.getItem(DRAFT_KEY);
     if (!raw) return "";
     const draft = JSON.parse(raw) as StoredDraft;
-    if (typeof draft.text !== "string" || now - draft.savedAt > DRAFT_TTL_MS) return "";
+    if (typeof draft.text !== "string" || now - draft.savedAt > DRAFT_TTL_MS) {
+      // Au-delà de 24 h, le brouillon est effacé, pas seulement ignoré (politique de confidentialité).
+      store?.removeItem(DRAFT_KEY);
+      return "";
+    }
     return draft.text;
   } catch {
     return "";

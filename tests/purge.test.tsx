@@ -1,5 +1,8 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { COOKIES } from "@/lib/legal/cookies";
 import { purgeCutoffs } from "@/lib/privacy/purge";
 
 const purge = vi.hoisted(() => ({ run: vi.fn() }));
@@ -65,6 +68,27 @@ describe("durées de conservation", () => {
 });
 
 describe("politique de confidentialité", () => {
+  it("annonce tous les cookies posés par le produit", async () => {
+    const { ACCESS_COOKIE, REFRESH_COOKIE, VERIFIER_COOKIE } = await import("@/lib/auth/session");
+    const { SESSION_HINT_COOKIE } = await import("@/lib/auth/session-hint");
+    const { FLASH_COOKIE } = await import("@/lib/auth/flash");
+    const { RIGHT_HINT_COOKIE } = await import("@/lib/billing/right-hint");
+    const { TIER_COOKIE } = await import("@/lib/rates/tier");
+    const { ANON_COOKIE } = await import("@/lib/security/request");
+    const announced = COOKIES.join(" ");
+    const known = [ACCESS_COOKIE, REFRESH_COOKIE, VERIFIER_COOKIE, SESSION_HINT_COOKIE, FLASH_COOKIE, RIGHT_HINT_COOKIE, TIER_COOKIE, ANON_COOKIE, "posthog"];
+    for (const name of known) expect(announced, name).toContain(name);
+    // Aucun autre nom de cookie défini dans le code sans être annoncé.
+    const sources = ["app", "components", "lib"].flatMap((dir) =>
+      readdirSync(path.join(process.cwd(), dir), { recursive: true, withFileTypes: true })
+        .filter((entry) => entry.isFile() && /\.tsx?$/.test(entry.name))
+        .map((entry) => readFileSync(path.join(entry.parentPath, entry.name), "utf8")),
+    );
+    const defined = sources.flatMap((text) => [...text.matchAll(/_COOKIE = "([a-z_]+)"/g)].map((match) => match[1]));
+    expect(defined.length).toBeGreaterThanOrEqual(8);
+    for (const name of defined) expect(announced, name).toContain(name);
+  });
+
   it("reprend le texte fourni", async () => {
     const { default: PrivacyPage } = await import("@/app/confidentialite/page");
     const html = renderToStaticMarkup(<PrivacyPage />).replace(/&#x27;/g, "'");
@@ -83,6 +107,10 @@ describe("politique de confidentialité", () => {
       "Tu peux supprimer ton compte depuis la page Mon compte, à tout moment et sans justification. Sont supprimés immédiatement : ton identifiant de connexion, ton adresse email, les offres que tu as déposées, les documents téléversés et les analyses produites. Sont conservés : le journal des paiements et les preuves de consentement liées à tes achats, pendant 5 ans, afin de pouvoir justifier d'une transaction en cas de litige. Les crédits d'analyse non utilisés sont perdus et ne sont pas remboursés.",
       "Avec ou sans compte, tu peux aussi supprimer une analyse depuis sa page de résultat, avec le navigateur ou le compte qui l'a lancée : l'analyse, le texte de l'offre et le fichier déposé sont supprimés immédiatement.",
       "17 septembre 2026",
+      // Mission #047 : cookies et brouillon local.
+      "Cookies et stockage dans ton navigateur",
+      "Il ne quitte pas ton appareil tant que tu ne lances pas l'analyse. Il est effacé dès qu'une analyse aboutit, ou au bout de 24 heures.",
+      ...COOKIES,
     ]) {
       expect(html.replace(/\s+/g, " "), text).toContain(text);
     }

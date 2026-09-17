@@ -102,7 +102,8 @@ export function NoRightNotice({ message, offerSignIn }: { message: string; offer
   );
 }
 
-export function DealInput() {
+// note : phrase affichée sous le formulaire, sauf quand il ne reste aucun droit.
+export function DealInput({ note }: { note?: string } = {}) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("text");
   // Texte : le brouillon gardé dans le navigateur tant que rien n'a été tapé
@@ -342,6 +343,7 @@ export function DealInput() {
           {disabledReason}
         </p>
       )}
+      {note && !right.blocked ? <p className="text-center text-small text-attenue">{note}</p> : null}
     </form>
   );
 }

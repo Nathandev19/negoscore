@@ -67,6 +67,9 @@ describe("A2 — le texte saisi n'est jamais perdu", () => {
     saveDraft("Bonjour, 2 vidéos TikTok pour 300 €", store, 1_000);
     expect(readDraft(store, 2_000)).toBe("Bonjour, 2 vidéos TikTok pour 300 €");
     expect(readDraft(store, 1_000 + DRAFT_TTL_MS + 1)).toBe("");
+    // Effacé, pas seulement ignoré (mission #047, politique de confidentialité).
+    expect(store.data.size).toBe(0);
+    saveDraft("Bonjour, 2 vidéos TikTok pour 300 €", store, 1_000);
     clearDraft(store);
     expect(readDraft(store, 2_000)).toBe("");
   });
@@ -103,6 +106,12 @@ describe("B — sans droit, l'action principale devient « Voir les tarifs »", 
     expect(html).toContain('href="/connexion?next=%2Fanalyse"');
     expect(html).toContain("bg-marque");
     expect(renderToStaticMarkup(<NoRightNotice message="x" offerSignIn={false} />)).not.toContain("Me connecter");
+  });
+
+  it("mission #047 A1 : la phrase « Score et fourchette gratuits… » est masquée quand un refus est affiché", () => {
+    const source = readFileSync(path.join(ROOT, "components/deal-input.tsx"), "utf8");
+    expect(source).toContain("{note && !right.blocked ? <p");
+    expect(readFileSync(path.join(ROOT, "app/page.tsx"), "utf8")).toContain('<DealInput note="Score et fourchette gratuits, sans compte.');
   });
 
   it("le bouton d'analyse n'est plus mis en avant sans droit", () => {

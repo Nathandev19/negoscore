@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import { Facts, LegalPage, LegalSection } from "@/components/legal/legal-page";
 import { BRAND } from "@/lib/brand";
+import { COOKIES } from "@/lib/legal/cookies";
 import { SELLER } from "@/lib/legal/identity";
 
-export const metadata: Metadata = { title: "Confidentialité" };
+export const metadata: Metadata = publicPageMetadata("/confidentialite");
 
 // Textes fournis par l'éditeur, repris mot pour mot.
 export default function PrivacyPage() {
@@ -86,6 +88,20 @@ export default function PrivacyPage() {
           Le texte des offres est transmis au prestataire d&apos;analyse automatisée pour produire le résultat. Aucun
           contenu d&apos;offre n&apos;est utilisé à des fins publicitaires, ni transmis à un tiers en dehors de ce
           traitement, ni publié sans accord écrit préalable de l&apos;utilisateur.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Cookies et stockage dans ton navigateur">
+        <p>
+          Les cookies ci-dessous servent au fonctionnement du service. Aucun ne sert à la publicité ni à te suivre sur
+          d&apos;autres sites.
+        </p>
+        <Facts items={[...COOKIES]} />
+        <p>
+          Brouillon du texte collé : le texte d&apos;une offre que tu es en train de coller est gardé dans le stockage
+          local de ton navigateur, pour que tu ne le perdes pas si tu quittes la page. Il ne quitte pas ton appareil
+          tant que tu ne lances pas l&apos;analyse. Il est effacé dès qu&apos;une analyse aboutit, ou au bout de 24
+          heures.
         </p>
       </LegalSection>
 

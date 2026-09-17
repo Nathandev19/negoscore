@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { lockAnalysis } from "@/lib/analysis/lock";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 
-export const metadata: Metadata = {
-  title: "Exemple d'analyse",
-};
+export const metadata: Metadata = publicPageMetadata("/analyse/demo");
 
 export default function DemoResultPage() {
   return (

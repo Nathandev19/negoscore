@@ -9,7 +9,8 @@ import { verdictSentence } from "@/lib/analysis/verdict";
 import rates from "@/lib/rates/fr-2026.3.json";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 
-vi.mock("@/components/deal-input", () => ({ DealInput: () => <form aria-label="saisie" /> }));
+// La phrase sous le formulaire est passée au formulaire, qui la masque sans droit (mission #047).
+vi.mock("@/components/deal-input", () => ({ DealInput: ({ note }: { note?: string }) => <form aria-label="saisie">{note}</form> }));
 vi.mock("@/components/analytics/track-view", () => ({ TrackView: () => null }));
 
 function links(html: string): Array<{ href: string; text: string; current: boolean }> {

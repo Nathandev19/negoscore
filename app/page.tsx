@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { TrackView } from "@/components/analytics/track-view";
 import { DealInput } from "@/components/deal-input";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { FEATURED_PLAN, FREE_ANALYSES, PLANS } from "@/lib/billing/plans";
 import { FAQ, STEPS, TRUST } from "@/lib/content/home";
+import { publicPageMetadata } from "@/lib/seo";
 import { formatEur, formatEurRange } from "@/lib/display";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 import { cn } from "@/lib/utils";
@@ -17,6 +19,8 @@ import { cn } from "@/lib/utils";
 // l'exemple de résultat, le bouton principal et les liens.
 const SECTION = "border-t border-filet";
 const SECTION_INNER = "mx-auto flex w-full max-w-6xl flex-col px-4 py-16 sm:px-6 md:py-24";
+
+export const metadata: Metadata = publicPageMetadata("/");
 
 export default function HomePage() {
   const { score, estimate, red_flags, deal } = sampleAnalysis;
@@ -39,10 +43,8 @@ export default function HomePage() {
             </p>
           </div>
           <div className="flex flex-col gap-2">
-            <DealInput />
-            <p className="text-center text-small text-attenue">
-              Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et le message.
-            </p>
+            {/* La phrase est masquée quand il ne reste aucun droit : elle serait fausse à ce moment-là. */}
+            <DealInput note="Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et le message." />
           </div>
         </section>
 

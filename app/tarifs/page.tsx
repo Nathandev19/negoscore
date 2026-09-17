@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PaywallView } from "@/components/analytics/paywall-view";
@@ -7,9 +8,7 @@ import { OffersList } from "@/components/offers/offers-list";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
-export const metadata: Metadata = {
-  title: "Tarifs",
-};
+export const metadata: Metadata = publicPageMetadata("/tarifs");
 
 // Page statique (mission #045) : préchargée, affichée sans rendu serveur au
 // clic. Le compte connecté et ?erreur= sont lus dans le navigateur
