@@ -1,0 +1,28 @@
+{
+  "brand": "NOVA Sportswear",
+  "deliverables": [
+    { "type": "video", "platform": "tiktok", "quantity": 1, "format": null },
+    { "type": "story", "platform": "instagram", "quantity": 2, "format": null }
+  ],
+  "publication_required": true,
+  "usage": {
+    "organic": true,
+    "paid_ads": false,
+    "whitelisting": false,
+    "spark_ads": false,
+    "duration_months": 3,
+    "territory": "France",
+    "perpetual": false
+  },
+  "exclusivity": { "present": true, "duration_months": 1, "category": "vêtements de sport" },
+  "raw_footage": false,
+  "ip_transfer": "license",
+  "ai_training_rights": "absent",
+  "revisions": { "count": null, "unlimited": false },
+  "payment": { "amount_eur": 600, "currency": "EUR", "terms_days": 30, "schedule": null },
+  "in_kind_value_eur": null,
+  "deadlines": [],
+  "kill_fee": null,
+  "termination": null,
+  "governing_law": null
+}

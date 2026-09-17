@@ -288,12 +288,12 @@ describe("computeScore", () => {
     expect(score).toEqual({ value: 90, band: "excellent" });
   });
 
-  it("ratio linéaire entre 0,4 et 1", () => {
-    // Base 250 € → total_low 250. 175 € = ratio 0,7 → +15.
+  it("sous la borne basse : 0 à 18 points, linéaire entre 0,4 × bas et bas", () => {
+    // Fourchette 250–500 €. 175 € : à mi-chemin entre 100 et 250 → +9.
     const deal = makeDeal({ payment: { amount_eur: 175, currency: "EUR", terms_days: null, schedule: null } });
     const estimate = computeEstimate(deal);
-    expect(estimate.total_low).toBe(250);
-    expect(computeScore(deal, estimate).value).toBe(50 + 15 + 5);
+    expect([estimate.total_low, estimate.total_high]).toEqual([250, 500]);
+    expect(computeScore(deal, estimate).value).toBe(50 + 9 + 5);
   });
 });
 

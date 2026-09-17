@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { POSITION_LABEL, rangePosition } from "@/lib/analysis/anchoring";
 import { CONFIDENCE_LABEL, formatEur, formatEurRange } from "@/lib/display";
 import type { Analysis } from "@/lib/schema";
 
@@ -62,13 +63,11 @@ export function IncompleteCard({ missing }: { missing: string[] }) {
   );
 }
 
-// Position d'une valeur par rapport à la fourchette : une comparaison, pas un
-// jugement sur le deal.
+// Position d'une valeur dans la fourchette : une comparaison, pas un jugement
+// sur le deal.
 function position(value: number, low: number | null, high: number | null): string | null {
   if (low === null || high === null) return null;
-  if (value < low) return "en dessous de notre fourchette";
-  if (value > high) return "au-dessus de notre fourchette";
-  return "dans notre fourchette";
+  return POSITION_LABEL[rangePosition(value, low, high)];
 }
 
 export function TermsUnknownCard({

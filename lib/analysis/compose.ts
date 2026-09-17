@@ -1,3 +1,4 @@
+import { counterOfferRange, type CounterRange } from "@/lib/analysis/anchoring";
 import { evaluability, incompleteRequestMessage, termsRequestMessage } from "@/lib/analysis/evaluability";
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { computeEscalation } from "@/lib/legal/escalate";
@@ -75,6 +76,9 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
         ? "medium"
         : extraction.confidence;
 
+  // La contre-offre ancre au-dessus de l'offre reçue, jamais sur le plancher.
+  const counter = counterOfferRange(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
+
   const analysis: Analysis = {
     schema_version: SCHEMA_VERSION,
     evaluability: state,
@@ -91,8 +95,8 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
     fr_legal: computeFrLegal(deal),
     escalate_to_professional: computeEscalation(deal),
     counter_offer: {
-      amount_low: estimate.total_low,
-      amount_high: estimate.total_high,
+      amount_low: counter.low,
+      amount_high: counter.high,
       changes: extraction.counter_offer.changes,
     },
     ready_to_send_message: {
@@ -104,7 +108,7 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
           ? incompleteRequestMessage(deal, extraction.language)
           : state === "terms_unknown"
             ? termsRequestMessage(deal, extraction.language)
-            : fillPrice(extraction.ready_to_send_message.text, extraction.language, estimate),
+            : fillPrice(extraction.ready_to_send_message.text, extraction.language, counter),
     },
   };
 
@@ -164,9 +168,11 @@ function sameIdea(a: string, b: string): boolean {
   return left.includes(right) || right.includes(left);
 }
 
-function fillPrice(text: string, language: Analysis["language"], estimate: Analysis["estimate"]): string {
+// Le message cite la contre-offre, jamais l'estimation : annoncer la borne
+// basse de l'estimation reviendrait à demander moins que l'offre reçue.
+function fillPrice(text: string, language: Analysis["language"], counter: CounterRange): string {
   if (!text.includes(PRICE_PLACEHOLDER)) return text;
-  const { total_low: low, total_high: high } = estimate;
+  const { low, high } = counter;
   let price: string;
   if (low !== null && high !== null) {
     price =

@@ -361,13 +361,15 @@ describe("CASE F — prix connu, conditions inconnues", () => {
 
   it("« terms_unknown » : estimation conservée, score null, hypothèse explicite", () => {
     const estimate = computeEstimate(CASE_F);
-    expect(computeScore(CASE_F, estimate)).toEqual({ value: 85, band: "excellent" });
+    // 85 avant la #019 ; 250 € pile sur la borne basse ne vaut plus que +18.
+    expect(computeScore(CASE_F, estimate)).toEqual({ value: 73, band: "good" });
     expect(analysis.evaluability).toBe("terms_unknown");
     expect(analysis.score).toBeNull();
     expect(analysis.estimate.total_low).toBe(estimate.total_low);
     expect(analysis.estimate.total_high).toBe(estimate.total_high);
     expect(analysis.estimate.assumptions).toContain(TERMS_UNKNOWN_ASSUMPTION);
-    expect(analysis.counter_offer.amount_low).toBe(estimate.total_low);
+    expect(analysis.counter_offer.amount_low).toBe(375);
+    expect(analysis.counter_offer.amount_high).toBe(estimate.total_high);
   });
 
   it("« Offre à préciser », comparaison au montant, liste des conditions, aucun libellé de qualité", () => {
@@ -375,7 +377,7 @@ describe("CASE F — prix connu, conditions inconnues", () => {
     expect(html).toContain("Offre à préciser");
     expect(html).toContain("On peut chiffrer ce que ça vaut, pas si le deal est bon : la marque ne dit rien de ses conditions.");
     expect(html).toContain("Montant proposé");
-    expect(html).toContain("Le montant proposé est dans notre fourchette.");
+    expect(html).toContain("Le montant proposé est tout en bas de notre fourchette.");
     expect(html).toContain("Ce que ça vaut");
     // Plafonnée à quatre : droits et durée, exclusivité, délai de paiement ;
     // « Nom de la marque », le territoire et les révisions passent après.

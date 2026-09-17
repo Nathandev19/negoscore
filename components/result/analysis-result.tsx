@@ -10,6 +10,7 @@ import { LockedCounterOfferPlaceholder, LockedMessagePlaceholder, UnlockCta } fr
 import { ScoreCard } from "@/components/result/score-card";
 import { CounterOffer, ReadyMessage } from "@/components/result/unlocked-blocks";
 import { IncompleteCard, TermsUnknownCard, UnpricedCard } from "@/components/result/verdict-card";
+import { counterOfferRange } from "@/lib/analysis/anchoring";
 import { missingInformation } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
 
@@ -18,8 +19,12 @@ import type { ResultView } from "@/lib/analysis/lock";
 export function AnalysisResult({ analysis, unlockHref }: { analysis: ResultView; unlockHref: string }) {
   const locked = !analysis.counter_offer || !analysis.ready_to_send_message;
   const incomplete = analysis.evaluability === "incomplete";
-  // Offre incomplète : la contre-offre ne porte pas de montant, le titre ne l'annonce pas.
-  const counterOfferTitle = incomplete ? "Ta contre-offre" : undefined;
+  // Sans montant de contre-offre (offre incomplète, ou montant déjà au-dessus de
+  // la fourchette), le titre n'annonce pas de chiffre. Recalculé ici car la vue
+  // verrouillée ne reçoit pas la contre-offre.
+  const { estimate, deal } = analysis;
+  const priced = counterOfferRange(deal.payment.amount_eur, estimate.total_low, estimate.total_high).low !== null;
+  const counterOfferTitle = incomplete || !priced ? "Ta contre-offre" : undefined;
   return (
     <>
       <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>

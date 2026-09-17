@@ -10,7 +10,7 @@ type Score = NonNullable<Analysis["score"]>;
 //
 // Plafond de fait à 90 (50 + 30 prix + 5 paiement rapide + 5 organique),
 // conservé volontairement. Le score ne lit que ce qui est écrit dans l'offre :
-// il récompense un prix aligné, un paiement rapide et un usage limité, mais il
+// il récompense un prix bien placé, un paiement rapide et un usage limité, mais il
 // ne peut rien savoir de ce qui n'y figure pas (la marque paiera-t-elle
 // vraiment, le brief va-t-il déraper, une clause arrivera-t-elle au contrat).
 // Les 10 derniers points représentent ce risque qu'aucun texte ne lève : une
@@ -19,20 +19,39 @@ type Score = NonNullable<Analysis["score"]>;
 
 const BASE = 50;
 const MAX_PRICE_POINTS = 30;
-// Ratio montant proposé / borne basse de l'estimation.
-const RATIO_FULL = 1; // à partir de là : +30
-const RATIO_ZERO = 0.4; // en dessous : +0
+// Points gagnés en atteignant la borne basse de l'estimation. Ne pas être
+// floué mérite l'essentiel du crédit prix, pas la totalité : le reste est
+// réservé à qui est payé haut dans la fourchette.
+const FLOOR_PRICE_POINTS = 18;
+// Ratio montant proposé / borne basse en dessous duquel aucun point n'est donné.
+const RATIO_ZERO = 0.4;
+
+// Points prix selon la position du montant dans la fourchette :
+//   montant < 0,4 × bas       → 0
+//   0,4 × bas → bas           → 0 à 18, linéaire
+//   bas → haut                → 18 à 30, linéaire
+//   montant ≥ haut            → 30
+// Sans borne haute exploitable (nulle ou égale à la basse), la règle
+// précédente s'applique : 0 à 30 entre 0,4 × bas et bas.
+export function pricePoints(amount: number, low: number, high: number | null): number {
+  const zero = RATIO_ZERO * low;
+  if (amount <= zero) return 0;
+  if (high === null || high <= low) {
+    return amount >= low ? MAX_PRICE_POINTS : (MAX_PRICE_POINTS * (amount - zero)) / (low - zero);
+  }
+  if (amount < low) return (FLOOR_PRICE_POINTS * (amount - zero)) / (low - zero);
+  if (amount >= high) return MAX_PRICE_POINTS;
+  return FLOOR_PRICE_POINTS + ((MAX_PRICE_POINTS - FLOOR_PRICE_POINTS) * (amount - low)) / (high - low);
+}
 
 export function computeScore(deal: Deal, estimate: Estimate): Score {
   let value = BASE;
 
-  // Prix : jusqu'à +30, linéaire entre un ratio de 0,4 et 1.
+  // Prix : jusqu'à +30 selon la position dans la fourchette (voir pricePoints).
   // Sans montant proposé ou sans estimation totale, aucun point n'est donné.
   const amount = deal.payment.amount_eur;
-  const ratio = amount !== null && estimate.total_low ? amount / estimate.total_low : null;
-  if (ratio !== null) {
-    const clamped = Math.min(Math.max(ratio, RATIO_ZERO), RATIO_FULL);
-    value += (MAX_PRICE_POINTS * (clamped - RATIO_ZERO)) / (RATIO_FULL - RATIO_ZERO);
+  if (amount !== null && estimate.total_low) {
+    value += pricePoints(amount, estimate.total_low, estimate.total_high);
   }
 
   // Droits cédés.

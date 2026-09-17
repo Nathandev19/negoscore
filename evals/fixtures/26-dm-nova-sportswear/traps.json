@@ -1,0 +1,4 @@
+{
+  "must_flag": [],
+  "forbidden": ["\"paid_ads\":true", "\"perpetual\":true"]
+}
