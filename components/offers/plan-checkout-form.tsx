@@ -14,7 +14,7 @@ function consentWithLink() {
   return (
     <>
       {before}
-      <Link href="/cgv" className="underline">
+      <Link href="/cgv" className="link">
         {CONSENT_LINK_LABEL}
       </Link>
       {after}
@@ -24,7 +24,8 @@ function consentWithLink() {
 
 // Case à cocher obligatoire, jamais pré-cochée. Son état est enregistré côté
 // serveur, avec la date, par /api/checkout.
-export function PlanCheckoutForm({ plan, label }: { plan: "pack" | "pro"; label: string }) {
+// primary : bouton plein pour l'offre mise en avant, lien souligné pour les autres.
+export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro"; label: string; primary: boolean }) {
   const [accepted, setAccepted] = useState(false);
   // Identifiant anonyme de la mesure d'audience, écrit directement dans le
   // champ caché : vide si la mesure est désactivée (DNT, pas de clé).
@@ -41,7 +42,7 @@ export function PlanCheckoutForm({ plan, label }: { plan: "pack" | "pro"; label:
     <form action="/api/checkout" method="post" className="flex flex-col gap-3" onSubmit={fillDistinctId}>
       <input type="hidden" name="plan" value={plan} />
       <input type="hidden" name="ph_distinct_id" ref={distinctIdField} defaultValue="" />
-      <label htmlFor={id} className="flex items-start gap-2 text-xs text-neutral-700">
+      <label htmlFor={id} className="flex items-start gap-2 text-xs">
         <input
           id={id}
           type="checkbox"
@@ -49,14 +50,16 @@ export function PlanCheckoutForm({ plan, label }: { plan: "pack" | "pro"; label:
           required
           checked={accepted}
           onChange={(event) => setAccepted(event.target.checked)}
-          className="mt-0.5 size-4 shrink-0"
+          className="mt-0.5 size-4 shrink-0 accent-encre"
         />
         <span>{consentWithLink()}</span>
       </label>
       <Button
         type="submit"
         disabled={!accepted}
-        className="h-11 w-full"
+        variant={primary ? "default" : "link"}
+        size="lg"
+        className={primary ? "h-12 w-full text-base" : "w-fit text-base"}
         onClick={() => track(ANALYTICS_EVENTS.checkoutStarted, { plan })}
       >
         {label}

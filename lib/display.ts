@@ -19,22 +19,33 @@ export const BAND_LABEL: Record<Band, string> = {
   excellent: "Excellent deal",
 };
 
-// Couleurs des bandes de score : table unique, importée partout. Les valeurs
-// sont les variables de app/globals.css (fond teinté à 8 %, texte à 4,5:1
-// au moins sur ce fond, vérifié par tests/design.test.ts). Les bandes viennent
-// de bandFor() dans lib/rates/score.ts.
+// Couleurs des bandes de score : table unique, importée partout, et seule
+// couleur saturée du site. Les valeurs sont les variables de app/globals.css
+// (teinte à 8 % sur le papier, texte à 4,5:1 au moins sur la teinte et sur le
+// papier, vérifié par tests/design.test.ts). Les bandes viennent de bandFor()
+// dans lib/rates/score.ts.
 export const BAND_STYLE: Record<Band, { text: string; tint: string; border: string; accent: string }> = {
-  bad: { text: "text-band-bad-text", tint: "bg-band-bad-tint", border: "border-band-bad/25", accent: "bg-band-bad" },
-  weak: { text: "text-band-weak-text", tint: "bg-band-weak-tint", border: "border-band-weak/25", accent: "bg-band-weak" },
-  fair: { text: "text-band-fair-text", tint: "bg-band-fair-tint", border: "border-band-fair/25", accent: "bg-band-fair" },
-  good: { text: "text-band-good-text", tint: "bg-band-good-tint", border: "border-band-good/25", accent: "bg-band-good" },
+  bad: { text: "text-band-bad-text", tint: "bg-band-bad-tint", border: "border-band-bad", accent: "bg-band-bad" },
+  weak: { text: "text-band-weak-text", tint: "bg-band-weak-tint", border: "border-band-weak", accent: "bg-band-weak" },
+  fair: { text: "text-band-fair-text", tint: "bg-band-fair-tint", border: "border-band-fair", accent: "bg-band-fair" },
+  good: { text: "text-band-good-text", tint: "bg-band-good-tint", border: "border-band-good", accent: "bg-band-good" },
   excellent: {
     text: "text-band-excellent-text",
     tint: "bg-band-excellent-tint",
-    border: "border-band-excellent/25",
+    border: "border-band-excellent",
     accent: "bg-band-excellent",
   },
 };
+
+// Segments de la jauge de score, dans l'ordre : première valeur de chaque
+// bande. La cohérence avec bandFor() est vérifiée par tests/design.test.ts.
+export const BAND_SEGMENTS: ReadonlyArray<{ band: Band; from: number }> = [
+  { band: "bad", from: 0 },
+  { band: "weak", from: 30 },
+  { band: "fair", from: 50 },
+  { band: "good", from: 70 },
+  { band: "excellent", from: 85 },
+];
 
 export const CONFIDENCE_LABEL: Record<Analysis["confidence"], string> = {
   high: "Confiance élevée",
@@ -48,10 +59,12 @@ export const SEVERITY_LABEL: Record<Severity, string> = {
   low: "Mineur",
 };
 
+// Gravité d'un red flag : en encre, sans couleur (la couleur est réservée au
+// score). Du plus marqué au plus discret : plein, cerné, atténué.
 export const SEVERITY_BADGE: Record<Severity, string> = {
-  high: "bg-red-600 text-white",
-  medium: "bg-orange-100 text-orange-900",
-  low: "bg-neutral-200 text-neutral-800",
+  high: "border-encre bg-encre text-papier",
+  medium: "border-encre text-encre",
+  low: "border-filet text-attenue",
 };
 
 const DELIVERABLE_LABEL: Record<Deal["deliverables"][number]["type"], [string, string]> = {

@@ -45,58 +45,58 @@ export default async function CancelPage({ searchParams }: PageProps<"/resilier"
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6 pb-12 sm:px-6 sm:pt-12">
-        <h1 className="text-3xl font-black tracking-tight">Résilier votre contrat</h1>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+        <h1 className="text-h1 font-extrabold">Résilier votre contrat</h1>
 
         {forDeletion ? (
-          <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-medium text-amber-950">
+          <p role="status" className="border-y border-encre py-3 text-sm font-semibold text-encre">
             Ton abonnement Pro est encore actif : il continuerait d&apos;être prélevé. Résilie-le d&apos;abord, puis tu
             pourras supprimer ton compte depuis la page Mon compte.
           </p>
         ) : null}
 
         {error ? (
-          <p role="alert" className="text-sm font-medium text-red-700">
+          <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
             {error}
           </p>
         ) : null}
 
         {!isPro ? (
           <div className="flex flex-col gap-4">
-            <p className="text-lg font-medium">Tu n&apos;as aucun abonnement en cours.</p>
-            <p className="text-neutral-700">
+            <p className="text-lg font-semibold text-encre">Tu n&apos;as aucun abonnement en cours.</p>
+            <p>
               {credits && credits.balance > 0
                 ? `Il te reste ${credits.balance} analyse${credits.balance > 1 ? "s" : ""} achetée${credits.balance > 1 ? "s" : ""} : elles n'expirent pas.`
                 : "Rien n'est prélevé sur ton compte."}
             </p>
-            <Button asChild variant="outline" className="h-11">
-              <Link href="/historique">Retour à mon compte</Link>
-            </Button>
+            <Link href="/historique" className="link flex min-h-11 w-fit items-center font-semibold">
+              Retour à mon compte
+            </Link>
           </div>
         ) : alreadyCancelled ? (
           <div className="flex flex-col gap-4">
-            <p className="text-lg font-medium" role="status">
+            <p className="text-lg font-semibold text-encre" role="status">
               Ta résiliation est enregistrée.
             </p>
-            <p className="text-neutral-700">
+            <p>
               {endsAt
                 ? `Ton abonnement Pro reste actif jusqu'au ${endsAt}, puis il s'arrête. Aucun nouveau paiement ne sera prélevé.`
                 : "Ton abonnement Pro s'arrête à la fin de la période en cours. Aucun nouveau paiement ne sera prélevé."}
             </p>
-            <p className="text-neutral-700">Les crédits d&apos;analyse achetés séparément restent acquis.</p>
-            <Button asChild variant="outline" className="h-11">
-              <Link href="/historique">Retour à mon compte</Link>
-            </Button>
+            <p>Les crédits d&apos;analyse achetés séparément restent acquis.</p>
+            <Link href="/historique" className="link flex min-h-11 w-fit items-center font-semibold">
+              Retour à mon compte
+            </Link>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1 rounded-xl border bg-white p-4">
-              <p className="font-bold">Abonnement Pro — 12,99 € par mois</p>
-              <p className="text-sm text-neutral-700">
+            <div className="flex flex-col gap-1 border-y border-filet py-4">
+              <p className="font-display text-h3 font-bold text-encre">Abonnement Pro — 12,99 € par mois</p>
+              <p className="text-sm text-attenue">
                 {endsAt ? `Période en cours jusqu'au ${endsAt}.` : "Période en cours."}
               </p>
             </div>
-            <p className="text-neutral-700">
+            <p>
               La résiliation est gratuite et prend effet à la fin de la période en cours : tu gardes ton accès jusque-là.
               Les crédits d&apos;analyse achetés séparément restent acquis.
             </p>
@@ -105,9 +105,9 @@ export default async function CancelPage({ searchParams }: PageProps<"/resilier"
                 Résilier mon abonnement
               </Button>
             </form>
-            <Button asChild variant="outline" className="h-11">
-              <Link href="/historique">Garder mon abonnement</Link>
-            </Button>
+            <Link href="/historique" className="link flex min-h-11 w-fit items-center font-semibold">
+              Garder mon abonnement
+            </Link>
           </div>
         )}
       </main>

@@ -7,54 +7,70 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   SYSTÈME DE DESIGN — source unique des couleurs, polices et tailles.
-   Aucune couleur de marque ne doit être écrite en dur ailleurs.
-   Les contrastes des bandes de score sont vérifiés par tests/design.test.ts.
+   SYSTÈME DE DESIGN — source unique des couleurs, polices et formes.
+
+   LA SEULE COULEUR SATURÉE DU SITE EST CELLE DU SCORE.
+   Tout le reste est encre sur papier : aucune couleur de marque, aucun dégradé,
+   aucune ombre portée. La hiérarchie se fait par la typographie, les filets et
+   le rythme vertical.
+
+   La palette par défaut de Tailwind, ses ombres et ses rayons sont retirés :
+   une classe hors système (bg-neutral-50, shadow-sm, rounded-xl…) ne produit
+   rien. Contrastes vérifiés par tests/design.test.ts.
    ───────────────────────────────────────────────────────────────────────────── */
 @theme {
-  /* Marque */
-  --color-brand: #5a4af4; /* actions, liens, focus, logo */
-  --color-brand-strong: #4436d6; /* survol, actif */
-  --color-brand-tint: #f2f1fe; /* indigo à 8 % sur blanc */
+  --color-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  --radius-*: initial;
 
-  /* Neutres */
-  --color-ink: #0e0e12; /* titres */
-  --color-copy: #3f3f49; /* corps */
-  --color-subtle: #6e6e7a; /* légendes, mentions */
-  --color-surface: #ffffff;
-  --color-surface-soft: #f7f7fa; /* sections alternées, champs */
-  --color-line: #e6e6ee; /* bordures */
+  /* Encre et papier */
+  --color-encre: #141310; /* titres, actions — noir chaud */
+  --color-encre-douce: #3a352d; /* corps de texte */
+  --color-attenue: #6b655c; /* légendes, mentions */
+  --color-papier: #faf8f4; /* fond de toutes les pages */
+  --color-papier-eleve: #ffffff; /* réservé aux vraies cartes de données */
+  --color-filet: #e3ded4; /* le seul trait : 1 px */
 
-  /* Bandes de score (sémantiques, distinctes de la marque).
-     base : la couleur de la bande. tint : base à 8 % sur blanc.
-     text : texte de bande, assombri quand la base n'atteint pas 4,5:1 sur la
-     teinte ET sur le blanc (weak, fair, good). */
+  /* Bandes de score : la seule couleur du site, parce qu'elle porte une information.
+     base : la couleur de la bande. tint : base à 8 % sur le papier.
+     text : texte de bande, assombri (teinte conservée) jusqu'à 4,5:1 sur la
+     teinte ET sur le papier. */
   --color-band-bad: #c41e3a;
-  --color-band-bad-tint: #faedef;
+  --color-band-bad-tint: #f6e7e5;
   --color-band-bad-text: #c41e3a;
   --color-band-weak: #e8590c;
-  --color-band-weak-tint: #fdf2ec;
-  --color-band-weak-text: #be490a;
+  --color-band-weak-tint: #f9ebe1;
+  --color-band-weak-text: #ba470a;
   --color-band-fair: #a47500;
-  --color-band-fair-tint: #f8f4eb;
-  --color-band-fair-text: #926800;
+  --color-band-fair-tint: #f3eee0;
+  --color-band-fair-text: #8e6500;
   --color-band-good: #2b8a3e;
-  --color-band-good-tint: #eef6f0;
-  --color-band-good-text: #287f39;
+  --color-band-good-tint: #e9efe5;
+  --color-band-good-text: #267b37;
   --color-band-excellent: #1c7c54;
-  --color-band-excellent-tint: #edf5f1;
-  --color-band-excellent-text: #1c7c54;
+  --color-band-excellent-tint: #e8eee7;
+  --color-band-excellent-text: #1c7a53;
 
-  /* Polices : variables posées par next/font dans app/layout.tsx. */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-display: var(--font-bricolage), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Polices : variables posées par next/font dans app/layout.tsx.
+     display : titres, montants, score. sans : corps et interface.
+     serif : phrases de verdict et citations en exergue, rien d'autre. */
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+
+  /* Formes : 0 partout, 6 px pour les seuls contrôles (bouton, champ, onglet). */
+  --radius-control: 6px;
 
   /* Échelle typographique, mobile d'abord. */
-  --text-display: clamp(2.25rem, 7vw, 3.5rem);
-  --text-display--line-height: 1.05;
-  --text-display--letter-spacing: -0.02em;
-  --text-h1: clamp(1.875rem, 5vw, 2.5rem);
-  --text-h1--line-height: 1.1;
+  --text-display: clamp(2.25rem, 7vw, 3.75rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.025em;
+  --text-h1: clamp(1.875rem, 5vw, 2.75rem);
+  --text-h1--line-height: 1.08;
+  --text-h1--letter-spacing: -0.02em;
   --text-h2: 1.5rem;
   --text-h2--line-height: 1.2;
   --text-h3: 1.125rem;
@@ -63,92 +79,78 @@
   --text-body--line-height: 1.6;
   --text-small: 0.875rem;
   --text-small--line-height: 1.5;
+  --text-verdict: clamp(1.625rem, 4.5vw, 2.25rem);
+  --text-verdict--line-height: 1.15;
 
   /* Mouvement : deux durées seulement. */
   --duration-hover: 150ms;
   --duration-reveal: 400ms;
 }
 
+/* Jetons des composants shadcn, ramenés à l'encre et au papier. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-papier);
+  --color-foreground: var(--color-encre);
+  --color-primary: var(--color-encre);
+  --color-primary-foreground: var(--color-papier);
+  --color-muted-foreground: var(--color-attenue);
+  --color-border: var(--color-filet);
+  --color-input: var(--color-filet);
+  --color-ring: var(--color-encre);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-/* Jetons des composants shadcn, alignés sur le système de design. */
-:root {
-  --radius: 0.625rem;
-  --background: var(--color-surface);
-  --foreground: var(--color-ink);
-  --card: var(--color-surface);
-  --card-foreground: var(--color-ink);
-  --popover: var(--color-surface);
-  --popover-foreground: var(--color-ink);
-  --primary: var(--color-brand);
-  --primary-foreground: var(--color-surface);
-  --secondary: var(--color-surface-soft);
-  --secondary-foreground: var(--color-ink);
-  --muted: var(--color-surface-soft);
-  --muted-foreground: var(--color-subtle);
-  --accent: var(--color-brand-tint);
-  --accent-foreground: var(--color-ink);
-  --destructive: var(--color-band-bad);
-  --border: var(--color-line);
-  --input: var(--color-line);
-  --ring: var(--color-brand);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-filet;
   }
   html {
     scroll-padding-top: 4.5rem; /* en-tête collant : les ancres ne passent pas dessous */
   }
   body {
-    @apply bg-background font-sans text-copy text-body;
+    @apply bg-papier font-sans text-body text-encre-douce;
   }
   h1,
   h2,
   h3 {
-    @apply font-display text-ink;
+    @apply font-display text-encre;
   }
-  /* Focus visible sur fond clair comme sur fond indigo : double anneau
-     (indigo à l'extérieur, blanc à l'intérieur). */
+  ::selection {
+    background: var(--color-encre);
+    color: var(--color-papier);
+  }
+  /* Focus : contour encre de 2 px, décalé de 2 px. Le décalage laisse voir le
+     papier entre l'élément et le contour : lisible sur un fond papier comme
+     autour d'un bouton encre. Aucun anneau coloré. */
   :focus-visible {
-    outline: 2px solid var(--color-brand);
+    outline: 2px solid var(--color-encre);
     outline-offset: 2px;
-    box-shadow: 0 0 0 2px var(--color-surface);
   }
 }
 
-/* Chiffres tabulaires : montants en euros et score. */
+/* Chiffres : montants en euros et score. */
 @utility figures {
   font-family: var(--font-display);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* Phrase de verdict ou citation en exergue : le seul usage de la serif. */
+@utility verdict {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Lien : souligné, en encre. */
+@utility link {
+  color: var(--color-encre);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  &:hover {
+    text-decoration-thickness: 2px;
+  }
 }
 
 /* Longueur de ligne du corps. */

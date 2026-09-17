@@ -6,13 +6,14 @@ import { track } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 
+// Action primaire de la page débloquée : copier le message.
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <Button
       type="button"
-      variant="outline"
-      className="w-full"
+      size="lg"
+      className="w-full text-base sm:w-fit"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);

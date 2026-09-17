@@ -13,9 +13,9 @@ export function CounterOffer({
   const amount = formatEurRange(offer.amount_low, offer.amount_high);
   return (
     <Section title={title}>
-      <div className="flex flex-col gap-3 rounded-xl border bg-white p-4">
-        {amount ? <p className="figures text-4xl font-extrabold tracking-tight">{amount}</p> : null}
-        <ul className="list-disc pl-5 text-base">
+      <div className="flex flex-col gap-3">
+        {amount ? <p className="figures text-4xl tracking-tight text-encre sm:text-5xl">{amount}</p> : null}
+        <ul className="list-disc pl-5">
           {offer.changes.map((change) => (
             <li key={change}>{change}</li>
           ))}
@@ -25,13 +25,14 @@ export function CounterOffer({
   );
 }
 
+// Le message est du texte à copier tel quel : un filet encre à gauche, sans fond.
 export function ReadyMessage({ message }: { message: Analysis["ready_to_send_message"] }) {
   return (
     <Section title="Ton message prêt à envoyer">
-      <div className="flex flex-col gap-3 rounded-xl border bg-white p-4">
-        <p className="text-sm text-neutral-600">Ton : {message.tone}</p>
-        <p className="text-lg leading-relaxed font-medium whitespace-pre-line text-neutral-950">{message.text}</p>
-      </div>
+      <p className="text-small text-attenue">Ton : {message.tone}</p>
+      <p className="border-l border-encre py-1 pl-4 text-lg leading-relaxed whitespace-pre-line text-encre">
+        {message.text}
+      </p>
       <CopyButton text={message.text} />
     </Section>
   );

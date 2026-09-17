@@ -188,9 +188,9 @@ export function DealInput() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white px-6">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-papier px-6">
         <div className="flex w-full max-w-sm flex-col gap-8">
-          <p className="text-2xl font-bold tracking-tight">On analyse ton deal</p>
+          <p className="font-display text-h2 font-bold tracking-tight text-encre">On analyse ton deal</p>
           <LoadingSteps steps={LOADING_STEPS} durationMs={LOADING_DURATION_MS} onDone={onStepsDone} />
         </div>
       </div>
@@ -207,7 +207,7 @@ export function DealInput() {
       }}
     >
       {PAUSED ? (
-        <p role="status" className="rounded-xl border border-band-fair/25 bg-band-fair-tint p-4 text-small font-medium text-band-fair-text">
+        <p role="status" className="border-y border-encre py-3 text-small font-semibold text-encre">
           {ANALYSIS_PAUSED_MESSAGE}
         </p>
       ) : null}
@@ -218,7 +218,7 @@ export function DealInput() {
           setNotice(null);
         }}
       >
-        <TabsList className="grid h-10 w-full grid-cols-3">
+        <TabsList className="grid h-11 w-full grid-cols-[1.6fr_1fr_1fr]">
           <TabsTrigger value="text">Coller le message</TabsTrigger>
           <TabsTrigger value="photo">Photo</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
@@ -233,9 +233,9 @@ export function DealInput() {
             }}
             placeholder="Colle ici le DM, le mail ou le brief de la marque…"
             aria-label="Message de la marque"
-            className="min-h-40 resize-y bg-surface text-base md:text-base"
+            className="min-h-40 resize-y"
           />
-          <p className="text-right text-small text-subtle tabular-nums" aria-live="polite">
+          <p className="text-right text-small text-attenue tabular-nums" aria-live="polite">
             {textLength < MIN_TEXT_LENGTH
               ? `${textLength} caractère${textLength > 1 ? "s" : ""} · ${MIN_TEXT_LENGTH} minimum`
               : `${textLength} caractères`}
@@ -256,21 +256,21 @@ export function DealInput() {
       </Tabs>
 
       {notice ? (
-        <div role="alert" className="flex flex-col gap-2 text-sm font-medium text-red-700">
+        <div role="alert" className="flex flex-col gap-2 border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
           <p>{notice.message}</p>
           {notice.signIn ? (
             <p>
-              <Link href="/connexion?next=%2Fanalyse" className="font-semibold text-neutral-950 underline">
+              <Link href="/connexion?next=%2Fanalyse" className="link font-semibold">
                 Me connecter
               </Link>
             </p>
           ) : null}
           {notice.paywall ? (
             <p className="flex gap-4">
-              <Link href="/offres" className="font-semibold text-neutral-950 underline">
+              <Link href="/offres" className="link font-semibold">
                 Voir les offres
               </Link>
-              <Link href="/connexion?next=%2Fanalyse" className="font-semibold text-neutral-950 underline">
+              <Link href="/connexion?next=%2Fanalyse" className="link font-semibold">
                 Me connecter
               </Link>
             </p>
@@ -283,12 +283,12 @@ export function DealInput() {
         size="lg"
         disabled={!canSubmit}
         aria-describedby={canSubmit ? undefined : reasonId}
-        className="h-12 w-full text-base font-semibold disabled:border disabled:border-line disabled:bg-surface-soft disabled:text-copy disabled:opacity-100"
+        className="h-12 w-full text-base"
       >
         Analyser mon deal
       </Button>
       {canSubmit ? null : (
-        <p id={reasonId} className="text-center text-small text-subtle">
+        <p id={reasonId} className="text-center text-small text-attenue">
           {disabledReason}
         </p>
       )}

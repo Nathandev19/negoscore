@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getViewer, getViewerAccessToken } from "@/lib/auth/viewer";
-import { formatEur } from "@/lib/display";
+import { Button } from "@/components/ui/button";
+import { BAND_STYLE, formatEur } from "@/lib/display";
+import { bandFor } from "@/lib/rates/score";
+import { cn } from "@/lib/utils";
 import { selectRowsAsUser } from "@/lib/supabase/as-user";
 
 export const metadata: Metadata = {
@@ -44,43 +47,46 @@ export default async function HistoryPage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 pt-6 pb-12 sm:px-6 sm:pt-12">
-        <h1 className="text-3xl font-black tracking-tight">Tes analyses</h1>
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+        <h1 className="text-h1 font-extrabold">Tes analyses</h1>
         {rows.length === 0 ? (
-          <p className="text-neutral-700">
-            Aucune analyse pour l&apos;instant. <Link href="/analyse" className="font-semibold underline">Analyser un deal</Link>
+          <p>
+            Aucune analyse pour l&apos;instant. <Link href="/analyse" className="link font-semibold">Analyser un deal</Link>
           </p>
         ) : (
-          <ul className="flex flex-col divide-y rounded-xl border bg-white">
+          <ul className="flex flex-col divide-y divide-filet border-y border-filet">
             {rows.map((row) => (
               <li key={row.id}>
-                <Link href={`/analyse/resultat/${row.id}`} className="flex items-center justify-between gap-4 p-4 hover:bg-neutral-50">
+                <Link href={`/analyse/resultat/${row.id}`} className="group flex items-center justify-between gap-4 py-4">
                   <span className="flex flex-col">
-                    <span className="font-semibold">{DATE.format(new Date(row.created_at))}</span>
-                    <span className="text-sm text-neutral-600">
+                    <span className="font-semibold text-encre decoration-1 underline-offset-4 group-hover:underline">{DATE.format(new Date(row.created_at))}</span>
+                    <span className="text-sm text-attenue">
                       {typeof row.amount === "number" ? `Offre : ${formatEur(row.amount)}` : "Montant non précisé"}
                     </span>
                   </span>
                   {row.score !== null ? (
-                    <span className="text-2xl font-black">{row.score}<span className="text-sm font-medium text-neutral-500">/100</span></span>
+                    <span className={cn("figures text-2xl", BAND_STYLE[bandFor(row.score)].text)}>
+                      {row.score}
+                      <span className="font-sans text-sm font-medium text-attenue">/100</span>
+                    </span>
                   ) : (
-                    <span className="text-sm font-semibold text-neutral-700">{NO_SCORE_LABEL[row.evaluability ?? ""] ?? "—"}</span>
+                    <span className="text-sm font-semibold text-encre">{NO_SCORE_LABEL[row.evaluability ?? ""] ?? "—"}</span>
                   )}
                 </Link>
               </li>
             ))}
           </ul>
         )}
-        <p className="text-sm">
-          <Link href="/resilier" className="underline">
+        <div className="flex flex-col gap-1">
+          <Link href="/resilier" className="link flex min-h-11 w-fit items-center text-sm">
             Résilier votre contrat
           </Link>
-        </p>
-        <form action="/auth/deconnexion" method="post">
-          <button type="submit" className="text-sm text-neutral-600 underline">
-            Se déconnecter
-          </button>
-        </form>
+          <form action="/auth/deconnexion" method="post">
+            <Button type="submit" variant="link" className="text-sm">
+              Se déconnecter
+            </Button>
+          </form>
+        </div>
       </main>
       <SiteFooter />
     </>

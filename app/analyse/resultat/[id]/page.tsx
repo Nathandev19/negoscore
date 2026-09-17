@@ -28,20 +28,20 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
       <SiteHeader />
       <TrackView event={ANALYTICS_EVENTS.resultViewed} />
       {result.unlocked ? null : <TrackView event={ANALYTICS_EVENTS.paywallEmailShown} />}
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-2 pb-12 sm:px-6 sm:pt-8">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-12 px-4 pt-6 pb-16 sm:px-6 md:pt-12 md:pb-24">
         <AnalysisResult
           analysis={result.analysis}
           unlockHref={`/connexion?next=${encodeURIComponent(`/analyse/resultat/${id}`)}`}
         />
         {result.sourceRemoved ? (
-          <p role="note" className="rounded-xl border border-line bg-surface-soft p-4 text-small">
+          <p role="note" className="border-y border-filet py-3 text-small">
             {result.sourceType === "text"
               ? "Le texte d'origine de cette offre a été supprimé au bout de 30 jours, comme prévu. L'analyse reste disponible."
               : "Le fichier d'origine de cette offre a été supprimé au bout de 30 jours, comme prévu. L'analyse reste disponible."}
           </p>
         ) : null}
         <p className="text-center text-small">
-          <Link href={`/analyse/resultat/${id}/supprimer`} className="text-subtle underline underline-offset-4 hover:text-ink">
+          <Link href={`/analyse/resultat/${id}/supprimer`} className="link">
             Supprimer cette analyse
           </Link>
         </p>

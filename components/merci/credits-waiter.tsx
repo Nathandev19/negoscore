@@ -76,7 +76,7 @@ export function CreditsWaiter({ initial }: { initial: Credits | null }) {
   if (state.status === "credited" && state.credits) {
     return (
       <div className="flex flex-col gap-4">
-        <p className="text-lg font-medium" role="status">
+        <p className="text-lg font-semibold text-encre" role="status">
           C&apos;est bon, ton compte est crédité. {describe(state.credits)}
         </p>
         <Button asChild size="lg" className="h-12 text-base">
@@ -89,10 +89,10 @@ export function CreditsWaiter({ initial }: { initial: Credits | null }) {
   if (state.status === "timeout") {
     return (
       <div className="flex flex-col gap-4">
-        <p className="text-lg font-medium" role="status">
+        <p className="text-lg font-semibold text-encre" role="status">
           Ton paiement est bien reçu. Les crédits arrivent, rafraîchis cette page dans une minute.
         </p>
-        <Button asChild variant="outline" size="lg" className="h-12 text-base">
+        <Button asChild size="lg" className="h-12 text-base">
           <Link href="/merci">Rafraîchir</Link>
         </Button>
       </div>
@@ -100,7 +100,7 @@ export function CreditsWaiter({ initial }: { initial: Credits | null }) {
   }
 
   return (
-    <p className="text-lg font-medium" role="status" aria-live="polite">
+    <p className="text-lg font-semibold text-encre" role="status" aria-live="polite">
       On confirme ton paiement… Reste sur cette page quelques secondes.
     </p>
   );

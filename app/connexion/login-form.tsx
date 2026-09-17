@@ -32,10 +32,10 @@ export function LoginForm({ next }: { next: string }) {
         autoComplete="email"
         placeholder="ton@email.fr"
         aria-label="Ton email"
-        className="h-12 bg-white text-base md:text-base"
+        className="h-12"
       />
       {state.status === "error" ? (
-        <p role="alert" className="text-sm font-medium text-red-700">
+        <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
           {state.message}
         </p>
       ) : null}
@@ -50,18 +50,18 @@ export function LoginForm({ next }: { next: string }) {
 // lien est parti, où, pour combien de temps, et quoi faire s'il n'arrive pas.
 export function LinkSent({ email, next }: { email: string; next: string }) {
   return (
-    <div role="status" className="flex flex-col gap-3 rounded-xl border bg-white p-4">
-      <p className="text-lg font-bold">Regarde ta boîte mail</p>
+    <div role="status" className="flex flex-col gap-3 border-y border-encre py-5">
+      <p className="font-display text-h2 font-bold text-encre">Regarde ta boîte mail</p>
       <p className="text-base">
         Lien envoyé à <span className="font-semibold break-all">{email}</span>. Ouvre-le pour te connecter : il est valable
         une heure.
       </p>
-      <p className="text-sm text-neutral-700">
+      <p className="text-sm">
         Rien après une minute ? Regarde dans tes spams ou tes promotions, et vérifie l&apos;adresse.
       </p>
       <a
         href={`/connexion?next=${encodeURIComponent(next)}`}
-        className="text-sm font-medium text-neutral-950 underline underline-offset-4"
+        className="link w-fit text-sm font-semibold"
       >
         Utiliser une autre adresse
       </a>

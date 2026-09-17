@@ -33,10 +33,10 @@ export function LoadingSteps({ steps, durationMs, onDone }: LoadingStepsProps) {
           <li key={step} className="flex items-center gap-3">
             <span
               className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-full border",
-                done && "border-neutral-900 bg-neutral-900 text-white",
-                current && "border-neutral-900",
-                !done && !current && "border-neutral-300",
+                "flex size-8 shrink-0 items-center justify-center border",
+                done && "border-encre bg-encre text-papier",
+                current && "border-encre text-encre",
+                !done && !current && "border-filet",
               )}
             >
               {done ? (
@@ -48,8 +48,8 @@ export function LoadingSteps({ steps, durationMs, onDone }: LoadingStepsProps) {
             <span
               className={cn(
                 "text-lg",
-                current ? "font-semibold text-neutral-900" : "text-neutral-500",
-                done && "text-neutral-900",
+                current ? "font-semibold text-encre" : "text-attenue",
+                done && "text-encre",
               )}
             >
               {step}

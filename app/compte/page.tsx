@@ -30,58 +30,59 @@ export default async function AccountPage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6 pb-12 sm:px-6 sm:pt-12">
-        <h1 className="text-3xl font-black tracking-tight">Mon compte</h1>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+        <h1 className="text-h1 font-extrabold">Mon compte</h1>
 
-        <dl className="divide-y rounded-xl border bg-white">
-          <div className="flex justify-between gap-4 px-4 py-3">
-            <dt className="text-sm text-neutral-600">Email</dt>
-            <dd className="min-w-0 truncate text-right text-sm font-medium">{user.email ?? "—"}</dd>
+        <dl className="flex flex-col divide-y divide-filet border-y border-filet">
+          <div className="flex justify-between gap-4 py-3">
+            <dt className="text-sm text-attenue">Email</dt>
+            <dd className="min-w-0 truncate text-right text-sm font-medium text-encre">{user.email ?? "—"}</dd>
           </div>
-          <div className="flex justify-between gap-4 px-4 py-3">
-            <dt className="text-sm text-neutral-600">Offre</dt>
-            <dd className="text-right text-sm font-medium">{summary.planLabel}</dd>
+          <div className="flex justify-between gap-4 py-3">
+            <dt className="text-sm text-attenue">Offre</dt>
+            <dd className="text-right text-sm font-medium text-encre">{summary.planLabel}</dd>
           </div>
-          <div className="flex justify-between gap-4 px-4 py-3">
-            <dt className="text-sm text-neutral-600">Crédits d&apos;analyse</dt>
-            <dd className="text-right text-sm font-medium">{summary.balance}</dd>
+          <div className="flex justify-between gap-4 py-3">
+            <dt className="text-sm text-attenue">Crédits d&apos;analyse</dt>
+            <dd className="text-right text-sm font-medium text-encre">{summary.balance}</dd>
           </div>
           {summary.accessEndsAt ? (
-            <div className="flex justify-between gap-4 px-4 py-3">
-              <dt className="text-sm text-neutral-600">Résiliation enregistrée</dt>
-              <dd className="text-right text-sm font-medium">Accès jusqu&apos;au {DATE.format(summary.accessEndsAt)}</dd>
+            <div className="flex justify-between gap-4 py-3">
+              <dt className="text-sm text-attenue">Résiliation enregistrée</dt>
+              <dd className="text-right text-sm font-medium text-encre">Accès jusqu&apos;au {DATE.format(summary.accessEndsAt)}</dd>
             </div>
           ) : summary.periodEnd ? (
-            <div className="flex justify-between gap-4 px-4 py-3">
-              <dt className="text-sm text-neutral-600">Période en cours</dt>
-              <dd className="text-right text-sm font-medium">Jusqu&apos;au {DATE.format(summary.periodEnd)}</dd>
+            <div className="flex justify-between gap-4 py-3">
+              <dt className="text-sm text-attenue">Période en cours</dt>
+              <dd className="text-right text-sm font-medium text-encre">Jusqu&apos;au {DATE.format(summary.periodEnd)}</dd>
             </div>
           ) : null}
         </dl>
 
-        <div className="flex flex-col gap-3">
-          <Button asChild className="h-11">
+        <div className="flex flex-col gap-2">
+          <Button asChild size="lg" className="h-12 text-base">
             <Link href="/historique">Mes analyses</Link>
           </Button>
-          <Button asChild variant="outline" className="h-11">
-            <Link href="/offres">Voir les offres</Link>
-          </Button>
+          <Link href="/offres" className="link flex min-h-11 w-fit items-center font-semibold">
+            Voir les offres
+          </Link>
           {summary.canCancel ? (
-            <Link href="/resilier" className="text-center text-sm text-neutral-600 underline">
+            <Link href="/resilier" className="link flex min-h-11 w-fit items-center text-sm">
               Résilier votre contrat
             </Link>
           ) : null}
         </div>
 
-        <form action="/auth/deconnexion" method="post">
-          <Button type="submit" variant="outline" className="h-11 w-full">
-            Se déconnecter
-          </Button>
-        </form>
-
-        <Link href="/compte/supprimer" className="text-center text-sm text-red-700 underline">
-          Supprimer mon compte
-        </Link>
+        <div className="flex flex-col gap-1 border-t border-filet pt-4">
+          <form action="/auth/deconnexion" method="post">
+            <Button type="submit" variant="link" className="text-sm">
+              Se déconnecter
+            </Button>
+          </form>
+          <Link href="/compte/supprimer" className="link flex min-h-11 w-fit items-center text-sm">
+            Supprimer mon compte
+          </Link>
+        </div>
       </main>
       <SiteFooter />
     </>

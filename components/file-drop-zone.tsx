@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import Image from "next/image";
-import { FileTextIcon, ImageIcon, XIcon } from "lucide-react";
+import { FileTextIcon, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ACCEPTED_TYPES, formatFileSize, MAX_PDF_PAGES, type FileKind } from "@/lib/upload";
 import { cn } from "@/lib/utils";
@@ -35,9 +35,9 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
 
   if (selected) {
     return (
-      <div className="flex flex-col gap-3 rounded-xl border bg-white p-3">
+      <div className="flex flex-col gap-3 rounded-control border border-attenue p-3">
         {selected.previewUrl ? (
-          <div className="relative h-44 w-full overflow-hidden rounded-lg bg-neutral-100">
+          <div className="relative h-44 w-full overflow-hidden bg-papier">
             <Image
               src={selected.previewUrl}
               alt="Aperçu de ta capture"
@@ -48,13 +48,12 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
           </div>
         ) : null}
         <div className="flex items-center gap-3">
-          <Icon className="size-5 shrink-0 text-neutral-500" />
+          <Icon className="size-5 shrink-0 text-attenue" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{selected.file.name}</p>
-            <p className="text-xs text-neutral-500">{formatFileSize(selected.file.size)}</p>
+            <p className="truncate text-sm font-medium text-encre">{selected.file.name}</p>
+            <p className="text-xs text-attenue">{formatFileSize(selected.file.size)}</p>
           </div>
-          <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
-            <XIcon />
+          <Button type="button" variant="link" size="sm" onClick={onRemove}>
             Retirer
           </Button>
         </div>
@@ -78,13 +77,12 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
           if (file) onSelect(file);
         }}
         className={cn(
-          "flex h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed bg-white px-4 text-center transition-colors",
-          dragging ? "border-neutral-900 bg-neutral-50" : "border-neutral-300",
+          "flex h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-control border border-dashed px-4 text-center transition-colors",
+          dragging ? "border-encre" : "border-attenue",
         )}
       >
-        <Icon className="size-7 text-neutral-500" />
-        <span className="text-base font-medium">{COPY[kind].title}</span>
-        <span className="text-sm text-neutral-500">
+        <span className="text-base font-medium text-encre">{COPY[kind].title}</span>
+        <span className="text-sm text-attenue">
           Touche pour choisir un fichier · {COPY[kind].hint}
         </span>
       </label>
@@ -100,7 +98,7 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
         }}
       />
       {error ? (
-        <p role="alert" className="text-sm font-medium text-red-700">
+        <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
           {error}
         </p>
       ) : null}

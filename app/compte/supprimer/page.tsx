@@ -42,19 +42,19 @@ export default async function DeleteAccountPage({ searchParams }: PageProps<"/co
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6 pb-12 sm:px-6 sm:pt-12">
-        <h1 className="text-3xl font-black tracking-tight">Supprimer mon compte</h1>
-        <p className="text-lg font-medium">La suppression est définitive. Elle ne peut pas être annulée.</p>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+        <h1 className="text-h1 font-extrabold">Supprimer mon compte</h1>
+        <p className="text-lg font-semibold text-encre">La suppression est définitive. Elle ne peut pas être annulée.</p>
 
         {error ? (
-          <p role="alert" className="text-sm font-medium text-red-700">
+          <p role="alert" className="border-l border-encre py-1 pl-3 text-sm font-semibold text-encre">
             {error}
           </p>
         ) : null}
 
-        <section className="flex flex-col gap-2 rounded-xl border bg-white p-4">
-          <h2 className="font-bold">Ce qui sera supprimé</h2>
-          <ul className="list-disc pl-5 text-sm text-neutral-800">
+        <section className="flex flex-col gap-2 border-t border-filet pt-4">
+          <h2 className="text-h3 font-bold">Ce qui sera supprimé</h2>
+          <ul className="list-disc pl-5 text-sm">
             <li>Ton compte et ton adresse email de connexion</li>
             <li>Les offres que tu as déposées, et leurs fichiers</li>
             <li>Tes analyses</li>
@@ -62,19 +62,19 @@ export default async function DeleteAccountPage({ searchParams }: PageProps<"/co
           </ul>
         </section>
 
-        <section className="flex flex-col gap-2 rounded-xl border bg-white p-4">
-          <h2 className="font-bold">Ce qui sera conservé</h2>
-          <ul className="list-disc pl-5 text-sm text-neutral-800">
+        <section className="flex flex-col gap-2 border-t border-filet pt-4">
+          <h2 className="text-h3 font-bold">Ce qui sera conservé</h2>
+          <ul className="list-disc pl-5 text-sm">
             <li>L&apos;historique de tes paiements</li>
             <li>Tes preuves de consentement au moment du paiement</li>
           </ul>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-attenue">
             Ils documentent des transactions commerciales, que la loi nous oblige à conserver.
           </p>
         </section>
 
         {balance > 0 || proEndsAt ? (
-          <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-900">
+          <p className="border-y border-encre py-3 text-sm font-semibold text-encre">
             {balance > 0
               ? `Il te reste ${balance} crédit${balance > 1 ? "s" : ""} d'analyse non consommé${balance > 1 ? "s" : ""}. ${balance > 1 ? "Ils seront perdus et ne sont" : "Il sera perdu et n'est"} pas remboursé${balance > 1 ? "s" : ""}.`
               : null}
@@ -84,11 +84,11 @@ export default async function DeleteAccountPage({ searchParams }: PageProps<"/co
               : null}
           </p>
         ) : (
-          <p className="text-sm text-neutral-700">Les crédits d&apos;analyse non consommés sont perdus et ne sont pas remboursés.</p>
+          <p className="text-sm">Les crédits d&apos;analyse non consommés sont perdus et ne sont pas remboursés.</p>
         )}
 
         <form action="/api/compte/supprimer" method="post" className="flex flex-col gap-3">
-          <label htmlFor="confirmation" className="text-sm font-medium">
+          <label htmlFor="confirmation" className="text-sm font-semibold text-encre">
             Pour confirmer, écris {DELETION_CONFIRMATION_WORD}
           </label>
           <Input
@@ -98,16 +98,16 @@ export default async function DeleteAccountPage({ searchParams }: PageProps<"/co
             autoCapitalize="characters"
             spellCheck={false}
             required
-            className="h-11 bg-white text-base"
+            className="h-11"
           />
-          <Button type="submit" variant="destructive" className="h-12 w-full text-base">
+          <Button type="submit" size="lg" className="h-12 w-full text-base">
             Supprimer définitivement mon compte
           </Button>
         </form>
 
-        <Button asChild variant="outline" className="h-11">
-          <Link href="/compte">Garder mon compte</Link>
-        </Button>
+        <Link href="/compte" className="link flex min-h-11 w-fit items-center font-semibold">
+          Garder mon compte
+        </Link>
       </main>
       <SiteFooter />
     </>

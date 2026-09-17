@@ -13,8 +13,8 @@ export default function DemoResultPage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-2 pb-12 sm:px-6 sm:pt-8">
-        <p role="note" className="rounded-xl border border-brand/25 bg-brand-tint p-4 text-small font-medium text-ink">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-12 px-4 pt-6 pb-16 sm:px-6 md:pt-12 md:pb-24">
+        <p role="note" className="border-y border-encre py-3 text-small font-medium text-encre">
           Exemple figé, pas une vraie analyse : l&apos;offre est inventée et les montants ne sont pas recalculés. Pour
           chiffrer ton offre, colle-la sur la page Analyser un deal.
         </p>

@@ -8,16 +8,13 @@ import type { Analysis } from "@/lib/schema";
 
 export function UnpricedCard({ confidence }: { confidence: Analysis["confidence"] }) {
   return (
-    <section
-      aria-label="Offre à chiffrer"
-      className="flex flex-col items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-6 py-6 text-center"
-    >
-      <p className="text-3xl font-black tracking-tight text-sky-950">Offre à chiffrer</p>
-      <p className="text-base text-sky-950">
+    <section aria-label="Offre à chiffrer" className="flex flex-col gap-3 border-y border-encre py-6">
+      <p className="verdict text-verdict text-encre">Offre à chiffrer</p>
+      <p className="measure text-encre-douce">
         Cette offre ne précise pas de rémunération. Voici ce qu&apos;elle vaut d&apos;après nos références, à confirmer
         avec la marque.
       </p>
-      <p className="mt-1 text-xs text-neutral-600">{CONFIDENCE_LABEL[confidence]}</p>
+      <p className="text-small text-attenue">{CONFIDENCE_LABEL[confidence]}</p>
     </section>
   );
 }
@@ -35,14 +32,14 @@ function MissingInfoCard({
   children?: ReactNode;
 }) {
   return (
-    <section aria-label={title} className="flex flex-col gap-3 rounded-2xl border border-neutral-300 bg-neutral-50 px-6 py-6">
-      <p className="text-center text-3xl font-black tracking-tight text-neutral-950">{title}</p>
-      <p className="text-center text-base text-neutral-800">{text}</p>
+    <section aria-label={title} className="flex flex-col gap-3 border-y border-encre py-6">
+      <p className="verdict text-verdict text-encre">{title}</p>
+      <p className="measure text-encre-douce">{text}</p>
       {children}
       {missing.length > 0 ? (
-        <div className="text-sm">
-          <p className="font-semibold text-neutral-950">Ce qui manque :</p>
-          <ul className="list-disc pl-5 text-neutral-800">
+        <div className="mt-3 flex flex-col gap-1">
+          <p className="font-semibold text-encre">Ce qui manque :</p>
+          <ul className="list-disc pl-5 text-encre-douce">
             {missing.map((item) => (
               <li key={item}>{item}</li>
             ))}
@@ -98,26 +95,26 @@ export function TermsUnknownCard({
       text="On peut chiffrer ce que ça vaut, pas si le deal est bon : la marque ne dit rien de ses conditions."
       missing={missing}
     >
-      <dl className="flex flex-col gap-1 rounded-xl border bg-white px-4 py-3 text-sm">
+      <dl className="flex flex-col divide-y divide-filet border-y border-filet text-small">
         {amount !== null ? (
-          <div className="flex justify-between gap-4">
-            <dt className="text-neutral-600">Montant proposé</dt>
-            <dd className="text-right font-semibold">{formatEur(amount)}</dd>
+          <div className="flex justify-between gap-4 py-2">
+            <dt className="text-attenue">Montant proposé</dt>
+            <dd className="figures text-right text-encre">{formatEur(amount)}</dd>
           </div>
         ) : null}
         {inKind !== null ? (
-          <div className="flex justify-between gap-4">
-            <dt className="text-neutral-600">Produits offerts (valeur, pas de l&apos;argent)</dt>
-            <dd className="text-right font-semibold">{formatEur(inKind)}</dd>
+          <div className="flex justify-between gap-4 py-2">
+            <dt className="text-attenue">Produits offerts (valeur, pas de l&apos;argent)</dt>
+            <dd className="figures text-right text-encre">{formatEur(inKind)}</dd>
           </div>
         ) : null}
         {range ? (
-          <div className="flex justify-between gap-4">
-            <dt className="text-neutral-600">Ce que valent les contenus</dt>
-            <dd className="text-right font-semibold">{range}</dd>
+          <div className="flex justify-between gap-4 py-2">
+            <dt className="text-attenue">Ce que valent les contenus</dt>
+            <dd className="figures text-right text-encre">{range}</dd>
           </div>
         ) : null}
-        {comparison ? <p className="pt-1 text-neutral-800">{comparison}</p> : null}
+        {comparison ? <p className="py-2 text-encre-douce">{comparison}</p> : null}
       </dl>
     </MissingInfoCard>
   );

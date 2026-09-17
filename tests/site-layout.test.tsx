@@ -109,8 +109,30 @@ describe("page d'accueil", () => {
     expect(html).toContain("Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et le message.");
     expect(html).not.toContain("Gratuit · sans compte");
     expect(html).not.toContain("et un message à envoyer.");
+    // B4 (#030) : plus aucune promesse de gratuité ni de durée dans le sous-titre.
+    expect(html).toContain("On te dit ce que ça vaut vraiment, ce que tu cèdes, et quoi répondre.</p>");
+    expect(html).not.toMatch(/Gratuit, 30|30&nbsp;secondes|30 secondes/);
     // Aucun témoignage, avis ou compteur inventé.
     expect(html).not.toMatch(/témoign|avis client|★|créateurs nous font|\d[\d\s]* créateurs/i);
+  });
+});
+
+describe("page d'accueil : langage visuel (#030)", () => {
+  it("une seule action primaire par section, une seule offre mise en avant, aucune carte arrondie", async () => {
+    const { default: HomePage } = await import("@/app/page");
+    const html = renderToStaticMarkup(<HomePage />);
+    const sections = html.split("<section").slice(1);
+    for (const section of sections) {
+      expect((section.match(/bg-encre text-papier/g) ?? []).length, section.slice(0, 80)).toBeLessThanOrEqual(1);
+    }
+    expect(html.match(/border-encre py-8/g)).toHaveLength(1);
+    expect(html).not.toMatch(/rounded-(?!control)|shadow|bg-surface|brand/);
+    // Comment ça marche : liste typographique, pas de pastille ni de cadre.
+    const method = sections.find((section) => section.includes('id="methode"')) ?? "";
+    expect(method).toContain("<ol");
+    expect(method).not.toMatch(/rounded|bg-papier-eleve|<svg/);
+    // L'exemple est la seule zone sur papier élevé.
+    expect(html.match(/bg-papier-eleve/g)).toHaveLength(1);
   });
 });
 

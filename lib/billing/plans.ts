@@ -30,3 +30,7 @@ export const PLANS = [
     features: ["Analyse complète à chaque fois", "Historique de tes analyses"],
   },
 ] as const;
+
+// Offre mise en avant sur l'accueil et sur /offres : une seule. Le Pack est
+// l'achat sans engagement qui suit l'analyse gratuite.
+export const FEATURED_PLAN: (typeof PLANS)[number]["id"] = "pack";

@@ -25,8 +25,8 @@ export default async function ThanksPage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6 pb-12 sm:px-6 sm:pt-12">
-        <h1 className="text-3xl font-black tracking-tight">Merci !</h1>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+        <h1 className="text-h1 font-extrabold">Merci !</h1>
         <CreditsWaiter initial={credits ?? null} />
       </main>
       <SiteFooter />

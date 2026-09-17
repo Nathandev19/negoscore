@@ -102,7 +102,7 @@ export default function PrivacyPage() {
           <br />
           En cas de désaccord, réclamation possible auprès de la CNIL, 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex
           07,{" "}
-          <a href="https://www.cnil.fr" className="underline">
+          <a href="https://www.cnil.fr" className="link">
             www.cnil.fr
           </a>
         </p>

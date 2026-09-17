@@ -21,9 +21,12 @@ export function navItems(signedIn: boolean): { main: NavItem[]; account: NavItem
   };
 }
 
-const LINK = "rounded-md text-copy transition-colors duration-150 hover:text-brand-strong";
-const CTA =
-  "inline-flex h-11 items-center justify-center rounded-lg bg-brand px-4 font-semibold text-white transition-colors duration-150 hover:bg-brand-strong";
+// Liens de navigation en encre douce, soulignés au survol et sur la page courante.
+// « Analyser un deal » est un lien souligné, pas un bouton : l'action primaire
+// de chaque écran est dans la page (formulaire, déblocage), jamais dans l'en-tête.
+const LINK =
+  "text-encre-douce decoration-1 underline-offset-4 transition-colors duration-150 hover:text-encre hover:underline aria-[current=page]:text-encre aria-[current=page]:underline";
+const CTA = "font-semibold text-encre underline decoration-1 underline-offset-4 hover:decoration-2";
 
 // En-tête sans lecture de session : la page le rend statique. Hauteur fixe de
 // 56 px quel que soit l'état ; le menu mobile s'ouvre par-dessus le contenu.
@@ -76,9 +79,9 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
   }
 
   return (
-    <header className="sticky top-0 z-40 h-14 border-b border-line bg-surface">
+    <header className="sticky top-0 z-40 h-14 border-b border-filet bg-papier">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="rounded-md" aria-label="Accueil">
+        <Link href="/" aria-label="Accueil">
           <Logo />
         </Link>
 
@@ -94,7 +97,7 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
           <Link href={account.href} aria-current={current(account.href)} className={cn(LINK, "font-medium")}>
             {account.label}
           </Link>
-          <Link href={cta.href} aria-current={current(cta.href)} className={cn(CTA, "h-9")}>
+          <Link href={cta.href} aria-current={current(cta.href)} className={CTA}>
             {cta.label}
           </Link>
         </div>
@@ -106,7 +109,7 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
             aria-expanded={open}
             aria-controls={panelId}
             onClick={() => setOpen((value) => !value)}
-            className="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg border border-line px-3 text-small font-semibold text-ink"
+            className="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-control border border-attenue px-3 text-sm font-semibold text-encre"
           >
             {open ? "Fermer" : "Menu"}
             <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -121,7 +124,7 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
             ref={panelRef}
             id={panelId}
             hidden={!open}
-            className="absolute inset-x-0 top-14 border-b border-line bg-surface px-4 pt-2 pb-4 shadow-lg sm:px-6"
+            className="absolute inset-x-0 top-14 border-b border-encre bg-papier px-4 pt-2 pb-4 sm:px-6"
           >
             <nav aria-label="Navigation mobile" className="mx-auto flex max-w-6xl flex-col">
               {[...main, account].map((item) => (
@@ -130,7 +133,7 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
                   href={item.href}
                   aria-current={current(item.href)}
                   onClick={() => setOpen(false)}
-                  className={cn(LINK, "flex min-h-11 items-center border-b border-line text-base font-medium")}
+                  className={cn(LINK, "flex min-h-11 items-center border-b border-filet text-base font-medium")}
                 >
                   {item.label}
                 </Link>
@@ -139,7 +142,7 @@ export function HeaderNav({ signedIn, pathname = null }: { signedIn: boolean; pa
                 href={cta.href}
                 aria-current={current(cta.href)}
                 onClick={() => setOpen(false)}
-                className={cn(CTA, "mt-4 w-full text-base")}
+                className={cn(CTA, "flex min-h-11 items-center text-base")}
               >
                 {cta.label}
               </Link>

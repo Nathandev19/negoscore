@@ -26,16 +26,16 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
   },
 ];
 
-const LINK = "rounded-sm text-copy underline-offset-4 transition-colors duration-150 hover:text-brand-strong hover:underline";
+const LINK = "text-encre-douce decoration-1 underline-offset-4 transition-colors duration-150 hover:text-encre hover:underline";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-line bg-surface-soft">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 text-small sm:px-6">
-        <div className="grid gap-8 sm:grid-cols-3">
+    <footer className="border-t border-encre">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 pt-10 pb-8 text-small sm:px-6">
+        <div className="grid gap-x-8 gap-y-10 sm:grid-cols-[1fr_1fr_2fr]">
           {FOOTER_COLUMNS.map((column) => (
-            <div key={column.title} className="flex flex-col gap-3">
-              <h2 className="font-display text-h3 font-bold">{column.title}</h2>
+            <div key={column.title} className="flex flex-col gap-2">
+              <h2 className="font-sans text-xs font-semibold tracking-wide text-attenue uppercase">{column.title}</h2>
               <ul className="flex flex-col gap-2">
                 {column.links.map((link) => (
                   <li key={link.href}>
@@ -47,8 +47,8 @@ export function SiteFooter() {
               </ul>
             </div>
           ))}
-          <div className="flex flex-col gap-3">
-            <h2 className="font-display text-h3 font-bold">{BRAND.name}</h2>
+          <div className="flex flex-col gap-2">
+            <h2 className="font-sans text-xs font-semibold tracking-wide text-attenue uppercase">{BRAND.name}</h2>
             <p>
               <a href={`mailto:${SELLER.email}`} className={LINK}>
                 {SELLER.email}
@@ -56,13 +56,13 @@ export function SiteFooter() {
             </p>
             <p className="measure">
               {BRAND.name} est édité par un auto-entrepreneur immatriculé en France.{" "}
-              <Link href="/mentions-legales" className={`${LINK} underline`}>
+              <Link href="/mentions-legales" className="link">
                 Voir les mentions légales
               </Link>
             </p>
           </div>
         </div>
-        <div className="flex flex-col gap-3 border-t border-line pt-6 text-subtle sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-filet pt-5 text-attenue sm:flex-row sm:items-center sm:justify-between">
           <p className="measure">Analyse éducative fondée sur des benchmarks de marché. Ce n&apos;est pas un conseil juridique.</p>
           <p className="flex items-center gap-2">
             <Logo variant="mark" size={18} />

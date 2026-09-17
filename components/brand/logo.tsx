@@ -7,15 +7,16 @@ type LogoProps = {
   value?: number;
   // Hauteur du signe en pixels.
   size?: number;
-  // full : signe + nom. mark : signe seul. mono : signe + nom en couleur du texte.
+  // full : signe + nom en encre. mark : signe seul. mono : signe + nom en couleur du texte.
   variant?: "full" | "mark" | "mono";
   className?: string;
 };
 
-// Le signe : une jauge. Le nom est du vrai texte, pas un tracé.
+// Le signe : une jauge, en encre comme tout ce qui n'est pas un score.
+// Le nom est du vrai texte, pas un tracé.
 export function Logo({ value = 72, size = 28, variant = "full", className }: LogoProps) {
   const [nx, ny] = needleEnd(value);
-  const color = variant === "mono" ? "currentColor" : "var(--color-brand)";
+  const color = "currentColor";
   const mark = (
     <svg
       width={size}
@@ -40,9 +41,9 @@ export function Logo({ value = 72, size = 28, variant = "full", className }: Log
       <circle cx={MARK.center} cy={MARK.center} r={MARK.hub} fill={color} />
     </svg>
   );
-  if (variant === "mark") return <span className={cn("inline-flex", className)}>{mark}</span>;
+  if (variant === "mark") return <span className={cn("inline-flex text-encre", className)}>{mark}</span>;
   return (
-    <span className={cn("inline-flex items-center gap-2", variant === "mono" ? "text-current" : "text-ink", className)}>
+    <span className={cn("inline-flex items-center gap-2", variant === "mono" ? "text-current" : "text-encre", className)}>
       {mark}
       <span className="font-display text-lg leading-none font-bold tracking-tight">{BRAND.name}</span>
     </span>
