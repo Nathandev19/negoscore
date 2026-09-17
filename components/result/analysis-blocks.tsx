@@ -1,7 +1,6 @@
 import { Section } from "@/components/result/section";
 import {
   dealRecapRows,
-  formatEur,
   formatEurRange,
   SEVERITY_BADGE,
   SEVERITY_LABEL,
@@ -57,7 +56,8 @@ export function NegotiateList({ items }: { items: Analysis["negotiate"] }) {
               </span>
               <div className="flex min-w-0 flex-col gap-1">
                 <p className="font-semibold text-encre">{item.label}</p>
-                {impact ? <p className="figures text-lg text-encre">+ {impact}</p> : null}
+                {/* Ce que l'œil doit attraper : un cran au-dessus du titre du point. */}
+                {impact ? <p className="figures text-2xl leading-tight text-encre">+ {impact}</p> : null}
                 <p className="text-small">{item.why}</p>
               </div>
             </li>
@@ -137,12 +137,12 @@ export function Estimate({ estimate, example = false }: { estimate: Analysis["es
               <dd className="text-right font-semibold text-encre tabular-nums">{base}</dd>
             </div>
           ) : null}
+          {/* Libellé et montant en euros seulement. Les pourcentages et tarifs
+              unitaires (line.low, line.high) restent dans les données pour le
+              calcul et le débogage : ils n'apprennent rien à une créatrice. */}
           {estimate.lines.map((line) => (
             <div key={line.label} className="flex justify-between gap-4 py-2">
-              <dt className="text-attenue">
-                {line.label}{" "}
-                ({line.type === "percent" ? `+${line.low} à ${line.high} %` : `+${formatEur(line.low)} à ${formatEur(line.high)}`})
-              </dt>
+              <dt className="text-attenue">{line.label}</dt>
               <dd className="text-right font-semibold whitespace-nowrap text-encre tabular-nums">
                 + {formatEurRange(line.eur_low, line.eur_high)}
               </dd>

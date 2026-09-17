@@ -1,4 +1,5 @@
 import rates from "@/lib/rates/fr-2026.2.json";
+import { formatNumber } from "@/lib/display";
 import type { Analysis } from "@/lib/schema";
 
 // Chiffrage déterministe. Toutes les valeurs de tarif viennent de la table
@@ -185,7 +186,7 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
       }
       const key: MultiplierKey =
         months <= 1 ? "paid_ads_1m" : months <= 3 ? "paid_ads_3m" : months <= 6 ? "paid_ads_6m" : "paid_ads_12m";
-      addMultiplier(key, "paid_ads", `Droits pub ${months} mois`);
+      addMultiplier(key, "paid_ads", `Droits pub ${formatNumber(months)} mois`);
     }
   }
 
@@ -197,7 +198,7 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   if ((usage.whitelisting || usage.spark_ads) && (usage.perpetual || usage.duration_months === null)) {
     assumptions.push(
       usage.perpetual
-        ? `Whitelisting ou Spark Ads à vie chiffrés sur ${monthlyRightMonths} mois.`
+        ? `Whitelisting ou Spark Ads à vie chiffrés sur ${formatNumber(monthlyRightMonths)} mois.`
         : `Durée du whitelisting ou des Spark Ads non précisée : ${ASSUMED_MONTHS} mois supposés.`,
     );
   }
@@ -205,12 +206,12 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     addMultiplier(
       "whitelisting_per_month",
       "whitelisting",
-      `Whitelisting ${monthlyRightMonths} mois`,
+      `Whitelisting ${formatNumber(monthlyRightMonths)} mois`,
       monthlyRightMonths,
     );
   }
   if (usage.spark_ads) {
-    addMultiplier("spark_ads_per_month", "spark_ads", `Spark Ads ${monthlyRightMonths} mois`, monthlyRightMonths);
+    addMultiplier("spark_ads_per_month", "spark_ads", `Spark Ads ${formatNumber(monthlyRightMonths)} mois`, monthlyRightMonths);
   }
 
   if (deal.exclusivity.present) {
@@ -220,8 +221,10 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
       assumptions.push(`Durée de l'exclusivité non précisée : ${ASSUMED_MONTHS} mois supposés.`);
     }
     const key: MultiplierKey = months <= 1 ? "exclusivity_1m" : months < 6 ? "exclusivity_3m" : "exclusivity_6m_plus";
-    const category = deal.exclusivity.category ? ` ${deal.exclusivity.category}` : "";
-    addMultiplier(key, "exclusivity", `Exclusivité${category} ${months} mois`);
+    // Libellé court, sans la catégorie : écrite librement dans l'offre, elle peut
+    // être longue (« compléments alimentaires ») et faire passer la ligne sur deux
+    // lignes à 320 px. Elle reste affichée dans « Le deal proposé ».
+    addMultiplier(key, "exclusivity", `Exclusivité ${formatNumber(months)} mois`);
   }
 
   if (deal.raw_footage) {
@@ -229,7 +232,7 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   }
 
   if (isWorldwide(usage.territory)) {
-    addMultiplier("territory_worldwide", "territory", "Diffusion dans le monde entier");
+    addMultiplier("territory_worldwide", "territory", "Diffusion mondiale");
   } else if (usage.territory === null && (usage.paid_ads || usage.whitelisting || usage.spark_ads)) {
     assumptions.push("Territoire non précisé : diffusion en France supposée.");
   }
@@ -240,7 +243,7 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     addMultiplier(
       "extra_platform",
       "extra_platform",
-      `Plateforme${extra.length > 1 ? "s" : ""} en plus (${extra.join(", ")})`,
+      `Aussi sur ${extra.join(", ")}`,
       extra.length,
     );
   }
@@ -285,7 +288,7 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   if (hookCount > 0) {
     const flat = rates.flat_eur.extra_hook_or_cta;
     lines.push({
-      label: `${hookCount} variante${hookCount > 1 ? "s" : ""} d'accroche ou de CTA`,
+      label: `${formatNumber(hookCount)} accroche${hookCount > 1 ? "s" : ""} ou CTA`,
       topic: "extra_hooks",
       type: "flat",
       low: flat.low,

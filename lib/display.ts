@@ -11,6 +11,27 @@ type Severity = Analysis["red_flags"][number]["severity"];
 // Les montants passent par le formateur unique de lib/money.ts.
 export { formatEur, formatEurRange } from "@/lib/money";
 
+// Formateur unique des nombres qui ne sont pas des euros (mois, jours,
+// révisions, quantités, pourcentages, tailles de fichier) : virgule décimale,
+// séparateur de milliers insécable, y compris à quatre chiffres (« 1 070 » :
+// le format fr-FR par défaut ne groupe pas les nombres de quatre chiffres).
+// Aucun nombre affiché ne doit être converti autrement (test : tests/formats.test.tsx).
+const NUMBER_FORMATS = new Map<number, Intl.NumberFormat>();
+
+export function formatNumber(value: number, maximumFractionDigits = 1): string {
+  let format = NUMBER_FORMATS.get(maximumFractionDigits);
+  if (!format) {
+    format = new Intl.NumberFormat("fr-FR", { maximumFractionDigits, useGrouping: "always" });
+    NUMBER_FORMATS.set(maximumFractionDigits, format);
+  }
+  return format.format(value);
+}
+
+// Pourcentage à la française : « 63,6 % », espace insécable avant le signe.
+export function formatPercent(value: number): string {
+  return `${formatNumber(value)}\u00a0%`;
+}
+
 export const BAND_LABEL: Record<Band, string> = {
   bad: "Mauvais deal",
   weak: "Deal faible",
@@ -106,7 +127,7 @@ export function deliverablesLine(deal: Deal): string | null {
       const [one, many] = DELIVERABLE_LABEL[d.type];
       const platform = d.platform && d.platform !== "other" ? ` ${PLATFORM_LABEL[d.platform]}` : "";
       // Nombre non précisé : le pluriel, sans chiffre inventé.
-      return d.quantity === null ? `${capitalizeFirst(many)}${platform}, nombre non précisé` : `${d.quantity} ${d.quantity > 1 ? many : one}${platform}`;
+      return d.quantity === null ? `${capitalizeFirst(many)}${platform}, nombre non précisé` : `${formatNumber(d.quantity)} ${d.quantity > 1 ? many : one}${platform}`;
     })
     .join(" · ");
 }
@@ -123,7 +144,7 @@ export function dealRecapRows(deal: Deal): RecapRow[] {
           value: deal.deliverables
             .map((d) => {
               const [one, many] = DELIVERABLE_LABEL[d.type];
-              const parts = [d.quantity === null ? many : `${d.quantity} ${d.quantity > 1 ? many : one}`];
+              const parts = [d.quantity === null ? many : `${formatNumber(d.quantity)} ${d.quantity > 1 ? many : one}`];
               if (d.platform) parts.push(PLATFORM_LABEL[d.platform]);
               if (d.format) parts.push(`(${d.format})`);
               if (d.quantity === null) parts.push("(nombre non précisé)");
@@ -139,7 +160,7 @@ export function dealRecapRows(deal: Deal): RecapRow[] {
       ? {
           label: "Exclusivité",
           value: [
-            deal.exclusivity.duration_months !== null ? `${deal.exclusivity.duration_months} mois` : null,
+            deal.exclusivity.duration_months !== null ? `${formatNumber(deal.exclusivity.duration_months)} mois` : null,
             deal.exclusivity.category,
           ]
             .filter(Boolean)
@@ -156,13 +177,13 @@ export function dealRecapRows(deal: Deal): RecapRow[] {
     deal.revisions.unlimited
       ? { label: "Révisions", value: "Illimitées" }
       : deal.revisions.count !== null
-        ? { label: "Révisions", value: String(deal.revisions.count) }
+        ? { label: "Révisions", value: formatNumber(deal.revisions.count) }
         : null,
     deal.payment.amount_eur !== null
       ? { label: "Rémunération", value: formatEur(deal.payment.amount_eur) }
       : null,
     deal.payment.terms_days !== null
-      ? { label: "Délai de paiement", value: `${deal.payment.terms_days} jours` }
+      ? { label: "Délai de paiement", value: `${formatNumber(deal.payment.terms_days)} jours` }
       : null,
     deal.payment.schedule ? { label: "Échéancier", value: deal.payment.schedule } : null,
     deal.in_kind_value_eur !== null
@@ -197,7 +218,7 @@ function usageRow(usage: Deal["usage"]): RecapRow | null {
   const duration = usage.perpetual
     ? "à vie"
     : usage.duration_months !== null
-      ? `${usage.duration_months} mois`
+      ? `${formatNumber(usage.duration_months)} mois`
       : null;
   const value = kinds.join(", ");
   return { label: "Utilisation", value: duration ? `${value} · ${duration}` : value };

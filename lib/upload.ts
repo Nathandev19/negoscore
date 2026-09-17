@@ -1,3 +1,5 @@
+import { formatNumber } from "@/lib/display";
+
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 // Limites des PDF (partagées par l'interface et le serveur).
@@ -31,6 +33,6 @@ export function validateFile(file: File, kind: FileKind): string | null {
 }
 
 export function formatFileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} Mo`;
+  if (bytes < 1024 * 1024) return `${formatNumber(Math.max(1, Math.round(bytes / 1024)))}\u00a0Ko`;
+  return `${formatNumber(bytes / (1024 * 1024))}\u00a0Mo`;
 }
