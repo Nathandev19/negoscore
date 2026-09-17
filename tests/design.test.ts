@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { markSvg } from "@/lib/brand-mark";
+import { MARK_PATHS, markSvg } from "@/components/brand/logo";
 import { GRAIN_OPACITY, GRAIN_TILE, grainDataUri } from "@/lib/design/grain";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
 import { BAND_SEGMENTS, BAND_STYLE, SEVERITY_BADGE } from "@/lib/display";
@@ -179,14 +179,29 @@ describe("grain, signe et couleurs hors CSS", () => {
     for (const band of BANDS) expect(STATIC_PALETTE.bandOnMarque[band]).toBe(token(`band-${band}-on-marque`));
   });
 
-  it("les SVG du signe suivent la géométrie de lib/brand-mark.ts : crème sur bleu, bleu sur crème, encre", () => {
-    const read = (file: string) => readFileSync(path.join(root, file), "utf8").trim().toLowerCase();
-    const marque = token("marque");
-    const creme = token("creme");
-    expect(read("app/icon.svg")).toBe(markSvg({ color: creme, background: marque }).toLowerCase());
-    expect(read("public/brand/negoscore-mark-on-marque.svg")).toBe(markSvg({ color: creme, background: marque }).toLowerCase());
-    expect(read("public/brand/negoscore-mark.svg")).toBe(markSvg({ color: marque }).toLowerCase());
-    expect(read("public/brand/negoscore-mark-mono.svg")).toBe(markSvg({ color: token("encre") }).toLowerCase());
+  it("les SVG du signe sont générés par components/brand/logo.tsx : crème sur bleu, bleu sur crème, encre", () => {
+    const read = (file: string) => readFileSync(path.join(root, file), "utf8").trim();
+    expect(read("app/icon.svg")).toBe(markSvg("creme", "marque"));
+    expect(read("public/brand/negoscore-mark-on-marque.svg")).toBe(markSvg("creme", "marque"));
+    expect(read("public/brand/negoscore-mark.svg")).toBe(markSvg("marque"));
+    expect(read("public/brand/negoscore-mark-mono.svg")).toBe(markSvg("mono"));
+    // Seules couleurs possibles : celles de globals.css.
+    const allowed = new Set([token("marque"), token("creme"), token("encre")]);
+    for (const file of ["app/icon.svg", ...readdirSync(path.join(root, "public", "brand")).map((f) => `public/brand/${f}`)]) {
+      for (const hex of read(file).toLowerCase().match(/#[0-9a-f]{6}/g) ?? []) expect(allowed.has(hex), `${file} ${hex}`).toBe(true);
+    }
+    expect(MARK_PATHS).toEqual(["M5 19.5V6", "M5 6l13.4 13.4", "M18.4 19.5V8.2", "M18.4 8.2l3-5"]);
+  });
+
+  it("l'ancien signe (arc du €) a disparu du dépôt", () => {
+    const files = filesIn(["app", "components", "lib", "public"], /\.(tsx?|svg)$/);
+    const offenders = files.filter((file) => /euroArcPath|EURO_BAR|A 10 10 0 1 0|brand-mark/.test(readFileSync(file, "utf8")));
+    expect(offenders.map((file) => path.relative(root, file))).toEqual([]);
+    expect(readdirSync(path.join(root, "public", "brand")).sort()).toEqual([
+      "negoscore-mark-mono.svg",
+      "negoscore-mark-on-marque.svg",
+      "negoscore-mark.svg",
+    ]);
   });
 });
 
@@ -216,7 +231,8 @@ describe("usage des couleurs dans le code", () => {
       "app/page.tsx",
     ];
     const offenders = sources.filter((file) => /\bbg-marque\b/.test(readFileSync(file, "utf8"))).map(rel);
-    expect(offenders.filter((file) => !allowed.includes(file))).toEqual([]);
+    // app/dev : pages de prévisualisation, absentes du build de production.
+    expect(offenders.filter((file) => !allowed.includes(file) && !file.startsWith("app/dev/"))).toEqual([]);
   });
 
   it("aucun serif, aucune ancienne police, aucun dégradé ni ombre", () => {

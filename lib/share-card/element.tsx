@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import type { ResultView } from "@/lib/analysis/lock";
-import { EURO_BAR, euroArcPath, MARK, MARK_VIEWBOX } from "@/lib/brand-mark";
+import { LogoMark } from "@/components/brand/logo";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
 import { BAND_LABEL, BAND_SEGMENTS, deliverablesLine, EVALUABILITY_LABEL } from "@/lib/display";
 import { formatEur, formatEurRange } from "@/lib/money";
@@ -67,15 +67,6 @@ export function shareCardTexts(analysis: ResultView): ShareCardTexts {
   };
 }
 
-function Mark({ size }: { size: number }) {
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${MARK_VIEWBOX} ${MARK_VIEWBOX}`} fill="none">
-      <path d={euroArcPath()} stroke={creme} strokeWidth={MARK.stroke} strokeLinecap="round" />
-      <line x1={EURO_BAR.x1} y1={EURO_BAR.y} x2={EURO_BAR.x2} y2={EURO_BAR.y} stroke={creme} strokeWidth={MARK.stroke} strokeLinecap="round" />
-    </svg>
-  );
-}
-
 const GAUGE_WIDTH = 936;
 const GAUGE_GAP = 10;
 
@@ -116,7 +107,7 @@ export function shareCardElement(analysis: ResultView): ReactElement {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-        <Mark size={72} />
+        <LogoMark size={80} variant="creme" colors="static" />
         <div style={{ display: "flex", fontSize: 46, fontWeight: 600 }}>{SHARE_CARD_SITE}</div>
       </div>
 

@@ -1,3 +1,4 @@
+import { formatEur } from "@/lib/money";
 import type { Analysis } from "@/lib/schema";
 
 // Couche légale FR. Règle unique, codée en dur, jamais générée par le modèle.
@@ -10,8 +11,10 @@ const WRITTEN_CONTRACT_THRESHOLD_EUR = 1000;
 
 const DISCLAIMER = "C'est une information générale, pas un conseil juridique.";
 
+// Montant écrit par le formateur des euros, avec une espace insécable avant « HT » :
+// « 1 000 € HT » ne se coupe jamais en fin de ligne.
 const BASE_NOTE =
-  "En France, un contrat écrit est obligatoire quand une collaboration dépasse 1 000 € HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus.";
+  `En France, un contrat écrit est obligatoire quand une collaboration dépasse ${formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)}\u00a0HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus.`;
 
 function isFrenchLaw(governingLaw: string | null): boolean {
   return governingLaw !== null && /fran(ce|çais|çaise|cais|caise)|french/i.test(governingLaw);

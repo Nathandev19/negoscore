@@ -94,3 +94,13 @@ describe("aucun point décimal dans une page de résultat", () => {
     for (const line of analysis.estimate.lines) expect(html).toContain(`<dt class="text-attenue">${line.label.replace(/'/g, "&#x27;")}</dt>`);
   });
 });
+
+describe("note juridique", () => {
+  it("« 1 000 € HT » ne peut pas se couper : aucune espace ordinaire dans le montant", async () => {
+    const { computeFrLegal } = await import("@/lib/legal/fr");
+    const { baseExtraction } = await import("@/lib/fixtures/preview-states");
+    const note = computeFrLegal(baseExtraction().deal).note;
+    const amount = note.match(/dépasse (.+?) cumulés/)?.[1] ?? "";
+    expect(amount.replace(/[\u202f\u00a0]/g, "_")).toBe("1_000_€_HT");
+  });
+});

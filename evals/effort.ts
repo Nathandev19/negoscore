@@ -13,8 +13,9 @@ import type { Expected, FactCheck, Hallucination, Traps } from "./scoring.ts";
 //   --experiment=effort     reasoning.effort medium, puis low (mesuré le 17/09/2026)
 //   --experiment=verbosity  text.verbosity medium, puis low, effort constant medium
 //
-// Les valeurs « medium » sont les valeurs par défaut de l'API, donc la
-// production actuelle, envoyées ici explicitement. Une verbosité peut n'avoir
+// Les valeurs « medium » sont les valeurs par défaut de l'API, envoyées ici
+// explicitement. Production depuis le 17/09/2026 : effort non envoyé (medium),
+// verbosité « low » (lib/llm/model.ts). Une verbosité peut n'avoir
 // aucun effet sur une sortie contrainte par un schéma JSON strict : l'éval le
 // montrera, c'est un résultat valable.
 //
@@ -34,8 +35,9 @@ type Variant = { id: string; options: ExtractOptions };
 
 export const EXPERIMENTS: Record<string, Variant[]> = {
   effort: [
-    { id: "effort-medium", options: { reasoningEffort: "medium" } },
-    { id: "effort-low", options: { reasoningEffort: "low" } },
+    // Verbosité non envoyée : conditions de la mesure du 17/09/2026.
+    { id: "effort-medium", options: { reasoningEffort: "medium", textVerbosity: null } },
+    { id: "effort-low", options: { reasoningEffort: "low", textVerbosity: null } },
   ],
   verbosity: [
     { id: "verbosity-medium", options: { reasoningEffort: "medium", textVerbosity: "medium" } },

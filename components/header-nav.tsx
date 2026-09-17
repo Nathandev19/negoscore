@@ -110,7 +110,7 @@ export function HeaderNav({
     <header className={cn("sticky top-0 z-40 h-14", TONE[tone].header)}>
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" aria-label="Accueil">
-          <Logo tone={tone === "marque" ? "on-marque" : "on-creme"} />
+          <Logo variant={tone === "marque" ? "creme" : "marque"} />
         </Link>
 
         <nav aria-label="Navigation principale" className="hidden h-8 items-center gap-6 text-small lg:flex">

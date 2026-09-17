@@ -1,6 +1,6 @@
 import type { Analysis } from "@/lib/schema";
 import { formatAmount, formatEur } from "@/lib/money";
-import { RATIO_ZERO } from "@/lib/rates/score";
+import { hasUnknownQuantity, RATIO_ZERO, uncappedScore } from "@/lib/rates/score";
 
 // Phrase de verdict en tête de la page de résultat. Écrite par le moteur,
 // jamais par le modèle : elle ne dépend que de l'état d'évaluabilité, du
@@ -58,7 +58,12 @@ export function verdictForm(analysis: VerdictInput): VerdictForm {
   }
   if (analysis.evaluability !== "complete") return analysis.evaluability;
   const offer = offered(analysis.deal);
-  const poorTerms = analysis.score !== null && !GOOD_BANDS.includes(analysis.score.band);
+  // Quantité inconnue : le score peut être sous « good » à cause du seul plafond
+  // (lib/rates/score.ts). Les conditions ne sont alors pas la raison, et la note
+  // de plafond l'explique près du score.
+  const cappedOnly =
+    hasUnknownQuantity(analysis.deal) && GOOD_BANDS.includes(uncappedScore(analysis.deal, analysis.estimate).band);
+  const poorTerms = analysis.score !== null && !GOOD_BANDS.includes(analysis.score.band) && !cappedOnly;
   if (offer === null || low === null || high === null) return poorTerms ? "complete_within_poor_terms" : "complete_within";
   if (offer.value < low) return "complete_below";
   if (offer.value > high) return poorTerms ? "complete_above_poor_terms" : "complete_above";
@@ -92,6 +97,14 @@ function sentence(analysis: VerdictInput): string {
   // complète) ; on ne dit alors que ce qui est sûr.
   if (offer === null) return form === "complete_within_poor_terms" ? POOR_TERMS : "C'est dans les prix pour ces droits.";
   const proposed = offer.inKind ? `${formatEur(offer.value)} en produits proposés.` : `${formatEur(offer.value)} proposés.`;
+  // Quantité inconnue : la fourchette ne chiffre qu'un seul contenu, c'est un
+  // plancher. La phrase ne dit donc ni « au-dessus » ni « dans les prix » pour
+  // l'offre entière, seulement ce que vaut un contenu (mission #035 C).
+  if (hasUnknownQuantity(analysis.deal) && low !== null && high !== null) {
+    const worth = low === high ? formatAmount(low) : `${formatAmount(low)} à ${formatAmount(high)}`;
+    const unit = `Un seul contenu en vaut ${worth}, et la marque n'a pas écrit combien elle en veut.`;
+    return `${proposed} ${unit}`;
+  }
   switch (form) {
     case "complete_below": {
       if (low === null || high === null) return proposed;

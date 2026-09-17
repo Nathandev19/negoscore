@@ -16,6 +16,16 @@ type Score = NonNullable<Analysis["score"]>;
 // Les 10 derniers points représentent ce risque qu'aucun texte ne lève : une
 // offre n'est donc jamais notée parfaite. Aucun bonus supplémentaire n'est
 // ajouté pour les atteindre, et la borne à 100 reste une simple sécurité.
+//
+// Plafond à 69, la dernière valeur de « Deal correct », quand la quantité d'au
+// moins un livrable n'est pas précisée (mission #035). Même logique : le score
+// ne certifie pas ce qu'il n'a pas pu chiffrer. Le moteur suppose alors un seul
+// contenu, la fourchette n'est qu'un plancher et le ratio montant / borne basse
+// est surévalué : sans plafond, une offre qui demandera plusieurs vidéos pourrait
+// être annoncée « Bon deal ». C'est le seul sens d'erreur que le produit ne peut
+// pas se permettre. La raison est affichée près du score
+// (QUANTITY_CAP_NOTE, lib/display.ts). Le plafond est un minimum appliqué à la
+// fin : il ne change pas le sens des variations du score (invariant I10).
 
 const BASE = 50;
 const MAX_PRICE_POINTS = 30;
@@ -45,7 +55,22 @@ export function pricePoints(amount: number, low: number, high: number | null): n
   return FLOOR_PRICE_POINTS + ((MAX_PRICE_POINTS - FLOOR_PRICE_POINTS) * (amount - low)) / (high - low);
 }
 
+export const UNKNOWN_QUANTITY_SCORE_CAP = 69;
+
+export function hasUnknownQuantity(deal: Deal): boolean {
+  return deal.deliverables.some((d) => d.quantity === null);
+}
+
+// Score avec le plafond de quantité inconnue appliqué.
 export function computeScore(deal: Deal, estimate: Estimate): Score {
+  const raw = uncappedScore(deal, estimate);
+  const value = hasUnknownQuantity(deal) ? Math.min(raw.value, UNKNOWN_QUANTITY_SCORE_CAP) : raw.value;
+  return { value, band: bandFor(value) };
+}
+
+// Score sans le plafond de quantité inconnue : ce que vaudrait l'offre si un
+// seul contenu était demandé. Sert à dire pourquoi la note est plafonnée.
+export function uncappedScore(deal: Deal, estimate: Estimate): Score {
   let value = BASE;
 
   // Prix : jusqu'à +30 selon la position dans la fourchette (voir pricePoints).

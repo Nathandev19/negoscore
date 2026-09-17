@@ -53,6 +53,11 @@ export const BAND_STYLE: Record<Band, { onMarque: string; onCreme: string }> = {
   excellent: { onMarque: "bg-band-excellent-on-marque", onCreme: "bg-band-excellent-on-creme" },
 };
 
+// Raison affichée près du score quand il est plafonné faute de quantité connue
+// (lib/rates/score.ts, UNKNOWN_QUANTITY_SCORE_CAP).
+export const QUANTITY_CAP_NOTE =
+  "La marque ne dit pas combien de contenus elle veut : le chiffrage en compte un seul, la note ne peut donc pas dépasser « Deal correct ».";
+
 // Pastille de verdict quand l'offre n'a pas de score.
 export const EVALUABILITY_LABEL: Record<Exclude<Analysis["evaluability"], "complete">, string> = {
   unpriced: "Offre à chiffrer",

@@ -65,7 +65,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-3 border-t border-filet pt-5 text-attenue sm:flex-row sm:items-center sm:justify-between">
           <p className="measure">Analyse éducative fondée sur des benchmarks de marché. Ce n&apos;est pas un conseil juridique.</p>
           <p className="flex items-center gap-2">
-            <Logo variant="mark" size={18} />
+            <Logo variant="marque" withName={false} size={18} />
             <span>{BRAND.name}</span>
           </p>
         </div>

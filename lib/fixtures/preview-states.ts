@@ -17,6 +17,7 @@ export const PREVIEW_STATES = [
   "unpriced",
   "incomplete",
   "terms_unknown",
+  "quantite-inconnue",
 ] as const;
 export type PreviewState = (typeof PREVIEW_STATES)[number];
 
@@ -77,6 +78,24 @@ export function previewAnalysis(state: PreviewState): { analysis: ResultView; un
     case "incomplete":
       return {
         analysis: composeAnalysis({ ...base, deal: { ...base.deal, deliverables: [] } }),
+        unlocked: true,
+      };
+    case "quantite-inconnue":
+      // Bonne offre dont la marque ne dit pas combien de vidéos elle veut : score
+      // plafonné à « Deal correct », raison affichée près du score.
+      return {
+        analysis: composeAnalysis({
+          ...base,
+          deal: {
+            ...base.deal,
+            deliverables: [{ type: "video", platform: "tiktok", quantity: null, format: null }],
+            usage: { ...base.deal.usage, paid_ads: false, duration_months: 6, territory: "France" },
+            exclusivity: { present: false, duration_months: null, category: null },
+            raw_footage: false,
+            revisions: { count: 2, unlimited: false },
+            payment: { ...base.deal.payment, amount_eur: 900, terms_days: 30 },
+          },
+        }),
         unlocked: true,
       };
     case "terms_unknown":

@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 import { verdictSentence } from "@/lib/analysis/verdict";
 import type { ResultView } from "@/lib/analysis/lock";
-import { BAND_LABEL, BAND_SEGMENTS, BAND_STYLE, EVALUABILITY_LABEL } from "@/lib/display";
+import { BAND_LABEL, BAND_SEGMENTS, BAND_STYLE, EVALUABILITY_LABEL, QUANTITY_CAP_NOTE } from "@/lib/display";
+import { hasUnknownQuantity } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,11 @@ export function ScoreBand({
             <VerdictPill band={analysis.score.band} />
           </div>
           <ScoreGauge score={analysis.score} animated={animated} />
+          {hasUnknownQuantity(analysis.deal) ? (
+            <p data-score-cap className="measure text-small font-semibold text-creme">
+              {QUANTITY_CAP_NOTE}
+            </p>
+          ) : null}
         </div>
       ) : (
         <div className="flex">

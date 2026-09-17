@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeEstimate, upliftCap, volumeDiscountFactor } from "@/lib/rates/engine";
-import { computeScore } from "@/lib/rates/score";
+import { computeScore, uncappedScore } from "@/lib/rates/score";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 
 // Invariants du moteur de chiffrage et du score : des règles que le moteur ne
@@ -421,6 +421,24 @@ describe("invariants du moteur de chiffrage", () => {
   });
 
   it("I10 — le score ne monte jamais quand une contrainte s'ajoute", () => {
+    expectNone(scoreViolations(POPULATION));
+  });
+
+  // #035 C4 : le plafond de score quand une quantité est inconnue ne doit pas
+  // casser I10. Même vérification, sur la même population dont toutes les
+  // quantités deviennent inconnues (le générateur n'en produit pas).
+  it("I10 — tient aussi quand la quantité des livrables est inconnue (score plafonné)", () => {
+    const unknown = POPULATION.map((deal) => ({ ...clone(deal), deliverables: deal.deliverables.map((d) => ({ ...d, quantity: null })) }));
+    // La vérification n'a de sens que si le plafond agit vraiment sur une partie de la population.
+    const capped = unknown.filter((deal) => {
+      const totals = estimate(deal);
+      return hasTotals(totals) && uncappedScore(deal, totals).value > computeScore(deal, totals).value;
+    });
+    expect(capped.length).toBeGreaterThan(0);
+    expectNone(scoreViolations(unknown));
+  });
+
+  function scoreViolations(population: Deal[]): Violation[] {
     const violations: Violation[] = [];
     const additions: Array<[string, (d: Deal) => boolean, (d: Deal) => Deal]> = [
       ...[...CONSTRAINTS, ...SCORE_ONLY_CONSTRAINTS].map(
@@ -435,7 +453,7 @@ describe("invariants du moteur de chiffrage", () => {
           ] as [string, (d: Deal) => boolean, (d: Deal) => Deal],
       ),
     ];
-    for (const deal of POPULATION) {
+    for (const deal of population) {
       const before = estimate(deal);
       if (!hasTotals(before)) continue;
       for (const [name, applies, add] of additions) {
@@ -450,8 +468,8 @@ describe("invariants du moteur de chiffrage", () => {
         }
       }
     }
-    expectNone(violations);
-  });
+    return violations;
+  }
 
   it("générateur reproductible et deals valides", () => {
     expect(POPULATION.length).toBeGreaterThan(400);

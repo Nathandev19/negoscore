@@ -36,7 +36,7 @@ beforeEach(() => {
 });
 
 describe("effort de raisonnement", () => {
-  it("par défaut (production) : null, et le paramètre n'est pas envoyé", async () => {
+  it("effort par défaut (production) : null, et le paramètre n'est pas envoyé", async () => {
     expect(MODEL.reasoningEffort).toBeNull();
     const result = await extractDeal("Offre de test assez longue pour passer.");
     expect(calls.bodies).toHaveLength(1);
@@ -45,14 +45,17 @@ describe("effort de raisonnement", () => {
     expect(result.reasoningTokens).toBe(400);
   });
 
-  it("verbosité : null par défaut, rien d'envoyé ; réglable par appel pour l'éval", async () => {
-    expect(MODEL.textVerbosity).toBeNull();
+  it("verbosité (décision du 17/09/2026) : « low » par défaut, envoyée à chaque appel ; l'effort, lui, n'est jamais envoyé", async () => {
+    expect(MODEL.textVerbosity).toBe("low");
     const result = await extractDeal("Offre de test.");
-    expect((calls.bodies[0].text as Record<string, unknown>).verbosity).toBeUndefined();
-    expect(result.textVerbosity).toBeNull();
-    await extractDeal("Offre de test.", { textVerbosity: "low" });
-    expect((calls.bodies[1].text as Record<string, unknown>).verbosity).toBe("low");
-    expect("reasoning" in calls.bodies[1]).toBe(false);
+    expect((calls.bodies[0].text as Record<string, unknown>).verbosity).toBe("low");
+    expect("reasoning" in calls.bodies[0]).toBe(false);
+    expect(result.textVerbosity).toBe("low");
+    // Réglable par appel pour l'éval, y compris pour revenir à la valeur de l'API.
+    await extractDeal("Offre de test.", { textVerbosity: "medium" });
+    expect((calls.bodies[1].text as Record<string, unknown>).verbosity).toBe("medium");
+    await extractDeal("Offre de test.", { textVerbosity: null });
+    expect((calls.bodies[2].text as Record<string, unknown>).verbosity).toBeUndefined();
   });
 
   it("réglable par appel pour l'éval : low puis medium envoyés explicitement", async () => {
