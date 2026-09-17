@@ -184,6 +184,16 @@ describe("explication du plafond sur la page de résultat", () => {
     expect(render(analysis)).not.toContain("du bas de la fourchette");
   });
 
+  // Analyses enregistrées avant la mission #050 : leur score stocké ignore le
+  // plafond. Afficher la phrase à côté d'un score plus haut que le plafond
+  // dirait le contraire de ce que montre le chiffre.
+  it("rien n'est affiché sur une analyse enregistrée avant le plafond", () => {
+    const { analysis } = dealAtRatio(0.56);
+    const ancienne = { ...analysis, score: { value: 50, band: bandFor(50) } };
+    expect(ancienne.score.value).toBeGreaterThan(appliedPriceCap(ancienne.deal, ancienne.estimate)?.cap as number);
+    expect(render(ancienne)).not.toContain("du bas de la fourchette");
+  });
+
   it("B3 — la phrase n'apparaît ni sur la carte partageable ni sur l'aperçu", async () => {
     const { shareCardTexts } = await import("@/lib/share-card/element");
     const { analysis } = dealAtRatio(0.56);

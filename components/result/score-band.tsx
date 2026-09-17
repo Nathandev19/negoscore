@@ -33,7 +33,11 @@ export function ScoreBand({
 }) {
   const tierNote = showTier ? <TierNote tier={analysis.profile_tier} /> : null;
   const scored = analysis.evaluability === "complete" && analysis.score !== null;
-  const priceCap = appliedPriceCap(analysis.deal, analysis.estimate);
+  // Une analyse enregistrée avant la mission #050 garde le score calculé sans
+  // plafond : la phrase serait alors affichée à côté d'un score qui la
+  // contredit. Elle n'apparaît donc que si le score montré respecte le plafond.
+  const capState = appliedPriceCap(analysis.deal, analysis.estimate);
+  const priceCap = capState && analysis.score && analysis.score.value <= capState.cap ? capState : null;
   return (
     <div className={cn("grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-12", className)}>
       <p className="headline text-verdict text-balance text-creme lg:order-last">{verdictSentence(analysis)}</p>
