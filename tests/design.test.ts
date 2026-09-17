@@ -238,6 +238,8 @@ describe("usage des couleurs dans le code", () => {
       "components/result/analysis-result.tsx",
       // Piste bleu foncé de la jauge, dans le bandeau des résultats.
       "components/result/score-band.tsx",
+      // Bandeau de résultat pendant le chargement de la page (mission #045).
+      "components/page-loading.tsx",
       "app/page.tsx",
     ];
     const offenders = sources.filter((file) => /\bbg-marque\b/.test(readFileSync(file, "utf8"))).map(rel);

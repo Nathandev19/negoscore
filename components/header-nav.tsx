@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { Logo } from "@/components/brand/logo";
+import { NavPending } from "@/components/nav-pending";
 import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string };
@@ -77,6 +78,23 @@ export function HeaderNav({
     return () => document.removeEventListener("pointerdown", onPointer);
   }, [open]);
 
+  // Menu mobile (mission #045) : ses liens sont masqués (hidden) tant qu'il est
+  // fermé, donc pas préchargés. À l'ouverture ils deviennent visibles et Next
+  // les précharge comme tout lien qui entre dans l'écran.
+  function toggle() {
+    setOpen((value) => !value);
+  }
+
+  // Le menu reste ouvert pendant la navigation, l'entrée cliquée en attente
+  // (NavPending) : il ne se referme pas sur une page qui n'a pas encore changé.
+  // La page suivante rend son propre en-tête, menu fermé. Un lien vers la page
+  // courante (ancre « Comment ça marche » sur l'accueil) ne change pas de page :
+  // le menu se ferme tout de suite.
+  function onItemClick(href: string) {
+    const target = new URL(href, window.location.href);
+    if (target.pathname === window.location.pathname) setOpen(false);
+  }
+
   function close() {
     setOpen(false);
     toggleRef.current?.focus();
@@ -115,18 +133,21 @@ export function HeaderNav({
 
         <nav aria-label="Navigation principale" className="hidden h-8 items-center gap-6 text-small lg:flex">
           {main.map((item) => (
-            <Link key={item.href} href={item.href} aria-current={current(item.href)} className={cn(LINK, "font-medium")}>
+            <Link key={item.href} href={item.href} aria-current={current(item.href)} className={cn(LINK, "relative font-medium")}>
               {item.label}
+              <NavPending />
             </Link>
           ))}
         </nav>
 
         <div className="hidden h-8 items-center gap-4 text-small lg:flex">
-          <Link href={account.href} aria-current={current(account.href)} className={cn(LINK, "font-medium")}>
+          <Link href={account.href} aria-current={current(account.href)} className={cn(LINK, "relative font-medium")}>
             {account.label}
+            <NavPending />
           </Link>
-          <Link href={cta.href} aria-current={current(cta.href)} className={CTA}>
+          <Link href={cta.href} aria-current={current(cta.href)} className={cn(CTA, "relative")}>
             {cta.label}
+            <NavPending />
           </Link>
         </div>
 
@@ -136,7 +157,7 @@ export function HeaderNav({
             type="button"
             aria-expanded={open}
             aria-controls={panelId}
-            onClick={() => setOpen((value) => !value)}
+            onClick={toggle}
             className={cn("inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-control border-2 px-3 text-sm font-semibold", TONE[tone].toggle)}
           >
             {open ? "Fermer" : "Menu"}
@@ -160,19 +181,21 @@ export function HeaderNav({
                   key={item.href}
                   href={item.href}
                   aria-current={current(item.href)}
-                  onClick={() => setOpen(false)}
-                  className={cn(LINK, "flex min-h-11 items-center border-b text-base font-medium", TONE[tone].row)}
+                  onClick={() => onItemClick(item.href)}
+                  className={cn(LINK, "relative flex min-h-11 items-center border-b text-base font-medium", TONE[tone].row)}
                 >
                   {item.label}
+                  <NavPending />
                 </Link>
               ))}
               <Link
                 href={cta.href}
                 aria-current={current(cta.href)}
-                onClick={() => setOpen(false)}
-                className={cn(CTA, "flex min-h-11 items-center text-base")}
+                onClick={() => onItemClick(cta.href)}
+                className={cn(CTA, "relative flex min-h-11 items-center text-base")}
               >
                 {cta.label}
+                <NavPending />
               </Link>
             </nav>
           </div>

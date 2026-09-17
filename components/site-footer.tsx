@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
+import { NavPending } from "@/components/nav-pending";
 import { BRAND } from "@/lib/brand";
 import { SELLER } from "@/lib/legal/identity";
 
@@ -39,8 +40,9 @@ export function SiteFooter() {
               <ul className="flex flex-col gap-2">
                 {column.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className={LINK}>
+                    <Link href={link.href} className={`${LINK} relative`}>
                       {link.label}
+                      <NavPending />
                     </Link>
                   </li>
                 ))}

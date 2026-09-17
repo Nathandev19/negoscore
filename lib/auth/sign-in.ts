@@ -1,17 +1,11 @@
 import { attachAnonDeals, ensureAccount } from "@/lib/auth/account";
 import { mergeFreeUsage } from "@/lib/billing/free-usage";
-import { expiredCookieHeader, safeNextPath, sessionCookieHeaders, type Session } from "@/lib/auth/session";
+import { expiredCookieHeader, sessionCookieHeaders, type Session } from "@/lib/auth/session";
+export { signedInRedirectPath } from "@/lib/auth/next-path";
 import { sessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
 
 // Fin de connexion commune aux deux formats de lien magique.
-
-// Destination après connexion : chemin interne uniquement, jamais de retour
-// vers une page de connexion (boucle). Règle partagée avec la garde de /connexion.
-export function signedInRedirectPath(requested: string | null | undefined, fallback = "/compte"): string {
-  const target = safeNextPath(requested, fallback);
-  return target.startsWith("/connexion") || target.startsWith("/auth/") ? fallback : target;
-}
 
 // Le modèle d'email transmet {{ .RedirectTo }} : l'URL complète envoyée à
 // Supabase (https://site/auth/callback?next=/historique), éventuellement

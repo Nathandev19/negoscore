@@ -158,8 +158,5 @@ export function expiredCookieHeader(name: string, path = "/"): string {
   return `${name}=; Path=${path}; Max-Age=0; HttpOnly; SameSite=Lax${secureFlag()}`;
 }
 
-// Chemin de retour interne uniquement : pas de redirection ouverte.
-export function safeNextPath(value: string | null | undefined, fallback = "/historique"): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;
-  return value;
-}
+// Chemin de retour interne : voir lib/auth/next-path.ts (sans dépendance serveur).
+export { safeNextPath } from "@/lib/auth/next-path";
