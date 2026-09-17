@@ -42,6 +42,12 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
       "Exemple d'analyse, sur une offre fictive : ce que valent les vidéos, les droits publicitaires et l'exclusivité, et ce que la marque aurait dû proposer.",
   },
   {
+    path: "/combien-facturer",
+    title: "Tarifs UGC : combien facturer une vidéo, une story, une photo",
+    description:
+      "Les fourchettes par vidéo selon ton niveau, ce que valent les droits publicitaires et l'exclusivité, et pourquoi trois vidéos ne coûtent pas trois fois une vidéo.",
+  },
+  {
     path: "/droits-utilisation",
     title: "Droits d'utilisation UGC : ce que tu vends vraiment",
     description:

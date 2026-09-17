@@ -91,7 +91,14 @@ export default function UsageRightsPage() {
         </Section>
 
         <Section title="Ce que ça vaut, en plus du tournage">
-          <p>Ce sont les ordres de grandeur que {BRAND.name} applique, au-dessus du prix de création :</p>
+          {/* Seul lien ajouté vers le guide des tarifs (mission #054) : aucun mot du texte n'a changé. */}
+          <p>
+            Ce sont les{" "}
+            <Link href="/combien-facturer" className="link">
+              ordres de grandeur
+            </Link>{" "}
+            que {BRAND.name} applique, au-dessus du prix de création :
+          </p>
           <ul className="flex list-disc flex-col gap-2 pl-5">
             <li>
               Six mois de droits publicitaires : compte 50 % à 70 % du prix de création en plus.

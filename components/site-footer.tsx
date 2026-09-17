@@ -12,8 +12,16 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
     links: [
       { href: "/#methode", label: "Comment ça marche" },
       { href: "/tarifs", label: "Tarifs" },
-      { href: "/droits-utilisation", label: "Droits d'utilisation" },
       { href: "/analyse", label: "Analyser un deal" },
+    ],
+  },
+  {
+    // Pages de contenu (mission #054) : elles sortent de la colonne Produit
+    // dès qu'il y en a deux.
+    title: "Guides",
+    links: [
+      { href: "/combien-facturer", label: "Combien facturer" },
+      { href: "/droits-utilisation", label: "Droits d'utilisation" },
     ],
   },
   {
@@ -34,7 +42,9 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-encre">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 pt-10 pb-8 text-small sm:px-6">
-        <div className="grid gap-x-8 gap-y-10 sm:grid-cols-[1fr_1fr_2fr]">
+        {/* Quatre blocs depuis la colonne « Guides » (#054) : deux par ligne
+            dès 640 px, tous alignés à partir de 1024 px. */}
+        <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_2fr]">
           {FOOTER_COLUMNS.map((column) => (
             <div key={column.title} className="flex flex-col gap-2">
               <h2 className="font-sans text-xs font-semibold tracking-wide text-attenue uppercase">{column.title}</h2>

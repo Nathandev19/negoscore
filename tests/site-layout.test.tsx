@@ -57,7 +57,7 @@ describe("en-tête", () => {
 });
 
 describe("pied de page", () => {
-  it("trois colonnes, tous les liens présents et non vides", () => {
+  it("quatre blocs, tous les liens présents et non vides", () => {
     const html = renderToStaticMarkup(<SiteFooter />);
     const all = links(html);
     for (const link of all) {
@@ -76,7 +76,8 @@ describe("pied de page", () => {
     // Aucune année figée à la construction du site.
     expect(html).not.toMatch(/©|\b20\d\d\b/);
     expect(html).not.toContain(SELLER.siret);
-    expect(html.match(/<h2/g)).toHaveLength(3);
+    // Produit, Légal, Guides (mission #054) et le bloc de marque.
+    expect(html.match(/<h2/g)).toHaveLength(4);
   });
 });
 
