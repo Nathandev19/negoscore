@@ -1,4 +1,7 @@
-// Cookies posés par le produit (mission #047). Chaque nom est vérifié contre
+// Cookies posés par le produit (mission #047). La mesure d'audience n'y figure
+// plus : depuis la mission #049 elle tourne sans rien écrire sur l'appareil
+// (lib/analytics/client.ts, cookieless_mode « always »), et le test échoue si un
+// cookie de mesure réapparaît. Chaque nom est vérifié contre
 // les constantes du code par tests/purge.test.tsx (page /confidentialite) : un cookie ajouté sans être
 // annoncé ici fait échouer le test.
 export const COOKIES = [
@@ -9,5 +12,4 @@ export const COOKIES = [
   "ns_gratuit — indiquer à l'affichage que l'analyse gratuite de ce navigateur est déjà utilisée, sans identifiant — 30 jours. Il n'est lu que par ton navigateur : comme tout cookie, il accompagne les requêtes vers le site, qui ne le lit ni ne l'enregistre.",
   "ns_flash — afficher une fois « Connexion réussie » ou « Déconnexion réussie » — 60 secondes au plus, effacé dès l'affichage.",
   "negoscore_niveau — retenir le niveau choisi pour le calcul des tarifs — 12 mois.",
-  "ph_…_posthog (cookie et stockage local de la mesure d'audience) — identifiant aléatoire, sans lien avec ton compte ni ton email — jusqu'à 12 mois ; absent si ton navigateur envoie le signal « Do Not Track ».",
 ] as const;

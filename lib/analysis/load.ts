@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { lockAnalysis, type ResultView } from "@/lib/analysis/lock";
 import type { SessionUser } from "@/lib/auth/session";
 import { analysisSchema } from "@/lib/schema";
@@ -37,7 +38,19 @@ export type LoadedResult = {
   sourceType: DealRef["source_type"];
 };
 
-export async function loadResultForViewer(id: string, viewer: Viewer): Promise<LoadedResult | null> {
+// Mémorisé par requête (mission #049), sur des valeurs simples : le layout de
+// la page de résultat lit le résultat pour décider le 404 avant tout rendu, la
+// page le relit ensuite. Une seule lecture part vers la base.
+const loadCached = cache(
+  async (id: string, userId: string | null, anonToken: string | null): Promise<LoadedResult | null> =>
+    load(id, { user: userId === null ? null : ({ id: userId } as SessionUser), anonToken }),
+);
+
+export function loadResultForViewer(id: string, viewer: Viewer): Promise<LoadedResult | null> {
+  return loadCached(id, viewer.user?.id ?? null, viewer.anonToken);
+}
+
+async function load(id: string, viewer: Viewer): Promise<LoadedResult | null> {
   if (!isUuid(id)) return null;
   const rows = await selectRows<Row>(
     "analyses",

@@ -76,7 +76,7 @@ describe("politique de confidentialité", () => {
     const { TIER_COOKIE } = await import("@/lib/rates/tier");
     const { ANON_COOKIE } = await import("@/lib/security/request");
     const announced = COOKIES.join(" ");
-    const known = [ACCESS_COOKIE, REFRESH_COOKIE, VERIFIER_COOKIE, SESSION_HINT_COOKIE, FLASH_COOKIE, RIGHT_HINT_COOKIE, TIER_COOKIE, ANON_COOKIE, "posthog"];
+    const known = [ACCESS_COOKIE, REFRESH_COOKIE, VERIFIER_COOKIE, SESSION_HINT_COOKIE, FLASH_COOKIE, RIGHT_HINT_COOKIE, TIER_COOKIE, ANON_COOKIE];
     for (const name of known) expect(announced, name).toContain(name);
     // Aucun autre nom de cookie défini dans le code sans être annoncé.
     const sources = ["app", "components", "lib"].flatMap((dir) =>
@@ -87,6 +87,16 @@ describe("politique de confidentialité", () => {
     const defined = sources.flatMap((text) => [...text.matchAll(/_COOKIE = "([a-z_]+)"/g)].map((match) => match[1]));
     expect(defined.length).toBeGreaterThanOrEqual(8);
     for (const name of defined) expect(announced, name).toContain(name);
+  });
+
+  // Mission #049 : la mesure d'audience ne dépose plus rien. Si un cookie ou un
+  // stockage PostHog revient, la page ne l'annonce plus : ce test échoue avant.
+  it("la mesure d'audience tourne sans rien écrire sur l'appareil", () => {
+    const client = readFileSync(path.join(process.cwd(), "lib/analytics/client.ts"), "utf8");
+    expect(client).toContain('cookieless_mode: "always"');
+    // Aucune option qui rétablirait un stockage : persistence, cookie, opt-in.
+    expect(client).not.toMatch(/persistence\s*:|set_cookie|opt_in_capturing|cookieless_mode:\s*"on_reject"/);
+    expect(COOKIES.join(" ")).not.toMatch(/ph_|posthog/i);
   });
 
   it("reprend le texte fourni", async () => {
@@ -109,6 +119,8 @@ describe("politique de confidentialité", () => {
       "17 septembre 2026",
       // Mission #047 : cookies et brouillon local.
       "Cookies et stockage dans ton navigateur",
+      // Mission #049 : mesure d'audience sans stockage, donc sans bannière.
+      "La mesure d'audience ne dépose ni ne lit rien sur ton appareil : aucun cookie, aucun stockage local, aucun identifiant conservé d'une visite à l'autre. C'est pourquoi aucune bannière de consentement ne t'est présentée.",
       "Il ne quitte pas ton appareil tant que tu ne lances pas l'analyse. Il est effacé dès qu'une analyse aboutit, ou au bout de 24 heures.",
       ...COOKIES,
     ]) {

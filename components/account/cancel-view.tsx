@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { BoneLine, LoadingAnnouncement } from "@/components/ui/skeleton";
 import { isCancelled, isProActive, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
+import { PRICE, PRO_PERIOD } from "@/lib/billing/plans";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
@@ -103,7 +104,10 @@ function CancelContent({ data }: { data: CancelViewData }) {
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1 border-y border-filet py-4">
-            <p className="font-display text-h3 font-bold text-encre">Abonnement Pro — 12,99 € par mois</p>
+            {/* Prix repris de la source unique : la page de résiliation ne peut pas annoncer un autre tarif que celui vendu. */}
+            <p className="font-display text-h3 font-bold text-encre">
+              Abonnement Pro — {PRICE.pro} {PRO_PERIOD}
+            </p>
             <p className="text-sm text-attenue">{endsAt ? `Période en cours jusqu'au ${endsAt}.` : "Période en cours."}</p>
           </div>
           <p>

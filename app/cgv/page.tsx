@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/lib/seo";
 import { Facts, LegalPage, LegalSection, ToFill } from "@/components/legal/legal-page";
+import { PRICE, PRO_PERIOD } from "@/lib/billing/plans";
 import { BRAND } from "@/lib/brand";
 import { SELLER } from "@/lib/legal/identity";
 
@@ -34,8 +35,10 @@ export default function TermsPage() {
           items={[
             "Gratuit : une analyse, sans paiement.",
             "Relance gratuite : une analyse dont le résultat est incomplet, faute d'informations suffisantes dans l'offre de la marque, peut être relancée une fois, sur la même offre complétée, dans les 14 jours suivant l'analyse, sans frais et sans décompter d'analyse, quelle que soit la formule.",
-            "Pack Deal : 4,99 € — trois analyses, sans date d'expiration.",
-            "Pro : 12,99 € par mois — trente analyses par mois, historique des analyses, résiliable à tout moment.",
+            // Prix pris dans la source unique (lib/billing/plans.ts) : le texte des
+            // CGV ne peut pas diverger de ce qui est vendu.
+            `Pack Deal : ${PRICE.pack} — trois analyses, sans date d'expiration.`,
+            `Pro : ${PRICE.pro} ${PRO_PERIOD} — trente analyses par mois, historique des analyses, résiliable à tout moment.`,
           ]}
         />
         <p>
