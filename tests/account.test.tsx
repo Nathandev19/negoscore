@@ -85,7 +85,7 @@ describe("/compte", () => {
     html = renderToStaticMarkup(await AccountPage());
     expect(html).toMatch(/>Pro</);
     expect(html).toContain("Période en cours");
-    expect(hrefs(html)).toEqual(expect.arrayContaining(["/historique", "/offres", "/resilier", "/compte/supprimer"]));
+    expect(hrefs(html)).toEqual(expect.arrayContaining(["/historique", "/tarifs", "/resilier", "/compte/supprimer"]));
     expect(html).toContain('action="/auth/deconnexion"');
   });
 

@@ -28,7 +28,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="Offres et prix">
+      <LegalSection title="Formules et prix">
         <Facts
           items={[
             "Gratuit : une analyse, sans paiement.",

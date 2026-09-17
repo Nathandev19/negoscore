@@ -128,8 +128,8 @@ export function RetryPanel({ state, originId }: { state: RetryPanelState; origin
         <p role="alert" className="alert-bad text-small">
           {error.message}{" "}
           {error.paywall ? (
-            <Link href="/offres" className="link font-semibold">
-              Voir les offres
+            <Link href="/tarifs" className="link font-semibold">
+              Voir les tarifs
             </Link>
           ) : null}
         </p>

@@ -108,7 +108,7 @@ describe("email de confirmation d'achat", () => {
     for (const line of [
       "Bonjour,",
       "Ton paiement est confirmé.",
-      "Offre : Pack Deal",
+      "Formule : Pack Deal",
       "Montant : 4,99 €",
       "Date : 16 septembre 2026",
       "Ce que tu as obtenu : 3 analyses ajoutées à ton compte",
@@ -123,7 +123,7 @@ describe("email de confirmation d'achat", () => {
     }
   });
 
-  it("décrit l'offre Pro quand c'est un abonnement", () => {
+  it("décrit la formule Pro quand c'est un abonnement", () => {
     const pro = purchaseConfirmationEmail({
       to: "acheteuse@exemple.fr",
       plan: "pro",
@@ -132,7 +132,7 @@ describe("email de confirmation d'achat", () => {
       date: new Date("2026-09-16T10:00:00Z"),
       siteUrl: "https://www.negoscore.fr",
     });
-    expect(pro.text).toContain("Offre : Pro");
+    expect(pro.text).toContain("Formule : Pro");
     expect(pro.text).toContain("Montant : 12,99 €");
     expect(pro.text).toContain("Ce que tu as obtenu : accès Pro, 30 analyses par mois");
   });

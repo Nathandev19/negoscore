@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileDropZone, type SelectedFile } from "@/components/file-drop-zone";
@@ -11,6 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
 import { track } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { hasSessionHint } from "@/lib/auth/session-hint";
+import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
+import { clearDraft, readDraft, saveDraft, subscribeDraft } from "@/lib/draft";
 import { validateFile, type FileKind } from "@/lib/upload";
 
 const MIN_TEXT_LENGTH = 20;
@@ -74,10 +77,64 @@ async function uploadFile(kind: FileKind, file: File): Promise<string> {
   return storagePath;
 }
 
+// Les cookies indicateurs ne changent qu'avec un chargement de page ou une
+// réponse du serveur, suivie ici par l'état « refused ».
+const noSubscription = () => () => undefined;
+
+// Reste-t-il un droit ? Affiché AVANT la saisie (mission #046), sans appel
+// serveur pour un visiteur sans compte. Voir lib/billing/right-hint.ts.
+export function NoRightNotice({ message, offerSignIn }: { message: string; offerSignIn: boolean }) {
+  return (
+    <div role="status" data-no-right className="flex flex-col gap-3 border-l-4 border-encre py-1 pl-3">
+      <p className="font-semibold text-encre">{message}</p>
+      <p className="text-small">Le texte que tu colles reste gardé dans ce navigateur : tu le retrouveras en revenant.</p>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <Button asChild size="lg" className="h-12 text-base">
+          <Link href="/tarifs">Voir les tarifs</Link>
+        </Button>
+        {offerSignIn ? (
+          <Link href="/connexion?next=%2Fanalyse" className="link font-semibold">
+            Me connecter
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function DealInput() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("text");
-  const [text, setText] = useState("");
+  // Texte : le brouillon gardé dans le navigateur tant que rien n'a été tapé
+  // ici, puis ce qui est tapé. Jamais perdu après un refus (lib/draft.ts).
+  const [edited, setEdited] = useState<string | null>(null);
+  const draft = useSyncExternalStore(subscribeDraft, () => readDraft(), () => "");
+  const text = edited ?? draft;
+  function setText(value: string) {
+    setEdited(value);
+    saveDraft(value);
+  }
+  const signedIn = useSyncExternalStore(noSubscription, () => hasSessionHint(document.cookie), () => false);
+  const anonUsed = useSyncExternalStore(noSubscription, () => hasNoFreeRightHint(document.cookie), () => false);
+  const [account, setAccount] = useState<{ allowed: boolean; message?: string } | null>(null);
+  const [refused, setRefused] = useState<{ message: string } | null>(null);
+  const right = rightView({ refused, signedIn, account, anonUsed });
+
+  // Compte connecté : une lecture du droit, sans rien réserver (/api/droits).
+  useEffect(() => {
+    if (!signedIn) return;
+    let stale = false;
+    fetch("/api/droits", { cache: "no-store" })
+      .then((response) => response.json() as Promise<{ allowed?: unknown; message?: unknown }>)
+      .then((value) => {
+        if (stale || typeof value.allowed !== "boolean") return;
+        setAccount({ allowed: value.allowed, message: typeof value.message === "string" ? value.message : undefined });
+      })
+      .catch(() => undefined);
+    return () => {
+      stale = true;
+    };
+  }, [signedIn]);
   const [files, setFiles] = useState<Record<FileKind, SelectedFile | null>>({
     photo: null,
     pdf: null,
@@ -135,10 +192,15 @@ export function DealInput() {
     if (outcome.ok) {
       // La réponse est là : les étapes restantes se cochent, puis le résultat s'affiche.
       setRespondedAt(Date.now());
+      clearDraft();
       const target = `/analyse/resultat/${outcome.analysisId}`;
       window.setTimeout(() => router.push(target), REVEAL_TOTAL_MS);
+    } else if (outcome.paywall) {
+      // Plus de droit : l'action principale devient « Voir les tarifs », le texte reste.
+      setRefused({ message: outcome.message });
+      setLoading(false);
     } else {
-      setNotice({ message: outcome.message, paywall: outcome.paywall, signIn: outcome.signIn });
+      setNotice({ message: outcome.message, paywall: false, signIn: outcome.signIn });
       setLoading(false);
     }
   }
@@ -200,6 +262,7 @@ export function DealInput() {
         void analyse(mode);
       }}
     >
+      {right.blocked ? <NoRightNotice message={right.message} offerSignIn={right.offerSignIn} /> : null}
       {PAUSED ? (
         <p role="status" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
           {ANALYSIS_PAUSED_MESSAGE}
@@ -259,22 +322,15 @@ export function DealInput() {
               </Link>
             </p>
           ) : null}
-          {notice.paywall ? (
-            <p className="flex gap-4">
-              <Link href="/offres" className="link font-semibold">
-                Voir les offres
-              </Link>
-              <Link href="/connexion?next=%2Fanalyse" className="link font-semibold">
-                Me connecter
-              </Link>
-            </p>
-          ) : null}
         </div>
       ) : null}
 
       <Button
         type="submit"
         size="lg"
+        // Sans droit, le bouton d'analyse n'est plus l'action mise en avant. Il reste
+        // utilisable : l'indicateur peut être en retard sur un achat, le serveur tranche.
+        variant={right.blocked ? "outline" : "default"}
         disabled={!canSubmit}
         aria-describedby={canSubmit ? undefined : reasonId}
         className="h-12 w-full text-base"

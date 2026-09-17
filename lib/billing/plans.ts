@@ -1,4 +1,4 @@
-// Offres commerciales. Source unique pour la page /offres et les quotas serveur.
+// Formules vendues (le mot « offre » est réservé à ce que la marque propose). Source unique pour la page /tarifs et les quotas serveur.
 
 export const FREE_ANALYSES = 1;
 export const PACK_ANALYSES = 3;
@@ -31,6 +31,6 @@ export const PLANS = [
   },
 ] as const;
 
-// Offre mise en avant sur l'accueil et sur /offres : une seule. Le Pack est
+// Formule mise en avant sur l'accueil et sur /tarifs : une seule. Le Pack est
 // l'achat sans engagement qui suit l'analyse gratuite.
 export const FEATURED_PLAN: (typeof PLANS)[number]["id"] = "pack";

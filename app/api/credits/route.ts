@@ -4,7 +4,7 @@ import { selectRows } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 // Solde du compte connecté. Lecture seule : la page /merci s'en sert pour
-// attendre que le webhook ait crédité, et /offres (page statique) pour
+// attendre que le webhook ait crédité, et /tarifs (page statique) pour
 // présenter un abonnement Pro en cours.
 export async function GET(request: Request) {
   const user = await getRequestUser(request);

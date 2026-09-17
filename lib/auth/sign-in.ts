@@ -2,6 +2,7 @@ import { attachAnonDeals, ensureAccount } from "@/lib/auth/account";
 import { mergeFreeUsage } from "@/lib/billing/free-usage";
 import { expiredCookieHeader, sessionCookieHeaders, type Session } from "@/lib/auth/session";
 export { signedInRedirectPath } from "@/lib/auth/next-path";
+import { flashCookieHeader } from "@/lib/auth/flash";
 import { sessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
 
@@ -60,7 +61,13 @@ export async function completeSignIn(
     }),
   );
 
-  const cookies = [...sessionCookieHeaders(session), sessionHintCookieHeader(), ...(options.extraCookies ?? [])];
+  const cookies = [
+    ...sessionCookieHeaders(session),
+    sessionHintCookieHeader(),
+    // Bandeau « Connexion réussie » sur la page d'arrivée (components/flash-banner.tsx).
+    flashCookieHeader("connexion", process.env.NODE_ENV === "production"),
+    ...(options.extraCookies ?? []),
+  ];
   if (anonToken) cookies.push(expiredCookieHeader(ANON_COOKIE));
   // ?connexion=ok sert à la mesure d'audience, le paramètre est retiré côté client.
   const target = `${next}${next.includes("?") ? "&" : "?"}connexion=ok`;

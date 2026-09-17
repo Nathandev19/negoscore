@@ -24,7 +24,7 @@ describe("en-tête", () => {
   it("déconnecté : logo, Comment ça marche, Tarifs, Se connecter, Analyser un deal — rien de protégé", () => {
     const html = renderToStaticMarkup(<HeaderNav signedIn={false} pathname="/" />);
     const hrefs = links(html).map((l) => l.href);
-    for (const href of ["/", "/#methode", "/offres", "/connexion", "/analyse"]) expect(hrefs).toContain(href);
+    for (const href of ["/", "/#methode", "/tarifs", "/connexion", "/analyse"]) expect(hrefs).toContain(href);
     for (const href of ["/historique", "/compte"]) expect(hrefs).not.toContain(href);
     expect(html).toContain("Se connecter");
     expect(html).toContain("Analyser un deal");
@@ -33,16 +33,16 @@ describe("en-tête", () => {
   });
 
   it("connecté : Mes analyses et Mon compte, plus de Se connecter", () => {
-    const html = renderToStaticMarkup(<HeaderNav signedIn pathname="/offres" />);
+    const html = renderToStaticMarkup(<HeaderNav signedIn pathname="/tarifs" />);
     const all = links(html);
     const hrefs = all.map((l) => l.href);
-    for (const href of ["/#methode", "/offres", "/historique", "/compte", "/analyse"]) expect(hrefs).toContain(href);
+    for (const href of ["/#methode", "/tarifs", "/historique", "/compte", "/analyse"]) expect(hrefs).toContain(href);
     expect(hrefs).not.toContain("/connexion");
     expect(html).toContain("Mes analyses");
     expect(html).toContain("Mon compte");
     // Page courante signalée, dans la navigation principale comme dans le menu mobile.
-    expect(all.filter((l) => l.href === "/offres").every((l) => l.current)).toBe(true);
-    expect(all.filter((l) => l.href !== "/offres").some((l) => l.current)).toBe(false);
+    expect(all.filter((l) => l.href === "/tarifs").every((l) => l.current)).toBe(true);
+    expect(all.filter((l) => l.href !== "/tarifs").some((l) => l.current)).toBe(false);
   });
 
   it("menu mobile : bouton relié au panneau, panneau fermé au rendu, cibles de 44 px", () => {
@@ -65,7 +65,7 @@ describe("pied de page", () => {
     }
     const hrefs = all.map((l) => l.href);
     for (const column of FOOTER_COLUMNS) for (const link of column.links) expect(hrefs).toContain(link.href);
-    for (const href of ["/#methode", "/offres", "/analyse", "/mentions-legales", "/confidentialite", "/cgv", `mailto:${SELLER.email}`]) {
+    for (const href of ["/#methode", "/tarifs", "/analyse", "/mentions-legales", "/confidentialite", "/cgv", `mailto:${SELLER.email}`]) {
       expect(hrefs).toContain(href);
     }
     // Section Médiation des CGV encore à compléter : pas de lien vers un emplacement vide.

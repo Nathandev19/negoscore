@@ -24,7 +24,7 @@ function consentWithLink() {
 
 // Case à cocher obligatoire, jamais pré-cochée. Son état est enregistré côté
 // serveur, avec la date, par /api/checkout.
-// primary : bouton plein pour l'offre mise en avant, lien souligné pour les autres.
+// primary : bouton plein pour la formule mise en avant, lien souligné pour les autres.
 export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro"; label: string; primary: boolean }) {
   const [accepted, setAccepted] = useState(false);
   // Identifiant anonyme de la mesure d'audience, écrit directement dans le

@@ -1,3 +1,4 @@
+import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
 import { viewerOwnsDeal } from "@/lib/analysis/load";
 import type { SessionUser } from "@/lib/auth/session";
 import { isUuid } from "@/lib/security/request";
@@ -25,10 +26,7 @@ import { isMissingColumn, isMissingRelation, selectRows, updateRows } from "@/li
 // sont exclues du quota mensuel Pro (is_retry). Colonnes créées par la
 // migration 20260917000018 ; sans elle, la relance n'est simplement pas proposée.
 
-// 14 jours : une marque répond à une demande de précisions en quelques jours,
-// parfois une semaine ou deux. Au-delà, ce n'est plus la même négociation, et
-// une réservation ouverte sans limite deviendrait un stock de droits gratuits.
-export const RETRY_WINDOW_DAYS = 14;
+export { RETRY_WINDOW_DAYS };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type RetryRow = {

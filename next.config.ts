@@ -20,5 +20,10 @@ export default function config(phase: string): NextConfig {
     // Polices à graisse fixe de la carte partageable, lues depuis le disque par
     // la route : incluses explicitement dans le paquet déployé.
     outputFileTracingIncludes: { "/analyse/resultat/*/carte": ["./assets/fonts/*.ttf"] },
+    // /offres est devenue /tarifs (mission #046 : « offre » désigne ce que la
+    // marque propose, jamais ce qu'on vend). Redirection permanente : d'anciens
+    // liens existent dans des emails déjà envoyés. Les paramètres (?erreur=…)
+    // sont transmis tels quels.
+    redirects: async () => [{ source: "/offres", destination: "/tarifs", permanent: true }],
   };
 }

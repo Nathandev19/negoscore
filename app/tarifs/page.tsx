@@ -8,7 +8,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
 export const metadata: Metadata = {
-  title: "Offres",
+  title: "Tarifs",
 };
 
 // Page statique (mission #045) : préchargée, affichée sans rendu serveur au
@@ -21,13 +21,13 @@ export default function PlansPage() {
       <PaywallView />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         <div className="flex flex-col gap-2">
-          <h1 className="text-h1 font-extrabold">Les offres</h1>
-          <p>Commence gratuitement. Passe à une offre quand tu reçois plus de deals.</p>
+          <h1 className="text-h1 font-extrabold">Tarifs</h1>
+          <p>Commence gratuitement. Passe à une formule quand tu reçois plus de deals.</p>
         </div>
         <Suspense fallback={null}>
           <OffersError />
         </Suspense>
-        {/* Offres séparées par des filets, pas trois cartes identiques : une seule
+        {/* Formules séparées par des filets, pas trois cartes identiques : une seule
             mise en avant, avec le seul bouton plein de la page. */}
         <OffersList />
         <p className="text-sm text-attenue">

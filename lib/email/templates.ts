@@ -29,8 +29,8 @@ function signature(): string {
   return `— ${BRAND.name}\n${SELLER.name}, EI — ${SELLER.address.replace(", France", "")}\nSIRET ${SELLER.siret}`;
 }
 
-// Montant réellement payé, reçu de Whop. À défaut, le prix de l'offre lu dans
-// la source unique des offres (lib/billing/plans.ts), jamais écrit à la main.
+// Montant réellement payé, reçu de Whop. À défaut, le prix de la formule lu dans
+// la source unique des formules (lib/billing/plans.ts), jamais écrit à la main.
 function amountValue(plan: PlanKey, amount: number | null, currency: string | null): string {
   if (amount === null) return PLANS.find((p) => p.id === plan)?.price ?? "voir le reçu Whop";
   const value = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
@@ -63,7 +63,7 @@ export function purchaseConfirmationEmail(options: {
     "",
     "Ton paiement est confirmé.",
     "",
-    `Offre : ${PLAN_NAME[plan]}`,
+    `Formule : ${PLAN_NAME[plan]}`,
     `Montant : ${value}`,
     `Date : ${DATE.format(date)}`,
     TAX_LINE,
@@ -87,7 +87,7 @@ export function purchaseConfirmationEmail(options: {
     {
       kind: "facts",
       rows: [
-        { label: "Offre", value: PLAN_NAME[plan] },
+        { label: "Formule", value: PLAN_NAME[plan] },
         { label: "Montant", value },
         { label: "Date", value: DATE.format(date) },
         { label: "Ce que tu as obtenu", value: PLAN_OBTAINED[plan] },

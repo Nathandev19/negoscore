@@ -2,6 +2,7 @@ import type { SessionUser } from "@/lib/auth/session";
 import { consumeFree, freeUsed, type FreeSubject } from "@/lib/billing/free-usage";
 import { displayedPlan, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 import { FREE_ANALYSES, PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
+import { NO_FREE_LEFT_MESSAGE } from "@/lib/billing/right-hint";
 import { hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
 import { adjustInteger, countRows, isMissingColumn, selectRows } from "@/lib/supabase/server";
@@ -40,7 +41,8 @@ export type Grant = {
   release: () => Promise<void>;
 };
 
-const NO_CREDIT_MESSAGE = "Tu as utilisé ton analyse gratuite. Choisis une offre pour analyser d'autres deals.";
+const NO_CREDIT_MESSAGE = NO_FREE_LEFT_MESSAGE;
+const NO_PACK_CREDIT_MESSAGE = "Tu n'as plus de crédit. Choisis une formule pour continuer.";
 const RATE_LIMITED_MESSAGE =
   "Trop d'analyses ont été lancées depuis ton réseau ces dernières heures. Réessaie plus tard, ou connecte-toi pour continuer.";
 
@@ -129,14 +131,21 @@ type Context = {
   ip: string;
 };
 
-export async function reserveAnalysis({ user, anonToken, commitAnonToken, ip }: Context): Promise<Grant | Denial> {
+// Décision seule, sans rien réserver ni compter : partagée par reserveAnalysis
+// et par analysisRightStatus (affichage « il ne te reste aucun droit » avant la
+// saisie, mission #046).
+type RightDecision =
+  | Denial
+  | { allowed: true; plan: "free" }
+  | { allowed: true; plan: "pack" }
+  | { allowed: true; plan: "pro"; inPeriod: () => Promise<number> };
+
+async function decideRight(user: SessionUser | null, anonToken: string | null): Promise<RightDecision> {
   if (!user) {
     if (anonToken && (await freeAlreadyUsed({ kind: "anon", token: anonToken }))) {
       return { allowed: false, reason: "free_used", message: NO_CREDIT_MESSAGE };
     }
-    const token = commitAnonToken ?? anonToken;
-    if (!token) throw new Error("Jeton anonyme absent pour le décompte de la gratuité");
-    return grantFree(ip, { kind: "anon", token });
+    return { allowed: true, plan: "free" };
   }
 
   const [credits] = await selectRows<PlanState>(
@@ -154,40 +163,64 @@ export async function reserveAnalysis({ user, anonToken, commitAnonToken, ip }: 
     const periodStart = new Date(periodEnd);
     periodStart.setMonth(periodStart.getMonth() - 1);
     const inPeriod = () => analysesInPeriod(user.id, periodStart, periodEnd);
-    if ((await inPeriod()) < PRO_ANALYSES_PER_PERIOD) {
-      // Le quota se compte sur les analyses enregistrées : celle-ci compte dès
-      // qu'elle existe. Le commit vérifie seulement qu'elle ne dépasse pas.
-      return {
-        allowed: true,
-        plan: "pro",
-        commit: async () => (await inPeriod()) <= PRO_ANALYSES_PER_PERIOD,
-        release: nothingToRelease,
-      };
-    }
+    if ((await inPeriod()) < PRO_ANALYSES_PER_PERIOD) return { allowed: true, plan: "pro", inPeriod };
     // Quota mensuel épuisé : les crédits achetés prennent le relais. Ils sont
     // promis sans date d'expiration, ils doivent donc servir ici aussi.
-    if ((credits?.balance ?? 0) > 0) return grantPack(user.id);
+    if ((credits?.balance ?? 0) > 0) return { allowed: true, plan: "pack" };
     return { allowed: false, reason: "no_credit", message: "Tu as atteint la limite de ton abonnement pour cette période." };
   }
 
   if (effectivePlan === "pack") {
-    if ((credits?.balance ?? 0) > 0) return grantPack(user.id);
-    return { allowed: false, reason: "no_credit", message: "Tu n'as plus de crédit. Choisis une offre pour continuer." };
+    if ((credits?.balance ?? 0) > 0) return { allowed: true, plan: "pack" };
+    return { allowed: false, reason: "no_credit", message: NO_PACK_CREDIT_MESSAGE };
   }
 
-  // Plus aucun crédit : un compte qui a déjà payé ne repasse pas par l'offre
-  // gratuite, et le message dit ce qui s'est terminé.
+  // Plus aucun crédit : un compte qui a déjà payé ne repasse pas par la
+  // gratuité, et le message dit ce qui s'est terminé.
   if (credits?.plan === "pro") {
-    return { allowed: false, reason: "no_credit", message: "Ton abonnement n'est plus actif. Choisis une offre pour continuer." };
+    return { allowed: false, reason: "no_credit", message: "Ton abonnement n'est plus actif. Choisis une formule pour continuer." };
   }
   if (credits?.plan === "pack") {
-    return { allowed: false, reason: "no_credit", message: "Tu n'as plus de crédit. Choisis une offre pour continuer." };
+    return { allowed: false, reason: "no_credit", message: NO_PACK_CREDIT_MESSAGE };
   }
 
   // Compte gratuit : l'analyse gratuite n'est disponible que si le compte n'en a
   // encore consommé aucune, y compris celle faite anonymement puis rattachée,
   // et y compris une analyse supprimée depuis (compteur durable).
-  const subject: FreeSubject = { kind: "user", id: user.id };
-  if (await freeAlreadyUsed(subject)) return { allowed: false, reason: "no_credit", message: NO_CREDIT_MESSAGE };
-  return grantFree(ip, subject);
+  if (await freeAlreadyUsed({ kind: "user", id: user.id })) {
+    return { allowed: false, reason: "no_credit", message: NO_CREDIT_MESSAGE };
+  }
+  return { allowed: true, plan: "free" };
+}
+
+export async function reserveAnalysis({ user, anonToken, commitAnonToken, ip }: Context): Promise<Grant | Denial> {
+  const decision = await decideRight(user, anonToken);
+  if (!decision.allowed) return decision;
+  if (decision.plan === "pack") return grantPack((user as SessionUser).id);
+  if (decision.plan === "pro") {
+    const { inPeriod } = decision;
+    // Le quota se compte sur les analyses enregistrées : celle-ci compte dès
+    // qu'elle existe. Le commit vérifie seulement qu'elle ne dépasse pas.
+    return {
+      allowed: true,
+      plan: "pro",
+      commit: async () => (await inPeriod()) <= PRO_ANALYSES_PER_PERIOD,
+      release: nothingToRelease,
+    };
+  }
+  if (user) return grantFree(ip, { kind: "user", id: user.id });
+  const token = commitAnonToken ?? anonToken;
+  if (!token) throw new Error("Jeton anonyme absent pour le décompte de la gratuité");
+  return grantFree(ip, { kind: "anon", token });
+}
+
+// Lecture seule, pour l'affichage : ne réserve rien, ne touche à aucun
+// compteur (ni gratuité, ni filet anti-script par IP). Le droit réel reste
+// décidé par reserveAnalysis au moment de l'analyse.
+export async function analysisRightStatus(
+  user: SessionUser | null,
+  anonToken: string | null,
+): Promise<{ allowed: true } | Omit<Denial, "allowed"> & { allowed: false }> {
+  const decision = await decideRight(user, anonToken);
+  return decision.allowed ? { allowed: true } : decision;
 }

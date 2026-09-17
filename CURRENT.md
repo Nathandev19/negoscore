@@ -7,7 +7,7 @@ Negoscore en production sur www.negoscore.fr. Mission #007 livrée : réexpédit
 - Analyse : texte et photo (PDF en 501), chiffrage déterministe plafonné, contenu verrouillé retiré côté serveur pour un visiteur non connecté.
 - Comptes : magic link, rattachement de l'analyse anonyme, `/historique`.
 - Crédits : gratuit 1 analyse, Pack Deal 3 analyses, Pro 30 par période. Droit vérifié avant l'appel au modèle ; un échec ne consomme rien.
-- Paiement : `/offres` (case de consentement obligatoire), `/api/checkout`, `/api/whop/webhook`, `/merci` qui attend le crédit.
+- Paiement : `/tarifs` (ancienne adresse `/offres`, redirigée ; case de consentement obligatoire), `/api/checkout`, `/api/whop/webhook`, `/merci` qui attend le crédit.
 - Analytics : `lib/analytics/` côté navigateur (sans donnée de deal, DNT respecté, enregistrement de session désactivé) et `purchase_completed` émis par le webhook.
 - Pages légales : `/mentions-legales`, `/confidentialite`, `/cgv` complétées ; seul le médiateur reste en `[[À COMPLÉTER]]`.
 - Après achat : email de confirmation (troisième condition de l'article L221-28 13°), envoyé une fois par événement.

@@ -69,7 +69,7 @@ describe("politique de confidentialité", () => {
     const { default: PrivacyPage } = await import("@/app/confidentialite/page");
     const html = renderToStaticMarkup(<PrivacyPage />).replace(/&#x27;/g, "'");
     for (const text of [
-      "Email de l'acheteur, montant et offre achetée — preuve de la transaction et suivi des paiements — obligation légale et intérêt légitime.",
+      "Email de l'acheteur, montant et formule achetée — preuve de la transaction et suivi des paiements — obligation légale et intérêt légitime.",
       "Coordonnées bancaires — traitées exclusivement par Whop, jamais reçues ni conservées par Negoscore.",
       "Adresse IP sous forme hachée — limitation des abus et de l'usage gratuit — intérêt légitime — conservée 30 jours au maximum.",
       "Documents déposés : supprimés 30 jours après l'analyse.",

@@ -73,7 +73,7 @@ describe("/connexion : redirection d'une personne déjà connectée (proxy)", ()
 
   it("les autres pages ne sont pas redirigées", async () => {
     state.validTokens.add("jeton-valide");
-    expect(location(await visit("/offres", "sb_access_token=jeton-valide; sb_refresh_token=r"))).toBeNull();
+    expect(location(await visit("/tarifs", "sb_access_token=jeton-valide; sb_refresh_token=r"))).toBeNull();
   });
 });
 

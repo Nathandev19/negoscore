@@ -10,12 +10,12 @@ import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-const LOGIN_HREF = `/connexion?next=${encodeURIComponent("/offres")}`;
+const LOGIN_HREF = `/connexion?next=${encodeURIComponent("/tarifs")}`;
 
 // Le cookie indicateur ne change qu'avec un chargement complet de page.
 const subscribe = () => () => undefined;
 
-// Liste des offres (mission #045) : la page /offres est statique, et ce
+// Liste des formules (mission #045) : la page /tarifs est statique, et ce
 // composant choisit les boutons dans le navigateur.
 //   - Rendu serveur et avant hydratation : l'état de la majorité des visiteurs,
 //     « Se connecter pour payer ».
@@ -24,7 +24,7 @@ const subscribe = () => () => undefined;
 //     Supabase, renvoie vers la connexion si elle n'est plus valide, et refuse
 //     un second abonnement Pro.
 //   - Compte lu par /api/credits (session vérifiée côté serveur) : présentation
-//     d'un abonné Pro en cours (Pack affiché comme recharge, Pro comme offre en
+//     d'un abonné Pro en cours (Pack affiché comme recharge, Pro comme formule en
 //     cours) ; session invalide : retour à l'état non connecté.
 export function OffersList() {
   const hinted = useSyncExternalStore(subscribe, () => hasSessionHint(document.cookie), () => false);
@@ -92,11 +92,11 @@ export function OffersList() {
                 <p className="alert-bad py-1 text-sm">
                   {proCancelled
                     ? proEndsAtLabel
-                      ? `Ton offre en cours. Elle prend fin le ${proEndsAtLabel}.`
-                      : "Ton offre en cours. Elle prend fin à la fin de la période."
+                      ? `Ta formule en cours. Elle prend fin le ${proEndsAtLabel}.`
+                      : "Ta formule en cours. Elle prend fin à la fin de la période."
                     : proEndsAtLabel
-                      ? `Ton offre en cours, jusqu'au ${proEndsAtLabel}.`
-                      : "Ton offre en cours."}
+                      ? `Ta formule en cours, jusqu'au ${proEndsAtLabel}.`
+                      : "Ta formule en cours."}
                 </p>
                 {proCancelled ? null : (
                   <Link href="/resilier" className="link flex min-h-11 w-fit items-center text-sm">

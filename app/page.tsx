@@ -112,7 +112,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* C4 — trois offres séparées par des filets, une seule mise en avant. */}
+        {/* C4 — trois formules séparées par des filets, une seule mise en avant. */}
         <section id="tarifs" className={SECTION}>
           <div className={cn(SECTION_INNER, "gap-10 md:gap-12")}>
             <div className="flex flex-col gap-2">
@@ -150,8 +150,8 @@ export default function HomePage() {
                 );
               })}
             </ul>
-            <Link href="/offres" className="link w-fit font-semibold">
-              Voir le détail des offres
+            <Link href="/tarifs" className="link w-fit font-semibold">
+              Voir le détail des formules
             </Link>
           </div>
         </section>

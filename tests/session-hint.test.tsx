@@ -68,6 +68,9 @@ describe("cookie indicateur de session", () => {
       new Request("http://localhost:3000/auth/callback?code=abc", { headers: { cookie: "sb_pkce_verifier=v" } }),
     );
     const cookies = setCookies(response);
+    // Mission #046 : bandeau « Connexion réussie » sur la page d'arrivée, sans email.
+    expect(cookies.some((c) => c.startsWith("ns_flash=connexion;") && !c.includes("HttpOnly"))).toBe(true);
+    expect(cookies.find((c) => c.startsWith("ns_flash="))).not.toContain("@");
     expect(cookies.some((c) => c.startsWith("sb_access_token=") && c.includes("HttpOnly"))).toBe(true);
     const hint = cookies.find((c) => c.startsWith(`${SESSION_HINT_COOKIE}=`));
     expect(hint).toBe(sessionHintCookieHeader());
@@ -77,6 +80,8 @@ describe("cookie indicateur de session", () => {
     const { POST } = await import("@/app/auth/deconnexion/route");
     const response = await POST(new Request("http://localhost:3000/auth/deconnexion", { method: "POST", headers: { cookie: HINT_ONLY } }));
     expect(setCookies(response)).toContain(expiredSessionHintCookieHeader());
+    // Mission #046 : bandeau « Déconnexion réussie ».
+    expect(setCookies(response).some((c) => c.startsWith("ns_flash=deconnexion;"))).toBe(true);
     expect(expiredSessionHintCookieHeader()).toContain("Max-Age=0");
   });
 

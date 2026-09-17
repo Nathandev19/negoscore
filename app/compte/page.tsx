@@ -39,7 +39,7 @@ export default async function AccountPage() {
             <dd className="min-w-0 truncate text-right text-sm font-medium text-encre">{user.email ?? "—"}</dd>
           </div>
           <div className="flex justify-between gap-4 py-3">
-            <dt className="text-sm text-attenue">Offre</dt>
+            <dt className="text-sm text-attenue">Formule</dt>
             <dd className="text-right text-sm font-medium text-encre">{summary.planLabel}</dd>
           </div>
           <div className="flex justify-between gap-4 py-3">
@@ -63,8 +63,8 @@ export default async function AccountPage() {
           <Button asChild size="lg" className="h-12 text-base">
             <Link href="/historique">Mes analyses</Link>
           </Button>
-          <Link href="/offres" className="link flex min-h-11 w-fit items-center font-semibold">
-            Voir les offres
+          <Link href="/tarifs" className="link flex min-h-11 w-fit items-center font-semibold">
+            Voir les tarifs
           </Link>
           {summary.canCancel ? (
             <Link href="/resilier" className="link flex min-h-11 w-fit items-center text-sm">

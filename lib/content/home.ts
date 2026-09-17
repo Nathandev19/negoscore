@@ -1,4 +1,5 @@
 import { PLANS } from "@/lib/billing/plans";
+import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
 import rates from "@/lib/rates/fr-2026.3.json";
 import { MAX_PDF_PAGES } from "@/lib/upload";
 
@@ -62,7 +63,8 @@ export const FAQ = [
   },
   {
     question: "Combien ça coûte ?",
-    answer: `Ta première analyse est gratuite. Ensuite : ${PLANS_TEXT}. Prix TTC.`,
+    // Relance gratuite d'une analyse incomplète : mission #043, FAQ corrigée en #046.
+    answer: `Ta première analyse est gratuite. Si une analyse ressort incomplète parce que le message de la marque ne dit pas assez ce qu'elle demande, tu peux la relancer gratuitement une fois, dans les ${RETRY_WINDOW_DAYS} jours, avec les précisions obtenues. Ensuite : ${PLANS_TEXT}. Prix TTC.`,
   },
 ] as const;
 

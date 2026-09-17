@@ -20,11 +20,11 @@ export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   const plan = String(form?.get("plan") ?? "");
   const consent = form?.get("consent");
-  if (plan !== "pack" && plan !== "pro") return redirect("/offres?erreur=offre");
+  if (plan !== "pack" && plan !== "pro") return redirect("/tarifs?erreur=formule");
 
   const user = await getRequestUser(request);
-  if (!user) return redirect(`/connexion?next=${encodeURIComponent("/offres")}`);
-  if (consent !== "on") return redirect(`/offres?erreur=consentement&offre=${plan}`);
+  if (!user) return redirect(`/connexion?next=${encodeURIComponent("/tarifs")}`);
+  if (consent !== "on") return redirect(`/tarifs?erreur=consentement&formule=${plan}`);
 
   // Un abonnement Pro en cours ne se reprend pas : l'interface ne peut pas
   // être la seule protection contre un double paiement.
@@ -35,14 +35,14 @@ export async function POST(request: Request) {
     );
     if (isProActive(credits ?? null)) {
       console.log(JSON.stringify({ event: "checkout_refused", plan, reason: "abonnement_deja_actif" }));
-      return redirect("/offres?erreur=deja_pro");
+      return redirect("/tarifs?erreur=deja_pro");
     }
   }
 
   // Identifiant de mesure d'audience : transmis s'il est propre, ignoré sinon.
   const analyticsId = sanitizeDistinctId(form?.get("ph_distinct_id"));
   const origin = configuredSiteUrl() ?? originFromHeaders(request.headers);
-  const redirectUrl = `${origin}/merci?offre=${plan}`;
+  const redirectUrl = `${origin}/merci?formule=${plan}`;
 
   try {
     const checkout = await createCheckoutUrl({
@@ -76,6 +76,6 @@ export async function POST(request: Request) {
         detail: caught instanceof Error ? caught.message.slice(0, 200) : "inconnu",
       }),
     );
-    return redirect("/offres?erreur=indisponible");
+    return redirect("/tarifs?erreur=indisponible");
   }
 }

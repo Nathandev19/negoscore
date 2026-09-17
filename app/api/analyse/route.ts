@@ -3,6 +3,7 @@ import type { SessionUser } from "@/lib/auth/session";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { claimRetry, RETRY_MESSAGES, sameOffer, type RetryClaim } from "@/lib/analysis/retry";
 import { reserveAnalysis, type Denial, type Grant } from "@/lib/billing/entitlement";
+import { NO_FREE_LEFT_MESSAGE, rightHintCookieHeader } from "@/lib/billing/right-hint";
 import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
 import { extractDeal, extractDealFromImage, extractDealFromPdf, type ExtractResult } from "@/lib/llm/extract";
 import { classifyModelError, modelFailureMessage, rightNotUsed, UNREADABLE_OFFER_MESSAGE } from "@/lib/llm/errors";
@@ -46,9 +47,9 @@ type DocumentRow = {
   deal: { id: string; anon_token: string | null; user_id: string | null; status: string };
 };
 
-function json(status: number, body: Record<string, unknown>, cookie: string | null) {
+function json(status: number, body: Record<string, unknown>, ...cookies: Array<string | null>) {
   const headers = new Headers();
-  if (cookie) headers.append("Set-Cookie", cookie);
+  for (const cookie of cookies) if (cookie) headers.append("Set-Cookie", cookie);
   return Response.json(body, { status, headers });
 }
 
@@ -97,6 +98,9 @@ export async function POST(request: Request) {
   const cookie = !user && !existingToken && anonToken ? anonCookieHeader(anonToken) : null;
   const fail = (status: number, message: string, extra: Record<string, unknown> = {}) =>
     json(status, { error: message, ...extra }, cookie);
+  // Visiteur sans compte dont l'analyse gratuite est prise (décomptée ou refusée) :
+  // le formulaire le dira avant la prochaine saisie (lib/billing/right-hint.ts).
+  const noFreeLeftHint = user ? null : rightHintCookieHeader(process.env.NODE_ENV === "production");
 
   let body: unknown;
   try {
@@ -197,10 +201,10 @@ export async function POST(request: Request) {
       // Filet anti-script : ce n'est pas un paywall, et le message ne dit pas
       // au visiteur qu'il a déjà consommé quelque chose.
       const limited = entitlement.reason === "rate_limited";
-      return fail(limited ? 429 : 402, entitlement.message, {
-        ...(limited ? {} : { paywall: true }),
-        reason: entitlement.reason,
-      });
+      if (!limited) {
+        return json(402, { error: entitlement.message, paywall: true, reason: entitlement.reason }, cookie, noFreeLeftHint);
+      }
+      return fail(429, entitlement.message, { reason: entitlement.reason });
     }
     grant = entitlement;
 
@@ -312,10 +316,16 @@ export async function POST(request: Request) {
       // est retirée, et l'utilisateur est prévenu comme s'il n'avait plus de droit.
       await abandon();
       console.warn(JSON.stringify({ event: "analyse_commit_refused", plan: entitlement.plan }));
-      return fail(402, user ? "Tu n'as plus de crédit. Choisis une offre pour continuer." : "Tu as utilisé ton analyse gratuite. Choisis une offre pour analyser d'autres deals.", {
-        paywall: true,
-        reason: user ? "no_credit" : "free_used",
-      });
+      return json(
+        402,
+        {
+          error: user ? "Tu n'as plus de crédit. Choisis une formule pour continuer." : NO_FREE_LEFT_MESSAGE,
+          paywall: true,
+          reason: user ? "no_credit" : "free_used",
+        },
+        cookie,
+        noFreeLeftHint,
+      );
     }
     grant = null;
     savedDealId = null;
@@ -355,6 +365,8 @@ export async function POST(request: Request) {
         },
       },
       cookie,
+      // L'analyse gratuite de ce navigateur vient d'être décomptée.
+      entitlement.plan === "free" ? noFreeLeftHint : null,
     );
   } catch (caught) {
     const plan = grant?.plan ?? null;

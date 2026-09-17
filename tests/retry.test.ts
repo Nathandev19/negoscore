@@ -175,7 +175,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
 
 vi.stubEnv("IP_HASH_SALT", "sel-de-test");
 const { POST } = await import("@/app/api/analyse/route");
-const { reserveAnalysis } = await import("@/lib/billing/entitlement");
+const { analysisRightStatus, reserveAnalysis } = await import("@/lib/billing/entitlement");
 const { freeSubjectHash } = await import("@/lib/billing/free-usage");
 const { claimRetry, decideRetry, retryStateFor, RETRY_WINDOW_DAYS, sameOffer } = await import("@/lib/analysis/retry");
 
@@ -205,7 +205,7 @@ async function analyse(body: Record<string, unknown>, token: string | null = TOK
       body: JSON.stringify(body),
     }),
   );
-  return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+  return { status: response.status, body: (await response.json()) as Record<string, unknown>, cookies: response.headers.getSetCookie() };
 }
 
 const freeUsed = (token = TOKEN) => db.freeUsage.get(freeSubjectHash({ kind: "anon", token })) ?? 0;
@@ -368,6 +368,39 @@ describe("relance d'une analyse incomplète", () => {
     const refused = await analyse({ text: OFFER_TEXT, retryOf: originId });
     expect(refused.status).toBe(503);
     expect(model.calls).toBe(1);
+  });
+});
+
+describe("mission #046 : droit épuisé connu avant la saisie", () => {
+  const hint = (cookies: string[]) => cookies.some((c) => c.startsWith("ns_gratuit=utilise;") && !c.includes("HttpOnly"));
+
+  it("analyse gratuite décomptée : l'indicateur est posé ; refus suivant : posé aussi, avec le message « formule »", async () => {
+    model.next.push(COMPLETE());
+    const first = await analyse({ text: OFFER_TEXT });
+    expect(first.status).toBe(200);
+    expect(hint(first.cookies)).toBe(true);
+    const second = await analyse({ text: OFFER_TEXT });
+    expect(second.status).toBe(402);
+    expect(hint(second.cookies)).toBe(true);
+    expect(second.body.error).toBe("Tu as utilisé ton analyse gratuite. Choisis une formule pour analyser d'autres deals.");
+    expect(model.calls).toBe(1);
+  });
+
+  it("relance gratuite : aucun indicateur (rien n'a été décompté)", async () => {
+    const originId = await incompleteOriginal();
+    model.next.push(COMPLETE());
+    const retry = await analyse({ text: OFFER_TEXT, retryOf: originId });
+    expect(hint(retry.cookies)).toBe(false);
+  });
+
+  it("lecture du droit pour l'affichage : ne décompte rien", async () => {
+    const before = freeUsed();
+    expect(await analysisRightStatus(null, TOKEN)).toEqual({ allowed: true });
+    expect(freeUsed()).toBe(before);
+    model.next.push(COMPLETE());
+    await analyse({ text: OFFER_TEXT });
+    expect(await analysisRightStatus(null, TOKEN)).toMatchObject({ allowed: false, reason: "free_used" });
+    expect(freeUsed()).toBe(1);
   });
 });
 

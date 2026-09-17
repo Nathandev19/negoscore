@@ -1,4 +1,5 @@
 import { ACCESS_COOKIE, expiredCookieHeader, REFRESH_COOKIE, signOut } from "@/lib/auth/session";
+import { flashCookieHeader } from "@/lib/auth/flash";
 import { expiredSessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { readCookie } from "@/lib/security/request";
 
@@ -11,5 +12,7 @@ export async function POST(request: Request) {
   headers.append("Set-Cookie", expiredCookieHeader(ACCESS_COOKIE));
   headers.append("Set-Cookie", expiredCookieHeader(REFRESH_COOKIE));
   headers.append("Set-Cookie", expiredSessionHintCookieHeader());
+  // Bandeau « Déconnexion réussie » sur la page d'arrivée.
+  headers.append("Set-Cookie", flashCookieHeader("deconnexion", process.env.NODE_ENV === "production"));
   return new Response(null, { status: 303, headers });
 }

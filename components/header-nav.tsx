@@ -14,7 +14,7 @@ export function navItems(signedIn: boolean): { main: NavItem[]; account: NavItem
   return {
     main: [
       { href: "/#methode", label: "Comment ça marche" },
-      { href: "/offres", label: "Tarifs" },
+      { href: "/tarifs", label: "Tarifs" },
       ...(signedIn ? [{ href: "/historique", label: "Mes analyses" }] : []),
     ],
     account: signedIn ? { href: "/compte", label: "Mon compte" } : { href: "/connexion", label: "Se connecter" },

@@ -83,7 +83,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   // Pour un remboursement, le paiement remboursé porte le plan et le rattachement.
   const source = isRefund ? record(data.payment) : data;
   const plan = planOf(source);
-  if (!plan) return { handled: false, reason: "plan hors offres Negoscore" };
+  if (!plan) return { handled: false, reason: "plan hors formules Negoscore" };
 
   const user = await resolveUser(source);
   if (!user) return { handled: false, reason: "aucun compte rattaché à ce paiement" };

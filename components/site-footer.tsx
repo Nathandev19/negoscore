@@ -11,7 +11,7 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
     title: "Produit",
     links: [
       { href: "/#methode", label: "Comment ça marche" },
-      { href: "/offres", label: "Tarifs" },
+      { href: "/tarifs", label: "Tarifs" },
       { href: "/analyse", label: "Analyser un deal" },
     ],
   },
