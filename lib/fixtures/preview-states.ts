@@ -17,6 +17,7 @@ export const PREVIEW_STATES = [
   "incomplete",
   "terms_unknown",
   "quantite-inconnue",
+  "prix-plafonne",
 ] as const;
 export type PreviewState = (typeof PREVIEW_STATES)[number];
 
@@ -71,6 +72,25 @@ export function previewAnalysis(state: PreviewState): { analysis: ResultView; un
         }),
         unlocked: true,
       };
+    case "prix-plafonne": {
+      // Mission #050 : offre correcte sur tout le reste (droits limités, délai
+      // court, pas d'exclusivité), mais payée un peu plus de la moitié du bas
+      // de la fourchette. Le score est plafonné par le prix, et la raison est
+      // affichée près du score.
+      const clean = {
+        ...base,
+        deal: {
+          ...base.deal,
+          usage: { ...base.deal.usage, paid_ads: false, duration_months: 6, territory: "France" },
+          exclusivity: { present: false, duration_months: null, category: null },
+          raw_footage: false,
+          revisions: { count: 2, unlimited: false },
+          payment: { ...base.deal.payment, terms_days: 30 },
+        },
+      };
+      const floor = composeAnalysis(clean).estimate.total_low;
+      return { analysis: composeAnalysis(withAmount(clean, Math.round((floor ?? 500) * 0.56))), unlocked: true };
+    }
     case "terms_unknown":
       return {
         analysis: composeAnalysis({
