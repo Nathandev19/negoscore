@@ -179,6 +179,9 @@ describe("grain, signe et couleurs hors CSS", () => {
     expect(STATIC_PALETTE.marqueDeep).toBe(token("marque-deep"));
     expect(STATIC_PALETTE.creme).toBe(token("creme"));
     expect(STATIC_PALETTE.encre).toBe(token("encre"));
+    expect(STATIC_PALETTE.encreDouce).toBe(token("encre-douce"));
+    expect(STATIC_PALETTE.attenue).toBe(token("attenue"));
+    expect(STATIC_PALETTE.filet).toBe(token("filet"));
     for (const band of BANDS) expect(STATIC_PALETTE.bandOnMarque[band]).toBe(token(`band-${band}-on-marque`));
   });
 
@@ -201,6 +204,8 @@ describe("grain, signe et couleurs hors CSS", () => {
     const offenders = files.filter((file) => /euroArcPath|EURO_BAR|A 10 10 0 1 0|brand-mark|M5 19\.5V6|M18\.4 8\.2|l3-5|l2\.6-3\.6/.test(readFileSync(file, "utf8")));
     expect(offenders.map((file) => path.relative(root, file))).toEqual([]);
     expect(readdirSync(path.join(root, "public", "brand")).sort()).toEqual([
+      // Signe et mot pour l'en-tête des emails (mission #044), généré par app/dev/logo-email.
+      "negoscore-email-logo.png",
       "negoscore-mark-mono.svg",
       "negoscore-mark-on-marque.svg",
       "negoscore-mark.svg",

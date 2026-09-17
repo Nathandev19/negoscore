@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<meta name="x-apple-disable-message-reformatting">
+<title>Ton lien de connexion Negoscore</title>
+<style>
+:root { color-scheme: light dark; supported-color-schemes: light dark; }
+@media (prefers-color-scheme: dark) {
+  .ns-page, .ns-card { background-color: #14120c !important; }
+  .ns-text { color: #fff7e8 !important; }
+  .ns-muted { color: #b8af9e !important; }
+  .ns-rule { border-color: #3b362a !important; }
+  .ns-link { color: #aeb9ff !important; }
+}
+[data-ogsb] .ns-page, [data-ogsb] .ns-card { background-color: #14120c !important; }
+[data-ogsc] .ns-text { color: #fff7e8 !important; }
+[data-ogsc] .ns-muted { color: #b8af9e !important; }
+[data-ogsc] .ns-link { color: #aeb9ff !important; }
+@media only screen and (max-width: 620px) {
+  .ns-container { width: 100% !important; }
+  .ns-pad { padding-left: 20px !important; padding-right: 20px !important; }
+  .ns-title { font-size: 24px !important; }
+}
+</style>
+</head>
+<body class="ns-page" style="margin:0;padding:0;background-color:#fff7e8;">
+<span style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">Un clic pour te connecter. Lien valable une heure.</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fff7e8" class="ns-page" style="background-color:#fff7e8;">
+<tr><td align="center" style="padding:0;">
+<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="ns-container" style="width:100%;max-width:600px;">
+<tr><td bgcolor="#1f3cff" class="ns-pad" style="background-color:#1f3cff;padding:24px 32px;">
+<img src="{{ .SiteURL }}/brand/negoscore-email-logo.png" width="200" height="40" alt="Negoscore" style="display:block;border:0;outline:none;text-decoration:none;height:40px;width:200px;font-family:'Arial Black', Arial, Helvetica, sans-serif;font-size:24px;line-height:40px;font-weight:900;color:#fff7e8;">
+</td></tr>
+<tr><td bgcolor="#fff7e8" class="ns-card ns-pad" style="background-color:#fff7e8;padding:32px 32px 8px;">
+<h1 class="ns-text ns-title" style="margin:0 0 20px;font-family:'Arial Black', Arial, Helvetica, sans-serif;font-size:28px;line-height:34px;font-weight:900;color:#14120c;">Ton lien de connexion</h1>
+<p class="ns-text" style="margin:0 0 16px;font-family:Helvetica, Arial, sans-serif;font-size:16px;line-height:24px;color:#14120c;">Tu as demandé à te connecter à Negoscore avec l'adresse {{ .Email }}.</p>
+<p class="ns-text" style="margin:0 0 16px;font-family:Helvetica, Arial, sans-serif;font-size:16px;line-height:24px;color:#14120c;">Clique sur le bouton pour ouvrir ta session : tu retrouves ton analyse complète, avec la contre-offre chiffrée et le message prêt à envoyer.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 16px;"><tr><td bgcolor="#1f3cff" style="background-color:#1f3cff;border-radius:6px;"><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}" target="_blank" style="display:inline-block;padding:14px 24px;font-family:Helvetica, Arial, sans-serif;font-size:16px;line-height:20px;font-weight:bold;color:#fff7e8;text-decoration:none;border-radius:6px;">Me connecter</a></td></tr></table><p class="ns-muted" style="margin:0 0 24px;font-family:Helvetica, Arial, sans-serif;font-size:13px;line-height:19px;color:#6e6759;">Si le bouton ne s&#39;affiche pas, copie ce lien dans ton navigateur :<br><a class="ns-link" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}" target="_blank" style="color:#1f3cff;word-break:break-all;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}</a></p>
+<p class="ns-muted" style="margin:0 0 16px;font-family:Helvetica, Arial, sans-serif;font-size:13px;line-height:19px;color:#6e6759;">Ce lien est valable une heure et ne sert qu'une fois. Passé ce délai, redemande un lien sur la page de connexion.</p>
+<p class="ns-text" style="margin:24px 0 8px;font-family:'Arial Black', Arial, Helvetica, sans-serif;font-size:17px;line-height:22px;font-weight:900;color:#14120c;">Tu n'as rien demandé ?</p>
+<p class="ns-text" style="margin:0 0 16px;font-family:Helvetica, Arial, sans-serif;font-size:16px;line-height:24px;color:#14120c;">Ignore cet email. Sans clic sur ce lien, personne ne peut se connecter à ton compte.</p>
+</td></tr>
+<tr><td bgcolor="#fff7e8" class="ns-card ns-pad" style="background-color:#fff7e8;padding:8px 32px 32px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="ns-rule" style="border-top:2px solid #14120c;padding-top:16px;">
+<p class="ns-muted" style="margin:0 0 6px;font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:18px;color:#6e6759;">Negoscore est édité par Nathan Pakou, entrepreneur individuel, 77 rue François Arago, 93100 Montreuil. SIRET 99960042200011.</p><p class="ns-muted" style="margin:0 0 6px;font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:18px;color:#6e6759;"><a class="ns-link" href="{{ .SiteURL }}/confidentialite" target="_blank" style="color:#1f3cff;">Politique de confidentialité</a> · <a class="ns-link" href="mailto:contact@negoscore.fr" style="color:#1f3cff;">contact@negoscore.fr</a></p>
+</td></tr></table>
+</td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr>
+</table>
+</body>
+</html>

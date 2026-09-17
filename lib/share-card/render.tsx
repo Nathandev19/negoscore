@@ -13,7 +13,8 @@ const FONT_DIR = path.join(process.cwd(), "assets", "fonts");
 
 let fonts: Promise<Array<{ name: string; data: Buffer; weight: 600 | 800; style: "normal" }>> | null = null;
 
-function loadFonts() {
+// Exporté : le logo des emails (app/dev/logo-email) utilise la même police.
+export function loadFonts() {
   fonts ??= Promise.all([
     readFile(path.join(FONT_DIR, "BricolageGrotesque-ExtraBold.ttf")),
     readFile(path.join(FONT_DIR, "FamiljenGrotesk-SemiBold.ttf")),
