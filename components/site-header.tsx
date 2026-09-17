@@ -1,13 +1,22 @@
-import { cookies } from "next/headers";
-import { HeaderNav } from "@/components/header-nav";
-import { ACCESS_COOKIE, emailFromAccessToken, REFRESH_COOKIE } from "@/lib/auth/session";
+"use client";
 
-// Rendu serveur, sans appel réseau : la présence des cookies de session suffit
-// à choisir les liens. Le proxy a déjà rafraîchi un jeton expiré, ou effacé
-// une session invalide, avant ce rendu.
-export async function SiteHeader() {
-  const store = await cookies();
-  const accessToken = store.get(ACCESS_COOKIE)?.value;
-  const signedIn = Boolean(accessToken || store.get(REFRESH_COOKIE)?.value);
-  return <HeaderNav signedIn={signedIn} email={accessToken ? emailFromAccessToken(accessToken) : null} />;
+import { useSyncExternalStore } from "react";
+import { HeaderNav } from "@/components/header-nav";
+import { hasSessionHint } from "@/lib/auth/session-hint";
+
+// Composant client : les pages publiques restent statiques. L'état vient de
+// l'indicateur de session, jamais d'un jeton ; il ne sert qu'à choisir les liens.
+// Côté serveur et pendant l'hydratation, l'état est inconnu (null).
+
+// Le cookie ne change qu'avec un chargement complet de page (connexion,
+// déconnexion, suppression) : aucun abonnement n'est nécessaire.
+const subscribe = () => () => undefined;
+
+export function SiteHeader() {
+  const signedIn = useSyncExternalStore(
+    subscribe,
+    () => hasSessionHint(document.cookie),
+    () => null,
+  );
+  return <HeaderNav signedIn={signedIn} />;
 }

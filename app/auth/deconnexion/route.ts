@@ -1,4 +1,5 @@
 import { ACCESS_COOKIE, expiredCookieHeader, REFRESH_COOKIE, signOut } from "@/lib/auth/session";
+import { expiredSessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { readCookie } from "@/lib/security/request";
 
 export const runtime = "nodejs";
@@ -9,5 +10,6 @@ export async function POST(request: Request) {
   const headers = new Headers({ Location: "/", "Cache-Control": "no-store" });
   headers.append("Set-Cookie", expiredCookieHeader(ACCESS_COOKIE));
   headers.append("Set-Cookie", expiredCookieHeader(REFRESH_COOKIE));
+  headers.append("Set-Cookie", expiredSessionHintCookieHeader());
   return new Response(null, { status: 303, headers });
 }

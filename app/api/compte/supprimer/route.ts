@@ -1,6 +1,7 @@
 import { deleteAccount, isDeletionConfirmed } from "@/lib/account/deletion";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { ACCESS_COOKIE, expiredCookieHeader, REFRESH_COOKIE } from "@/lib/auth/session";
+import { expiredSessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { sendEmail } from "@/lib/email/send";
 import { accountDeletionEmail } from "@/lib/email/templates";
 import { readCookie } from "@/lib/security/request";
@@ -13,6 +14,7 @@ function redirect(location: string, clearSession = false) {
   if (clearSession) {
     headers.append("Set-Cookie", expiredCookieHeader(ACCESS_COOKIE));
     headers.append("Set-Cookie", expiredCookieHeader(REFRESH_COOKIE));
+    headers.append("Set-Cookie", expiredSessionHintCookieHeader());
   }
   return new Response(null, { status: 303, headers });
 }

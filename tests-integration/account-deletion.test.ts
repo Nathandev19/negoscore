@@ -141,6 +141,8 @@ describe.skipIf(!configured)("suppression de compte", () => {
     const cookies = response.headers.getSetCookie();
     expect(cookies.some((c) => c.startsWith("sb_access_token=;") && c.includes("Max-Age=0"))).toBe(true);
     expect(cookies.some((c) => c.startsWith("sb_refresh_token=;") && c.includes("Max-Age=0"))).toBe(true);
+    // Indicateur d'affichage effacé aussi : l'en-tête repasse à « Se connecter ».
+    expect(cookies.some((c) => c.startsWith("ns_session=;") && c.includes("Max-Age=0"))).toBe(true);
 
     expect(await authUserStatus(user.id)).toBe(404);
     expect(await rows(`/rest/v1/profiles?id=eq.${user.id}&select=id`)).toEqual([]);

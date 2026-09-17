@@ -8,7 +8,6 @@ import { accountDeletionEmail } from "@/lib/email/templates";
 const state = vi.hoisted(() => ({
   viewer: null as { id: string; email: string | null } | null,
   credits: [] as unknown[],
-  cookies: new Map<string, string>(),
 }));
 
 vi.mock("@/lib/auth/viewer", () => ({ getViewer: async () => state.viewer, getViewerAccessToken: async () => null }));
@@ -16,10 +15,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/supabase/server")>()),
   selectRows: async () => state.credits,
 }));
-vi.mock("next/headers", () => ({
-  cookies: async () => ({ get: (name: string) => (state.cookies.has(name) ? { value: state.cookies.get(name) } : undefined) }),
-}));
-// L'en-tête asynchrone est testé à part : ici, une version synchrone suffit au rendu.
+// L'en-tête est testé à part : ici, seul le contenu de la page compte.
 vi.mock("@/components/site-header", () => ({ SiteHeader: () => null }));
 
 const DAY = 24 * 3600 * 1000;
@@ -30,14 +26,9 @@ function hrefs(html: string): string[] {
   return [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
 }
 
-function fakeJwt(payload: Record<string, unknown>): string {
-  return `x.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.y`;
-}
-
 beforeEach(() => {
   state.viewer = null;
   state.credits = [];
-  state.cookies.clear();
 });
 
 describe("en-tête", () => {
@@ -49,32 +40,20 @@ describe("en-tête", () => {
     for (const path of PROTECTED) expect(links).not.toContain(path);
   });
 
-  it("connecté : accès aux analyses et au compte, plus de lien de connexion", () => {
-    const html = renderToStaticMarkup(<HeaderNav signedIn email="nina@example.com" />);
+  it("connecté : accès aux analyses et au compte, sans initiale ni email", () => {
+    const html = renderToStaticMarkup(<HeaderNav signedIn />);
     const links = hrefs(html);
     expect(links).toContain("/historique");
     expect(links).toContain("/compte");
     expect(links).not.toContain("/connexion");
     expect(html).toContain("Mes analyses");
-    expect(html).toContain(">N<");
+    expect(html).toContain(">Compte<");
   });
 
-  it("choisit les liens selon les cookies de session, sans appel réseau", async () => {
-    const { SiteHeader } = await vi.importActual<typeof import("@/components/site-header")>("@/components/site-header");
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-
-    expect(hrefs(renderToStaticMarkup(await SiteHeader()))).toContain("/connexion");
-
-    state.cookies.set("sb_access_token", fakeJwt({ email: "lea@example.com" }));
-    const signedIn = renderToStaticMarkup(await SiteHeader());
-    expect(hrefs(signedIn)).toContain("/compte");
-    expect(signedIn).toContain(">L<");
-
-    state.cookies.clear();
-    state.cookies.set("sb_refresh_token", "r");
-    expect(hrefs(renderToStaticMarkup(await SiteHeader()))).toContain("/historique");
-    expect(fetchSpy).not.toHaveBeenCalled();
-    fetchSpy.mockRestore();
+  it("état inconnu (rendu statique) : aucun lien, hauteur réservée", () => {
+    const html = renderToStaticMarkup(<HeaderNav signedIn={null} />);
+    expect(hrefs(html)).toEqual(["/"]);
+    expect(html).toContain('aria-hidden="true" class="h-8"');
   });
 });
 

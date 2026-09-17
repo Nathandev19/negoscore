@@ -7,6 +7,7 @@ import {
   refreshSession,
   sessionCookieHeaders,
 } from "@/lib/auth/session";
+import { expiredSessionHintCookieHeader, sessionHintCookieHeader } from "@/lib/auth/session-hint";
 
 // Rafraîchit la session avant le rendu quand le jeton d'accès expire, pour
 // que pages et routes lisent un jeton valide. N'autorise rien : chaque page
@@ -24,6 +25,8 @@ export async function proxy(request: NextRequest) {
     const response = NextResponse.next();
     response.headers.append("Set-Cookie", expiredCookieHeader(ACCESS_COOKIE));
     response.headers.append("Set-Cookie", expiredCookieHeader(REFRESH_COOKIE));
+    // Session invalide : l'en-tête ne doit plus afficher l'état connecté.
+    response.headers.append("Set-Cookie", expiredSessionHintCookieHeader());
     return response;
   }
 
@@ -32,6 +35,8 @@ export async function proxy(request: NextRequest) {
   request.cookies.set(REFRESH_COOKIE, session.refreshToken);
   const response = NextResponse.next({ request: { headers: request.headers } });
   for (const cookie of sessionCookieHeaders(session)) response.headers.append("Set-Cookie", cookie);
+  // L'indicateur suit la durée de la session rafraîchie.
+  response.headers.append("Set-Cookie", sessionHintCookieHeader());
   return response;
 }
 

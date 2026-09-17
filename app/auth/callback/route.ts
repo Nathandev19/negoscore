@@ -8,6 +8,7 @@ import {
   verifyTokenHash,
   type Session,
 } from "@/lib/auth/session";
+import { sessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
 
 export const runtime = "nodejs";
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
       JSON.stringify({ event: "auth_callback", attached_deals: attach.attached, attach_refused: attach.refused }),
     );
 
-    const cookies = [...sessionCookieHeaders(session), clearVerifier];
+    const cookies = [...sessionCookieHeaders(session), sessionHintCookieHeader(), clearVerifier];
     if (anonToken) cookies.push(expiredCookieHeader(ANON_COOKIE));
     // ?connexion=ok sert à la mesure d'audience, le paramètre est retiré côté client.
     const target = `${next}${next.includes("?") ? "&" : "?"}connexion=ok`;

@@ -144,14 +144,3 @@ export function safeNextPath(value: string | null | undefined, fallback = "/hist
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;
   return value;
 }
-
-// Adresse lue dans le jeton, sans vérifier la signature : sert seulement à
-// afficher l'initiale du compte dans l'en-tête, jamais à autoriser.
-export function emailFromAccessToken(accessToken: string): string | null {
-  try {
-    const payload = JSON.parse(Buffer.from(accessToken.split(".")[1], "base64url").toString("utf8")) as { email?: unknown };
-    return typeof payload.email === "string" && payload.email ? payload.email : null;
-  } catch {
-    return null;
-  }
-}
