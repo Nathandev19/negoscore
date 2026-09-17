@@ -35,6 +35,17 @@ const buttonVariants = cva(
   }
 )
 
+// Bouton indisponible mais qui reste au clavier (aria-disabled, mission #062
+// A12) : il doit se voir comme un bouton désactivé sans l'attribut disabled,
+// qui le sortirait de l'ordre de tabulation et le rendrait muet. Les mêmes
+// couleurs que disabled:, forcées pour passer devant le survol.
+const ARIA_DISABLED: Record<string, string> = {
+  default: "border-marque-muted! bg-marque-muted! text-creme! cursor-default",
+  outline: "border-attenue! bg-attenue! text-creme! cursor-default",
+  destructive: "border-attenue! bg-attenue! text-creme! cursor-default",
+  link: "text-attenue! cursor-default",
+}
+
 function Button({
   className,
   variant = "default",
@@ -46,13 +57,14 @@ function Button({
     asChild?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
+  const inert = props["aria-disabled"] === true || props["aria-disabled"] === "true"
 
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, className }), inert ? ARIA_DISABLED[variant ?? "default"] : null)}
       {...props}
     />
   )

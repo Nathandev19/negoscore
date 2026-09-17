@@ -10,6 +10,13 @@ import { Button } from "@/components/ui/button";
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
+    <>
+    {/* Région live montée vide puis remplie : la confirmation est annoncée,
+        alors qu'un simple changement de libellé de bouton ne l'est pas
+        (mission #062, A8). */}
+    <p role="status" aria-live="polite" className="sr-only">
+      {copied ? "Message copié. Tu peux le coller dans ta réponse à la marque." : ""}
+    </p>
     <Button
       type="button"
       size="lg"
@@ -27,5 +34,6 @@ export function CopyButton({ text }: { text: string }) {
       {copied ? <CheckIcon /> : <CopyIcon />}
       {copied ? "Message copié" : "Copier le message"}
     </Button>
+    </>
   );
 }

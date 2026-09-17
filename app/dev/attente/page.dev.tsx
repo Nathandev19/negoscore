@@ -10,7 +10,7 @@ export default async function WaitingPreviewPage({ searchParams }: { searchParam
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 pt-6 pb-16 sm:px-6 md:pt-16">
+      <main id="contenu" className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 pt-6 pb-16 sm:px-6 md:pt-16">
         <WaitingSimulation kind={kind} startedAgoMs={since} />
       </main>
     </>

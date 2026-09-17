@@ -30,7 +30,7 @@ export default function HomePage() {
     <>
       <SiteHeader />
       <TrackView event={ANALYTICS_EVENTS.landingView} />
-      <main className="flex-1">
+      <main id="contenu" className="flex-1">
         {/* C1 — le champ reste au-dessus de la ligne de flottaison sur mobile. */}
         <section
           id="analyser"

@@ -55,6 +55,28 @@ export function clearDraft(store: DraftStorage | null = storage()): void {
   }
 }
 
+// Temps restant avant l'expiration, en millisecondes : 0 si le brouillon est
+// déjà périmé, null s'il n'y en a pas. Sert à programmer l'effacement au lieu
+// d'attendre la prochaine lecture (mission #062, D2).
+export function draftExpiresIn(store: DraftStorage | null = storage(), now = Date.now()): number | null {
+  try {
+    const raw = store?.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as StoredDraft;
+    if (typeof draft.savedAt !== "number") return 0;
+    return Math.max(0, draft.savedAt + DRAFT_TTL_MS - now);
+  } catch {
+    return null;
+  }
+}
+
+// Efface le brouillon s'il a dépassé 24 h, sans rien renvoyer. Appelé à chaque
+// chargement de page, pas seulement sur le formulaire d'analyse : la politique
+// de confidentialité annonce 24 h, pas « 24 h si tu reviens coller un deal ».
+export function pruneDraft(store: DraftStorage | null = storage(), now = Date.now()): void {
+  if (draftExpiresIn(store, now) === 0) clearDraft(store);
+}
+
 // Abonnement pour useSyncExternalStore : un autre onglet peut modifier le brouillon.
 export function subscribeDraft(onChange: () => void): () => void {
   window.addEventListener("storage", onChange);

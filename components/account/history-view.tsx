@@ -37,7 +37,7 @@ export function HistoryView({ rows }: { rows: HistoryRow[] | null }) {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+      <main id="contenu" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         {rows ? null : <LoadingAnnouncement />}
         <h1 className="text-h1 font-extrabold">Tes analyses</h1>
         {rows === null ? (

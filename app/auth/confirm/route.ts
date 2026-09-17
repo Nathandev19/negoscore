@@ -26,8 +26,14 @@ export async function GET(request: Request) {
   const failed = redirectResponse(`/connexion?erreur=lien&next=${encodeURIComponent(next)}`);
 
   if (!tokenHash || !isSignInOtpType(type)) {
+    // « type » refusé : c'est une valeur brute venue de l'adresse, donc
+    // arbitraire. On journalise sa longueur, pas son contenu (mission #062, E2).
     console.warn(
-      JSON.stringify({ event: "auth_confirm_failed", reason: tokenHash ? "type_refuse" : "token_hash_absent", type }),
+      JSON.stringify({
+        event: "auth_confirm_failed",
+        reason: tokenHash ? "type_refuse" : "token_hash_absent",
+        type_length: type?.length ?? 0,
+      }),
     );
     return failed;
   }

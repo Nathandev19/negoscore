@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import {
+  Assumptions,
   DealRecap,
   Estimate,
   GoodPoints,
@@ -18,7 +19,9 @@ import { counterOfferRange } from "@/lib/analysis/anchoring";
 import { missingInformation } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
 import { recomputeForTier, tierChangeAvailable } from "@/lib/analysis/recompute";
-import type { Tier } from "@/lib/rates/tier";
+import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
+import { BAND_LABEL } from "@/lib/display";
+import { formatEurRange } from "@/lib/money";
 
 // Page de résultat, sous l'en-tête bleu (SiteHeader tone="marque") :
 // 1. bandeau bleu : phrase de verdict, score, pastille, jauge, niveau ;
@@ -65,6 +68,19 @@ export function AnalysisResult({
 
   const locked = !analysis.counter_offer || !analysis.ready_to_send_message;
   const incomplete = analysis.evaluability === "incomplete";
+  // Vide au chargement : une région live remplie dès son montage n'est pas
+  // annoncée. Elle ne parle qu'après un changement de niveau.
+  const range = formatEurRange(analysis.estimate.total_low, analysis.estimate.total_high);
+  const announcement =
+    replay.count === 0
+      ? ""
+      : [
+          `Niveau « ${TIER_LABEL[analysis.profile_tier].short} ».`,
+          analysis.score ? `Score : ${analysis.score.value} sur 100, ${BAND_LABEL[analysis.score.band].toLowerCase()}.` : null,
+          range ? `Fourchette estimée : ${range}.` : null,
+        ]
+          .filter(Boolean)
+          .join(" ");
   // Sans montant de contre-offre (offre incomplète, ou montant déjà au-dessus de
   // la fourchette), le titre n'annonce pas de chiffre. Recalculé ici car la vue
   // verrouillée ne reçoit pas la contre-offre.
@@ -73,17 +89,29 @@ export function AnalysisResult({
   const counterOfferTitle = incomplete || !priced ? "Ta contre-offre" : undefined;
   return (
     <TierContext value={analysis.profile_tier}>
-      <section aria-label="Verdict" className="on-marque grain bg-marque text-creme">
-        <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-10 sm:px-6 lg:pt-10 lg:pb-14">
-          <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>
-          <ScoreBand key={replay.count} analysis={analysis} from={replay.from} showTier={!incomplete} />
-        </div>
-      </section>
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 pt-8 pb-16 sm:px-6 md:pt-12 md:pb-24 [&>*]:max-w-2xl">
+      {/* Le bandeau et le h1 sont DANS main (mission #062, A9) : ils portent
+          l'essentiel du résultat et n'étaient dans aucun point de repère. */}
+      <main id="contenu" className="flex flex-1 flex-col">
+        <section aria-label="Verdict" className="on-marque grain bg-marque text-creme">
+          <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-10 sm:px-6 lg:pt-10 lg:pb-14">
+            <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>
+            <ScoreBand key={replay.count} analysis={analysis} from={replay.from} showTier={!incomplete} />
+          </div>
+        </section>
+        {/* Changement de niveau : tout est recalculé dans le navigateur, sans
+            rien recharger. Cette région, montée vide, dit ce qui a changé
+            (mission #062, A3). */}
+        <p role="status" aria-live="polite" className="sr-only">
+          {announcement}
+        </p>
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 pt-8 pb-16 sm:px-6 md:pt-12 md:pb-24 [&>*]:max-w-2xl">
         {before}
         {incomplete ? (
           <>
             <IncompleteCard missing={missingInformation(analysis)} />
+            {/* Le bloc Estimation n'est pas rendu ici : sans ce rappel, un texte
+                tronqué à l'analyse ne se voyait nulle part (mission #062, D1). */}
+            <Assumptions items={analysis.estimate.assumptions} />
             {retry}
           </>
         ) : analysis.evaluability === "terms_unknown" ? (
@@ -113,6 +141,7 @@ export function AnalysisResult({
         <GoodPoints items={analysis.good_points} />
         <LegalNotice legal={analysis.fr_legal} />
         {children}
+        </div>
       </main>
     </TierContext>
   );

@@ -6,7 +6,7 @@ import { SignPixels } from "./pixels.dev";
 // /dev/signe
 export default function SignPreviewPage() {
   return (
-    <main className="flex flex-col gap-10 p-6">
+    <main id="contenu" className="flex flex-col gap-10 p-6">
       {(["creme", "marque"] as const).map((surface) => (
         <section
           key={surface}

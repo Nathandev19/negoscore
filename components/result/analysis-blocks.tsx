@@ -158,16 +158,7 @@ export function Estimate({ estimate, children }: { estimate: Analysis["estimate"
           ) : null}
         </dl>
 
-        {estimate.assumptions.length > 0 ? (
-          <div className="text-small">
-            <p className="font-semibold text-encre">Hypothèses</p>
-            <ul className="list-disc pl-5">
-              {estimate.assumptions.map((assumption) => (
-                <li key={assumption}>{assumption}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+        <Assumptions items={estimate.assumptions} />
 
         <p className="text-xs text-attenue">
           Estimation fondée sur des benchmarks de marché, pas un tarif officiel.
@@ -176,5 +167,22 @@ export function Estimate({ estimate, children }: { estimate: Analysis["estimate"
         </p>
       </div>
     </Section>
+  );
+}
+
+// Hypothèses retenues par l'analyse. Rendu dans le bloc Estimation, et aussi
+// seul quand l'offre est incomplète (mission #062, D1) : ce bloc n'est alors
+// pas affiché, et l'avertissement de texte tronqué disparaissait avec lui.
+export function Assumptions({ items }: { items: readonly string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="text-small">
+      <p className="font-semibold text-encre">Hypothèses</p>
+      <ul className="list-disc pl-5">
+        {items.map((assumption) => (
+          <li key={assumption}>{assumption}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

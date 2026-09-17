@@ -1,7 +1,9 @@
 import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { DOCUMENT_TTL_DAYS, newStoragePath, validateAnnouncedFile } from "@/lib/storage/documents";
-import { ANON_COOKIE, anonCookieHeader, newAnonToken, readCookie } from "@/lib/security/request";
+import { ANON_COOKIE, anonCookieHeader, clientIp, hashIp, newAnonToken, readCookie } from "@/lib/security/request";
+import { UPLOAD_URLS_PER_HOUR, UPLOAD_URLS_PER_SUBJECT_PER_HOUR } from "@/lib/security/limits";
+import { hitUsageGuard } from "@/lib/security/usage-guard";
 import { createSignedUploadUrl, insertRow, SupabaseConfigError } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -33,6 +35,24 @@ export async function POST(request: Request) {
   const existingToken = readCookie(request, ANON_COOKIE);
   const anonToken = user ? null : (existingToken ?? newAnonToken());
   const storagePath = newStoragePath(file.mime);
+
+  // Limite horaire (mission #062, B1), comptée par le mécanisme qui sert déjà
+  // aux analyses. Deux clés : l'IP hachée, et le compte ou le jeton anonyme
+  // quand il existe DÉJÀ — un jeton fabriqué à cette requête ne limiterait
+  // rien et ajouterait une ligne de compteur à chaque appel.
+  const subjectKey = user ? `upload-url:user:${user.id}` : existingToken ? `upload-url:anon:${existingToken}` : null;
+  try {
+    const perIp = await hitUsageGuard(hashIp(`upload-url:ip:${clientIp(request)}`), { limit: UPLOAD_URLS_PER_HOUR });
+    const perSubject = subjectKey
+      ? await hitUsageGuard(hashIp(subjectKey), { limit: UPLOAD_URLS_PER_SUBJECT_PER_HOUR })
+      : { allowed: true, retryInMinutes: 1 };
+    const blocked = !perIp.allowed ? perIp : !perSubject.allowed ? perSubject : null;
+    if (blocked) {
+      return error(429, `Trop de fichiers envoyés en une heure. Réessaie dans ${blocked.retryInMinutes} min.`);
+    }
+  } catch {
+    // Compteur indisponible : on laisse passer plutôt que de couper le dépôt.
+  }
 
   try {
     const deal = await insertRow<{ id: string }>("deals", {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import { FileTextIcon, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,12 +30,26 @@ const COPY: Record<FileKind, { title: string; hint: string }> = {
 
 export function FileDropZone({ kind, selected, error, onSelect, onRemove }: FileDropZoneProps) {
   const inputId = useId();
+  const chosenRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const Icon = kind === "photo" ? ImageIcon : FileTextIcon;
+  const chosenName = selected?.file.name ?? null;
+
+  useEffect(() => {
+    if (chosenName) chosenRef.current?.focus();
+  }, [chosenName]);
 
   if (selected) {
     return (
-      <div className="flex flex-col gap-3 rounded-control border-2 border-encre p-3">
+      // Le fichier choisi remplace la zone de dépôt : le focus vient ici, sinon
+      // il retombe sur <body> et la personne au clavier repart du début
+      // (mission #062, A6).
+      <div
+        ref={chosenRef}
+        tabIndex={-1}
+        aria-label={`Fichier choisi : ${selected.file.name}`}
+        className="flex flex-col gap-3 rounded-control border-2 border-encre p-3"
+      >
         {selected.previewUrl ? (
           <div className="relative h-44 w-full overflow-hidden bg-creme">
             <Image
@@ -63,6 +77,19 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
 
   return (
     <div className="flex flex-col gap-2">
+      {/* L'input est avant le label et porte « peer » : le label, seul élément
+          visible, montre alors le contour de focus de l'input caché (A1). */}
+      <input
+        id={inputId}
+        type="file"
+        accept={ACCEPTED_TYPES[kind].join(",")}
+        className="peer sr-only"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) onSelect(file);
+          event.currentTarget.value = "";
+        }}
+      />
       <label
         htmlFor={inputId}
         onDragOver={(event) => {
@@ -78,6 +105,7 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
         }}
         className={cn(
           "flex h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-control border-2 border-dashed px-4 text-center transition-colors",
+          "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-marque",
           dragging ? "border-marque" : "border-encre",
         )}
       >
@@ -86,17 +114,6 @@ export function FileDropZone({ kind, selected, error, onSelect, onRemove }: File
           Touche pour choisir un fichier · {COPY[kind].hint}
         </span>
       </label>
-      <input
-        id={inputId}
-        type="file"
-        accept={ACCEPTED_TYPES[kind].join(",")}
-        className="sr-only"
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          if (file) onSelect(file);
-          event.currentTarget.value = "";
-        }}
-      />
       {error ? (
         <p role="alert" className="alert-bad py-1 text-sm">
           {error}

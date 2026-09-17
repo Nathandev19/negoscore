@@ -31,7 +31,13 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!rating) return;
+    // Le bouton reste cliquable et focusable même indisponible (A12) : on dit
+    // pourquoi plutôt que de ne rien faire.
+    if (status.kind === "saving") return;
+    if (!rating) {
+      setStatus({ kind: "error", message: "Choisis une réponse avant d'envoyer." });
+      return;
+    }
     if (!action) {
       setStatus({ kind: "saved", tier });
       return;
@@ -109,7 +115,16 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-        <Button type="submit" variant="outline" size="lg" disabled={!rating || status.kind === "saving"} className="w-full sm:w-fit">
+        {/* Occupé ou sans réponse choisie : le bouton reste dans l'ordre de
+            tabulation et annoncé, au lieu de disparaître du clavier (A12). */}
+        <Button
+          type="submit"
+          variant="outline"
+          size="lg"
+          aria-busy={status.kind === "saving"}
+          aria-disabled={!rating || status.kind === "saving"}
+          className="w-full sm:w-fit"
+        >
           {status.kind === "saving" ? "Envoi…" : initial ? "Modifier mon avis" : "Envoyer mon avis"}
         </Button>
         <p role="status" aria-live="polite" className="text-small">

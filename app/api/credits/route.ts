@@ -8,7 +8,11 @@ export const runtime = "nodejs";
 // présenter un abonnement Pro en cours.
 export async function GET(request: Request) {
   const user = await getRequestUser(request);
-  if (!user) return Response.json({ error: "non connecté" }, { status: 401 });
+  // Même en-tête que la réponse pleine : sans no-store, un cache partagé
+  // pourrait resservir ce 401 à un compte connecté (mission #062, B3).
+  if (!user) {
+    return Response.json({ error: "non connecté" }, { status: 401, headers: { "Cache-Control": "no-store" } });
+  }
   const [credits] = await selectRows<{ plan: string; balance: number; period_end: string | null; cancelled_at: string | null }>(
     "credits",
     `select=plan,balance,period_end,cancelled_at&user_id=eq.${user.id}&limit=1`,

@@ -36,10 +36,18 @@ export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro
     if (distinctIdField.current) distinctIdField.current.value = analyticsDistinctId() ?? "";
   }
 
+  // Le départ en paiement se compte à l'envoi réel du formulaire, pas au clic :
+  // sans la case cochée, le navigateur refuse l'envoi et rien ne part
+  // (mission #062, A12).
+  function onSubmit() {
+    fillDistinctId();
+    track(ANALYTICS_EVENTS.checkoutStarted, { plan });
+  }
+
   useEffect(fillDistinctId, []);
 
   return (
-    <form action="/api/checkout" method="post" className="flex flex-col gap-3" onSubmit={fillDistinctId}>
+    <form action="/api/checkout" method="post" className="flex flex-col gap-3" onSubmit={onSubmit}>
       <input type="hidden" name="plan" value={plan} />
       <input type="hidden" name="ph_distinct_id" ref={distinctIdField} defaultValue="" />
       <label htmlFor={id} className="flex items-start gap-2 text-xs">
@@ -56,11 +64,13 @@ export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro
       </label>
       <Button
         type="submit"
-        disabled={!accepted}
+        // Tant que la case n'est pas cochée, le bouton reste atteignable au
+        // clavier (mission #062, A12) : le clic déclenche alors la validation
+        // du navigateur, qui dit quoi cocher, au lieu d'un bouton muet.
+        aria-disabled={!accepted}
         variant={primary ? "default" : "link"}
         size="lg"
         className={primary ? "h-12 w-full text-base" : "w-fit text-base"}
-        onClick={() => track(ANALYTICS_EVENTS.checkoutStarted, { plan })}
       >
         {label}
       </Button>

@@ -35,6 +35,7 @@ export function RetryPanel({ state, originId }: { state: RetryPanelState; origin
   const [error, setError] = useState<{ message: string; paywall: boolean } | null>(null);
   const fieldId = useId();
   const helpId = useId();
+  const shortId = useId();
 
   if (state.kind !== "available") {
     return (
@@ -133,11 +134,24 @@ export function RetryPanel({ state, originId }: { state: RetryPanelState; origin
         rows={6}
         placeholder="Colle ici le message de la marque et sa réponse."
       />
-      <Button type="submit" size="lg" disabled={!canSubmit} className="w-full sm:w-fit">
+      {/* Indisponible sans disparaître du clavier (mission #062, A12) : la
+          raison est lue par aria-describedby, comme sur le formulaire d'analyse. */}
+      <Button
+        type="submit"
+        size="lg"
+        aria-disabled={!canSubmit}
+        aria-describedby={canSubmit ? undefined : shortId}
+        className="w-full sm:w-fit"
+      >
         {/* Le titre pose déjà la question « Tu as obtenu les infos manquantes ? » : le bouton
             tient sur une ligne à 320 px. */}
         Relancer l&apos;analyse
       </Button>
+      {canSubmit ? null : (
+        <p id={shortId} className="text-small text-attenue">
+          {MIN_TEXT_LENGTH} caractères minimum
+        </p>
+      )}
       {error ? (
         <p role="alert" className="alert-bad text-small">
           {error.message}{" "}

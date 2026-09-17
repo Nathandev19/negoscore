@@ -21,7 +21,11 @@ export function senderAddress(): string | null {
   return process.env.EMAIL_FROM?.trim() || null;
 }
 
-async function post(email: Email, apiKey: string, from: string): Promise<{ ok: boolean; detail: string }> {
+// Le corps d'erreur de Resend n'est PAS lu (mission #062, E1) : un 4xx de
+// validation recopie souvent la valeur du champ fautif — une adresse de
+// réponse, un nom de pièce jointe, l'objet d'un message reçu. Seul le code
+// HTTP sort d'ici ; le corps complet reste consultable dans Resend.
+async function post(email: Email, apiKey: string, from: string): Promise<{ ok: boolean; status: number }> {
   const response = await fetch(ENDPOINT, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -36,9 +40,7 @@ async function post(email: Email, apiKey: string, from: string): Promise<{ ok: b
     }),
     cache: "no-store",
   });
-  if (response.ok) return { ok: true, detail: "" };
-  const detail = await response.text().catch(() => "");
-  return { ok: false, detail: `HTTP ${response.status} ${detail.slice(0, 200)}` };
+  return { ok: response.ok, status: response.status };
 }
 
 export async function sendEmail(email: Email, context: Record<string, unknown> = {}): Promise<SendOutcome> {
@@ -55,11 +57,14 @@ export async function sendEmail(email: Email, context: Record<string, unknown> =
     try {
       const result = await post(email, apiKey, from);
       if (result.ok) {
-        // L'adresse du destinataire n'est pas journalisée.
-        console.log(JSON.stringify({ event: "email_sent", subject: email.subject, attempts: attempt, ...context }));
+        // Ni l'adresse du destinataire ni l'objet ne sont journalisés
+        // (mission #062, E1) : sur la réexpédition d'un email reçu, l'objet
+        // est celui d'un tiers. Le « kind » passé par l'appelant dit de quel
+        // message il s'agit, et il suffit à suivre un envoi.
+        console.log(JSON.stringify({ event: "email_sent", attempts: attempt, ...context }));
         return { sent: true, attempts: attempt };
       }
-      lastReason = result.detail;
+      lastReason = `HTTP ${result.status}`;
     } catch (caught) {
       lastReason = caught instanceof Error ? caught.message.slice(0, 200) : "inconnu";
     }

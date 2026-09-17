@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Logo } from "@/components/brand/logo";
 import { NavPending } from "@/components/nav-pending";
 import { cn } from "@/lib/utils";
@@ -100,28 +100,26 @@ export function HeaderNav({
     toggleRef.current?.focus();
   }
 
-  // Échap ferme ; Tab reste dans le menu (bouton + liens) tant qu'il est ouvert.
+  // Échap ferme et rend le focus au bouton. Tab n'est plus retenu (mission
+  // #062, A11) : ce panneau n'est pas une modale — il ne recouvre pas la page,
+  // ne la rend pas inerte, et le reste du site doit rester atteignable au
+  // clavier. C'est le motif « disclosure » : on sort du menu en tabulant, et
+  // le menu se referme quand le focus le quitte (onMenuBlur).
   function onMenuKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (!open) return;
     if (event.key === "Escape") {
       event.preventDefault();
       close();
-      return;
     }
-    if (event.key !== "Tab") return;
-    const focusables = [
-      toggleRef.current,
-      ...Array.from(panelRef.current?.querySelectorAll<HTMLElement>("a, button") ?? []),
-    ].filter((el): el is HTMLElement => el !== null);
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+  }
+
+  // Le focus a quitté le bouton et le panneau : le menu se referme, sans
+  // ramener le focus en arrière (on suit l'endroit où l'utilisateur va).
+  function onMenuBlur(event: FocusEvent<HTMLElement>) {
+    if (!open) return;
+    const next = event.relatedTarget as Node | null;
+    if (next !== null && event.currentTarget.contains(next)) return;
+    setOpen(false);
   }
 
   return (
@@ -151,7 +149,7 @@ export function HeaderNav({
           </Link>
         </div>
 
-        <div className="lg:hidden" onKeyDown={onMenuKeyDown}>
+        <div className="lg:hidden" onKeyDown={onMenuKeyDown} onBlur={onMenuBlur}>
           <button
             ref={toggleRef}
             type="button"

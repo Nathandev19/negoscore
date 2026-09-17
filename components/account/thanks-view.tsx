@@ -13,7 +13,7 @@ export function ThanksView({ credits }: { credits?: Credits | null }) {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+      <main id="contenu" className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         {loading ? <LoadingAnnouncement /> : null}
         <h1 className="text-h1 font-extrabold">Merci !</h1>
         {loading ? (

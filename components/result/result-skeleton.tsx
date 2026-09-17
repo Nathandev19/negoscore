@@ -41,7 +41,7 @@ export function ResultSkeleton() {
           </div>
         </div>
       </section>
-      <main
+      <main id="contenu"
         aria-hidden
         className="mx-auto flex min-h-screen w-full max-w-5xl flex-1 flex-col gap-12 px-4 pt-8 pb-16 sm:px-6 md:pt-12 md:pb-24 [&>*]:max-w-2xl"
       >

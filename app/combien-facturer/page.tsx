@@ -16,7 +16,7 @@ export default function PricingGuidePage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+      <main id="contenu" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         <div className="flex flex-col gap-5">
           <h1 className="text-h1 font-extrabold">Combien facturer une collab de marque</h1>
           <p className="measure">

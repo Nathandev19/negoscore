@@ -7,7 +7,7 @@ const SCORES = [0, 1, 19, 20, 32, 50, 75, 99, 100];
 
 export default function GaugePreviewPage() {
   return (
-    <main className="on-marque grain flex min-h-screen flex-col gap-8 bg-marque px-4 py-8 text-creme sm:px-6">
+    <main id="contenu" className="on-marque grain flex min-h-screen flex-col gap-8 bg-marque px-4 py-8 text-creme sm:px-6">
       {SCORES.map((value) => (
         <section key={value} data-score={value} className="flex max-w-md flex-col gap-3">
           <div className="flex items-center gap-3">

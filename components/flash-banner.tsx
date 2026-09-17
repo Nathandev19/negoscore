@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { expiredFlashCookie, flashMessage, flashVisible, readFlash, type FlashKind } from "@/lib/auth/flash";
+import { clearDraft } from "@/lib/draft";
 
 // Bandeau de confirmation après connexion ou déconnexion (mission #046).
 //   - Pas de fenêtre modale : un bandeau dans le flux, en haut de page, qui ne
@@ -34,7 +35,12 @@ export function FlashBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (flash) document.cookie = expiredFlashCookie();
+    if (!flash) return;
+    document.cookie = expiredFlashCookie();
+    // Déconnexion : le brouillon d'offre gardé dans ce navigateur part avec la
+    // session (mission #062, D2). /auth/deconnexion ne peut pas y toucher
+    // lui-même — c'est ce cookie éphémère, qu'il pose, qui le déclenche ici.
+    if (flash.kind === "deconnexion") clearDraft();
   }, [flash]);
 
   if (!flash || !flashVisible(flash, pathname, dismissed)) return null;
@@ -44,7 +50,10 @@ export function FlashBanner() {
 
 export function FlashBannerView({ message, onClose }: { message: ReturnType<typeof flashMessage>; onClose?: () => void }) {
   return (
-    <div role="status" data-flash className="bg-encre text-creme">
+    // .on-marque : sur cet aplat sombre, le contour de focus passe en crème
+    // (app/globals.css). Sans lui, le contour bleu ne faisait que 2,81:1 contre
+    // l'encre, sous le seuil de 3:1 (mission #062, A5).
+    <div role="status" data-flash className="on-marque bg-encre text-creme">
       <div className="mx-auto flex w-full max-w-6xl items-start justify-between gap-4 px-4 py-3 sm:px-6">
         <p className="text-small">
           <span className="font-semibold">{message.title}</span>

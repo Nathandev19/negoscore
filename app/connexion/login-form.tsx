@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { requestMagicLink, type LoginState } from "@/app/connexion/actions";
 import { track } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
@@ -11,6 +11,7 @@ const INITIAL: LoginState = { status: "idle", message: null };
 
 export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(requestMagicLink, INITIAL);
+  const emailId = useId();
 
   if (state.status === "sent") {
     return <LinkSent email={state.email ?? ""} next={next} />;
@@ -19,19 +20,26 @@ export function LoginForm({ next }: { next: string }) {
   return (
     <form
       action={(formData) => {
+        if (pending) return;
         track(ANALYTICS_EVENTS.emailSubmitted);
         return action(formData);
       }}
+      aria-busy={pending}
       className="flex flex-col gap-3"
     >
       <input type="hidden" name="next" value={next} />
+      {/* Étiquette visible : elle reste là quand le champ est rempli, ce que
+          l'exemple dans le champ ne fait pas (mission #062, A7). */}
+      <label htmlFor={emailId} className="text-small font-semibold text-encre">
+        Ton email
+      </label>
       <Input
+        id={emailId}
         type="email"
         name="email"
         required
         autoComplete="email"
         placeholder="ton@email.fr"
-        aria-label="Ton email"
         className="h-12"
       />
       {state.status === "error" ? (
@@ -39,7 +47,9 @@ export function LoginForm({ next }: { next: string }) {
           {state.message}
         </p>
       ) : null}
-      <Button type="submit" size="lg" disabled={pending} className="h-12 text-base">
+      {/* Occupé : le bouton reste dans l'ordre de tabulation et l'annonce,
+          au lieu de disparaître du clavier (mission #062, A12). */}
+      <Button type="submit" size="lg" aria-busy={pending} aria-disabled={pending} className="h-12 text-base">
         {pending ? "Envoi du lien…" : "Recevoir mon lien de connexion"}
       </Button>
     </form>

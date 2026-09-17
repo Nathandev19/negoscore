@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { MAX_TEXT_LENGTH, MAX_TEXT_LENGTH_LABEL } from "@/lib/analysis/text";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileDropZone, type SelectedFile } from "@/components/file-drop-zone";
@@ -179,6 +180,10 @@ export function DealInput({ note }: { note?: string } = {}) {
   const textLength = text.trim().length;
   const canSubmit = !PAUSED && (mode === "text" ? textLength >= MIN_TEXT_LENGTH : files[mode] !== null);
   const reasonId = useId();
+  const countId = useId();
+  // Au-delà de la limite, le serveur n'analyse que le début : on le dit avant
+  // de lancer l'analyse, pas après (mission #062, D1).
+  const overMax = textLength > MAX_TEXT_LENGTH;
   // Bouton désactivé : on dit pourquoi, à l'écran et au lecteur d'écran.
   const disabledReason = PAUSED
     ? "Analyse momentanément indisponible"
@@ -304,7 +309,10 @@ export function DealInput({ note }: { note?: string } = {}) {
           setNotice(null);
         }}
       >
-        <TabsList className="grid h-11 w-full grid-cols-[1.6fr_1fr_1fr]">
+        {/* h-14 : chaque onglet fait alors 44 px de haut une fois la bordure et
+            la marge intérieure retirées, la cible tactile recommandée
+            (mission #062, A10). */}
+        <TabsList className="grid h-14 w-full grid-cols-[1.6fr_1fr_1fr]">
           <TabsTrigger value="text">Coller le message</TabsTrigger>
           <TabsTrigger value="photo">Photo</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
@@ -319,13 +327,20 @@ export function DealInput({ note }: { note?: string } = {}) {
             }}
             placeholder="Colle ici le DM, le mail ou le brief de la marque…"
             aria-label="Message de la marque"
+            aria-describedby={countId}
             className="min-h-40 resize-y"
           />
-          <p className="text-right text-small text-attenue tabular-nums" aria-live="polite">
+          <p id={countId} className="text-right text-small text-attenue tabular-nums" aria-live="polite">
             {textLength < MIN_TEXT_LENGTH
               ? `${textLength} caractère${textLength > 1 ? "s" : ""} · ${MIN_TEXT_LENGTH} minimum`
-              : `${textLength} caractères`}
+              : `${textLength} caractères · ${MAX_TEXT_LENGTH_LABEL} maximum`}
           </p>
+          {overMax ? (
+            <p role="status" className="text-small font-semibold text-encre">
+              Ton texte dépasse {MAX_TEXT_LENGTH_LABEL} caractères : seul le début sera analysé. Garde le message de la
+              marque et enlève le reste.
+            </p>
+          ) : null}
         </TabsContent>
 
         {(["photo", "pdf"] as const).map((kind) => (
@@ -360,7 +375,9 @@ export function DealInput({ note }: { note?: string } = {}) {
         // Sans droit, le bouton d'analyse n'est plus l'action mise en avant. Il reste
         // utilisable : l'indicateur peut être en retard sur un achat, le serveur tranche.
         variant={right.blocked ? "outline" : "default"}
-        disabled={!canSubmit}
+        // Indisponible sans disparaître du clavier (mission #062, A12) : le
+        // bouton garde le focus et la raison est lue par aria-describedby.
+        aria-disabled={!canSubmit}
         aria-describedby={canSubmit ? undefined : reasonId}
         className="h-12 w-full text-base"
       >

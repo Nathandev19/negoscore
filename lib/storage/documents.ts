@@ -21,8 +21,13 @@ export function validateAnnouncedFile(input: unknown): AnnouncedFile | { error: 
   if (typeof mime !== "string" || !accepted.includes(mime)) {
     return { error: kind === "photo" ? "Ce fichier n'est pas une image JPG, PNG ou WebP." : "Ce fichier n'est pas un PDF." };
   }
-  if (typeof bytes !== "number" || !Number.isInteger(bytes) || bytes <= 0) {
-    return { error: "Taille du fichier illisible. Choisis le fichier à nouveau." };
+  // Deux causes réelles, deux messages (mission #062, D4). « Taille illisible »
+  // ne disait rien à personne : ce n'est pas le fichier qui est illisible.
+  if (typeof bytes !== "number" || !Number.isInteger(bytes) || bytes < 0) {
+    return { error: "La taille du fichier n'a pas été transmise. Recharge la page et choisis le fichier à nouveau." };
+  }
+  if (bytes === 0) {
+    return { error: "Ce fichier est vide : il ne contient aucune donnée. Choisis un autre fichier." };
   }
   if (bytes > MAX_FILE_BYTES) return { error: "Ce fichier dépasse 10 Mo." };
   return { kind, mime, bytes };

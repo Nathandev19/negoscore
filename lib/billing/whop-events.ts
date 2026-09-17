@@ -3,6 +3,7 @@ import { isProActive } from "@/lib/billing/plan-access";
 import { PACK_ANALYSES } from "@/lib/billing/plans";
 import { planKeyFromId, type PlanKey } from "@/lib/whop/api";
 import { adjustInteger, insertIfAbsent, isMissingRelation, rpc, selectRows, updateRows } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/security/request";
 
 // Effets d'un événement Whop sur les crédits. Tout passe par la clé
 // service_role : un utilisateur ne modifie jamais son solde.
@@ -32,6 +33,10 @@ function record(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 }
 
+// Gabarit volontairement strict : aucun caractère réservé par les filtres
+// PostgREST (virgule, parenthèse, guillemet, espace).
+const PLAIN_EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,}$/;
+
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
@@ -43,12 +48,16 @@ async function resolveUser(
 ): Promise<{ id: string; email: string | null; how: "metadata" | "email" } | null> {
   const metadata = record(data.metadata);
   const fromMetadata = text(metadata.user_id);
-  if (fromMetadata) {
+  // Les deux valeurs viennent de la charge du webhook. Elles ne sont posées
+  // dans un filtre PostgREST qu'après contrôle de forme (mission #062, E2) :
+  // une valeur hors gabarit ferait échouer la requête, et Postgres recopie
+  // alors la valeur fautive dans le message d'erreur, qui est journalisé.
+  if (fromMetadata && isUuid(fromMetadata)) {
     const rows = await selectRows<Profile>("profiles", `select=id,email&id=eq.${encodeURIComponent(fromMetadata)}&limit=1`);
     if (rows.length > 0) return { id: rows[0].id, email: rows[0].email, how: "metadata" };
   }
   const email = text(record(data.user).email);
-  if (email) {
+  if (email && PLAIN_EMAIL.test(email)) {
     const rows = await selectRows<Profile>("profiles", `select=id,email&email=ilike.${encodeURIComponent(email)}&limit=1`);
     if (rows.length > 0) return { id: rows[0].id, email: rows[0].email, how: "email" };
   }

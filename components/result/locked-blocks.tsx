@@ -4,13 +4,21 @@ import { Button } from "@/components/ui/button";
 
 // Bloc de substitution affiché quand le contenu est verrouillé. Il ne reçoit
 // aucune donnée de l'analyse : le serveur a retiré ces champs de la réponse.
+// Seules les barres factices sont masquées aux lecteurs d'écran : l'état
+// verrouillé et la façon de le lever sont du texte, entendu comme il est vu
+// (mission #062, A2). Avant, tout le bloc était aria-hidden et la section
+// n'annonçait rien après son titre.
 function Placeholder({ lines }: { lines: number }) {
   return (
-    <div className="flex flex-col gap-3 border-y border-filet py-4" aria-hidden>
-      {Array.from({ length: lines }, (_, i) => (
-        <div key={i} className="h-3 rounded-pill bg-filet" style={{ width: `${90 - i * 12}%` }} />
-      ))}
-      <p className="text-small font-semibold text-encre">Verrouillé</p>
+    <div className="flex flex-col gap-3 border-y border-filet py-4">
+      <div aria-hidden className="flex flex-col gap-3">
+        {Array.from({ length: lines }, (_, i) => (
+          <div key={i} className="h-3 rounded-pill bg-filet" style={{ width: `${90 - i * 12}%` }} />
+        ))}
+      </div>
+      <p className="text-small font-semibold text-encre">
+        Verrouillé. <span className="font-normal">Ton email suffit pour le débloquer, plus bas sur cette page.</span>
+      </p>
     </div>
   );
 }

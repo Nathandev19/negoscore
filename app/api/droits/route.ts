@@ -1,6 +1,8 @@
 import { getRequestUser } from "@/lib/auth/request-user";
 import { analysisRightStatus } from "@/lib/billing/entitlement";
-import { ANON_COOKIE, readCookie } from "@/lib/security/request";
+import { ANON_COOKIE, clientIp, hashIp, readCookie } from "@/lib/security/request";
+import { hitUsageGuard } from "@/lib/security/usage-guard";
+import { RIGHTS_PER_HOUR } from "@/lib/security/limits";
 
 export const runtime = "nodejs";
 
@@ -11,6 +13,19 @@ export const runtime = "nodejs";
 // compte n'appelle pas le serveur (voir lib/billing/right-hint.ts).
 export async function GET(request: Request) {
   const user = await getRequestUser(request);
+  // Limite horaire par IP hachée (mission #062, B2), avec le compteur qui sert
+  // déjà aux analyses et aux liens de connexion. Elle ne change rien pour un
+  // usage normal : le formulaire n'appelle cette route qu'à son ouverture.
+  // Au-delà, on répond comme quand la lecture échoue — le formulaire reste
+  // ouvert, le droit réel est tranché au moment de l'analyse.
+  try {
+    const guard = await hitUsageGuard(hashIp(`droits:${clientIp(request)}`), { limit: RIGHTS_PER_HOUR });
+    if (!guard.allowed) {
+      return Response.json({ allowed: true, unknown: true }, { status: 429, headers: { "Cache-Control": "no-store" } });
+    }
+  } catch {
+    // Compteur indisponible : on ne bloque pas une lecture sans effet.
+  }
   try {
     const status = await analysisRightStatus(user, readCookie(request, ANON_COOKIE));
     return Response.json(

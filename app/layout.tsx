@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Familjen_Grotesk } from "next/font/google";
 import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
+import { DraftExpiry } from "@/components/draft-expiry";
 import { FlashBanner } from "@/components/flash-banner";
 import { JsonLd } from "@/components/seo/json-ld";
 import { BRAND } from "@/lib/brand";
@@ -55,9 +56,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             public. Rien de chiffré, rien d'invérifiable (mission #051). */}
         <JsonLd data={organizationJsonLd()} />
         <JsonLd data={webSiteJsonLd()} />
+        {/* Lien d'évitement (mission #062, A4) : invisible tant qu'il n'a pas
+            le focus, il permet de sauter l'en-tête au clavier. */}
+        <a
+          href="#contenu"
+          className="sr-only rounded-control bg-encre px-4 py-2 font-semibold text-creme focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+        >
+          Aller au contenu
+        </a>
         <AnalyticsProvider />
         {/* Confirmation de connexion ou de déconnexion, au-dessus de la page d'arrivée. */}
         <FlashBanner />
+        {/* N'affiche rien : efface le brouillon d'offre périmé (mission #062, D2). */}
+        <DraftExpiry />
         {children}
       </body>
     </html>

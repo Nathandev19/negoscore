@@ -9,7 +9,7 @@ export function LegalPage({ title, updated, children }: { title: string; updated
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+      <main id="contenu" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         <div className="flex flex-col gap-2">
           <h1 className="text-h1 font-extrabold">{title}</h1>
           <p className="text-small text-attenue">Dernière mise à jour : {updated}</p>

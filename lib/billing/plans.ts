@@ -18,6 +18,14 @@ export const PRICE = {
 // Périodicité de l'abonnement, écrite une seule fois elle aussi.
 export const PRO_PERIOD = "par mois";
 
+// Ce que contient une analyse est le MÊME dans les trois formules (mission
+// #062, C2) : score, points à négocier, fourchette, contre-offre et message à
+// envoyer. La seule différence est le nombre d'analyses, qui est déjà dans
+// « summary ». Les anciennes formulations — « analyse complète à chaque
+// crédit » en face de « score, points à négocier et fourchette » — laissaient
+// croire que l'analyse gratuite était amputée. Elle ne l'est pas : elle
+// demande seulement un email pour afficher la contre-offre, ce que la ligne
+// de la formule gratuite dit maintenant explicitement.
 export const PLANS = [
   {
     id: "free",
@@ -25,7 +33,7 @@ export const PLANS = [
     price: PRICE.free,
     period: null,
     summary: `${FREE_ANALYSES} analyse`,
-    features: ["Score, points à négocier et fourchette", "Contre-offre et message après connexion par email"],
+    features: ["Analyse complète : score, points à négocier, fourchette en euros", "Contre-offre et message à envoyer, après ton email"],
   },
   {
     id: "pack",
@@ -33,7 +41,7 @@ export const PLANS = [
     price: PRICE.pack,
     period: null,
     summary: `${PACK_ANALYSES} analyses`,
-    features: ["Analyse complète à chaque crédit", "Contre-offre et message inclus"],
+    features: ["Analyse complète : score, points à négocier, fourchette en euros", "Contre-offre et message à envoyer, sans autre étape"],
   },
   {
     id: "pro",
@@ -41,7 +49,7 @@ export const PLANS = [
     price: PRICE.pro,
     period: PRO_PERIOD,
     summary: `Jusqu'à ${PRO_ANALYSES_PER_PERIOD} analyses par mois`,
-    features: ["Analyse complète à chaque fois", "Contre-offre et message inclus"],
+    features: ["Analyse complète : score, points à négocier, fourchette en euros", "Contre-offre et message à envoyer, sans autre étape"],
   },
 ] as const;
 

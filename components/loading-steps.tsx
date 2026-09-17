@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,10 +63,17 @@ type WaitingScreenProps = {
 export function WaitingScreen({ kind, respondedAt, startedAgoMs = 0 }: WaitingScreenProps) {
   const [now, setNow] = useState(() => Date.now());
   const [startedAt] = useState(() => Date.now() - startedAgoMs);
+  const screenRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 100);
     return () => window.clearInterval(timer);
+  }, []);
+
+  // Cet écran remplace le formulaire : sans cela le focus retombe sur <body>
+  // et la personne au clavier repart du haut de la page (mission #062, A6).
+  useEffect(() => {
+    screenRef.current?.focus();
   }, []);
 
   const elapsed = (respondedAt ?? now) - startedAt;
@@ -75,7 +82,13 @@ export function WaitingScreen({ kind, respondedAt, startedAgoMs = 0 }: WaitingSc
   const note = respondedAt !== null ? null : elapsed >= VERY_SLOW_AFTER_MS ? VERY_SLOW_MESSAGE : elapsed >= SLOW_AFTER_MS ? SLOW_MESSAGE : null;
 
   return (
-    <section aria-label="Analyse en cours" className="flex flex-col gap-6 rounded-control border-2 border-encre p-5 sm:p-6">
+    <section
+      ref={screenRef}
+      tabIndex={-1}
+      aria-label="Analyse en cours"
+      aria-busy={respondedAt === null}
+      className="flex flex-col gap-6 rounded-control border-2 border-encre p-5 sm:p-6"
+    >
       <p className="headline text-h2 text-encre">On analyse ton offre</p>
       <ol className="flex flex-col gap-4" aria-live="polite">
         {labels.map((label, index) => {

@@ -16,7 +16,7 @@ export default function GiftedProductsPage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
+      <main id="contenu" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         <div className="flex flex-col gap-5">
           <h1 className="text-h1 font-extrabold">Une marque te propose des produits gratuits</h1>
           <blockquote className="measure border-l-4 border-encre py-1 pl-4 text-encre italic">
@@ -38,8 +38,8 @@ export default function GiftedProductsPage() {
             Dès qu&apos;il y a une contrepartie attendue — une vidéo, une story, une mention — le produit n&apos;est
             plus un cadeau. C&apos;est un paiement en nature, dans une relation commerciale. La loi du 9 juin 2023 sur
             l&apos;influence commerciale encadre ces partenariats, et impose un contrat écrit dès que la collaboration
-            dépasse {formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)} cumulés sur l&apos;année avec la même marque, avantages
-            en nature compris. En dessous, l&apos;écrit n&apos;est pas obligatoire — mais rien ne t&apos;empêche de le
+            dépasse {formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)}&nbsp;HT cumulés sur l&apos;année civile entre une même
+            marque et un même créateur, avantages en nature inclus. En dessous, l&apos;écrit n&apos;est pas obligatoire — mais rien ne t&apos;empêche de le
             demander.
           </p>
           <p>Ça a deux conséquences.</p>

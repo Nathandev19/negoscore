@@ -64,7 +64,10 @@ describe("page /produits-offerts", () => {
 
   it("la mention de la loi du 9 juin 2023 et le renvoi au comptable sont conservés", () => {
     expect(texte).toContain(
-      "La loi du 9 juin 2023 sur l'influence commerciale encadre ces partenariats, et impose un contrat écrit dès que la collaboration dépasse 1 000 € cumulés sur l'année avec la même marque, avantages en nature compris.",
+      // Énoncé aligné sur lib/legal/fr.ts (mission #062, C1) : « HT », « année
+      // civile », « avantages en nature inclus ». Le guide et l'analyse ne
+      // peuvent pas énoncer deux règles différentes.
+      "La loi du 9 juin 2023 sur l'influence commerciale encadre ces partenariats, et impose un contrat écrit dès que la collaboration dépasse 1 000 € HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus.",
     );
     expect(texte).toContain("parles-en à un comptable");
   });

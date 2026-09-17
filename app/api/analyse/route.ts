@@ -1,4 +1,5 @@
 import { composeAnalysis } from "@/lib/analysis/compose";
+import { MAX_TEXT_LENGTH, TEXT_TRUNCATED_NOTE } from "@/lib/analysis/text";
 import type { SessionUser } from "@/lib/auth/session";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { claimRetry, RETRY_MESSAGES, sameOffer, type RetryClaim } from "@/lib/analysis/retry";
@@ -31,7 +32,6 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const MIN_TEXT_LENGTH = 20;
-const MAX_TEXT_LENGTH = 60_000;
 
 class HttpError extends Error {
   constructor(
@@ -256,7 +256,7 @@ export async function POST(request: Request) {
         rawText = (text as string).trim();
         if (rawText.length > MAX_TEXT_LENGTH) {
           rawText = rawText.slice(0, MAX_TEXT_LENGTH);
-          extraAssumptions.push("Ton texte dépassait 60 000 caractères : seul le début a été analysé.");
+          extraAssumptions.push(TEXT_TRUNCATED_NOTE);
         }
         result = await extractDeal(rawText);
       }
