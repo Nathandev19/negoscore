@@ -1,4 +1,4 @@
-import rates from "@/lib/rates/fr-2026.2.json";
+import rates from "@/lib/rates/fr-2026.3.json";
 import { formatNumber } from "@/lib/display";
 import { DEFAULT_TIER, type Tier } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";

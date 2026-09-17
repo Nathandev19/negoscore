@@ -178,12 +178,14 @@ describe("B2 — la carte porte le niveau choisi", () => {
   });
 
   it("?niveau= : chiffres recalculés par le serveur à ce niveau, et le niveau écrit sur la carte", async () => {
-    expect((await get(CURRENT_ID, owner, "?niveau=starter")).status).toBe(200);
+    // L'exemple est au niveau par défaut (starter) : la carte est demandée au niveau confirmé.
+    expect((await get(CURRENT_ID, owner, "?niveau=confirmed")).status).toBe(200);
     // Auteur anonyme : vue verrouillée, recalculée au niveau demandé.
-    const expected = recomputeForTier(lockAnalysis(sampleAnalysis), "starter");
+    const expected = recomputeForTier(lockAnalysis(sampleAnalysis), "confirmed");
     expect(rendered.last).toEqual(expected);
     const texts = shareCardTexts(expected);
-    expect(texts.tier).toBe("Niveau : Je débute");
+    expect(texts.tier).toBe("Niveau : Déjà des collabs payées");
+    expect(shareCardTexts(sampleAnalysis).tier).toBe("Niveau : Je débute");
     expect(texts.worth).not.toBe(shareCardTexts(sampleAnalysis).worth);
   });
 

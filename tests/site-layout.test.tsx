@@ -6,7 +6,7 @@ import { PLANS } from "@/lib/billing/plans";
 import { FAQ } from "@/lib/content/home";
 import { SELLER } from "@/lib/legal/identity";
 import { verdictSentence } from "@/lib/analysis/verdict";
-import rates from "@/lib/rates/fr-2026.2.json";
+import rates from "@/lib/rates/fr-2026.3.json";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 
 vi.mock("@/components/deal-input", () => ({ DealInput: () => <form aria-label="saisie" /> }));

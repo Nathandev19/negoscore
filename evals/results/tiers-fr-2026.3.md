@@ -1,0 +1,47 @@
+# Relevé aux trois niveaux, table fr-2026.3 (missions #039 C, #040 G)
+
+Offres chiffrées du relevé #038 (montant et fourchette), recalculées par le moteur actuel (fr-2026.3, niveau par défaut starter) à chaque niveau. Aucun appel au modèle. Fixtures synthétiques, pas des offres réelles.
+
+| Offre | Montant | starter : bas – haut | bas/montant | alarme | score | confirmed : bas – haut | bas/montant | alarme | score | experienced : bas – haut | bas/montant | alarme | score |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 01-dm-cosmetique | 300 | 430 – 900 | 1,43 | non | 33 weak | 1070 – 2500 | 3,57 | **OUI** | 24 bad | 2150 – 4000 | 7,17 | **OUI** | 24 bad |
+| 04-dm-vague-droits | 150 | 130 – 270 | 0,87 | non | terms_unknown | 320 – 750 | 2,13 | non | terms_unknown | 650 – 1200 | 4,33 | **OUI** | terms_unknown |
+| 05-dm-spark-ads | 400 | 410 – 900 | 1,02 | non | terms_unknown | 1020 – 2500 | 2,55 | non | terms_unknown | 2050 – 4000 | 5,13 | **OUI** | terms_unknown |
+| 06-dm-whitelisting | 750 | 540 – 1240 | 0,72 | non | 72 good | 1360 – 3430 | 1,81 | non | 55 fair | 2730 – 5490 | 3,64 | **OUI** | 50 fair |
+| 07-email-biscuits | 500 | 330 – 710 | 0,66 | non | 78 good | 820 – 1950 | 1,64 | non | 56 fair | 1650 – 3120 | 3,3 | **OUI** | 50 fair |
+| 08-email-chargeur | 600 | 380 – 870 | 0,63 | non | 57 fair | 950 – 2400 | 1,58 | non | 41 weak | 1900 – 3840 | 3,17 | **OUI** | 34 weak |
+| 09-email-vetements | 350 | 310 – 570 | 0,89 | non | 80 good | 780 – 1560 | 2,23 | non | 61 fair | 1560 – 2500 | 4,46 | **OUI** | 60 fair |
+| 10-email-voyage | 900 | 500 – 1110 | 0,56 | non | 71 good | 1260 – 3080 | 1,4 | non | 54 fair | 2520 – 4930 | 2,8 | non | 45 weak |
+| 11-brief-serum | 1200 | 780 – 1380 | 0,65 | non | 81 good | 1830 – 3620 | 1,53 | non | 58 fair | 3580 – 5720 | 2,98 | non | 50 fair |
+| 12-brief-jeu-mobile | 1500 | 960 – 1940 | 0,64 | non | 65 fair | 2410 – 5380 | 1,61 | non | 47 weak | 4830 – 8600 | 3,22 | **OUI** | 40 weak |
+| 13-brief-linge | 800 | 390 – 780 | 0,49 | non | 90 excellent | 990 – 2160 | 1,24 | non | 72 good | 1980 – 3460 | 2,48 | non | 60 fair |
+| 15-contrat-cosmetique | 1800 | 1070 – 1940 | 0,59 | non | 73 good | 2680 – 5380 | 1,49 | non | 53 fair | 5370 – 8600 | 2,98 | non | 45 weak |
+| 16-contrat-app-sport | 2400 | 1250 – 2250 | 0,52 | non | 54 fair | 3120 – 6250 | 1,3 | non | 30 weak | 6250 – 10000 | 2,6 | non | 19 bad |
+| 17-contrat-boisson | 3500 | 1500 – 2710 | 0,43 | non | 48 weak | 3760 – 7530 | 1,07 | non | 29 bad | 7520 – 12040 | 2,15 | non | 15 bad |
+| 18-piege-perpetuite | 450 | 540 – 1260 | 1,2 | non | 53 fair | 1350 – 3500 | 3 | non | 40 weak | 2700 – 5600 | 6 | **OUI** | 40 weak |
+| 19-piege-cession | 600 | 980 – 1770 | 1,63 | non | 36 weak | 2450 – 4900 | 4,08 | **OUI** | 30 weak | 4900 – 7840 | 8,17 | **OUI** | 30 weak |
+| 20-email-anglais | 500 | 460 – 990 | 0,92 | non | 74 good | 1150 – 2730 | 2,3 | non | 51 fair | 2310 – 4370 | 4,62 | **OUI** | 50 fair |
+| 22-dm-court-publication | 250 | 100 – 180 | 0,4 | non | terms_unknown | 250 – 500 | 1 | non | terms_unknown | 500 – 800 | 2 | non | terms_unknown |
+| 23-dm-court-repost | 400 | 170 – 320 | 0,43 | non | terms_unknown | 430 – 880 | 1,08 | non | terms_unknown | 870 – 1400 | 2,17 | non | terms_unknown |
+| 24-dm-court-pub-meta | 500 | 360 – 760 | 0,72 | non | terms_unknown | 910 – 2100 | 1,82 | non | terms_unknown | 1820 – 3360 | 3,64 | **OUI** | terms_unknown |
+| 26-dm-nova-sportswear | 600 | 180 – 400 | 0,3 | non | 90 excellent | 460 – 1090 | 0,77 | non | 81 good | 930 – 1740 | 1,55 | non | 67 fair |
+
+## Statistiques
+
+| | starter (« Je débute ») | confirmed (« J'ai déjà fait des collabs payées ») | experienced (« C'est mon métier ») |
+|---|---|---|---|
+| Offres chiffrées | 21 | 21 | 21 |
+| Montant SOUS la borne basse | 4 / 21 | 19 / 21 | 21 / 21 |
+| Montant dans la fourchette ou au-dessus | 17 / 21 | 2 / 21 | 0 / 21 |
+| Alarme (bas > 3 × montant) | 0 / 21 | 2 / 21 | 12 / 21 |
+| Rapport bas / montant, 1er quartile | 0,52 | 1,3 | 2,6 |
+| Médiane | 0,65 | 1,61 | 3,22 |
+| 3e quartile | 0,89 | 2,23 | 4,46 |
+| Rapport ≤ 1 (montant ≥ bas) | 17 / 21 | 2 / 21 | 0 / 21 |
+| Scores good ou excellent | 9 / 16 notées | 2 / 16 notées | 0 / 16 notées |
+| Scores bad ou weak | 3 / 16 notées | 7 / 16 notées | 9 / 16 notées |
+| Scores (notées), du plus bas au plus haut | 33 36 48 53 54 57 65 71 72 73 74 78 80 81 90 90 | 24 29 30 30 40 41 47 51 53 54 55 56 58 61 72 81 | 15 19 24 30 34 40 40 45 45 50 50 50 50 60 60 67 |
+| Score = 90, plafond de fait | 2 / 16 notées | 0 / 16 notées | 0 / 16 notées |
+| Points prix saturés (montant ≥ borne haute) | 4 / 16 notées | 0 / 16 notées | 0 / 16 notées |
+| Quantités rendues inconnues : plafond 69 actif (score brut > 69) | 10 / 16 notées | 9 / 16 notées | 2 / 16 notées |
+| … offres concernées (score brut) | 06 (80), 07 (85), 09 (90), 10 (75), 11 (85), 12 (70), 13 (90), 15 (75), 20 (85), 26 (90) | 06 (72), 07 (75), 09 (79), 10 (71), 11 (82), 12 (70), 13 (83), 20 (75), 26 (83) | 13 (70), 26 (71) |

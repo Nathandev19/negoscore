@@ -14,17 +14,21 @@ type Score = NonNullable<Analysis["score"]>;
 // jauge. Sur grand écran : score, pastille et jauge à gauche, phrase à droite.
 // animated : remplissage à l'arrivée (page de résultat). L'exemple de la page
 // d'accueil est affiché directement à sa valeur.
+// from : score affiché juste avant (changement de niveau) ; l'animation part de
+// là au lieu de 0. Rejouée parce que le parent remonte le bandeau (key).
 // showTier : rappelle le niveau de calcul, dont dépendent le score et la phrase,
 // avec un lien vers le sélecteur (#niveau, page de résultat).
 export function ScoreBand({
   analysis,
   className,
   animated = true,
+  from = null,
   showTier = false,
 }: {
   analysis: ResultView;
   className?: string;
   animated?: boolean;
+  from?: number | null;
   showTier?: boolean;
 }) {
   const tierNote = showTier ? <TierNote tier={analysis.profile_tier} /> : null;
@@ -35,10 +39,10 @@ export function ScoreBand({
       {scored && analysis.score ? (
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-            <AnimatedScore score={analysis.score} animated={animated} />
+            <AnimatedScore score={analysis.score} animated={animated} from={from} />
             <VerdictPill band={analysis.score.band} />
           </div>
-          <ScoreGauge score={analysis.score} animated={animated} />
+          <ScoreGauge score={analysis.score} animated={animated} from={from} />
           {hasUnknownQuantity(analysis.deal) ? (
             <p data-score-cap className="measure text-small font-semibold text-creme">
               {QUANTITY_CAP_NOTE}
@@ -81,7 +85,7 @@ export function VerdictPill({ band }: { band: Score["band"] }) {
 // remplit. Entièrement en CSS (propriété enregistrée + compteur) : rendu
 // statique, aucune hydratation, et prefers-reduced-motion affiche directement
 // la valeur finale (règle globale de globals.css).
-export function AnimatedScore({ score, animated = true }: { score: Score; animated?: boolean }) {
+export function AnimatedScore({ score, animated = true, from = null }: { score: Score; animated?: boolean; from?: number | null }) {
   return (
     <p className="figures flex items-baseline leading-none text-creme">
       <span className="sr-only">
@@ -90,7 +94,13 @@ export function AnimatedScore({ score, animated = true }: { score: Score; animat
       <span
         aria-hidden
         className="score-count text-[7rem] leading-[0.8] sm:text-[9rem]"
-        style={{ "--score-target": score.value, ...(animated ? {} : { animation: "none" }) } as CSSProperties}
+        style={
+          {
+            "--score-target": score.value,
+            ...(from !== null ? { "--score-from": from } : {}),
+            ...(animated ? {} : { animation: "none" }),
+          } as CSSProperties
+        }
       />
       <span aria-hidden className="text-4xl">
         /100
@@ -117,20 +127,21 @@ export function markerLeft(value: number): string {
   return `clamp(${MARKER_HALF_PX}px, ${value}%, calc(100% - ${MARKER_HALF_PX}px))`;
 }
 
-export function ScoreGauge({ score, animated = true }: { score: Score; animated?: boolean }) {
+export function ScoreGauge({ score, animated = true, from = null }: { score: Score; animated?: boolean; from?: number | null }) {
   const value = Math.max(0, Math.min(100, score.value));
+  const start = from === null ? null : Math.max(0, Math.min(100, from));
   const still: CSSProperties = animated ? {} : { animation: "none" };
   return (
     <div aria-hidden data-gauge={value} className="relative h-3 w-full rounded-pill bg-marque-deep">
       <span
         data-gauge-fill
         className={cn("gauge-grow absolute inset-y-0 left-0 rounded-pill", BAND_STYLE[score.band].onMarque)}
-        style={{ width: `${value}%`, ...still }}
+        style={{ width: `${value}%`, ...(start !== null ? { "--gauge-from": `${start}%` } : {}), ...still } as CSSProperties}
       />
       <span
         data-gauge-marker
         className="gauge-marker absolute -top-1.5 h-6 w-1 -translate-x-1/2 rounded-pill bg-creme"
-        style={{ left: markerLeft(value), ...still }}
+        style={{ left: markerLeft(value), ...(start !== null ? { "--marker-from": markerLeft(start) } : {}), ...still } as CSSProperties}
       />
     </div>
   );

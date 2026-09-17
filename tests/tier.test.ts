@@ -8,7 +8,7 @@ import sampleExtraction from "@/lib/fixtures/sample-extraction.json";
 import { extractionSchema, type Extraction } from "@/lib/llm/prompt";
 import { formatEur } from "@/lib/money";
 import { LEGACY_ENGINE_ASSUMPTIONS, PLAUSIBILITY_ASSUMPTION, UPLIFT_CAPPED_ASSUMPTION } from "@/lib/rates/engine";
-import rates from "@/lib/rates/fr-2026.2.json";
+import rates from "@/lib/rates/fr-2026.3.json";
 import { DEFAULT_TIER, TIER_LABEL, TIERS, type Tier } from "@/lib/rates/tier";
 import { analysisSchema } from "@/lib/schema";
 import { withTier } from "@/lib/share-card/tier-param";
@@ -57,9 +57,10 @@ function withoutConfidence(analysis: object) {
 }
 
 describe("niveau : un choix, pas une hypothèse", () => {
-  it("même liste de niveaux dans le schéma et dans le module des niveaux ; défaut inchangé", () => {
+  it("même liste de niveaux dans le schéma et dans le module des niveaux ; défaut « starter » depuis fr-2026.3 (#040)", () => {
     expect(analysisSchema.shape.profile_tier.unwrap().options).toEqual([...TIERS]);
-    expect(DEFAULT_TIER).toBe("confirmed");
+    expect(DEFAULT_TIER).toBe("starter");
+    expect(rates.version).toBe("fr-2026.3");
     expect(Object.keys(rates.base_rates_eur).filter((key) => key !== "default_tier")).toEqual([...TIERS]);
   });
 
@@ -123,18 +124,20 @@ describe("A2 — recalcul côté navigateur identique à une analyse lancée à 
   it("le prix du message suit la contre-offre du niveau choisi", () => {
     const base = extractionSchema.parse(structuredClone(sampleExtraction));
     const stored = composeAnalysis(base);
-    const starter = recomputeForTier(stored, "starter");
-    expect(starter.counter_offer.amount_low).not.toBe(stored.counter_offer.amount_low);
-    expect(starter.ready_to_send_message.text).toContain(
-      `entre ${formatEur(starter.counter_offer.amount_low!)} et ${formatEur(starter.counter_offer.amount_high!)}`,
+    // Exemple au niveau par défaut (starter) ; recalcul au niveau confirmé.
+    const other = recomputeForTier(stored, "confirmed");
+    expect(other.counter_offer.amount_low).not.toBe(stored.counter_offer.amount_low);
+    expect(other.ready_to_send_message.text).toContain(
+      `entre ${formatEur(other.counter_offer.amount_low!)} et ${formatEur(other.counter_offer.amount_high!)}`,
     );
-    expect(starter.ready_to_send_message.text).not.toBe(stored.ready_to_send_message.text);
-    expect(starter.ready_to_send_message.text).not.toContain("{{");
+    expect(other.ready_to_send_message.text).not.toBe(stored.ready_to_send_message.text);
+    expect(other.ready_to_send_message.text).not.toContain("{{");
   });
 
   it("analyse d'avant la version 1.4 (sans sujet de négociation, anciens textes) : même résultat", () => {
     for (const { name, extraction } of CORPUS) {
-      const current = composeAnalysis(extraction);
+      // Une analyse d'avant 1.4 a toujours été calculée au niveau confirmé.
+      const current = composeAnalysis(extraction, { tier: "confirmed" });
       if (current.evaluability === "incomplete") continue;
       const legacyText = (a: string) =>
         a === PLAUSIBILITY_ASSUMPTION ? LEGACY_ENGINE_ASSUMPTIONS[2] : a === UPLIFT_CAPPED_ASSUMPTION ? LEGACY_ENGINE_ASSUMPTIONS[1] : a;
@@ -147,8 +150,11 @@ describe("A2 — recalcul côté navigateur identique à une analyse lancée à 
         schema_version: "1.3",
         profile_tier: undefined,
         negotiate: current.negotiate.map((item) => ({ ...item, topic: undefined })),
-        estimate: { ...current.estimate, assumptions },
+        // Enregistrée avec la table d'alors : mêmes tarifs, défaut confirmé.
+        estimate: { ...current.estimate, assumptions, rate_table_version: "fr-2026.2" },
       });
+      expect(stored.profile_tier).toBe("confirmed");
+      expect(tierChangeAvailable(stored)).toBe(true);
       const expected = composeAnalysis(extraction, { tier: "starter" });
       const recomputed = recomputeForTier(stored, "starter");
       expect(recomputed.estimate, name).toEqual(expected.estimate);

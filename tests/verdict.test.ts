@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FAR_BELOW_RATIO, verdictForm, verdictSentence } from "@/lib/analysis/verdict";
 import { previewAnalysis } from "@/lib/fixtures/preview-states";
+import { recomputeForTier } from "@/lib/analysis/recompute";
 import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { RATIO_ZERO } from "@/lib/rates/score";
 import { analysisSchema, type Analysis } from "@/lib/schema";
@@ -140,6 +141,9 @@ describe("sur les fixtures passées par le vrai moteur", () => {
     expect(verdictForm(previewAnalysis("au-dessus").analysis)).toBe("complete_above_poor_terms");
     expect(verdictForm(previewAnalysis("unpriced").analysis)).toBe("unpriced");
     expect(verdictForm(previewAnalysis("incomplete").analysis)).toBe("incomplete");
-    expect(verdictForm(previewAnalysis("terms_unknown").analysis)).toBe("terms_unknown_far_below");
+    // 300 € face à 330–710 € au niveau starter (fr-2026.3) : sous la fourchette, pas sous
+    // 40 % de la borne basse. Au niveau confirmé (820–1 950 €), « très en dessous ».
+    expect(verdictForm(previewAnalysis("terms_unknown").analysis)).toBe("terms_unknown");
+    expect(verdictForm(recomputeForTier(previewAnalysis("terms_unknown").analysis, "confirmed"))).toBe("terms_unknown_far_below");
   });
 });

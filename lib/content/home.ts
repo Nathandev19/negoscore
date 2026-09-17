@@ -1,5 +1,5 @@
 import { PLANS } from "@/lib/billing/plans";
-import rates from "@/lib/rates/fr-2026.2.json";
+import rates from "@/lib/rates/fr-2026.3.json";
 import { MAX_PDF_PAGES } from "@/lib/upload";
 
 // Textes de la page d'accueil. Les prix et la version de la table viennent du
@@ -38,7 +38,7 @@ const PLANS_TEXT = PLANS.map((plan) => `${plan.name} : ${plan.price}${plan.perio
 export const FAQ = [
   {
     question: "D'où viennent les prix ?",
-    answer: `D'une table de tarifs française, versionnée (${rates.version}) : des benchmarks observés sur des offres UGC en France, complétés par des valeurs interpolées là où les observations manquent. Le tarif de base suppose un créateur confirmé, avec un portfolio. Chaque analyse affiche la version de la table utilisée.`,
+    answer: `D'une table de tarifs française, versionnée (${rates.version}) : des benchmarks observés sur des offres UGC en France, complétés par des valeurs interpolées là où les observations manquent. Le tarif de base part du niveau « Je débute » ; sur la page de résultat, tu choisis ton niveau et tout est recalculé. Chaque analyse affiche la version de la table utilisée.`,
   },
   {
     question: "Ça marche pour quel type d'offre ?",

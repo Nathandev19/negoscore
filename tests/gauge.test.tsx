@@ -1,7 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ScoreGauge } from "@/components/result/score-band";
+import { readFileSync } from "node:fs";
+import { AnimatedScore, ScoreGauge } from "@/components/result/score-band";
 import { BAND_STYLE } from "@/lib/display";
 import { bandFor } from "@/lib/rates/score";
 
@@ -37,5 +38,35 @@ describe("jauge continue", () => {
     const html = render(32, false);
     expect(html).toContain("width:32%;animation:none");
     expect(html).toContain("left:clamp(2px, 32%, calc(100% - 2px));animation:none");
+  });
+});
+
+// Mission #040 F : au changement de niveau, l'animation est rejouée depuis le
+// score précédent. Le parent remonte le bandeau (key) ; ici, le point de départ.
+describe("animation rejouée depuis le score précédent", () => {
+  it("jauge et chiffre portent leur point de départ", () => {
+    const gauge = renderToStaticMarkup(createElement(ScoreGauge, { score: { value: 33, band: "weak" }, from: 24 }));
+    expect(gauge).toContain("--gauge-from:24%");
+    expect(gauge).toContain("--marker-from:clamp(2px, 24%, calc(100% - 2px))");
+    const score = renderToStaticMarkup(createElement(AnimatedScore, { score: { value: 33, band: "weak" }, from: 24 }));
+    expect(score).toContain("--score-from:24");
+  });
+
+  it("à l'arrivée, aucun point de départ : l'animation part de 0", () => {
+    const html = renderToStaticMarkup(createElement(ScoreGauge, { score: { value: 33, band: "weak" } }));
+    expect(html).not.toContain("-from");
+  });
+
+  it("les images clés lisent le point de départ, 0 par défaut ; le mouvement réduit reste global", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(css).toContain("--score-now: var(--score-from, 0);");
+    expect(css).toContain("width: var(--gauge-from, 0%);");
+    expect(css).toContain("left: var(--marker-from, 2px);");
+    expect(css).toMatch(/prefers-reduced-motion: reduce[\s\S]*animation-duration: 0\.01ms !important/);
+  });
+
+  it("le bandeau de résultat est remonté à chaque changement de niveau", () => {
+    const source = readFileSync("components/result/analysis-result.tsx", "utf8");
+    expect(source).toContain("<ScoreBand key={replay.count} analysis={analysis} from={replay.from}");
   });
 });

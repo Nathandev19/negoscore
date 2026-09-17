@@ -1,11 +1,11 @@
 {
-  "version": "fr-2026.2",
+  "version": "fr-2026.3",
   "disclaimer": "Estimation fondée sur des benchmarks de marché. Ce ne sont pas des tarifs officiels.",
   "base_rates_eur": {
     "starter": { "low": 100, "high": 180, "confidence": "medium" },
     "confirmed": { "low": 250, "high": 500, "confidence": "medium" },
     "experienced": { "low": 500, "high": 800, "confidence": "low" },
-    "default_tier": "confirmed"
+    "default_tier": "starter"
   },
   "deliverable_weights": {
     "video": { "weight": 1.0, "confidence": "medium" },

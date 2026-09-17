@@ -5,7 +5,7 @@ import { composeAnalysis, SCHEMA_VERSION } from "@/lib/analysis/compose";
 import { PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/preview-states";
 import sampleExtraction from "@/lib/fixtures/sample-extraction.json";
 import { extractionSchema } from "@/lib/llm/prompt";
-import rates from "@/lib/rates/fr-2026.2.json";
+import rates from "@/lib/rates/fr-2026.3.json";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 

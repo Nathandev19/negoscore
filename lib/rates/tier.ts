@@ -1,4 +1,4 @@
-import rates from "@/lib/rates/fr-2026.2.json";
+import rates from "@/lib/rates/fr-2026.3.json";
 
 // Niveau de la créatrice : la ligne de la table de tarifs utilisée pour la base.
 // C'est le levier le plus fort du moteur (débutant 100–180 €, confirmé 250–500 €,

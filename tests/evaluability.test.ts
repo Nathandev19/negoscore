@@ -173,10 +173,11 @@ describe("règle d'évaluabilité", () => {
 });
 
 describe("CASE A — offre complète mesurée en production", () => {
-  it("reste « complete », 32/100 « Deal faible », confiance moyenne, strictement comme avant", () => {
+  it("reste « complete », « Deal faible » (41/100 au niveau starter, 32/100 au niveau confirmé mesuré en production), confiance moyenne", () => {
     const analysis = composeAnalysis(extraction(CASE_A));
     expect(analysis.evaluability).toBe("complete");
-    expect(analysis.score).toEqual({ value: 32, band: "weak" });
+    expect(analysis.score).toEqual({ value: 41, band: "weak" });
+    expect(composeAnalysis(extraction(CASE_A), { tier: "confirmed" }).score).toEqual({ value: 32, band: "weak" });
     expect(analysis.score).toEqual(computeScore(CASE_A, computeEstimate(CASE_A)));
     expect(BAND_LABEL[analysis.score!.band]).toBe("Deal faible");
     expect(analysis.confidence).toBe("medium");
@@ -361,15 +362,21 @@ describe("CASE F — prix connu, conditions inconnues", () => {
 
   it("« terms_unknown » : estimation conservée, score null, hypothèse explicite", () => {
     const estimate = computeEstimate(CASE_F);
-    // 85 avant la #019 ; 250 € pile sur la borne basse ne vaut plus que +18.
-    expect(computeScore(CASE_F, estimate)).toEqual({ value: 73, band: "good" });
+    // Niveau confirmé : 73 (250 € pile sur la borne basse, +18 depuis la #019).
+    expect(computeScore(CASE_F, computeEstimate(CASE_F, { tier: "confirmed" }))).toEqual({ value: 73, band: "good" });
+    // Niveau par défaut starter (fr-2026.3) : 250 € au-dessus de 100–180 €, +30 → 85.
+    expect([estimate.total_low, estimate.total_high]).toEqual([100, 180]);
+    expect(computeScore(CASE_F, estimate)).toEqual({ value: 85, band: "excellent" });
     expect(analysis.evaluability).toBe("terms_unknown");
     expect(analysis.score).toBeNull();
     expect(analysis.estimate.total_low).toBe(estimate.total_low);
     expect(analysis.estimate.total_high).toBe(estimate.total_high);
     expect(analysis.estimate.assumptions).toContain(TERMS_UNKNOWN_ASSUMPTION);
-    expect(analysis.counter_offer.amount_low).toBe(375);
-    expect(analysis.counter_offer.amount_high).toBe(estimate.total_high);
+    // Montant au-dessus de la fourchette : aucune contre-offre chiffrée (375–500 € au niveau confirmé).
+    expect(analysis.counter_offer.amount_low).toBeNull();
+    expect(analysis.counter_offer.amount_high).toBeNull();
+    const confirmed = composeAnalysis(extraction(CASE_F), { tier: "confirmed" });
+    expect([confirmed.counter_offer.amount_low, confirmed.counter_offer.amount_high]).toEqual([375, 500]);
   });
 
   it("« Offre à préciser », comparaison au montant, liste des conditions, aucun libellé de qualité", () => {
@@ -377,7 +384,8 @@ describe("CASE F — prix connu, conditions inconnues", () => {
     expect(html).toContain("Offre à préciser");
     expect(html).toContain("On peut chiffrer ce que ça vaut, pas si le deal est bon : la marque ne dit rien de ses conditions.");
     expect(html).toContain("Montant proposé");
-    expect(html).toContain("Le montant proposé est tout en bas de notre fourchette.");
+    // Niveau starter : 250 € au-dessus de 100–180 € (« tout en bas » au niveau confirmé).
+    expect(html).toContain("Le montant proposé est au-dessus de notre fourchette.");
     expect(html).toContain("Ce que ça vaut");
     // Plafonnée à quatre : droits et durée, exclusivité, délai de paiement ;
     // « Nom de la marque », le territoire et les révisions passent après.

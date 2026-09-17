@@ -182,7 +182,9 @@
 }
 
 /* Arrivée sur un résultat : le score monte de 0 à sa valeur et la jauge se
-   remplit, une fois, en 700 ms. Rien d'autre ne bouge. Le chiffre est un
+   remplit, une fois, en 700 ms. Rien d'autre ne bouge. Au changement de niveau
+   (mission #040), la même animation est rejouée depuis le score précédent
+   (--score-from, --gauge-from, --marker-from), vers le nouveau. Le chiffre est un
    compteur CSS animé par une propriété enregistrée : sans animation (ancien
    navigateur, mouvement réduit), il s'affiche directement à sa valeur. */
 @property --score-now {
@@ -192,17 +194,17 @@
 }
 @keyframes score-count {
   from {
-    --score-now: 0;
+    --score-now: var(--score-from, 0);
   }
 }
 @keyframes gauge-grow {
   from {
-    width: 0;
+    width: var(--gauge-from, 0%);
   }
 }
 @keyframes gauge-marker {
   from {
-    left: 2px; /* départ dans la piste, comme le repère à 0 */
+    left: var(--marker-from, 2px); /* départ dans la piste, comme le repère à 0 */
   }
 }
 .score-count {

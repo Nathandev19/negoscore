@@ -122,11 +122,13 @@ describe("enregistrement de l'avis", () => {
   });
 
   it("B4 — le niveau envoyé est enregistré, avec les chiffres recalculés à ce niveau par le serveur", async () => {
-    const expected = recomputeForTier(sampleAnalysis, "starter");
-    expect(expected.estimate.total_low).toBeLessThan(sampleAnalysis.estimate.total_low!);
-    expect((await post(CURRENT_ID, OWNER, { rating: "too_high", tier: "starter" })).status).toBe(200);
+    // L'exemple est calculé au niveau par défaut (starter depuis fr-2026.3) : l'avis
+    // porte sur un autre niveau, confirmé, dont la fourchette est plus haute.
+    const expected = recomputeForTier(sampleAnalysis, "confirmed");
+    expect(expected.estimate.total_low).toBeGreaterThan(sampleAnalysis.estimate.total_low!);
+    expect((await post(CURRENT_ID, OWNER, { rating: "too_high", tier: "confirmed" })).status).toBe(200);
     expect(db.writes[0].row).toMatchObject({
-      profile_tier: "starter",
+      profile_tier: "confirmed",
       score: expected.score?.value,
       total_low: expected.estimate.total_low,
       total_high: expected.estimate.total_high,

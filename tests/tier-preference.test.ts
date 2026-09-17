@@ -49,16 +49,16 @@ beforeEach(() => {
 });
 
 describe("niveau utilisé pour une nouvelle analyse", () => {
-  it("sans choix : le défaut de la table", async () => {
-    expect(await preferredTier(request(null), null)).toBe("confirmed");
+  it("sans choix : le défaut de la table (starter depuis fr-2026.3)", async () => {
+    expect(await preferredTier(request(null), null)).toBe("starter");
   });
 
   it("visiteur anonyme : le cookie du navigateur", async () => {
-    expect(await preferredTier(request("negoscore_niveau=starter"), null)).toBe("starter");
+    expect(await preferredTier(request("negoscore_niveau=experienced"), null)).toBe("experienced");
   });
 
   it("cookie trafiqué : ignoré", async () => {
-    expect(await preferredTier(request("negoscore_niveau=nano"), null)).toBe("confirmed");
+    expect(await preferredTier(request("negoscore_niveau=nano"), null)).toBe("starter");
   });
 
   it("compte : le niveau du compte passe avant le cookie", async () => {
@@ -66,13 +66,14 @@ describe("niveau utilisé pour une nouvelle analyse", () => {
     expect(await preferredTier(request("negoscore_niveau=starter"), ACCOUNT)).toBe("experienced");
   });
 
+  // Cookies différents du défaut (starter) : sinon le test passerait sans lire le cookie.
   it("compte sans niveau enregistré : le cookie", async () => {
-    expect(await preferredTier(request("negoscore_niveau=starter"), ACCOUNT)).toBe("starter");
+    expect(await preferredTier(request("negoscore_niveau=experienced"), ACCOUNT)).toBe("experienced");
   });
 
   it("colonne absente (migration 017 non appliquée) : le cookie, sans bloquer l'analyse", async () => {
     db.missingColumn = true;
-    expect(await preferredTier(request("negoscore_niveau=starter"), ACCOUNT)).toBe("starter");
+    expect(await preferredTier(request("negoscore_niveau=confirmed"), ACCOUNT)).toBe("confirmed");
   });
 });
 

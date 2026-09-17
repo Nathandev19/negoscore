@@ -56,12 +56,22 @@ describe("A — points prix gradués sur la position dans la fourchette", () => 
     expect(computeScore(best, computeEstimate(best))).toEqual({ value: 90, band: "excellent" });
   });
 
-  it("NOVA : 600 € dans 460–1 090 € vaut 81, « Bon deal »", () => {
-    const estimate = computeEstimate(NOVA);
+  // Cas NOVA (#019) mesuré au niveau confirmé, niveau par défaut jusqu'à fr-2026.2.
+  // Le calcul du prix dans la fourchette y est gardé tel quel, au niveau explicite.
+  it("NOVA au niveau confirmé : 600 € dans 460–1 090 € vaut 81, « Bon deal »", () => {
+    const estimate = computeEstimate(NOVA, { tier: "confirmed" });
     expect([estimate.total_low, estimate.total_high]).toEqual([460, 1090]);
     const score = computeScore(NOVA, estimate);
     expect(score).toEqual({ value: 81, band: "good" });
     expect(BAND_LABEL[score.band]).toBe("Bon deal");
+  });
+
+  it("NOVA au niveau par défaut (starter, fr-2026.3) : 600 € au-dessus de 180–400 € vaut 90, « Excellent deal »", () => {
+    const estimate = computeEstimate(NOVA);
+    expect([estimate.total_low, estimate.total_high]).toEqual([180, 400]);
+    const score = computeScore(NOVA, estimate);
+    // 50 + 30 (au-dessus de la borne haute) + 5 (paiement à 30 jours) + 5 (organique) = 90, le plafond de fait.
+    expect(score).toEqual({ value: 90, band: "excellent" });
   });
 });
 
@@ -116,14 +126,23 @@ describe("C — la contre-offre ancre au-dessus de l'offre", () => {
 });
 
 describe("D — le message cite la contre-offre, jamais l'estimation", () => {
-  it("NOVA : contre-offre au-dessus de 600 €, message aligné sur elle", () => {
-    const analysis = composeAnalysis(extraction(NOVA));
+  // Au niveau confirmé : 600 € est DANS la fourchette, seul cas où la contre-offre
+  // part du milieu entre le montant et la borne haute.
+  it("NOVA au niveau confirmé : contre-offre au-dessus de 600 €, message aligné sur elle", () => {
+    const analysis = composeAnalysis(extraction(NOVA), { tier: "confirmed" });
     expect(analysis.evaluability).toBe("complete");
     expect(analysis.score).toEqual({ value: 81, band: "good" });
     expect(analysis.estimate.total_low).toBe(460);
     expect(analysis.counter_offer).toMatchObject({ amount_low: 845, amount_high: 1090 });
     expect(analysis.ready_to_send_message.text).toContain(`entre ${formatEur(845)} et ${formatEur(1090)}`);
     expect(analysis.ready_to_send_message.text).not.toContain(formatEur(460));
+  });
+
+  it("NOVA au niveau par défaut : 600 € au-dessus de 180–400 €, aucune contre-offre chiffrée", () => {
+    const analysis = composeAnalysis(extraction(NOVA));
+    expect(analysis.score).toEqual({ value: 90, band: "excellent" });
+    expect(analysis.counter_offer).toMatchObject({ amount_low: null, amount_high: null });
+    expect(analysis.ready_to_send_message.text).toContain("un tarif que je vous détaille dans mon devis");
   });
 
   it("offre au-dessus de la fourchette : aucun montant, repli du message", () => {
@@ -136,6 +155,7 @@ describe("D — le message cite la contre-offre, jamais l'estimation", () => {
 
   it("sans montant proposé : la fourchette entière", () => {
     const analysis = composeAnalysis(extraction(withAmount(null)));
-    expect(analysis.counter_offer).toMatchObject({ amount_low: 460, amount_high: 1090 });
+    // Fourchette NOVA au niveau par défaut (starter) : 180–400 €.
+    expect(analysis.counter_offer).toMatchObject({ amount_low: 180, amount_high: 400 });
   });
 });

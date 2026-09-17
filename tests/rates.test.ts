@@ -10,7 +10,7 @@ import {
   upliftCap,
   volumeDiscountFactor,
 } from "@/lib/rates/engine";
-import rates from "@/lib/rates/fr-2026.2.json";
+import rates from "@/lib/rates/fr-2026.3.json";
 import { computeScore } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
 import extracted17 from "./fixtures/deal-17-contrat-boisson.json";
@@ -51,7 +51,8 @@ function makeDeal(overrides: Partial<Deal> = {}): Deal {
   };
 }
 
-const base = rates.base_rates_eur.confirmed;
+// Ligne du niveau par défaut de la table (starter depuis fr-2026.3, mission #040).
+const base = rates.base_rates_eur[rates.base_rates_eur.default_tier as "starter" | "confirmed" | "experienced"];
 const m = rates.multipliers;
 
 function lineFor(deal: Deal, topic: string) {
@@ -161,12 +162,18 @@ describe("computeEstimate", () => {
     const estimate = computeEstimate(deal);
     // #002 : 7 900–23 400 €. #003 : 4 930–14 630 €. Plafond heavy + dégressivité.
     // fr-2026.2 : 5 unités pondérées facturées 4,3 au lieu de 4 (paliers) :
-    // 3 500–7 000 € devient 3 760–7 530 €.
+    // 3 500–7 000 € devient 3 760–7 530 € au niveau confirmé.
+    // fr-2026.3 (#040) : niveau par défaut « starter ». Base 100 × 4,3 = 430 €,
+    // plafond heavy +250 % → 1 505 € arrondi à 1 500 ; haut 180 × 4,3 × 3,5 =
+    // 2 709 € → 2 710. L'offre de 3 500 € passe au-dessus de la fourchette.
     expect(units).toBe(5);
     expect(estimate.base_low).toBe(Math.round(base.low * billableUnits(units)));
-    expect(estimate.total_low).toBe(3760);
-    expect(estimate.total_high).toBe(7530);
+    expect(estimate.total_low).toBe(1500);
+    expect(estimate.total_high).toBe(2710);
     expect(estimate.assumptions).toContain(UPLIFT_CAPPED_ASSUMPTION);
+    // Même deal au niveau confirmé : montants de fr-2026.2 inchangés.
+    const confirmed = computeEstimate(deal, { tier: "confirmed" });
+    expect([confirmed.total_low, confirmed.total_high]).toEqual([3760, 7530]);
     expect(estimate.total_low! / deal.payment.amount_eur!).toBeLessThanOrEqual(3);
   });
 
@@ -267,7 +274,8 @@ describe("computeEstimate", () => {
 
   it("contrôle de vraisemblance : écart signalé sans toucher la fourchette", () => {
     const fair = computeEstimate(makeDeal());
-    const lowball = computeEstimate(makeDeal({ payment: { amount_eur: 50, currency: "EUR", terms_days: null, schedule: null } }));
+    // Fourchette 100–180 € au niveau par défaut : 30 € est sous le tiers de 100.
+    const lowball = computeEstimate(makeDeal({ payment: { amount_eur: 30, currency: "EUR", terms_days: null, schedule: null } }));
     expect(lowball.total_low).toBe(fair.total_low);
     expect(lowball.total_high).toBe(fair.total_high);
     expect(lowball.assumptions.some((a) => a === PLAUSIBILITY_ASSUMPTION)).toBe(true);
@@ -280,7 +288,7 @@ describe("computeEstimate", () => {
   it("sans montant proposé : même fourchette qu'avec un montant, sans écart signalé", () => {
     const deal = makeDeal({ payment: { amount_eur: null, currency: "EUR", terms_days: null, schedule: null } });
     const estimate = computeEstimate(deal);
-    const withAmount = computeEstimate(makeDeal({ payment: { amount_eur: 50, currency: "EUR", terms_days: null, schedule: null } }));
+    const withAmount = computeEstimate(makeDeal({ payment: { amount_eur: 30, currency: "EUR", terms_days: null, schedule: null } }));
     expect(estimate.total_low).not.toBeNull();
     expect(estimate.total_low).toBe(withAmount.total_low);
     expect(estimate.total_high).toBe(withAmount.total_high);
@@ -325,11 +333,16 @@ describe("computeScore", () => {
   });
 
   it("sous la borne basse : 0 à 18 points, linéaire entre 0,4 × bas et bas", () => {
-    // Fourchette 250–500 €. 175 € : à mi-chemin entre 100 et 250 → +9.
-    const deal = makeDeal({ payment: { amount_eur: 175, currency: "EUR", terms_days: null, schedule: null } });
+    // Fourchette 100–180 € (starter, défaut depuis fr-2026.3). 70 € : à mi-chemin
+    // entre 0,4 × 100 = 40 et 100 → +9. (Au niveau confirmé : 175 € dans 250–500 €.)
+    const deal = makeDeal({ payment: { amount_eur: 70, currency: "EUR", terms_days: null, schedule: null } });
     const estimate = computeEstimate(deal);
-    expect([estimate.total_low, estimate.total_high]).toEqual([250, 500]);
+    expect([estimate.total_low, estimate.total_high]).toEqual([100, 180]);
     expect(computeScore(deal, estimate).value).toBe(50 + 9 + 5);
+    const confirmedDeal = makeDeal({ payment: { amount_eur: 175, currency: "EUR", terms_days: null, schedule: null } });
+    const confirmed = computeEstimate(confirmedDeal, { tier: "confirmed" });
+    expect([confirmed.total_low, confirmed.total_high]).toEqual([250, 500]);
+    expect(computeScore(confirmedDeal, confirmed).value).toBe(50 + 9 + 5);
   });
 });
 

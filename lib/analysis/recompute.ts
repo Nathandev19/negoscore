@@ -1,6 +1,6 @@
 import { engineParts, pricePhrase, topicImpact } from "@/lib/analysis/engine-parts";
 import type { ResultView } from "@/lib/analysis/lock";
-import rates from "@/lib/rates/fr-2026.2.json";
+import rates from "@/lib/rates/fr-2026.3.json";
 import { LEGACY_ENGINE_ASSUMPTIONS, type EstimateLine } from "@/lib/rates/engine";
 import type { Tier } from "@/lib/rates/tier";
 
@@ -21,8 +21,14 @@ import type { Tier } from "@/lib/rates/tier";
 // calculée avec la table actuelle. Avec une table plus ancienne, recalculer
 // changerait aussi les chiffres au niveau d'origine : l'historique ne serait
 // plus celui qui a été montré.
+// fr-2026.2 : mêmes tarifs que fr-2026.3, seul le niveau par défaut a changé
+// (confirmed → starter, mission #040). Recalculer un autre niveau d'une analyse
+// fr-2026.2 donne donc les chiffres exacts ; revenir à son niveau d'origine rend
+// l'analyse enregistrée telle quelle.
+const SAME_RATES_VERSIONS: readonly string[] = ["fr-2026.2", rates.version];
+
 export function tierChangeAvailable(analysis: Pick<ResultView, "evaluability" | "estimate">): boolean {
-  return analysis.evaluability !== "incomplete" && analysis.estimate.rate_table_version === rates.version;
+  return analysis.evaluability !== "incomplete" && SAME_RATES_VERSIONS.includes(analysis.estimate.rate_table_version);
 }
 
 export function recomputeForTier<T extends ResultView>(analysis: T, tier: Tier): T {

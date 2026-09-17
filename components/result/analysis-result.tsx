@@ -47,12 +47,16 @@ export function AnalysisResult({
   rememberOnAccount?: boolean;
 }) {
   const [tier, setTier] = useState<Tier>(stored.profile_tier);
-  const [changed, setChanged] = useState(false);
+  // Changement de niveau : le bandeau est remonté (key) pour rejouer l'animation,
+  // depuis le score affiché juste avant. prefers-reduced-motion : valeur finale
+  // directement (règle globale de globals.css).
+  const [replay, setReplay] = useState<{ count: number; from: number | null }>({ count: 0, from: null });
   const analysis = useMemo(() => recomputeForTier(stored, tier), [stored, tier]);
 
   function chooseTier(next: Tier) {
+    if (next === tier) return;
+    setReplay({ count: replay.count + 1, from: analysis.score?.value ?? null });
     setTier(next);
-    setChanged(true);
     rememberTier(next, rememberOnAccount);
   }
 
@@ -69,8 +73,7 @@ export function AnalysisResult({
       <section aria-label="Verdict" className="on-marque grain bg-marque text-creme">
         <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-10 sm:px-6 lg:pt-10 lg:pb-14">
           <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>
-          {/* Après un changement de niveau, les nouvelles valeurs s'affichent sans rejouer l'animation. */}
-          <ScoreBand analysis={analysis} animated={!changed} showTier={!incomplete} />
+          <ScoreBand key={replay.count} analysis={analysis} from={replay.from} showTier={!incomplete} />
         </div>
       </section>
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 pt-8 pb-16 sm:px-6 md:pt-12 md:pb-24 [&>*]:max-w-2xl">

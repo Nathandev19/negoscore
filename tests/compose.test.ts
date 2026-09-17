@@ -102,7 +102,9 @@ describe("composeAnalysis", () => {
       makeExtraction({
         deal: {
           ...base.deal,
-          deliverables: [{ type: "video", platform: "tiktok", quantity: 4, format: null }],
+          // 8 vidéos (et non plus 4) : au niveau par défaut starter (fr-2026.3), 4 vidéos
+          // donnent 900 €, sans séparateur de milliers à vérifier. 8 : base 640 € → 1 280 €.
+          deliverables: [{ type: "video", platform: "tiktok", quantity: 8, format: null }],
           usage: { ...base.deal.usage, paid_ads: true, duration_months: 12, territory: "monde entier" },
           payment: { ...base.deal.payment, amount_eur: 1500 },
         },
