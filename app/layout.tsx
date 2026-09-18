@@ -43,6 +43,15 @@ export const viewport: Viewport = {
   // navigateur prolonge alors la page au lieu de poser un bandeau bleu que
   // rien ne prolonge en haut de l'écran. Le site n'a pas de mode sombre.
   themeColor: STATIC_PALETTE.creme,
+  // Schéma de couleurs (mission #063) : « only light », rendu en
+  // <meta name="color-scheme" content="only light">. C'est le mot-clé « only »
+  // qui interdit à Chrome Android d'assombrir lui-même la page ; « light » seul
+  // ne suffit pas. Sans lui, nos couleurs seraient réécrites à l'écran et les
+  // contrastes vérifiés par tests/design.test.ts ne vaudraient plus rien.
+  // Les e-mails, eux, restent en « light dark » (lib/email/layout.ts) : ils ont
+  // un vrai bloc @media (prefers-color-scheme: dark). Deux surfaces, deux
+  // règles, volontairement — ne pas les harmoniser.
+  colorScheme: "only light",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
