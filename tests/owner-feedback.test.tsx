@@ -150,6 +150,63 @@ describe("A3 — la bonne adresse, une autre adresse connectée, personne", () =
   });
 });
 
+// ─── #079 : pourquoi une personne connectée n'a pas eu la page ──────────────
+
+describe("#079 — raison du refus dans les journaux, sans aucune adresse", () => {
+  const logged = () => {
+    const warn = vi.mocked(console.warn);
+    return warn.mock.calls.map((call) => JSON.parse(String(call[0])) as { event: string; reason: string; variable: Record<string, unknown> });
+  };
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    vi.mocked(console.warn).mockRestore();
+  });
+
+  it("une autre adresse connectée : « adresse_differente », et ni l'une ni l'autre adresse n'est écrite", async () => {
+    await visit("/dev/retours", "nina@exemple.test");
+    expect(logged()).toEqual([expect.objectContaining({ event: "owner_page_refused", reason: "adresse_differente" })]);
+    const line = String(vi.mocked(console.warn).mock.calls[0][0]);
+    expect(line).not.toContain("nina");
+    expect(line).not.toContain("nathan");
+    expect(line).not.toContain("@exemple");
+  });
+
+  it("variable absente : « variable_absente », même pour la bonne adresse", async () => {
+    vi.stubEnv("OWNER_EMAIL", "");
+    await visit("/dev/retours", OWNER);
+    expect(logged()[0]).toMatchObject({ reason: "variable_absente", variable: { longueur: 0 } });
+  });
+
+  it("variable collée avec des guillemets : refusée, et le journal le montre", async () => {
+    vi.stubEnv("OWNER_EMAIL", `"${OWNER}"`);
+    const r = await visit("/dev/retours", OWNER);
+    expect(rewrittenTo(r)).toBe("/_introuvable");
+    expect(logged()[0]).toMatchObject({ reason: "adresse_differente", variable: { guillemets: true, arobase: true } });
+  });
+
+  it("session refusée par Supabase : « session_non_verifiee »", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ msg: "invalid" }, { status: 401 })));
+    await proxy(new NextRequest("http://localhost:3000/dev/retours", { headers: { cookie: "sb_access_token=perime" } }));
+    expect(logged()[0]).toMatchObject({ reason: "session_non_verifiee" });
+  });
+
+  it("personne (aucun cookie) et le propriétaire : rien d'écrit", async () => {
+    await visit("/dev/retours", null);
+    await visit("/dev/retours", OWNER);
+    expect(logged()).toEqual([]);
+  });
+
+  it("la variable est lue par son nom en toutes lettres, jamais par une clé calculée", () => {
+    for (const file of ["lib/admin/owner.ts", "proxy.ts"]) {
+      const source = readFileSync(path.join(process.cwd(), file), "utf8").replace(/\/\/.*$/gm, "");
+      expect(source, file).not.toMatch(/process\.env\[/);
+    }
+    expect(readFileSync(path.join(process.cwd(), "lib/admin/owner.ts"), "utf8")).toContain("= process.env.OWNER_EMAIL");
+  });
+});
+
 // ─── A1 : la zone /dev en production ─────────────────────────────────────────
 
 describe("A1 — app/dev : rien n'existe en production, sauf les pages réservées", () => {

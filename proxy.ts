@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isDevZone, isOwnerEmail, isOwnerPath } from "@/lib/admin/owner";
+import { isDevZone, isOwnerEmail, isOwnerPath, ownerRefusal, ownerRefusalLog } from "@/lib/admin/owner";
 import { requiresAccount } from "@/lib/auth/account-pages";
 import { signedInRedirectPath } from "@/lib/auth/next-path";
 import {
@@ -92,10 +92,12 @@ export async function proxy(request: NextRequest) {
   // Vérification auprès de Supabase, là où elle décide de l'accès.
   let signedIn = false;
   let owner = false;
+  let sessionEmail: string | null = null;
   if (token && (requiresAccount(pathname) || onLoginPage || ownerOnly)) {
     const check = await checkAccessToken(token);
     if (check.kind === "valid") {
       signedIn = true;
+      sessionEmail = check.user.email;
       owner = isOwnerEmail(check.user.email);
     }
     // Refus constaté. Sauf si le rafraîchissement n'a pas pu se faire : le
@@ -112,6 +114,9 @@ export async function proxy(request: NextRequest) {
 
   let response: NextResponse;
   if (ownerOnly && !owner) {
+    // Une personne avec un cookie de session refusée ici : la raison va dans
+    // les journaux (mission #079). Sans cookie (visiteur, robot), rien.
+    if (token) console.warn(ownerRefusalLog(ownerRefusal(sessionEmail)));
     response = NextResponse.rewrite(new URL(NOWHERE, request.url));
   } else if (requiresAccount(pathname) && !signedIn) {
     const target = `/connexion?next=${encodeURIComponent(`${pathname}${search}`)}`;
