@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { MAX_TEXT_LENGTH, MAX_TEXT_LENGTH_LABEL } from "@/lib/analysis/text";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,9 +17,11 @@ import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
 import { clearDraft, readDraft, saveDraft, subscribeDraft } from "@/lib/draft";
 import { clearPendingKey, pendingKey } from "@/lib/analysis/pending-key";
 import { validateFile, type FileKind } from "@/lib/upload";
-import { analyseWithoutJs, type AnalyseWithoutJsState } from "@/lib/forms/no-js-actions";
+import { WITH_JS_ONLY, WITHOUT_JS } from "@/lib/no-js";
 
 const MIN_TEXT_LENGTH = 20;
+export const NO_JS_MESSAGE =
+  "L'analyse demande JavaScript, et il est coupé dans ton navigateur : rien n'est envoyé d'ici. Active-le, puis recharge la page. Copie ton texte avant, le rechargement peut l'effacer.";
 // Message d'échec (mission #060) : il ne promet plus que rien n'a été
 // décompté — l'analyse a pu aboutir côté serveur sans nous parvenir. Relancer
 // avec le même bouton rejoue la MÊME clé : si elle était partie, le résultat
@@ -134,11 +136,7 @@ export function DealInput({ note }: { note?: string } = {}) {
   // ici, puis ce qui est tapé. Jamais perdu après un refus (lib/draft.ts).
   const [edited, setEdited] = useState<string | null>(null);
   const draft = useSyncExternalStore(subscribeDraft, () => readDraft(), () => "");
-  // Envoi sans JavaScript (mission #075) : le formulaire part vers une action
-  // serveur, qui transmet à /api/analyse. En cas d'échec, le serveur rend ce
-  // formulaire avec le texte collé et le message : rien n'est perdu.
-  const [noJs, noJsAction] = useActionState(analyseWithoutJs, { status: "idle" } as AnalyseWithoutJsState);
-  const text = edited ?? (noJs.status === "error" ? noJs.text : draft);
+  const text = edited ?? draft;
   function setText(value: string) {
     setEdited(value);
     saveDraft(value);
@@ -294,9 +292,6 @@ export function DealInput({ note }: { note?: string } = {}) {
 
   return (
     <form
-      // Sans JavaScript, le navigateur envoie le formulaire à cette action.
-      // Avec JavaScript, onSubmit l'intercepte (preventDefault) : rien ne change.
-      action={noJsAction}
       className="flex flex-col gap-3"
       onSubmit={(event) => {
         event.preventDefault();
@@ -325,13 +320,6 @@ export function DealInput({ note }: { note?: string } = {}) {
           <TabsTrigger value="photo">Photo</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
         </TabsList>
-        {/* Sans JavaScript (mission #075), les onglets ne s'ouvrent pas et le
-            dépôt de fichier ne peut pas partir : on le dit. */}
-        <noscript>
-          <p className="mt-2 text-small">
-            Sans JavaScript, seul le message collé peut être analysé : la photo et le PDF demandent JavaScript.
-          </p>
-        </noscript>
 
         <TabsContent value="text" className="flex flex-col gap-1.5">
           <Textarea
@@ -342,11 +330,11 @@ export function DealInput({ note }: { note?: string } = {}) {
             }}
             placeholder="Colle ici le DM, le mail ou le brief de la marque…"
             aria-label="Message de la marque"
-            name="text"
             aria-describedby={countId}
             className="min-h-40 resize-y"
           />
-          <p id={countId} className="text-right text-small text-attenue tabular-nums" aria-live="polite">
+          {/* Sans JavaScript, le compteur ne suivrait pas la frappe : masqué. */}
+          <p {...WITH_JS_ONLY} id={countId} className="text-right text-small text-attenue tabular-nums" aria-live="polite">
             {textLength < MIN_TEXT_LENGTH
               ? `${textLength} caractère${textLength > 1 ? "s" : ""} · ${MIN_TEXT_LENGTH} minimum`
               : `${textLength} caractères · ${MAX_TEXT_LENGTH_LABEL} maximum`}
@@ -372,20 +360,6 @@ export function DealInput({ note }: { note?: string } = {}) {
         ))}
       </Tabs>
 
-      {!notice && noJs.status === "error" ? (
-        // Réponse écrite par le serveur après un envoi sans JavaScript.
-        <div role="alert" className="flex flex-col gap-2 alert-bad py-1 text-sm">
-          <p>{noJs.message}</p>
-          {noJs.paywall ? (
-            <p>
-              <Link href="/tarifs" className="link font-semibold">
-                Voir les tarifs
-              </Link>
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
       {notice ? (
         <div role="alert" className="flex flex-col gap-2 alert-bad py-1 text-sm">
           <p>{notice.message}</p>
@@ -399,7 +373,16 @@ export function DealInput({ note }: { note?: string } = {}) {
         </div>
       ) : null}
 
+      {/* Sans JavaScript (mission #076) : l'analyse ne part pas. Son résultat
+          ne s'afficherait pas (la page de résultat arrive en différé, affichée
+          par un script) : une analyse consommée pour rien à lire. Le bouton
+          est donc retiré et on dit pourquoi. Aucun envoi, le texte tapé reste
+          dans la zone. Montré et masqué par lib/no-js.ts, pas par <noscript>. */}
+      <p {...WITHOUT_JS} className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
+        {NO_JS_MESSAGE}
+      </p>
       <Button
+        {...WITH_JS_ONLY}
         type="submit"
         size="lg"
         // Sans droit, le bouton d'analyse n'est plus l'action mise en avant. Il reste
@@ -414,19 +397,11 @@ export function DealInput({ note }: { note?: string } = {}) {
         Analyser mon deal
       </Button>
       {canSubmit ? null : (
-        <p id={reasonId} className="text-center text-small text-attenue">
+        <p {...WITH_JS_ONLY} id={reasonId} className="text-center text-small text-attenue">
           {disabledReason}
         </p>
       )}
       {note && !right.blocked ? <p className="text-center text-small text-attenue">{note}</p> : null}
-      {/* Sans JavaScript, pas d'écran d'attente animé (mission #075) : la page
-          reste affichée pendant l'analyse, puis le résultat s'ouvre. */}
-      <noscript>
-        <p className="text-center text-small text-attenue">
-          Sans JavaScript, l&apos;analyse peut prendre jusqu&apos;à une minute : la page reste affichée pendant ce
-          temps, ne la quitte pas. Ton résultat s&apos;ouvre dès qu&apos;il est prêt.
-        </p>
-      </noscript>
     </form>
   );
 }

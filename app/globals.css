@@ -138,6 +138,15 @@
   }
 }
 
+/* Avec ou sans JavaScript (mission #076). data-js est posé sur <html> par le
+   script en ligne de app/layout.tsx, avant le premier affichage. Hors couche
+   et !important : aucune classe utilitaire (flex, grid…) ne peut rallumer ce
+   qui doit rester éteint. */
+[data-js] [data-sans-js],
+html:not([data-js]) [data-avec-js] {
+  display: none !important;
+}
+
 /* Titres et chiffres : Bricolage Grotesque 800, serré, largeur maximale. */
 @utility headline {
   font-family: var(--font-display);

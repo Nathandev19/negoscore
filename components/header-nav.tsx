@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Logo } from "@/components/brand/logo";
 import { NavPending } from "@/components/nav-pending";
+import { WITHOUT_JS } from "@/lib/no-js";
 import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string };
@@ -145,17 +146,16 @@ export function HeaderNav({
             // Place réservée, invisible et inerte : rien n'est affirmé avant de
             // savoir. Sans JavaScript (mission #073), l'état ne sera jamais
             // connu : « Se connecter » s'affiche exactement par-dessus, même
-            // texte donc même largeur. Avec JavaScript, le navigateur n'affiche
-            // jamais le contenu de <noscript> : aucun clignotement.
+            // texte donc même largeur. Avec JavaScript, ce lien est masqué
+            // avant le premier affichage (lib/no-js.ts) : aucun clignotement.
+            // Pas de <noscript> (mission #076) : voir app/layout.tsx.
             <span className="grid">
               <span aria-hidden data-account-pending className={cn(LINK, "invisible relative col-start-1 row-start-1 font-medium")}>
                 {account.label}
               </span>
-              <noscript className="col-start-1 row-start-1">
-                <a href="/connexion" className={cn(LINK, "relative font-medium")}>
-                  Se connecter
-                </a>
-              </noscript>
+              <a {...WITHOUT_JS} href="/connexion" className={cn(LINK, "relative col-start-1 row-start-1 font-medium")}>
+                Se connecter
+              </a>
             </span>
           ) : (
             <Link href={account.href} aria-current={current(account.href)} className={cn(LINK, "relative font-medium")}>
@@ -173,11 +173,9 @@ export function HeaderNav({
           {/* Mobile sans JavaScript (mission #073) : le menu ne peut pas
               s'ouvrir, la connexion est donc offerte à côté du bouton. */}
           {unknown ? (
-            <noscript>
-              <a href="/connexion" className={cn(LINK, "flex min-h-11 items-center text-sm font-medium")}>
-                Se connecter
-              </a>
-            </noscript>
+            <a {...WITHOUT_JS} href="/connexion" className={cn(LINK, "flex min-h-11 items-center text-sm font-medium")}>
+              Se connecter
+            </a>
           ) : null}
           <button
             ref={toggleRef}

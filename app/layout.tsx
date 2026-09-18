@@ -7,6 +7,7 @@ import { ShownOnceTracker } from "@/components/shown-once-tracker";
 import { JsonLd } from "@/components/seo/json-ld";
 import { BRAND } from "@/lib/brand";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
+import { JS_FLAG_SCRIPT } from "@/lib/no-js";
 import { CANONICAL_ORIGIN, organizationJsonLd, webSiteJsonLd } from "@/lib/seo";
 import "./globals.css";
 
@@ -59,8 +60,24 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
+      suppressHydrationWarning
       className={`${familjen.variable} ${bricolage.variable} h-full antialiased`}
     >
+      <head>
+        {/* Mission #076 — « JavaScript actif », posé avant le premier affichage.
+            Les messages pour une personne sans JavaScript (data-sans-js) et ce
+            qui ne fonctionne qu'avec lui (data-avec-js) sont montrés ou
+            masqués par globals.css selon cet attribut, JAMAIS par <noscript> :
+            quand les scripts sont bloqués après la lecture de la page
+            (extension, politique de sécurité, vue web d'une application), le
+            navigateur a lu <noscript> comme du texte brut, et c'est le code
+            qui s'affiche ou rien du tout. Ce script-ci ne s'exécute pas dans ce
+            cas non plus : les messages restent visibles, en vrai balisage.
+            Un attribut plutôt qu'une classe : React ne gère pas cet attribut
+            sur <html> et ne le retire donc jamais (suppressHydrationWarning :
+            il est ajouté avant l'hydratation, volontairement). */}
+        <script dangerouslySetInnerHTML={{ __html: JS_FLAG_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col bg-creme">
         {/* L'entité derrière le site : nom, adresse canonique, logo, compte
             public. Rien de chiffré, rien d'invérifiable (mission #051). */}

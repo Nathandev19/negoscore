@@ -6,10 +6,6 @@ import { SiteHeader } from "@/components/site-header";
 
 export const metadata: Metadata = publicPageMetadata("/analyse");
 
-// Formulaire d'analyse envoyé sans JavaScript (mission #075) : l'action
-// serveur attend l'analyse, comme la route /api/analyse. Même délai maximal.
-export const maxDuration = 120;
-
 export default function AnalysePage() {
   return (
     <>

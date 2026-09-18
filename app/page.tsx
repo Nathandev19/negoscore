@@ -23,10 +23,6 @@ const SECTION_INNER = "mx-auto flex w-full max-w-6xl flex-col px-4 py-16 sm:px-6
 
 export const metadata: Metadata = publicPageMetadata("/");
 
-// Formulaire d'analyse envoyé sans JavaScript (mission #075) : l'action
-// serveur attend l'analyse, comme la route /api/analyse. Même délai maximal.
-export const maxDuration = 120;
-
 export default function HomePage() {
   const { score, estimate, red_flags, deal } = sampleAnalysis;
   const total = formatEurRange(estimate.total_low, estimate.total_high);

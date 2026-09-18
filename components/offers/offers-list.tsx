@@ -9,6 +9,7 @@ import { CONSENT_TEXT } from "@/lib/billing/consent";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 import { isCancelled, isProActive, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
+import { WITH_JS_ONLY, WITHOUT_JS } from "@/lib/no-js";
 import { cn } from "@/lib/utils";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
@@ -199,14 +200,11 @@ function PendingPurchase({ primary }: { primary: boolean }) {
     <>
       {/* Sans JavaScript (mission #073), l'état du compte ne sera jamais lu et
           le paiement ne peut pas partir : on le dit, à la place de l'attente,
-          qui ne se résoudrait jamais. La connexion reste offerte par l'en-tête. */}
-      <noscript>
-        {/* L'attente ne se résoudra jamais sans JavaScript : elle est masquée. */}
-        <style>{"[data-pending-purchase]{display:none}"}</style>
-        <p data-noscript-purchase className="text-sm">
-          Le paiement demande JavaScript. Active-le dans ton navigateur pour choisir une formule.
-        </p>
-      </noscript>
+          qui ne se résoudrait jamais. La connexion reste offerte par l'en-tête.
+          Pas de <noscript> (mission #076) : voir app/layout.tsx. */}
+      <p {...WITHOUT_JS} className="text-sm">
+        Le paiement demande JavaScript. Active-le dans ton navigateur pour choisir une formule.
+      </p>
       <PendingBones primary={primary} />
     </>
   );
@@ -214,7 +212,8 @@ function PendingPurchase({ primary }: { primary: boolean }) {
 
 function PendingBones({ primary }: { primary: boolean }) {
   return (
-    <div aria-hidden data-pending-purchase className="flex flex-col gap-3">
+    // Sans JavaScript, l'attente ne se résoudrait jamais : elle est masquée.
+    <div aria-hidden data-pending-purchase {...WITH_JS_ONLY} className="flex flex-col gap-3">
       <span className="flex flex-col gap-1 text-xs">
         <Bone className="h-[0.7em] w-full" />
         <Bone className="h-[0.7em] w-3/4" />

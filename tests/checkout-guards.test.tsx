@@ -121,7 +121,8 @@ describe("A — /tarifs avant de savoir qui regarde", () => {
     // L'attente : une par formule payante, masquée aux lecteurs d'écran, avec une annonce unique.
     expect(html.match(/data-pending-purchase="true"/g)).toHaveLength(2);
     // Sans JavaScript (mission #073) : l'attente ne se résoudrait jamais, on dit pourquoi.
-    expect(html.match(/<noscript>[\s\S]*?Le paiement demande JavaScript[\s\S]*?<\/noscript>/g)).toHaveLength(2);
+    // Mission #076 : plus de <noscript>, un élément réservé à « sans JavaScript » (lib/no-js.ts).
+    expect(html.match(/<p data-sans-js="" class="text-sm">Le paiement demande JavaScript/g)).toHaveLength(2);
     expect(html).toContain('aria-busy="true"');
     expect(html).toContain("Lecture de ton compte avant d&#x27;afficher les boutons de paiement.");
   });
