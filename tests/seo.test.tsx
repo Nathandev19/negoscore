@@ -192,11 +192,13 @@ describe("données structurées", () => {
     }
   });
 
-  it("le bloc des formules est servi sur /tarifs, et seulement là", () => {
+  // Mission #069 : l'application est aussi déclarée sur l'accueil (avant :
+  // /tarifs seulement, décision #051), pour que Google sache ce qu'est Negoscore.
+  it("le bloc de l'application est servi sur l'accueil et sur /tarifs, et seulement là", () => {
     const pages = readdirSync(APP, { recursive: true, withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name === "page.tsx")
       .map((entry) => path.join(entry.parentPath, entry.name))
       .filter((file) => readFileSync(file, "utf8").includes("softwareApplicationJsonLd"));
-    expect(pages.map((file) => path.relative(APP, file).split(path.sep).join("/"))).toEqual(["tarifs/page.tsx"]);
+    expect(pages.map((file) => path.relative(APP, file).split(path.sep).join("/")).sort()).toEqual(["page.tsx", "tarifs/page.tsx"]);
   });
 });

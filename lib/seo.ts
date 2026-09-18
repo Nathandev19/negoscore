@@ -124,12 +124,22 @@ const TWITTER_IMAGE = { url: "/twitter-image", ...SITE_PREVIEW_SIZE, alt: SITE_P
 // image carrée d'au moins 112 px, sans transparence.
 export const ORGANIZATION_LOGO = `${CANONICAL_ORIGIN}/icon2`;
 
+// Comptes publics qui existent RÉELLEMENT, vérifiés à la main. Seul endroit à
+// compléter quand un compte s'ouvre : il alimente sameAs. Un compte inexistant
+// ici serait un signal négatif pour Google, et une fausse déclaration.
 export const SOCIAL_PROFILES = ["https://www.tiktok.com/@negoscore"] as const;
+
+// Identifiants des trois entités (mission #069) : ils relient l'organisation,
+// le site et l'application entre eux, et d'une page à l'autre.
+export const ORGANIZATION_ID = `${CANONICAL_ORIGIN}/#organisation`;
+export const WEBSITE_ID = `${CANONICAL_ORIGIN}/#site`;
+export const APPLICATION_ID = `${CANONICAL_ORIGIN}/#application`;
 
 export function organizationJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": ORGANIZATION_ID,
     name: BRAND.name,
     url: CANONICAL_ORIGIN,
     logo: ORGANIZATION_LOGO,
@@ -141,36 +151,72 @@ export function webSiteJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": WEBSITE_ID,
     name: BRAND.name,
     url: CANONICAL_ORIGIN,
     inLanguage: "fr-FR",
+    publisher: { "@id": ORGANIZATION_ID },
   };
 }
 
-// Offres de la page /tarifs : un Offer par formule payante, construit à partir
-// de PRICE. Le prix n'est jamais réécrit ici ; il est seulement converti au
-// format attendu par schema.org (point décimal).
+// Offres : un Offer par formule, construit à partir de PLANS (lib/billing/plans.ts),
+// la source de /tarifs. Le prix n'est jamais réécrit ici ; il est seulement
+// converti au format attendu par schema.org (point décimal).
+// Périodicité d'un abonnement → code d'unité UN/CEFACT. Une périodicité que
+// cette table ne connaît pas fait échouer le build plutôt que de déclarer un
+// rythme de facturation faux.
+const PERIOD_UNIT: Record<string, string> = { "par mois": "MON" };
+
+function periodUnit(period: string): string {
+  const unit = PERIOD_UNIT[period];
+  if (!unit) throw new Error(`Périodicité sans code d'unité schema.org : « ${period} ». Compléter PERIOD_UNIT dans lib/seo.ts.`);
+  return unit;
+}
+
 function schemaPrice(displayed: string): string {
   return displayed.replace(/\s|€/g, "").replace(",", ".");
 }
 
+// Ce qu'est Negoscore, déclaré sur l'accueil et sur /tarifs (mission #069).
+// La description est celle de l'accueil (PUBLIC_PAGES) : la promesse réelle du
+// site, écrite une seule fois. Le résumé de chaque offre vient aussi de PLANS.
 export function softwareApplicationJsonLd() {
+  const home = PUBLIC_PAGES.find((page) => page.path === "/");
   return {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
+    "@type": "WebApplication",
+    "@id": APPLICATION_ID,
     name: BRAND.name,
-    url: `${CANONICAL_ORIGIN}/tarifs`,
+    description: home?.description,
+    url: CANONICAL_ORIGIN,
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     inLanguage: "fr-FR",
-    offers: PLANS.map((plan) => ({
-      "@type": "Offer",
-      name: plan.name,
-      price: schemaPrice(plan.price),
-      priceCurrency: "EUR",
-      url: `${CANONICAL_ORIGIN}/tarifs`,
-      ...(plan.period ? { category: plan.period } : {}),
-    })),
+    publisher: { "@id": ORGANIZATION_ID },
+    offers: PLANS.map((plan) => {
+      const price = schemaPrice(plan.price);
+      return {
+        "@type": "Offer",
+        name: plan.name,
+        description: plan.summary,
+        price,
+        priceCurrency: "EUR",
+        url: `${CANONICAL_ORIGIN}/tarifs`,
+        // Abonnement : la périodicité vient de PLANS (PRO_PERIOD), dite avec
+        // la propriété prévue pour (référence : 1 période), et non plus dans
+        // « category », qui désigne une catégorie de produit.
+        ...(plan.period
+          ? {
+              priceSpecification: {
+                "@type": "UnitPriceSpecification",
+                price,
+                priceCurrency: "EUR",
+                referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitCode: periodUnit(plan.period) },
+              },
+            }
+          : {}),
+      };
+    }),
   };
 }
 

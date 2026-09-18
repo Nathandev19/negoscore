@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { FEATURED_PLAN, FREE_ANALYSES, PLANS } from "@/lib/billing/plans";
 import { FAQ, STEPS, TRUST } from "@/lib/content/home";
-import { publicPageMetadata } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/json-ld";
+import { publicPageMetadata, softwareApplicationJsonLd } from "@/lib/seo";
 import { formatEur, formatEurRange } from "@/lib/display";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,10 @@ export default function HomePage() {
 
   return (
     <>
+      {/* Ce qu'est le site, pour les moteurs (mission #069) : l'application,
+          sa promesse et ses formules, prix repris de la source unique.
+          L'organisation et le site sont déclarés par la mise en page. */}
+      <JsonLd data={softwareApplicationJsonLd()} />
       <SiteHeader />
       <TrackView event={ANALYTICS_EVENTS.landingView} />
       <main id="contenu" className="flex-1">
