@@ -2,7 +2,8 @@
 
 import { cookies, headers } from "next/headers";
 import { newPkcePair, safeNextPath, sendMagicLink, VERIFIER_COOKIE } from "@/lib/auth/session";
-import { hashIp } from "@/lib/security/request";
+import { CLAIM_PARAM, createLoginClaim } from "@/lib/auth/login-claims";
+import { ANON_COOKIE, hashIp } from "@/lib/security/request";
 import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
 import { hitUsageGuard } from "@/lib/security/usage-guard";
 
@@ -29,14 +30,22 @@ export async function requestMagicLink(_previous: LoginState, formData: FormData
     }
 
     const { verifier, challenge } = newPkcePair();
-    (await cookies()).set(VERIFIER_COOKIE, verifier, {
+    const jar = await cookies();
+    jar.set(VERIFIER_COOKIE, verifier, {
       path: "/auth",
       maxAge: 60 * 15,
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
     });
-    const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+    // Mission #067 : ce navigateur porte un jeton anonyme, donc peut-être une
+    // analyse faite sans compte. La réclamation est enregistrée MAINTENANT,
+    // pendant qu'on est dans le bon navigateur, et son secret part dans le
+    // lien : ouvert ailleurs, le lien rattachera quand même ces analyses.
+    // Le jeton est lu dans le cookie httpOnly, jamais reçu du formulaire.
+    const anonToken = jar.get(ANON_COOKIE)?.value ?? null;
+    const claim = anonToken ? await createLoginClaim(email, anonToken) : null;
+    const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}${claim ? `&${CLAIM_PARAM}=${claim}` : ""}`;
     const sent = await sendMagicLink(email, challenge, redirectTo);
     if (!sent) {
       return { status: "error", message: "Le lien n'a pas pu être envoyé. Réessaie dans quelques minutes." };

@@ -44,9 +44,12 @@ export function flashMessage(kind: FlashKind, pathname: string): FlashMessage {
     return { title: "Déconnexion réussie.", text: "Ce navigateur n'a plus accès à ton compte ni à tes analyses.", link: null };
   }
   const title = "Connexion réussie.";
-  if (pathname.startsWith("/analyse/resultat/")) {
-    return { title, text: "Cette analyse est débloquée : la contre-offre chiffrée et le message prêt à envoyer sont plus bas.", link: null };
-  }
+  // Page de résultat : le bandeau ne dit rien de l'analyse (mission #067). Il
+  // s'affiche avant de savoir si la page a pu l'ouvrir, et affirmait « Cette
+  // analyse est débloquée » au-dessus d'une page introuvable. C'est la page
+  // elle-même qui le dit, et seulement quand elle l'affiche : pastille
+  // « Débloqué à l'instant » sur les blocs ouverts, ou explication sur la 404.
+  if (pathname.startsWith("/analyse/resultat/")) return { title, text: null, link: null };
   if (pathname === "/historique") return { title, text: "Voici toutes tes analyses.", link: null };
   if (pathname === "/compte") return { title, text: "Voici ton compte et tes crédits.", link: null };
   if (pathname === "/tarifs") return { title, text: "Tu peux maintenant choisir une formule.", link: null };

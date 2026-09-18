@@ -56,7 +56,8 @@ describe("portée de la purge", () => {
     await runPurge(NOW);
     expect(db.selects).toHaveLength(1);
     expect(db.selects[0]).not.toContain("id=in.");
-    expect(db.deletes.map((d) => d.table)).toEqual(["usage_guard", "deals", "whop_events", "checkout_consents"]);
+    // login_claims : réclamations de connexion expirées (mission #067).
+    expect(db.deletes.map((d) => d.table)).toEqual(["usage_guard", "deals", "whop_events", "checkout_consents", "login_claims"]);
     for (const { filter } of db.deletes) expect(filter).not.toMatch(/(^|&)(id|event_id)=in\./);
     expect(db.updates).toHaveLength(1);
     expect(db.updates[0].filter).not.toContain("id=in.");

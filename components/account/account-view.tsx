@@ -10,7 +10,15 @@ const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", y
 // Page Mon compte. data null : squelette (app/compte/loading.tsx), même
 // structure et mêmes hauteurs, sans aucune donnée. Le squelette montre les trois
 // lignes communes à tous les comptes, jamais celles d'un abonnement (C4).
-export function AccountView({ data }: { data: { email: string | null; summary: AccountSummary } | null }) {
+// freeAnalysis : compte gratuit seulement, l'état réel de son analyse gratuite
+// (mission #067). null ou absent : ligne non affichée.
+export const FREE_ANALYSIS_LABEL = { available: "Encore disponible", used: "Déjà utilisée" } as const;
+
+export function AccountView({
+  data,
+}: {
+  data: { email: string | null; summary: AccountSummary; freeAnalysis?: keyof typeof FREE_ANALYSIS_LABEL | null } | null;
+}) {
   const summary = data?.summary ?? null;
   return (
     <>
@@ -32,6 +40,14 @@ export function AccountView({ data }: { data: { email: string | null; summary: A
               {summary ? summary.planLabel : <BoneLine width="w-20" className="justify-end" />}
             </dd>
           </div>
+          {data?.freeAnalysis ? (
+            <div className="flex justify-between gap-4 py-3">
+              <dt className="text-sm text-attenue">Analyse gratuite</dt>
+              <dd data-free-analysis={data.freeAnalysis} className="text-right text-sm font-medium text-encre">
+                {FREE_ANALYSIS_LABEL[data.freeAnalysis]}
+              </dd>
+            </div>
+          ) : null}
           <div className="flex justify-between gap-4 py-3">
             <dt className="text-sm text-attenue">Crédits d&apos;analyse</dt>
             <dd className="text-right text-sm font-medium text-encre">

@@ -121,6 +121,13 @@ async function freeAlreadyUsed(subject: FreeSubject): Promise<boolean> {
   return done.length >= FREE_ANALYSES;
 }
 
+// Analyse gratuite déjà consommée par ce compte (mission #067, page /compte).
+// Lecture seule, même règle que le droit réel : compteur durable, ou analyses
+// déjà faites. Ne réserve et ne compte rien.
+export async function accountFreeAnalysisUsed(userId: string): Promise<boolean> {
+  return freeAlreadyUsed({ kind: "user", id: userId });
+}
+
 type Context = {
   user: SessionUser | null;
   // Jeton anonyme lu dans la requête : sert à savoir si la gratuité est déjà prise.

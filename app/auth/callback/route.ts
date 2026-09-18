@@ -6,6 +6,7 @@ import {
   verifyTokenHash,
   type Session,
 } from "@/lib/auth/session";
+import { claimFromLink } from "@/lib/auth/login-claims";
 import { completeSignIn, redirectResponse } from "@/lib/auth/sign-in";
 import { readCookie } from "@/lib/security/request";
 
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
       session = await verifyTokenHash(tokenHash, type);
     }
     if (!session) return failed;
-    return await completeSignIn(request, session, next, { extraCookies: [clearVerifier], source: "callback" });
+    return await completeSignIn(request, session, next, { extraCookies: [clearVerifier], source: "callback", claim: claimFromLink(url) });
   } catch (caught) {
     console.error(
       JSON.stringify({

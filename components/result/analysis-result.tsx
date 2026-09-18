@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   Assumptions,
   DealRecap,
@@ -13,7 +13,7 @@ import {
 import { LockedCounterOfferPlaceholder, LockedMessagePlaceholder, UnlockCta } from "@/components/result/locked-blocks";
 import { ScoreBand } from "@/components/result/score-band";
 import { rememberTier, TierContext, TierSelector } from "@/components/result/tier-selector";
-import { CounterOffer, ReadyMessage } from "@/components/result/unlocked-blocks";
+import { CounterOffer, MESSAGE_ANCHOR, ReadyMessage } from "@/components/result/unlocked-blocks";
 import { IncompleteCard, TermsUnknownCard, UnpricedCard } from "@/components/result/verdict-card";
 import { counterOfferRange } from "@/lib/analysis/anchoring";
 import { missingInformation } from "@/lib/analysis/evaluability";
@@ -33,6 +33,20 @@ import { formatEurRange } from "@/lib/money";
 // Composant client : changer de niveau recalcule toute la page ici, dans le
 // navigateur, avec le moteur déterministe (lib/analysis/recompute.ts). Le
 // niveau affiché au chargement est celui de l'analyse enregistrée.
+// Ancre d'arrivée lue une fois par chargement, pour le chemin où elle a été
+// vue : elle est retirée de l'adresse juste après, et le signal ne doit pas
+// s'éteindre pour autant — ni se rallumer sur une autre analyse.
+let arrivalPath: string | null | undefined;
+// Le déplacement vers le message n'a lieu qu'une fois par chargement.
+let arrivalHandled = false;
+
+function readArrival(): boolean {
+  if (arrivalPath === undefined) arrivalPath = window.location.hash === `#${MESSAGE_ANCHOR}` ? window.location.pathname : null;
+  return arrivalPath !== null && arrivalPath === window.location.pathname;
+}
+
+const noSubscription = () => () => undefined;
+
 export function AnalysisResult({
   analysis: stored,
   unlockHref,
@@ -67,6 +81,26 @@ export function AnalysisResult({
 
   const locked = !analysis.counter_offer || !analysis.ready_to_send_message;
   const incomplete = analysis.evaluability === "incomplete";
+
+  // Arrivée juste après la connexion qui débloque (mission #067) : le lien
+  // « Débloquer » ramène sur #message. La page va alors directement au message
+  // prêt à envoyer et signale une fois les deux blocs qui viennent de s'ouvrir.
+  const arrivedOnMessage = useSyncExternalStore(noSubscription, readArrival, () => false);
+  const justUnlocked = arrivedOnMessage && !locked;
+  useEffect(() => {
+    if (!justUnlocked || arrivalHandled) return;
+    const target = document.getElementById(MESSAGE_ANCHOR);
+    if (!target) return;
+    arrivalHandled = true;
+    // Mouvement réduit demandé : saut direct, sans défilement animé.
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    // Le focus suit : un lecteur d'écran repart du titre du message.
+    target.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+    // Ancre retirée de l'adresse : un rechargement ne rejoue ni le déplacement
+    // ni le signal « Débloqué à l'instant ».
+    window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+  }, [justUnlocked]);
   // Vide au chargement : une région live remplie dès son montage n'est pas
   // annoncée. Elle ne parle qu'après un changement de niveau.
   const range = formatEurRange(analysis.estimate.total_low, analysis.estimate.total_high);
@@ -126,12 +160,12 @@ export function AnalysisResult({
         <NegotiateList items={analysis.negotiate} />
         <DealRecap deal={analysis.deal} />
         {analysis.counter_offer ? (
-          <CounterOffer offer={analysis.counter_offer} title={counterOfferTitle} />
+          <CounterOffer offer={analysis.counter_offer} title={counterOfferTitle} justUnlocked={justUnlocked} />
         ) : (
           <LockedCounterOfferPlaceholder title={counterOfferTitle} />
         )}
         {analysis.ready_to_send_message ? (
-          <ReadyMessage message={analysis.ready_to_send_message} />
+          <ReadyMessage message={analysis.ready_to_send_message} justUnlocked={justUnlocked} />
         ) : (
           <LockedMessagePlaceholder />
         )}

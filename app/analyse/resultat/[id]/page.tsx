@@ -53,7 +53,8 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
       {result.unlocked ? null : <TrackView event={ANALYTICS_EVENTS.paywallEmailShown} />}
       <AnalysisResult
         analysis={result.analysis}
-        unlockHref={`/connexion?next=${encodeURIComponent(`/analyse/resultat/${id}`)}`}
+        // Retour sur le message prêt à envoyer, une fois débloqué (mission #067).
+        unlockHref={`/connexion?next=${encodeURIComponent(`/analyse/resultat/${id}#message`)}`}
         retry={retry ? <RetryPanel state={retry} originId={id} /> : null}
       >
         {shareCardAvailable(result.analysis) ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}

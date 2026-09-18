@@ -1,4 +1,5 @@
 import { verifyOtpTokenHash } from "@/lib/auth/session";
+import { claimFromLink } from "@/lib/auth/login-claims";
 import { completeSignIn, nextFromEmailLink, redirectResponse, signedInRedirectPath } from "@/lib/auth/sign-in";
 import { SIGN_IN_OTP_TYPES, type SignInOtpType } from "@/lib/auth/otp-types";
 import { configuredSiteUrl } from "@/lib/site-url";
@@ -48,7 +49,9 @@ export async function GET(request: Request) {
       );
       return failed;
     }
-    return await completeSignIn(request, outcome.session, next, { source: "confirm" });
+    // Secret de réclamation du lien (mission #067) : rattache l'analyse faite
+    // sans compte même si ce navigateur n'est pas celui de la demande.
+    return await completeSignIn(request, outcome.session, next, { source: "confirm", claim: claimFromLink(url) });
   } catch (caught) {
     console.error(
       JSON.stringify({

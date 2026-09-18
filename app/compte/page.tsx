@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AccountView } from "@/components/account/account-view";
 import { accountSummary } from "@/lib/account/summary";
 import { getViewer } from "@/lib/auth/viewer";
+import { accountFreeAnalysisUsed } from "@/lib/billing/entitlement";
 import type { PlanState } from "@/lib/billing/plan-access";
 import { selectRows } from "@/lib/supabase/server";
 
@@ -23,5 +24,17 @@ export default async function AccountPage() {
     `select=plan,balance,period_end,cancelled_at&user_id=eq.${user.id}&limit=1`,
   );
 
-  return <AccountView data={{ email: user.email, summary: accountSummary(credits ?? null) }} />;
+  const summary = accountSummary(credits ?? null);
+  // Compte gratuit : « Crédits d'analyse : 0 » ne dit pas si l'analyse gratuite
+  // reste disponible (mission #067). Lecture impossible : la ligne n'est pas
+  // affichée plutôt que de deviner.
+  const freeAnalysis =
+    summary.plan === "free"
+      ? await accountFreeAnalysisUsed(user.id).then(
+          (used) => (used ? ("used" as const) : ("available" as const)),
+          () => null,
+        )
+      : null;
+
+  return <AccountView data={{ email: user.email, summary, freeAnalysis }} />;
 }

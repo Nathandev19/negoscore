@@ -1,4 +1,5 @@
 import { deleteRowsReturning, removeDocuments, selectRows, SupabaseRequestError, updateRows } from "@/lib/supabase/server";
+import { purgeLoginClaims } from "@/lib/auth/login-claims";
 
 // Purge quotidienne des données dont la durée de conservation est écoulée,
 // telle qu'annoncée dans la politique de confidentialité :
@@ -46,6 +47,8 @@ export type PurgeScope = {
   usageGuardIds?: string[];
   whopEventIds?: string[];
   consentIds?: string[];
+  // Réclamations de connexion (mission #067).
+  loginClaimIds?: string[];
 };
 
 export type PurgeReport = {
@@ -56,6 +59,7 @@ export type PurgeReport = {
   usage_guard: number;
   whop_events: number;
   checkout_consents: number;
+  login_claims: number;
 };
 
 export function purgeCutoffs(now: Date) {
@@ -178,6 +182,11 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
           "id",
         );
 
+  // Réclamations de connexion expirées (mission #067) : elles ne servent plus
+  // à rien passé 2 heures, et portent une adresse email et un jeton anonyme.
+  const claimScope = scopeFilter(scope, scope?.loginClaimIds, "id");
+  const loginClaims = claimScope === null ? [] : await purgeLoginClaims(now, claimScope);
+
   return {
     documents,
     files_removed: filesRemoved,
@@ -186,5 +195,6 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
     usage_guard: usageGuard.length,
     whop_events: whopEvents.length,
     checkout_consents: consents.length,
+    login_claims: loginClaims.length,
   };
 }

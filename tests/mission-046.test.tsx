@@ -128,7 +128,9 @@ describe("C — confirmation de connexion et de déconnexion", () => {
   });
 
   it("message selon la page d'arrivée, jamais d'adresse email", () => {
-    expect(flashMessage("connexion", "/analyse/resultat/abc").text).toContain("débloquée");
+    // Mission #067 : sur une page de résultat, le bandeau ne dit rien de
+    // l'analyse — il s'affichait « débloquée » au-dessus d'une 404.
+    expect(flashMessage("connexion", "/analyse/resultat/abc")).toEqual({ title: "Connexion réussie.", text: null, link: null });
     expect(flashMessage("connexion", "/").text).toContain("analyser un deal");
     expect(flashMessage("deconnexion", "/").title).toBe("Déconnexion réussie.");
     for (const pathname of ["/", "/analyse/resultat/abc", "/historique", "/compte", "/tarifs", "/analyse"]) {
