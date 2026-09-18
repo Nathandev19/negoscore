@@ -103,22 +103,71 @@ export async function verifyTokenHash(tokenHash: string, type: string): Promise<
   return (await verifyOtpTokenHash(tokenHash, type)).session;
 }
 
-export async function refreshSession(refreshToken: string): Promise<Session | null> {
-  const response = await authFetch("/token?grant_type=refresh_token", {
-    method: "POST",
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
-  return response.ok ? toSession(await response.json()) : null;
+// Trois issues, jamais deux (mission #070). « Refusée » : Supabase a répondu
+// que cette session n'existe plus ou ne vaut rien (compte supprimé, session
+// révoquée, jeton de rafraîchissement expiré ou déjà utilisé) — on peut, et on
+// doit, effacer les cookies. « Indisponible » : Supabase n'a pas pu répondre
+// (réseau, 5xx, 429) — on ne sait RIEN de la session, on n'y touche pas.
+// Même partage que le client officiel supabase-js (auth-js, GoTrueClient) : il
+// garde la session sur une erreur « retryable » (réseau, 502/503/504) et la
+// retire sur les autres. Ici, toute erreur serveur compte comme indisponible.
+function authUnavailable(status: number): boolean {
+  return status >= 500 || status === 429 || status === 408;
 }
 
+export type RefreshOutcome =
+  | { kind: "refreshed"; session: Session }
+  | { kind: "rejected"; status: number }
+  | { kind: "unavailable"; status: number | null };
+
+export async function refreshSessionOutcome(refreshToken: string): Promise<RefreshOutcome> {
+  let response: Response;
+  try {
+    response = await authFetch("/token?grant_type=refresh_token", {
+      method: "POST",
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  } catch {
+    return { kind: "unavailable", status: null };
+  }
+  if (response.ok) {
+    const session = toSession(await response.json().catch(() => null));
+    // Réponse 200 illisible : on ne conclut pas que la session est invalide.
+    return session ? { kind: "refreshed", session } : { kind: "unavailable", status: response.status };
+  }
+  return authUnavailable(response.status) ? { kind: "unavailable", status: response.status } : { kind: "rejected", status: response.status };
+}
+
+export async function refreshSession(refreshToken: string): Promise<Session | null> {
+  const outcome = await refreshSessionOutcome(refreshToken).catch(() => null);
+  return outcome?.kind === "refreshed" ? outcome.session : null;
+}
+
+export type AccessCheck =
+  | { kind: "valid"; user: SessionUser }
+  | { kind: "rejected"; status: number }
+  | { kind: "unavailable"; status: number | null };
+
 // Vérifie le jeton auprès de Supabase : aucune confiance dans le contenu du cookie.
+export async function checkAccessToken(accessToken: string): Promise<AccessCheck> {
+  let response: Response;
+  try {
+    response = await authFetch("/user", { token: accessToken });
+  } catch {
+    return { kind: "unavailable", status: null };
+  }
+  if (response.ok) {
+    const body = (await response.json().catch(() => null)) as { id?: string; email?: string } | null;
+    return body?.id ? { kind: "valid", user: { id: body.id, email: body.email ?? null } } : { kind: "unavailable", status: response.status };
+  }
+  return authUnavailable(response.status) ? { kind: "unavailable", status: response.status } : { kind: "rejected", status: response.status };
+}
+
 export async function userFromAccessToken(accessToken: string | null | undefined): Promise<SessionUser | null> {
   if (!accessToken) return null;
   try {
-    const response = await authFetch("/user", { token: accessToken });
-    if (!response.ok) return null;
-    const body = (await response.json()) as { id?: string; email?: string };
-    return body.id ? { id: body.id, email: body.email ?? null } : null;
+    const check = await checkAccessToken(accessToken);
+    return check.kind === "valid" ? check.user : null;
   } catch {
     return null;
   }

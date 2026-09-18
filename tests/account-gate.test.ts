@@ -22,6 +22,17 @@ vi.mock("@/lib/auth/session", async (importOriginal) => ({
     auth.refreshable.has(token)
       ? { accessToken: "jeton-rafraichi", refreshToken: "nouveau-refresh", expiresIn: 3600, user: { id: "u1", email: "nina@example.com" } }
       : null,
+  // Mission #070 : le proxy lit les issues à trois états. Même sens qu'avant :
+  // un jeton inconnu est REFUSÉ par Supabase.
+  checkAccessToken: async (token: string) =>
+    auth.valid.has(token) ? { kind: "valid", user: { id: "u1", email: "nina@example.com" } } : { kind: "rejected", status: 401 },
+  refreshSessionOutcome: async (token: string) =>
+    auth.refreshable.has(token)
+      ? {
+          kind: "refreshed",
+          session: { accessToken: "jeton-rafraichi", refreshToken: "nouveau-refresh", expiresIn: 3600, user: { id: "u1", email: "nina@example.com" } },
+        }
+      : { kind: "rejected", status: 400 },
 }));
 
 const { proxy } = await import("@/proxy");

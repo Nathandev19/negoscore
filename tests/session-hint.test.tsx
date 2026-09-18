@@ -22,6 +22,9 @@ vi.mock("@/lib/auth/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth/session")>()),
   exchangeCode: async () => auth.session,
   refreshSession: async (token: string) => (token === "valide" ? auth.session : null),
+  // Mission #070 : issues à trois états, même sens qu'avant.
+  refreshSessionOutcome: async (token: string) =>
+    token === "valide" ? { kind: "refreshed", session: auth.session } : { kind: "rejected", status: 400 },
   signOut: async () => undefined,
 }));
 vi.mock("@/lib/auth/account", () => ({

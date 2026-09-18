@@ -18,6 +18,10 @@ vi.mock("@/lib/auth/session", async (importOriginal) => ({
   userFromAccessToken: async (token: string | null | undefined) =>
     token && state.validTokens.has(token) ? { id: "u1", email: "nina@example.com" } : null,
   refreshSession: async () => null,
+  // Mission #070 : issues à trois états, même sens qu'avant.
+  checkAccessToken: async (token: string) =>
+    state.validTokens.has(token) ? { kind: "valid", user: { id: "u1", email: "nina@example.com" } } : { kind: "rejected", status: 401 },
+  refreshSessionOutcome: async () => ({ kind: "rejected", status: 400 }),
 }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
