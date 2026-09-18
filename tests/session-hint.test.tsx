@@ -132,10 +132,26 @@ describe("en-tête client", () => {
     const { SiteHeader } = await import("@/components/site-header");
     auth.cookies.set(SESSION_HINT_COOKIE, "1");
     const html = renderToString(<SiteHeader />);
-    expect(html).not.toContain('href="/connexion"');
-    expect(html).not.toContain('href="/compte"');
-    expect(html).not.toContain('href="/historique"');
+    // Hors <noscript> : rien n'affirme un état du compte.
+    const withJs = html.replace(/<noscript[\s\S]*?<\/noscript>/g, "");
+    expect(withJs).not.toContain('href="/connexion"');
+    expect(withJs).not.toContain('href="/compte"');
+    expect(withJs).not.toContain('href="/historique"');
     expect(html).toContain("data-account-pending");
     expect(html).toMatch(/<span aria-hidden="true" data-account-pending="true" class="[^"]*invisible/);
+  });
+
+  // Mission #073 : sans JavaScript, l'état ne sera jamais connu. Le chemin vers
+  // /connexion existe quand même, dans <noscript>, à sa place habituelle
+  // (ordinateur) et à côté du bouton Menu (mobile, où le menu ne s'ouvre pas).
+  it("rendu serveur : « Se connecter » offert sans JavaScript, dans <noscript>, et seulement là", async () => {
+    const { SiteHeader } = await import("@/components/site-header");
+    const html = renderToString(<SiteHeader />);
+    const blocks = html.match(/<noscript[\s\S]*?<\/noscript>/g) ?? [];
+    expect(blocks).toHaveLength(2);
+    for (const block of blocks) {
+      expect(block).toContain('href="/connexion"');
+      expect(block).toContain(">Se connecter</a>");
+    }
   });
 });

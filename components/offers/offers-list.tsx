@@ -196,6 +196,24 @@ function ActionSlot({ primary, children }: { primary: boolean; children: React.R
 // rien de focalisable.
 function PendingPurchase({ primary }: { primary: boolean }) {
   return (
+    <>
+      {/* Sans JavaScript (mission #073), l'état du compte ne sera jamais lu et
+          le paiement ne peut pas partir : on le dit, à la place de l'attente,
+          qui ne se résoudrait jamais. La connexion reste offerte par l'en-tête. */}
+      <noscript>
+        {/* L'attente ne se résoudra jamais sans JavaScript : elle est masquée. */}
+        <style>{"[data-pending-purchase]{display:none}"}</style>
+        <p data-noscript-purchase className="text-sm">
+          Le paiement demande JavaScript. Active-le dans ton navigateur pour choisir une formule.
+        </p>
+      </noscript>
+      <PendingBones primary={primary} />
+    </>
+  );
+}
+
+function PendingBones({ primary }: { primary: boolean }) {
+  return (
     <div aria-hidden data-pending-purchase className="flex flex-col gap-3">
       <span className="flex flex-col gap-1 text-xs">
         <Bone className="h-[0.7em] w-full" />

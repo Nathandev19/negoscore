@@ -142,9 +142,20 @@ export function HeaderNav({
 
         <div className="hidden h-8 items-center gap-4 text-small lg:flex">
           {unknown ? (
-            // Place réservée, invisible et inerte : rien n'est affirmé avant de savoir.
-            <span aria-hidden data-account-pending className={cn(LINK, "invisible relative font-medium")}>
-              {account.label}
+            // Place réservée, invisible et inerte : rien n'est affirmé avant de
+            // savoir. Sans JavaScript (mission #073), l'état ne sera jamais
+            // connu : « Se connecter » s'affiche exactement par-dessus, même
+            // texte donc même largeur. Avec JavaScript, le navigateur n'affiche
+            // jamais le contenu de <noscript> : aucun clignotement.
+            <span className="grid">
+              <span aria-hidden data-account-pending className={cn(LINK, "invisible relative col-start-1 row-start-1 font-medium")}>
+                {account.label}
+              </span>
+              <noscript className="col-start-1 row-start-1">
+                <a href="/connexion" className={cn(LINK, "relative font-medium")}>
+                  Se connecter
+                </a>
+              </noscript>
             </span>
           ) : (
             <Link href={account.href} aria-current={current(account.href)} className={cn(LINK, "relative font-medium")}>
@@ -158,7 +169,16 @@ export function HeaderNav({
           </Link>
         </div>
 
-        <div className="lg:hidden" onKeyDown={onMenuKeyDown} onBlur={onMenuBlur}>
+        <div className="flex items-center gap-4 lg:hidden" onKeyDown={onMenuKeyDown} onBlur={onMenuBlur}>
+          {/* Mobile sans JavaScript (mission #073) : le menu ne peut pas
+              s'ouvrir, la connexion est donc offerte à côté du bouton. */}
+          {unknown ? (
+            <noscript>
+              <a href="/connexion" className={cn(LINK, "flex min-h-11 items-center text-sm font-medium")}>
+                Se connecter
+              </a>
+            </noscript>
+          ) : null}
           <button
             ref={toggleRef}
             type="button"
