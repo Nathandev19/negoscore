@@ -1,5 +1,6 @@
 import { FEEDBACK_RATINGS, type FeedbackRating } from "@/lib/analysis/feedback-options";
 import { normalizeDeal } from "@/lib/analysis/normalize";
+import rates from "@/lib/rates/fr-2026.3.json";
 import { TIERS, type Tier } from "@/lib/rates/tier";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 import { isUuid } from "@/lib/security/request";
@@ -55,6 +56,8 @@ export type FeedbackEntry = {
 export type FeedbackReport = {
   overall: Distribution;
   byTier: Group[];
+  byVersion: Group[];
+  byRatio: Group[];
   byShape: Breakdown[];
   entries: FeedbackEntry[];
 };
@@ -112,6 +115,50 @@ export const TIER_GROUP_LABEL: Record<Tier, string> = {
   confirmed: "Collabs payées",
   experienced: "C'est mon métier",
 };
+
+// Version de la table qui sert aujourd'hui aux nouvelles analyses.
+export const CURRENT_RATE_TABLE = rates.version;
+
+// Mission #078, A — par version de la table de tarifs enregistrée avec la
+// réponse. La table actuelle d'abord, toujours présente (« Aucun retour » tant
+// qu'elle n'en a pas) ; puis les anciennes, de la plus récente à la plus
+// ancienne. Le jour où la table change, les retours d'avant restent à part.
+function byVersion(rows: FeedbackRow[]): Group[] {
+  const older = [...new Set(rows.map((row) => row.rate_table_version))]
+    .filter((version) => version !== CURRENT_RATE_TABLE)
+    .sort((a, b) => b.localeCompare(a, "fr", { numeric: true }));
+  return [
+    { key: CURRENT_RATE_TABLE, label: CURRENT_RATE_TABLE, detail: "Table actuelle." },
+    ...older.map((version) => ({ key: version, label: version, detail: "Ancienne table." })),
+  ].map((group) => ({ ...group, distribution: distributionOf(rows.filter((row) => row.rate_table_version === group.key)) }));
+}
+
+// Mission #078, B — rapport entre le montant proposé et le bas de la fourchette
+// jugée. Bornes : moins de 0,5 ; de 0,5 à 1 inclus ; plus de 1. Sans montant
+// chiffrable (aucun montant écrit, devise étrangère, pas de fourchette, deal
+// illisible) : groupe à part, jamais fondu dans un autre.
+export const RATIO_GROUPS = [
+  { key: "moins-0-5", label: "Moins de 0,5 × le bas", test: (ratio: number) => ratio < 0.5 },
+  { key: "0-5-a-1", label: "De 0,5 à 1 × le bas", test: (ratio: number) => ratio >= 0.5 && ratio <= 1 },
+  { key: "plus-de-1", label: "Plus de 1 × le bas", detail: "Proposé au-dessus du bas de la fourchette.", test: (ratio: number) => ratio > 1 },
+] as const;
+
+function byRatio(entries: FeedbackEntry[]): Group[] {
+  return [
+    ...RATIO_GROUPS.map(({ key, label, test, ...rest }) => ({
+      key,
+      label,
+      detail: "detail" in rest ? rest.detail : undefined,
+      distribution: distributionOf(entries.filter((entry) => entry.ratioToLow !== null && test(entry.ratioToLow))),
+    })),
+    {
+      key: "non-chiffrable",
+      label: "Montant non chiffrable",
+      detail: "Aucun montant ni valeur de produits écrits, devise étrangère, pas de fourchette, ou analyse illisible.",
+      distribution: distributionOf(entries.filter((entry) => entry.ratioToLow === null)),
+    },
+  ];
+}
 
 export function buildReport(rows: FeedbackRow[]): FeedbackReport {
   const byTier = split(rows, TIERS.map((tier) => ({ key: tier, label: TIER_GROUP_LABEL[tier], test: (row) => row.profile_tier === tier })));
@@ -198,7 +245,7 @@ export function buildReport(rows: FeedbackRow[]): FeedbackReport {
   });
   entries.sort((a, b) => b.answeredAt.localeCompare(a.answeredAt));
 
-  return { overall: distributionOf(rows), byTier, byShape, entries };
+  return { overall: distributionOf(rows), byTier, byVersion: byVersion(rows), byRatio: byRatio(entries), byShape, entries };
 }
 
 const PAGE_SIZE = 1000;

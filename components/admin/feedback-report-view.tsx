@@ -145,6 +145,23 @@ export function FeedbackReportView({ report }: { report: FeedbackReport }) {
         <DistributionTable caption="Répartition des réponses par niveau" rows={report.byTier} />
       </section>
 
+      <section className="flex flex-col gap-3">
+        <h2 className="text-h2">Par version de la table de tarifs</h2>
+        <p className="text-small">
+          La table qui a produit les chiffres jugés. Les retours sur une ancienne table ne disent rien de l&apos;actuelle.
+        </p>
+        <DistributionTable caption="Répartition des réponses par version de la table" rows={report.byVersion} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-h2">Par montant proposé ÷ bas de la fourchette</h2>
+        <p className="text-small">
+          Sépare « la table est trop haute » de « les marques de ce segment paient mal ». Montant proposé : l&apos;argent,
+          sinon la valeur des produits offerts quand elle est écrite. Bas de la fourchette : celle qui a été jugée.
+        </p>
+        <DistributionTable caption="Répartition des réponses par rapport entre montant proposé et bas de la fourchette" rows={report.byRatio} />
+      </section>
+
       <section className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <h2 className="text-h2">Par forme du deal</h2>

@@ -243,6 +243,64 @@ describe("B — répartitions et liste", () => {
     }
   });
 
+  it("#078 A — par version : la table actuelle d'abord, toujours présente, puis les anciennes de la plus récente à la plus ancienne", async () => {
+    const { CURRENT_RATE_TABLE } = await import("@/lib/admin/feedback-report");
+    const versions = [
+      row({ analysis_id: "v1", rating: "too_low", rate_table_version: "fr-2026.2" }),
+      row({ analysis_id: "v2", rating: "fair", rate_table_version: "fr-2026.10" }),
+      row({ analysis_id: "v3", rating: "too_high", rate_table_version: "fr-2026.2" }),
+    ];
+    const groups = buildReport(versions).byVersion;
+    expect(groups.map((g) => [g.label, g.distribution.total])).toEqual([
+      [CURRENT_RATE_TABLE, 0],
+      ["fr-2026.10", 1],
+      ["fr-2026.2", 2],
+    ]);
+    expect(groups[2].distribution.counts).toEqual({ too_low: 1, fair: 0, too_high: 1 });
+    // Retours sur la table actuelle : comptés avec elle, pas en double.
+    const current = buildReport([row({ rate_table_version: CURRENT_RATE_TABLE })]).byVersion;
+    expect(current.map((g) => g.distribution.total)).toEqual([1]);
+  });
+
+  it("#078 B — par rapport proposé ÷ bas : bornes 0,5 et 1, et le non chiffrable à part, jamais fondu", () => {
+    const money = (amount: number | null) => ({ payment: { ...baseDeal().payment, amount_eur: amount }, in_kind_value_eur: null });
+    const ratios = [
+      row({ analysis_id: "r1", total_low: 400, deal: money(199) }), // 0,4975
+      row({ analysis_id: "r2", total_low: 400, deal: money(200) }), // 0,5
+      row({ analysis_id: "r3", total_low: 400, deal: money(400) }), // 1
+      row({ analysis_id: "r4", total_low: 400, deal: money(404) }), // 1,01
+      row({ analysis_id: "r5", total_low: 400, deal: money(null) }), // aucun montant
+      row({ analysis_id: "r6", total_low: null, deal: money(300) }), // pas de fourchette
+      row({ analysis_id: "r7", analysis: { deal: { illisible: true } } }), // deal illisible
+    ];
+    const groups = buildReport(ratios).byRatio;
+    expect(groups.map((g) => [g.key, g.distribution.total])).toEqual([
+      ["moins-0-5", 1],
+      ["0-5-a-1", 2],
+      ["plus-de-1", 1],
+      ["non-chiffrable", 3],
+    ]);
+    expect(groups[3].label).toBe("Montant non chiffrable");
+    // Chaque retour dans un groupe et un seul.
+    expect(groups.reduce((sum, g) => sum + g.distribution.total, 0)).toBe(ratios.length);
+  });
+
+  it("#078 — même affichage : effectif et part ensemble, « Aucun retour » pour un groupe vide", async () => {
+    session.email = OWNER;
+    store.rows = [row({ rating: "too_low", rate_table_version: "fr-2026.2", total_low: 400, deal: { payment: { ...baseDeal().payment, amount_eur: 100 }, in_kind_value_eur: null } })];
+    const html = await render();
+    const section = (title: string) => html.slice(html.indexOf(title), html.indexOf("</section>", html.indexOf(title)));
+    for (const title of ["Par version de la table de tarifs", "Par montant proposé ÷ bas de la fourchette"]) {
+      const part = section(title);
+      expect(part, title).toContain("Aucun retour");
+      // Toute part est précédée de son effectif, dans la même case.
+      const cells = [...part.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]).filter((c) => c.includes("%"));
+      expect(cells.length, title).toBeGreaterThan(0);
+      for (const cell of cells) expect(cell).toMatch(/^<span[^>]*>\d+<\/span> <span[^>]*>\(\d+\s%\)<\/span>$/);
+    }
+    expect(section("Par montant proposé ÷ bas de la fourchette")).toContain("Moins de 0,5 × le bas");
+  });
+
   it("B5 — aucun retour : un état vide honnête, sans tableau ni zéro", async () => {
     session.email = OWNER;
     store.rows = [];
