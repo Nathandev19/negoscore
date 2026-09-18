@@ -27,6 +27,10 @@ function consentWithLink() {
 // primary : bouton plein pour la formule mise en avant, lien souligné pour les autres.
 export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro"; label: string; primary: boolean }) {
   const [accepted, setAccepted] = useState(false);
+  // Un seul envoi (mission #071) : un double clic ne part pas deux fois vers
+  // le paiement. Le serveur a sa propre garde ; celle-ci évite l'aller-retour.
+  const sentRef = useRef(false);
+  const [sending, setSending] = useState(false);
   // Identifiant anonyme de la mesure d'audience, écrit directement dans le
   // champ caché : vide si la mesure est désactivée (DNT, pas de clé).
   const distinctIdField = useRef<HTMLInputElement>(null);
@@ -39,12 +43,30 @@ export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro
   // Le départ en paiement se compte à l'envoi réel du formulaire, pas au clic :
   // sans la case cochée, le navigateur refuse l'envoi et rien ne part
   // (mission #062, A12).
-  function onSubmit() {
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (sentRef.current) {
+      event.preventDefault();
+      return;
+    }
+    sentRef.current = true;
+    setSending(true);
     fillDistinctId();
     track(ANALYTICS_EVENTS.checkoutStarted, { plan });
   }
 
   useEffect(fillDistinctId, []);
+
+  // Retour arrière depuis la page de paiement : la page est restaurée telle
+  // quelle par le navigateur. Le formulaire redevient utilisable.
+  useEffect(() => {
+    const reset = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      sentRef.current = false;
+      setSending(false);
+    };
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
 
   return (
     <form action="/api/checkout" method="post" className="flex flex-col gap-3" onSubmit={onSubmit}>
@@ -67,7 +89,8 @@ export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro
         // Tant que la case n'est pas cochée, le bouton reste atteignable au
         // clavier (mission #062, A12) : le clic déclenche alors la validation
         // du navigateur, qui dit quoi cocher, au lieu d'un bouton muet.
-        aria-disabled={!accepted}
+        aria-disabled={!accepted || sending}
+        aria-busy={sending}
         variant={primary ? "default" : "link"}
         size="lg"
         className={primary ? "h-12 w-full text-base" : "w-fit text-base"}

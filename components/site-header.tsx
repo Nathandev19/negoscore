@@ -7,10 +7,10 @@ import { hasSessionHint } from "@/lib/auth/session-hint";
 
 // Composant client : les pages publiques restent statiques. L'état vient de
 // l'indicateur de session, jamais d'un jeton ; il ne sert qu'à choisir les liens.
-// Rendu serveur et hydratation : « Se connecter », l'état de la majorité des
-// visiteurs (trafic TikTok, sans cookie), utilisable sans JavaScript. Un
-// visiteur connecté voit ses liens de compte juste après l'hydratation ; s'il
-// clique avant, /connexion le renvoie vers son compte.
+// Rendu serveur et hydratation (mission #071) : état INCONNU. L'emplacement du
+// lien de compte est réservé, invisible et inerte, au lieu d'affirmer
+// « Se connecter » à une personne connectée. Il se remplit dès l'hydratation.
+// Contrepartie assumée : sans JavaScript, l'en-tête n'offre pas ce lien.
 
 // Le cookie ne change qu'avec un chargement complet de page (connexion,
 // déconnexion, suppression) : aucun abonnement n'est nécessaire.
@@ -20,7 +20,7 @@ export function SiteHeader({ tone = "creme" }: { tone?: HeaderTone }) {
   const signedIn = useSyncExternalStore(
     subscribe,
     () => hasSessionHint(document.cookie),
-    () => false,
+    () => null,
   );
   return <HeaderNav signedIn={signedIn} pathname={usePathname()} tone={tone} />;
 }

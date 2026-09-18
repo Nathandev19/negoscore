@@ -4,13 +4,18 @@ import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/billing/consent";
 import { isProActive, type PlanState } from "@/lib/billing/plan-access";
 import { insertRow, selectRows } from "@/lib/supabase/server";
 import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
-import { createCheckoutUrl, fallbackCheckoutUrl, type PlanKey } from "@/lib/whop/api";
+import { checkoutUrlForConfiguration, createCheckoutUrl, fallbackCheckoutUrl, type PlanKey } from "@/lib/whop/api";
 
 export const runtime = "nodejs";
 
 // Départ vers le paiement Whop. Le compte est rattaché par les metadata de la
 // configuration de checkout ; à défaut, le webhook rapproche par l'email de
 // l'acheteur. Le consentement est enregistré avant le départ.
+
+// Même achat relancé coup sur coup (double clic, retour arrière puis nouvel
+// envoi) : pendant cette fenêtre, la même page de paiement Whop est renvoyée
+// au lieu d'en créer une seconde (mission #071).
+export const DUPLICATE_CHECKOUT_WINDOW_MS = 2 * 60 * 1000;
 
 function redirect(location: string) {
   return new Response(null, { status: 303, headers: { Location: location, "Cache-Control": "no-store" } });
@@ -37,6 +42,19 @@ export async function POST(request: Request) {
       console.log(JSON.stringify({ event: "checkout_refused", plan, reason: "abonnement_deja_actif" }));
       return redirect("/tarifs?erreur=deja_pro");
     }
+  }
+
+  // Même formule demandée par le même compte il y a moins de 2 minutes : on
+  // renvoie vers la page de paiement déjà ouverte. Deux envois ne font jamais
+  // deux pages de paiement. Le consentement de ce paiement est déjà enregistré.
+  const since = new Date(Date.now() - DUPLICATE_CHECKOUT_WINDOW_MS).toISOString();
+  const [recent] = await selectRows<{ checkout_configuration_id: string | null }>(
+    "checkout_consents",
+    `select=checkout_configuration_id&user_id=eq.${user.id}&plan=eq.${plan}&checkout_configuration_id=not.is.null&accepted_at=gt.${encodeURIComponent(since)}&order=accepted_at.desc&limit=1`,
+  ).catch(() => []);
+  if (recent?.checkout_configuration_id) {
+    console.log(JSON.stringify({ event: "checkout_reused", plan }));
+    return redirect(checkoutUrlForConfiguration(recent.checkout_configuration_id));
   }
 
   // Identifiant de mesure d'audience : transmis s'il est propre, ignoré sinon.

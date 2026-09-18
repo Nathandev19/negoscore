@@ -54,13 +54,15 @@ export function HeaderNav({
   pathname = null,
   tone = "creme",
 }: {
-  signedIn: boolean;
+  // null : pas encore connu (rendu serveur, avant hydratation, mission #071).
+  signedIn: boolean | null;
   pathname?: string | null;
   tone?: HeaderTone;
 }) {
   const LINK = TONE[tone].link;
   const CTA = TONE[tone].cta;
-  const { main, account, cta } = navItems(signedIn);
+  const unknown = signedIn === null;
+  const { main, account, cta } = navItems(signedIn === true);
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -139,10 +141,17 @@ export function HeaderNav({
         </nav>
 
         <div className="hidden h-8 items-center gap-4 text-small lg:flex">
-          <Link href={account.href} aria-current={current(account.href)} className={cn(LINK, "relative font-medium")}>
-            {account.label}
-            <NavPending />
-          </Link>
+          {unknown ? (
+            // Place réservée, invisible et inerte : rien n'est affirmé avant de savoir.
+            <span aria-hidden data-account-pending className={cn(LINK, "invisible relative font-medium")}>
+              {account.label}
+            </span>
+          ) : (
+            <Link href={account.href} aria-current={current(account.href)} className={cn(LINK, "relative font-medium")}>
+              {account.label}
+              <NavPending />
+            </Link>
+          )}
           <Link href={cta.href} aria-current={current(cta.href)} className={cn(CTA, "relative")}>
             {cta.label}
             <NavPending />
@@ -174,7 +183,7 @@ export function HeaderNav({
             className={cn("absolute inset-x-0 top-14 px-4 pt-2 pb-4 sm:px-6", TONE[tone].panel)}
           >
             <nav aria-label="Navigation mobile" className="mx-auto flex max-w-6xl flex-col">
-              {[...main, account].map((item) => (
+              {[...main, ...(unknown ? [] : [account])].map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}

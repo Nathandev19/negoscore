@@ -87,7 +87,8 @@ describe("case à cocher du paiement", () => {
     expect(form).toContain("required");
     expect(form).not.toContain("defaultChecked");
     expect(form).toContain('href="/cgv"');
-    expect(form).toContain("disabled={!accepted}");
+    // Bouton indisponible sans la case cochée, et pendant l'envoi (mission #071).
+    expect(form).toContain("aria-disabled={!accepted || sending}");
     // Le serveur revérifie la case avant de créer le checkout.
     expect(read("app/api/checkout/route.ts")).toContain('consent !== "on"');
   });

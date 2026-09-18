@@ -34,6 +34,12 @@ export function planKeyFromId(id: string | null | undefined): PlanKey | null {
   return null;
 }
 
+// Page de paiement d'une configuration déjà créée (mission #071) : la même
+// adresse que purchase_url, reconstruite depuis l'identifiant.
+export function checkoutUrlForConfiguration(configurationId: string): string {
+  return `${CHECKOUT_BASE}/checkout/${encodeURIComponent(configurationId)}/`;
+}
+
 export function fallbackCheckoutUrl(plan: PlanKey): string {
   return `${CHECKOUT_BASE}/checkout/${planId(plan)}`;
 }

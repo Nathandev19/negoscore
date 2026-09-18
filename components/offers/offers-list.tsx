@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { PlanCheckoutForm } from "@/components/offers/plan-checkout-form";
 import { Button } from "@/components/ui/button";
+import { Bone } from "@/components/ui/skeleton";
+import { CONSENT_TEXT } from "@/lib/billing/consent";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 import { isCancelled, isProActive, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
@@ -26,33 +28,66 @@ const subscribe = () => () => undefined;
 //   - Compte lu par /api/credits (session vérifiée côté serveur) : présentation
 //     d'un abonné Pro en cours (Pack affiché comme recharge, Pro comme formule en
 //     cours) ; session invalide : retour à l'état non connecté.
+//
+// Mission #071 — rien d'achetable tant qu'on ne sait pas qui regarde. Quatre
+// états, jamais confondus :
+//   - INCONNU (rendu serveur, avant hydratation, puis tant que /api/credits
+//     n'a pas répondu à un visiteur qui porte l'indicateur) : à la place des
+//     boutons, une attente inerte de la même taille. Noms, prix et contenus
+//     restent affichés : ils ne dépendent pas du compte, et la page reste
+//     indexable telle quelle ;
+//   - VISITEUR sans session : « Se connecter pour payer » ;
+//   - COMPTE lu : les vrais boutons, ou la formule en cours ;
+//   - ILLISIBLE (réseau) : on le dit, sans bouton.
+// Avant, l'état inconnu était rendu comme « pas abonné » : un abonné Pro
+// voyait pendant une à deux secondes « Prendre Pro » cliquable.
 export function OffersList() {
-  const hinted = useSyncExternalStore(subscribe, () => hasSessionHint(document.cookie), () => false);
-  // undefined : pas encore lu ; null : pas de session valide.
-  const [credits, setCredits] = useState<PlanState | null | undefined>(undefined);
+  // null : pas encore lu (rendu serveur, hydratation).
+  const hinted = useSyncExternalStore(subscribe, () => hasSessionHint(document.cookie), () => null);
+  // undefined : pas encore lu ; null : pas de session valide ; "illisible" : réponse impossible.
+  const [credits, setCredits] = useState<PlanState | null | undefined | "illisible">(undefined);
 
   useEffect(() => {
     if (!hinted) return;
     let stale = false;
     fetch("/api/credits", { cache: "no-store" })
-      .then(async (response) => (response.ok ? ((await response.json()) as PlanState) : null))
-      .catch(() => undefined)
+      .then(async (response): Promise<PlanState | null | "illisible"> => {
+        if (response.ok) return (await response.json()) as PlanState;
+        // 401 : pas de session valide. Toute autre réponse : on ne sait pas.
+        return response.status === 401 ? null : "illisible";
+      })
+      .catch((): "illisible" => "illisible")
       .then((value) => {
-        if (!stale && value !== undefined) setCredits(value);
+        if (!stale) setCredits(value);
       });
     return () => {
       stale = true;
     };
   }, [hinted]);
 
-  const signedIn = hinted && credits !== null;
-  const proActive = isProActive(credits ?? null);
-  const proCancelled = proActive && isCancelled(credits ?? null);
-  const proEndsAt = periodEndsAt(credits ?? null);
+  const account: "inconnu" | "visiteur" | "illisible" | PlanState =
+    hinted === null
+      ? "inconnu"
+      : !hinted
+        ? "visiteur"
+        : credits === undefined
+          ? "inconnu"
+          : credits === null
+            ? "visiteur"
+            : credits;
+  const known = typeof account === "object" ? account : null;
+  const proActive = isProActive(known);
+  const proCancelled = proActive && isCancelled(known);
+  const proEndsAt = periodEndsAt(known);
   const proEndsAtLabel = proEndsAt ? DATE.format(proEndsAt) : null;
 
   return (
-    <ul className="flex flex-col">
+    <ul className="flex flex-col" aria-busy={account === "inconnu"}>
+      {account === "inconnu" ? (
+        <li className="sr-only" role="status">
+          Lecture de ton compte avant d&apos;afficher les boutons de paiement.
+        </li>
+      ) : null}
       {PLANS.map((plan) => {
         // Même prix, même plan Whop, même parcours : seule la présentation change.
         const asRecharge = proActive && plan.id === "pack";
@@ -87,41 +122,86 @@ export function OffersList() {
                 ))}
               </ul>
             </div>
-            {isCurrentPro ? (
-              <div className="flex flex-col gap-1">
-                <p className="alert-bad py-1 text-sm">
-                  {proCancelled
-                    ? proEndsAtLabel
-                      ? `Ta formule en cours. Elle prend fin le ${proEndsAtLabel}.`
-                      : "Ta formule en cours. Elle prend fin à la fin de la période."
-                    : proEndsAtLabel
-                      ? `Ta formule en cours, jusqu'au ${proEndsAtLabel}.`
-                      : "Ta formule en cours."}
-                </p>
-                {proCancelled ? null : (
-                  <Link href="/resilier" className="link flex min-h-11 w-fit items-center text-sm">
-                    Résilier votre contrat
-                  </Link>
-                )}
-              </div>
-            ) : plan.id === "free" ? (
+            {plan.id === "free" ? (
               <Link href="/analyse" className="link flex min-h-11 w-fit items-center font-semibold">
                 Analyser un deal
               </Link>
-            ) : signedIn ? (
-              <PlanCheckoutForm plan={plan.id} label={asRecharge ? "Recharger" : `Prendre ${plan.name}`} primary={featured} />
-            ) : featured ? (
-              <Button asChild size="lg" className="h-12 w-full text-base">
-                <Link href={LOGIN_HREF}>Se connecter pour payer</Link>
-              </Button>
             ) : (
-              <Link href={LOGIN_HREF} className="link flex min-h-11 w-fit items-center font-semibold">
-                Se connecter pour payer
-              </Link>
+              // Emplacement de hauteur fixe (mission #071) : quel que soit
+              // l'état, il garde la taille du formulaire d'achat. Aucun passage
+              // d'un état à l'autre ne bouscule la page.
+              <ActionSlot primary={featured}>
+                {isCurrentPro ? (
+                  <div className="flex flex-col gap-1">
+                    <p className="alert-bad py-1 text-sm">
+                      {proCancelled
+                        ? proEndsAtLabel
+                          ? `Ta formule en cours. Elle prend fin le ${proEndsAtLabel}.`
+                          : "Ta formule en cours. Elle prend fin à la fin de la période."
+                        : proEndsAtLabel
+                          ? `Ta formule en cours, jusqu'au ${proEndsAtLabel}.`
+                          : "Ta formule en cours."}
+                    </p>
+                    {proCancelled ? null : (
+                      <Link href="/resilier" className="link flex min-h-11 w-fit items-center text-sm">
+                        Résilier votre contrat
+                      </Link>
+                    )}
+                  </div>
+                ) : account === "inconnu" ? (
+                  <PendingPurchase primary={featured} />
+                ) : account === "illisible" ? (
+                  <p className="text-sm">Ton compte n&apos;a pas pu être lu. Recharge la page pour payer.</p>
+                ) : known ? (
+                  <PlanCheckoutForm plan={plan.id} label={asRecharge ? "Recharger" : `Prendre ${plan.name}`} primary={featured} />
+                ) : featured ? (
+                  <Button asChild size="lg" className="h-12 w-full text-base">
+                    <Link href={LOGIN_HREF}>Se connecter pour payer</Link>
+                  </Button>
+                ) : (
+                  <Link href={LOGIN_HREF} className="link flex min-h-11 w-fit items-center font-semibold">
+                    Se connecter pour payer
+                  </Link>
+                )}
+              </ActionSlot>
             )}
           </li>
         );
       })}
     </ul>
+  );
+}
+
+// Emplacement des contrôles d'achat. Dessous, une copie INVISIBLE du formulaire
+// (texte de consentement réel, case, bouton) fixe la hauteur ; dessus, l'état
+// affiché. Le formulaire connecté a donc exactement cette taille, et les autres
+// états (attente, « Se connecter pour payer », formule en cours) tiennent dedans.
+function ActionSlot({ primary, children }: { primary: boolean; children: React.ReactNode }) {
+  return (
+    <div className="grid">
+      <div aria-hidden className="invisible col-start-1 row-start-1 flex flex-col gap-3">
+        <span className="flex items-start gap-2 text-xs">
+          <span className="mt-0.5 size-4 shrink-0" />
+          <span>{CONSENT_TEXT}</span>
+        </span>
+        <span className={primary ? "block h-12" : "block h-11"} />
+      </div>
+      <div className="col-start-1 row-start-1">{children}</div>
+    </div>
+  );
+}
+
+// Attente inerte à la place des contrôles d'achat, taillée comme eux : deux
+// lignes pour la case de consentement, puis le bouton. Rien de cliquable,
+// rien de focalisable.
+function PendingPurchase({ primary }: { primary: boolean }) {
+  return (
+    <div aria-hidden data-pending-purchase className="flex flex-col gap-3">
+      <span className="flex flex-col gap-1 text-xs">
+        <Bone className="h-[0.7em] w-full" />
+        <Bone className="h-[0.7em] w-3/4" />
+      </span>
+      {primary ? <Bone className="h-12 w-full rounded-control" /> : <Bone className="h-11 w-40 rounded-control" />}
+    </div>
   );
 }

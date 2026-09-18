@@ -125,13 +125,17 @@ describe("le cookie indicateur seul ne donne accès à rien", () => {
 });
 
 describe("en-tête client", () => {
-  it("rendu serveur : « Se connecter », aucun lien de compte, même avec le cookie", async () => {
+  // Mission #071 : le rendu serveur ne sait pas qui regarde. Il n'affirme ni
+  // « connecté » ni « déconnecté » : l'emplacement du lien de compte est
+  // réservé, invisible et inerte, jusqu'à l'hydratation.
+  it("rendu serveur : aucun lien de compte, ni « Se connecter » cliquable, même avec le cookie", async () => {
     const { SiteHeader } = await import("@/components/site-header");
     auth.cookies.set(SESSION_HINT_COOKIE, "1");
     const html = renderToString(<SiteHeader />);
-    expect(html).toContain('href="/connexion"');
-    expect(html).toContain("Se connecter");
+    expect(html).not.toContain('href="/connexion"');
     expect(html).not.toContain('href="/compte"');
     expect(html).not.toContain('href="/historique"');
+    expect(html).toContain("data-account-pending");
+    expect(html).toMatch(/<span aria-hidden="true" data-account-pending="true" class="[^"]*invisible/);
   });
 });
