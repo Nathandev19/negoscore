@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { MAX_TEXT_LENGTH, MAX_TEXT_LENGTH_LABEL } from "@/lib/analysis/text";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
 import { clearDraft, readDraft, saveDraft, subscribeDraft } from "@/lib/draft";
 import { clearPendingKey, pendingKey } from "@/lib/analysis/pending-key";
 import { validateFile, type FileKind } from "@/lib/upload";
+import { analyseWithoutJs, type AnalyseWithoutJsState } from "@/lib/forms/no-js-actions";
 
 const MIN_TEXT_LENGTH = 20;
 // Message d'échec (mission #060) : il ne promet plus que rien n'a été
@@ -133,7 +134,11 @@ export function DealInput({ note }: { note?: string } = {}) {
   // ici, puis ce qui est tapé. Jamais perdu après un refus (lib/draft.ts).
   const [edited, setEdited] = useState<string | null>(null);
   const draft = useSyncExternalStore(subscribeDraft, () => readDraft(), () => "");
-  const text = edited ?? draft;
+  // Envoi sans JavaScript (mission #075) : le formulaire part vers une action
+  // serveur, qui transmet à /api/analyse. En cas d'échec, le serveur rend ce
+  // formulaire avec le texte collé et le message : rien n'est perdu.
+  const [noJs, noJsAction] = useActionState(analyseWithoutJs, { status: "idle" } as AnalyseWithoutJsState);
+  const text = edited ?? (noJs.status === "error" ? noJs.text : draft);
   function setText(value: string) {
     setEdited(value);
     saveDraft(value);
@@ -289,6 +294,9 @@ export function DealInput({ note }: { note?: string } = {}) {
 
   return (
     <form
+      // Sans JavaScript, le navigateur envoie le formulaire à cette action.
+      // Avec JavaScript, onSubmit l'intercepte (preventDefault) : rien ne change.
+      action={noJsAction}
       className="flex flex-col gap-3"
       onSubmit={(event) => {
         event.preventDefault();
@@ -317,6 +325,13 @@ export function DealInput({ note }: { note?: string } = {}) {
           <TabsTrigger value="photo">Photo</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
         </TabsList>
+        {/* Sans JavaScript (mission #075), les onglets ne s'ouvrent pas et le
+            dépôt de fichier ne peut pas partir : on le dit. */}
+        <noscript>
+          <p className="mt-2 text-small">
+            Sans JavaScript, seul le message collé peut être analysé : la photo et le PDF demandent JavaScript.
+          </p>
+        </noscript>
 
         <TabsContent value="text" className="flex flex-col gap-1.5">
           <Textarea
@@ -327,6 +342,7 @@ export function DealInput({ note }: { note?: string } = {}) {
             }}
             placeholder="Colle ici le DM, le mail ou le brief de la marque…"
             aria-label="Message de la marque"
+            name="text"
             aria-describedby={countId}
             className="min-h-40 resize-y"
           />
@@ -355,6 +371,20 @@ export function DealInput({ note }: { note?: string } = {}) {
           </TabsContent>
         ))}
       </Tabs>
+
+      {!notice && noJs.status === "error" ? (
+        // Réponse écrite par le serveur après un envoi sans JavaScript.
+        <div role="alert" className="flex flex-col gap-2 alert-bad py-1 text-sm">
+          <p>{noJs.message}</p>
+          {noJs.paywall ? (
+            <p>
+              <Link href="/tarifs" className="link font-semibold">
+                Voir les tarifs
+              </Link>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {notice ? (
         <div role="alert" className="flex flex-col gap-2 alert-bad py-1 text-sm">
@@ -389,6 +419,14 @@ export function DealInput({ note }: { note?: string } = {}) {
         </p>
       )}
       {note && !right.blocked ? <p className="text-center text-small text-attenue">{note}</p> : null}
+      {/* Sans JavaScript, pas d'écran d'attente animé (mission #075) : la page
+          reste affichée pendant l'analyse, puis le résultat s'ouvre. */}
+      <noscript>
+        <p className="text-center text-small text-attenue">
+          Sans JavaScript, l&apos;analyse peut prendre jusqu&apos;à une minute : la page reste affichée pendant ce
+          temps, ne la quitte pas. Ton résultat s&apos;ouvre dès qu&apos;il est prêt.
+        </p>
+      </noscript>
     </form>
   );
 }

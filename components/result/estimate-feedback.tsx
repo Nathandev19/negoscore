@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { useTier } from "@/components/result/tier-selector";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import {
   type StoredFeedback,
 } from "@/lib/analysis/feedback-options";
 import { DEFAULT_TIER, TIER_LABEL, type Tier } from "@/lib/rates/tier";
+import { saveFeedbackWithoutJs, type FeedbackWithoutJsState } from "@/lib/forms/no-js-actions";
 import { cn } from "@/lib/utils";
 
 type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; tier: Tier } | { kind: "error"; message: string };
@@ -21,9 +22,21 @@ type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; tier: Tie
 // L'avis porte sur les chiffres du niveau affiché, envoyé avec la réponse : après
 // un changement de niveau, « c'est enregistré » disparaît, l'avis enregistré
 // portant sur l'autre niveau.
+//
+// Sans JavaScript (mission #075), le formulaire part vers une action serveur qui
+// transmet à la même route ; le serveur rend ensuite ce composant avec sa
+// réponse (« c'est enregistré », ou l'erreur), réponse et commentaire remis en
+// place. Avant, l'envoi rechargeait la page avec ?rating=… dans l'adresse et
+// l'avis était perdu, sans un mot.
 export function EstimateFeedback({ action, initial }: { action: string | null; initial: StoredFeedback | null }) {
-  const [rating, setRating] = useState<FeedbackRating | null>(initial?.rating ?? null);
-  const [comment, setComment] = useState(initial?.comment ?? "");
+  // Identifiant de l'analyse, lu dans l'adresse d'enregistrement.
+  const analysisId = action?.match(/^\/api\/analyses\/([^/]+)\/avis$/)?.[1] ?? null;
+  const [server, serverAction] = useActionState(saveFeedbackWithoutJs, { status: "idle" } as FeedbackWithoutJsState);
+  const fromServer = server.status === "idle" ? null : server;
+  const [rating, setRating] = useState<FeedbackRating | null>(
+    (fromServer?.rating as FeedbackRating | undefined) || initial?.rating || null,
+  );
+  const [comment, setComment] = useState(fromServer?.comment ?? initial?.comment ?? "");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const tier = useTier() ?? DEFAULT_TIER;
   const legendId = useId();
@@ -61,7 +74,14 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4 border-t-2 border-encre pt-6">
+    <form
+      // Sans JavaScript : l'action serveur. Avec JavaScript, submit l'intercepte.
+      action={analysisId ? serverAction : undefined}
+      onSubmit={submit}
+      className="flex flex-col gap-4 border-t-2 border-encre pt-6"
+    >
+      {analysisId ? <input type="hidden" name="analysisId" value={analysisId} /> : null}
+      <input type="hidden" name="tier" value={tier} />
       <fieldset className="flex flex-col gap-3" aria-describedby={legendId}>
         <legend id={legendId} className="headline mb-3 text-h2 text-encre">
           Cette estimation te paraît juste ?
@@ -100,6 +120,7 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
         </label>
         <textarea
           id={commentId}
+          name="comment"
           value={comment}
           maxLength={FEEDBACK_COMMENT_MAX}
           onChange={(event) => {
@@ -128,7 +149,8 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
           {status.kind === "saving" ? "Envoi…" : initial ? "Modifier mon avis" : "Envoyer mon avis"}
         </Button>
         <p role="status" aria-live="polite" className="text-small">
-          {status.kind === "saved" && status.tier === tier
+          {(status.kind === "saved" && status.tier === tier) ||
+          (status.kind === "idle" && fromServer?.status === "saved" && fromServer.tier === tier)
             ? `Merci, c'est enregistré pour le niveau « ${TIER_LABEL[tier].short} ». Tu peux changer ta réponse à tout moment.`
             : null}
         </p>
@@ -136,6 +158,10 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
       {status.kind === "error" ? (
         <p role="alert" className="alert-bad text-small">
           {status.message}
+        </p>
+      ) : status.kind === "idle" && fromServer?.status === "error" ? (
+        <p role="alert" className="alert-bad text-small">
+          {fromServer.message}
         </p>
       ) : null}
       <p className="text-xs text-attenue">
