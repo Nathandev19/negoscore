@@ -5,12 +5,15 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { expiredFlashCookie, flashMessage, flashVisible, readFlash, type FlashKind } from "@/lib/auth/flash";
 import { clearDraft } from "@/lib/draft";
+import { isShowing, showOnce, spend } from "@/lib/shown-once";
 
 // Bandeau de confirmation après connexion ou déconnexion (mission #046).
 //   - Pas de fenêtre modale : un bandeau dans le flux, en haut de page, qui ne
 //     recouvre rien et ne bloque rien, avec un bouton pour le fermer.
 //   - Lu une seule fois : le cookie éphémère est effacé dès la lecture.
-//   - Rattaché à la page d'arrivée : il disparaît à la navigation suivante.
+//   - Rattaché à la page d'arrivée : il disparaît à la navigation suivante,
+//     et ne revient JAMAIS dans ce document, même si on revient sur cette page
+//     sans rechargement (mission #068, lib/shown-once.ts).
 //   - Jamais d'adresse email.
 
 type Latched = { kind: FlashKind; pathname: string } | null;
@@ -23,11 +26,20 @@ function readOnce(): Latched {
   if (latched === undefined) {
     const kind = readFlash(document.cookie);
     latched = kind ? { kind, pathname: window.location.pathname } : null;
+    if (latched) showOnce(FLASH_KEY, latched.pathname);
   }
   return latched;
 }
 
 const noSubscription = () => () => undefined;
+
+export const FLASH_KEY = "bandeau";
+
+// Visible : bandeau lu, sur sa page d'arrivée, pas fermé, et pas déjà consommé
+// par une navigation ailleurs dans ce document (mission #068).
+export function bannerVisible(flash: Latched, pathname: string, dismissed: boolean): boolean {
+  return flash !== null && flashVisible(flash, pathname, dismissed) && isShowing(FLASH_KEY, pathname);
+}
 
 export function FlashBanner() {
   const flash = useSyncExternalStore(noSubscription, readOnce, () => null);
@@ -43,9 +55,17 @@ export function FlashBanner() {
     if (flash.kind === "deconnexion") clearDraft();
   }, [flash]);
 
-  if (!flash || !flashVisible(flash, pathname, dismissed)) return null;
+  if (!flash || !bannerVisible(flash, pathname, dismissed)) return null;
   const message = flashMessage(flash.kind, flash.pathname);
-  return <FlashBannerView message={message} onClose={() => setDismissed(true)} />;
+  return (
+    <FlashBannerView
+      message={message}
+      onClose={() => {
+        spend(FLASH_KEY);
+        setDismissed(true);
+      }}
+    />
+  );
 }
 
 export function FlashBannerView({ message, onClose }: { message: ReturnType<typeof flashMessage>; onClose?: () => void }) {

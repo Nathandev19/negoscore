@@ -1,4 +1,5 @@
 import { signOut, type SessionUser } from "@/lib/auth/session";
+import { deleteLoginClaimsForEmail } from "@/lib/auth/login-claims";
 import { deleteFreeUsage } from "@/lib/billing/free-usage";
 import { isCancelled, isProActive, type PlanState } from "@/lib/billing/plan-access";
 import {
@@ -14,7 +15,8 @@ import {
 // Suppression définitive d'un compte, à la demande de l'utilisateur.
 //
 // SUPPRIMÉ : l'identité Supabase Auth, le profil, les deals, les documents
-// (lignes et fichiers du stockage), les analyses, la ligne de crédits.
+// (lignes et fichiers du stockage), les analyses, la ligne de crédits, et
+// les réclamations de connexion en cours à cette adresse (mission #068).
 // CONSERVÉ : whop_events et checkout_consents, qui documentent des
 // transactions commerciales (obligation légale de conservation).
 
@@ -74,6 +76,9 @@ export async function deleteAccount(user: SessionUser, accessToken: string | nul
   await deleteRows("credits", `user_id=eq.${user.id}`);
   await deleteRows("profiles", `id=eq.${user.id}`);
   await deleteFreeUsage(user.id);
+  // Réclamations de connexion en cours à cette adresse (mission #068) : elles
+  // portent l'email et un jeton anonyme, et n'ont plus d'objet sans le compte.
+  const loginClaims = await deleteLoginClaimsForEmail(user.email);
 
   // 3. Sessions révoquées, puis identité supprimée : un jeton encore en
   //    circulation ne correspond plus à aucun utilisateur.
@@ -81,7 +86,13 @@ export async function deleteAccount(user: SessionUser, accessToken: string | nul
   await deleteAuthUser(user.id);
 
   console.log(
-    JSON.stringify({ event: "account_deleted", documents: documents.length, files_removed: removed.length, consents_kept: consents }),
+    JSON.stringify({
+      event: "account_deleted",
+      documents: documents.length,
+      files_removed: removed.length,
+      consents_kept: consents,
+      login_claims: loginClaims,
+    }),
   );
   return { deleted: true, removedFiles: removed.length };
 }

@@ -56,6 +56,21 @@ export async function completeSignIn(
   const claimedToken = await redeemLoginClaim(options.claim ?? null, session.user.email);
   const tokens = [...new Set([anonToken, claimedToken].filter((token): token is string => Boolean(token)))];
 
+  // RISQUE ACCEPTÉ (mission #068), à connaître avant de toucher à ce qui suit.
+  // Une réclamation se crée avec le jeton du navigateur qui DEMANDE le lien,
+  // pour l'adresse qu'il SAISIT — pas forcément la sienne. Quelqu'un peut donc
+  // demander un lien avec son propre jeton et ton adresse. Si tu cliques cet
+  // email que tu n'as pas demandé, sa réclamation est utilisée ici, et :
+  //   1. ses analyses anonymes sont rattachées à TON compte (attachAnonDeals) ;
+  //   2. l'analyse gratuite qu'il a consommée sous ce jeton est reportée sur
+  //      TON compte (mergeFreeUsage) : ta propre analyse gratuite peut être
+  //      perdue, sans que tu aies rien lancé.
+  // Il ne peut rien te prendre d'autre : ni lire tes analyses, ni se connecter
+  // à ton compte. La parade — n'utiliser la réclamation que si le cookie du
+  // même jeton est présent — supprimerait le lien qui marche dans un autre
+  // navigateur, donc l'atterrissage direct sur le message. Choix fait en
+  // connaissance de cause ; le test « risque accepté » de
+  // tests/login-claims.test.ts le fige, pour qu'un changement soit un choix.
   let attached = 0;
   let refused = false;
   for (const token of tokens) {

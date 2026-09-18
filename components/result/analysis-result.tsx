@@ -22,6 +22,7 @@ import { recomputeForTier, tierChangeAvailable } from "@/lib/analysis/recompute"
 import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
 import { BAND_LABEL } from "@/lib/display";
 import { formatEurRange } from "@/lib/money";
+import { isShowing, showOnce } from "@/lib/shown-once";
 
 // Page de résultat, sous l'en-tête bleu (SiteHeader tone="marque") :
 // 1. bandeau bleu : phrase de verdict, score, pastille, jauge, niveau ;
@@ -36,16 +37,24 @@ import { formatEurRange } from "@/lib/money";
 // Ancre d'arrivée lue une fois par chargement, pour le chemin où elle a été
 // vue : elle est retirée de l'adresse juste après, et le signal ne doit pas
 // s'éteindre pour autant — ni se rallumer sur une autre analyse.
+// Mission #068 : l'arrivée est enregistrée dans le registre « montré une
+// fois » (lib/shown-once.ts). Quitter la page par un lien interne consomme la
+// pastille ; y revenir sans rechargement ne la réaffiche plus.
 let arrivalPath: string | null | undefined;
 // Le déplacement vers le message n'a lieu qu'une fois par chargement.
 let arrivalHandled = false;
 
-function readArrival(): boolean {
-  if (arrivalPath === undefined) arrivalPath = window.location.hash === `#${MESSAGE_ANCHOR}` ? window.location.pathname : null;
-  return arrivalPath !== null && arrivalPath === window.location.pathname;
+export function readArrival(): boolean {
+  if (arrivalPath === undefined) {
+    arrivalPath = window.location.hash === `#${MESSAGE_ANCHOR}` ? window.location.pathname : null;
+    if (arrivalPath !== null) showOnce(UNLOCKED_KEY, arrivalPath);
+  }
+  return isShowing(UNLOCKED_KEY, window.location.pathname);
 }
 
 const noSubscription = () => () => undefined;
+
+const UNLOCKED_KEY = "debloque";
 
 export function AnalysisResult({
   analysis: stored,

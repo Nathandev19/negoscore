@@ -76,7 +76,8 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
     },
   };
 });
-vi.mock("@/lib/billing/free-usage", () => ({ mergeFreeUsage: async () => undefined }));
+const freeUsage = vi.hoisted(() => ({ merge: vi.fn(async () => undefined) }));
+vi.mock("@/lib/billing/free-usage", () => ({ mergeFreeUsage: freeUsage.merge }));
 vi.mock("@/lib/security/usage-guard", () => ({
   hitUsageGuard: async () => ({ allowed: true, count: 1, retryInMinutes: 1 }),
   releaseUsageGuard: async () => undefined,
@@ -145,6 +146,7 @@ beforeEach(() => {
   db.claims = [];
   db.payload = composeAnalysis(baseExtraction());
   auth.redirectTo = null;
+  freeUsage.merge.mockClear();
   vi.spyOn(console, "log").mockImplementation(() => undefined);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
 });
@@ -255,5 +257,27 @@ describe("A5 — plusieurs analyses du même jeton", () => {
     await click(emailLink(redirectTo), NINA);
     expect(db.deals.filter((d) => d.user_id === NINA.userId).map((d) => d.id).sort()).toEqual([DEAL, OTHER_DEAL, third].sort());
     expect(db.deals.find((d) => d.anon_token === "jeton-d-un-autre")?.user_id).toBeNull();
+  });
+});
+
+describe("RISQUE ACCEPTÉ (#068) — un lien non sollicité, cliqué par son destinataire", () => {
+  it("rattache au compte de la personne qui clique les analyses du jeton de celui qui a demandé le lien, ET lui reporte l'analyse gratuite consommée sous ce jeton", async () => {
+    // Malo, dans son navigateur, a lancé une analyse gratuite (jeton de Malo),
+    // puis demande un lien de connexion en saisissant l'adresse de Nina.
+    const MALO_TOKEN = "jeton-de-malo";
+    db.deals = [{ id: OTHER_DEAL, anon_token: MALO_TOKEN, user_id: null }];
+    const redirectTo = await requestLink(NINA.email, "/historique", MALO_TOKEN);
+
+    // Nina reçoit cet email qu'elle n'a pas demandé, et clique.
+    await click(emailLink(redirectTo), NINA);
+
+    // 1. L'analyse de Malo arrive sur le compte de Nina.
+    expect(db.deals[0].user_id).toBe(NINA.userId);
+    // 2. La gratuité consommée par Malo est reportée sur le compte de Nina :
+    //    l'analyse gratuite de Nina peut être perdue.
+    expect(freeUsage.merge).toHaveBeenCalledWith(MALO_TOKEN, NINA.userId);
+    // Ce test documente un comportement VOULU. S'il échoue, c'est que la
+    // réclamation ou le report de gratuité ont changé : vérifie que c'est un
+    // choix, puis mets à jour le commentaire de lib/auth/sign-in.ts.
   });
 });

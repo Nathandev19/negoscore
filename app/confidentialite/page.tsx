@@ -27,6 +27,7 @@ export default function PrivacyPage() {
             "Analyses produites — affichage et historique — exécution du contrat.",
             "Niveau choisi pour le calcul des tarifs (je débute, déjà des collabs payées, c'est mon métier) — préférence de calcul, gardée dans un cookie du navigateur et, avec un compte, sur le compte — exécution du contrat — jusqu'à ce que tu en changes, ou à la suppression du compte (cookie : 12 mois).",
             "Adresse IP sous forme hachée — limitation des abus et de l'usage gratuit — intérêt légitime — conservée 30 jours au maximum.",
+            "Demande de lien de connexion faite depuis un navigateur qui a lancé une analyse sans compte : l'adresse demandée, le jeton anonyme de ce navigateur et l'empreinte d'un code glissé dans le lien (le code lui-même n'est pas gardé) — rattacher cette analyse à ton compte, même si tu ouvres le lien dans un autre navigateur — exécution du contrat.",
             "Email de l'acheteur, montant et formule achetée — preuve de la transaction et suivi des paiements — obligation légale et intérêt légitime.",
             `Coordonnées bancaires — traitées exclusivement par Whop, jamais reçues ni conservées par ${BRAND.name}.`,
             "Mesure d'audience — statistiques d'usage anonymes — intérêt légitime.",
@@ -43,6 +44,7 @@ export default function PrivacyPage() {
             "Avis sur une estimation (réponse et commentaire facultatif de 200 caractères au plus, que tu rédiges toi-même) : conservés tant que l'analyse existe, et supprimés avec elle, que tu supprimes l'analyse ou ton compte.",
             "Journal des paiements et preuves de consentement : 5 ans, y compris après la suppression du compte.",
             "Adresses IP hachées : 30 jours au maximum.",
+            "Demande de lien de connexion : effacée dès que le lien sert. Sinon, elle ne sert plus au bout de 2 heures, et la purge quotidienne l'efface au plus tard le lendemain.",
             "Données de facturation détenues par Whop : selon ses propres durées.",
           ]}
         />

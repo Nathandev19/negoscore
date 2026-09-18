@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Familjen_Grotesk } from "next/font/google";
 import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
 import { DraftExpiry } from "@/components/draft-expiry";
 import { FlashBanner } from "@/components/flash-banner";
+import { ShownOnceTracker } from "@/components/shown-once-tracker";
 import { JsonLd } from "@/components/seo/json-ld";
 import { BRAND } from "@/lib/brand";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
@@ -74,6 +75,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Aller au contenu
         </a>
         <AnalyticsProvider />
+        {/* Voit chaque changement de page : un message montré une fois ne
+            revient pas quand on revient sur sa page (mission #068). */}
+        <ShownOnceTracker />
         {/* Confirmation de connexion ou de déconnexion, au-dessus de la page d'arrivée. */}
         <FlashBanner />
         {/* N'affiche rien : efface le brouillon d'offre périmé (mission #062, D2). */}

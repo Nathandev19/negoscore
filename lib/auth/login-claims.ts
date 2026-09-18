@@ -104,6 +104,20 @@ export function claimFromLink(url: URL): string | null {
   }
 }
 
+// Suppression de compte (mission #068) : les réclamations en cours de cette
+// adresse partent avec le compte, sans attendre leur expiration. Une erreur
+// autre qu'une table absente est remontée : la suppression doit être complète.
+export async function deleteLoginClaimsForEmail(email: string | null): Promise<number> {
+  if (!email) return 0;
+  try {
+    const ids = await deleteRowsReturning("login_claims", `email=eq.${encodeURIComponent(email.trim().toLowerCase())}`, "id");
+    return ids.length;
+  } catch (caught) {
+    if (isMissingRelation(caught)) return 0;
+    throw caught;
+  }
+}
+
 // Purge quotidienne : les réclamations expirées. Renvoie les identifiants supprimés.
 export async function purgeLoginClaims(now: Date, restrict: string): Promise<string[]> {
   try {
