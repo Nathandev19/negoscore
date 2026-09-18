@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isDevZone, isOwnerEmail, isOwnerPath } from "@/lib/admin/owner";
 import { requiresAccount } from "@/lib/auth/account-pages";
 import { signedInRedirectPath } from "@/lib/auth/next-path";
 import {
@@ -51,6 +52,20 @@ import { expiredSessionHintCookieHeader, SESSION_HINT_COOKIE, sessionHintCookieH
 //      - jeton d'accès simplement périmé avec un jeton de rafraîchissement
 //        valable : la session est rafraîchie, jamais détruite.
 //    Et un indicateur sans aucun cookie de session est effacé partout.
+//
+// 5. Mission #077 — pages réservées au propriétaire (/dev/retours,
+//    lib/admin/owner.ts) : pour toute autre personne, connectée ou non, la
+//    requête est réécrite vers une adresse qui n'existe pas. La réponse est
+//    alors celle d'une adresse inconnue : même code 404, même page. La page
+//    refait le contrôle elle-même.
+//    Next ajoute à toute réponse réécrite un en-tête x-middleware-rewrite,
+//    qu'on ne peut pas retirer : en production, TOUTE la zone /dev est donc
+//    réécrite de la même façon pour les autres. /dev/retours y est
+//    indiscernable de /dev/nimportequoi, corps et en-têtes compris.
+
+// Adresse qui ne correspond à aucune route (le préfixe _ exclut un dossier du
+// routage) : sa réponse est celle d'une page inexistante.
+const NOWHERE = "/_introuvable";
 
 export async function proxy(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
@@ -59,6 +74,7 @@ export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   // /connexion/lien-expire : même page, avec le message d'erreur (mission #074).
   const onLoginPage = pathname === "/connexion" || pathname === "/connexion/lien-expire";
+  const ownerOnly = isOwnerPath(pathname) || (isDevZone(pathname) && process.env.NODE_ENV === "production");
 
   // Rafraîchissement : seulement avec un jeton de rafraîchissement, et un jeton
   // d'accès absent ou sur le point d'expirer.
@@ -75,9 +91,13 @@ export async function proxy(request: NextRequest) {
 
   // Vérification auprès de Supabase, là où elle décide de l'accès.
   let signedIn = false;
-  if (token && (requiresAccount(pathname) || onLoginPage)) {
+  let owner = false;
+  if (token && (requiresAccount(pathname) || onLoginPage || ownerOnly)) {
     const check = await checkAccessToken(token);
-    if (check.kind === "valid") signedIn = true;
+    if (check.kind === "valid") {
+      signedIn = true;
+      owner = isOwnerEmail(check.user.email);
+    }
     // Refus constaté. Sauf si le rafraîchissement n'a pas pu se faire : le
     // jeton vérifié est alors peut-être seulement périmé, et la session encore
     // bonne. Dans le doute, on ne détruit rien.
@@ -91,7 +111,9 @@ export async function proxy(request: NextRequest) {
   }
 
   let response: NextResponse;
-  if (requiresAccount(pathname) && !signedIn) {
+  if (ownerOnly && !owner) {
+    response = NextResponse.rewrite(new URL(NOWHERE, request.url));
+  } else if (requiresAccount(pathname) && !signedIn) {
     const target = `/connexion?next=${encodeURIComponent(`${pathname}${search}`)}`;
     response = NextResponse.redirect(new URL(target, request.url), 307);
   } else if (onLoginPage && signedIn) {

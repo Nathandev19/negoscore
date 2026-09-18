@@ -15,8 +15,12 @@ describe("prévisualisation de développement", () => {
     }
   });
 
-  it("tout fichier de app/dev porte l'extension .dev : rien n'y devient une route en production", () => {
-    const files = readdirSync(path.join(process.cwd(), "app", "dev"), { recursive: true, withFileTypes: true }).filter((e) => e.isFile());
+  // Seule exception : app/dev/retours (mission #077), pages de production
+  // réservées au propriétaire. Vérifié par tests/owner-feedback.test.tsx.
+  it("tout fichier de app/dev porte l'extension .dev, sauf les pages réservées de /dev/retours", () => {
+    const files = readdirSync(path.join(process.cwd(), "app", "dev"), { recursive: true, withFileTypes: true })
+      .filter((e) => e.isFile())
+      .filter((e) => !e.parentPath.replaceAll("\\", "/").includes("/app/dev/retours"));
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) expect(file.name, file.name).toMatch(/\.dev\.tsx?$/);
   });
