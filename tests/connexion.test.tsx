@@ -83,21 +83,35 @@ describe("/connexion : redirection d'une personne déjà connectée (proxy)", ()
 
 describe("/connexion : page statique", () => {
   it("non connecté : le formulaire, avec le retour lu dans l'adresse", async () => {
-    const { LoginFromUrl } = await import("@/app/connexion/login-from-url");
+    const { NextFromUrl } = await import("@/app/connexion/login-from-url");
+    const { LoginForm } = await import("@/app/connexion/login-form");
     state.params = new URLSearchParams("next=/historique");
-    const html = renderToStaticMarkup(<LoginFromUrl />);
+    expect(renderToStaticMarkup(<NextFromUrl />)).toBe('<input type="hidden" name="next" value="/historique"/>');
+    const html = renderToStaticMarkup(<LoginForm />);
     expect(html).toContain('name="email"');
-    expect(html).toContain('value="/historique"');
     expect(html).toContain("Recevoir mon lien de connexion");
     expect(html).not.toContain("Ce lien a expiré");
   });
 
-  it("next externe filtré, erreur de lien affichée", async () => {
-    const { LoginFromUrl } = await import("@/app/connexion/login-from-url");
+  it("next externe filtré ; l'ancienne erreur ?erreur=lien reste affichée", async () => {
+    const { NextFromUrl, LinkErrorFromUrl } = await import("@/app/connexion/login-from-url");
     state.params = new URLSearchParams("next=https://exemple.test&erreur=lien");
-    const html = renderToStaticMarkup(<LoginFromUrl />);
-    expect(html).toContain('value="/historique"');
-    expect(html).toContain("Ce lien a expiré ou a déjà servi.");
+    expect(renderToStaticMarkup(<NextFromUrl />)).toContain('value="/historique"');
+    expect(renderToStaticMarkup(<LinkErrorFromUrl />)).toContain("Ce lien a expiré ou a déjà servi.");
+  });
+
+  it("sans ?next= : aucun champ, l'action serveur prendra l'adresse de la page (mission #074)", async () => {
+    const { NextFromUrl } = await import("@/app/connexion/login-from-url");
+    state.params = new URLSearchParams("");
+    expect(renderToStaticMarkup(<NextFromUrl />)).toBe("");
+  });
+
+  it("/connexion/lien-expire : le message est écrit dans la page, sans JavaScript (mission #074)", async () => {
+    const { default: LinkExpiredPage } = await import("@/app/connexion/lien-expire/page");
+    state.params = new URLSearchParams("");
+    const html = renderToStaticMarkup(<LinkExpiredPage />);
+    expect(html).toContain("Ce lien a expiré ou a déjà servi. Demande un nouveau lien.");
+    expect(html).toContain('name="email"');
   });
 
   it("la page n'attend aucun paramètre de requête : elle peut être prérendue", async () => {

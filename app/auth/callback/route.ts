@@ -25,7 +25,8 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
   const clearVerifier = expiredCookieHeader(VERIFIER_COOKIE, "/auth");
-  const failed = redirectResponse(`/connexion?erreur=lien&next=${encodeURIComponent(next)}`, [clearVerifier]);
+  // Message d'erreur écrit dans la page, lisible sans JavaScript (mission #074).
+  const failed = redirectResponse(`/connexion/lien-expire?next=${encodeURIComponent(next)}`, [clearVerifier]);
 
   let session: Session | null = null;
   try {

@@ -57,7 +57,8 @@ export async function proxy(request: NextRequest) {
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   const hasHint = request.cookies.has(SESSION_HINT_COOKIE);
   const { pathname, search } = request.nextUrl;
-  const onLoginPage = pathname === "/connexion";
+  // /connexion/lien-expire : même page, avec le message d'erreur (mission #074).
+  const onLoginPage = pathname === "/connexion" || pathname === "/connexion/lien-expire";
 
   // Rafraîchissement : seulement avec un jeton de rafraîchissement, et un jeton
   // d'accès absent ou sur le point d'expirer.

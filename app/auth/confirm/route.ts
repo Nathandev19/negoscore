@@ -24,7 +24,8 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
   const next = signedInRedirectPath(nextFromEmailLink(url.searchParams.get("next"), configuredSiteUrl() ?? url.origin));
-  const failed = redirectResponse(`/connexion?erreur=lien&next=${encodeURIComponent(next)}`);
+  // Message d'erreur écrit dans la page, lisible sans JavaScript (mission #074).
+  const failed = redirectResponse(`/connexion/lien-expire?next=${encodeURIComponent(next)}`);
 
   if (!tokenHash || !isSignInOtpType(type)) {
     // « type » refusé : c'est une valeur brute venue de l'adresse, donc

@@ -99,7 +99,7 @@ describe("/auth/confirm", () => {
     auth.verify.mockResolvedValue({ session: null, error: { status: 403, code: "otp_expired" } });
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const response = await confirm("token_hash=h&type=email&next=%2Fhistorique");
-    expect(response.headers.get("location")).toBe("/connexion?erreur=lien&next=%2Fhistorique");
+    expect(response.headers.get("location")).toBe("/connexion/lien-expire?next=%2Fhistorique");
     expect(cookieNames(response)).toEqual([]);
     expect(auth.ensure).not.toHaveBeenCalled();
     expect(JSON.parse(String(warn.mock.calls[0][0]))).toMatchObject({ event: "auth_confirm_failed", reason: "otp_expired", status: 403 });
@@ -110,7 +110,7 @@ describe("/auth/confirm", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     for (const query of ["token_hash=h", "token_hash=h&type=recovery", "token_hash=h&type=invite", "token_hash=h&type=email_change", "token_hash=h&type=sms", "type=email"]) {
       const response = await confirm(query);
-      expect(response.headers.get("location"), query).toBe("/connexion?erreur=lien&next=%2Fcompte");
+      expect(response.headers.get("location"), query).toBe("/connexion/lien-expire?next=%2Fcompte");
       expect(cookieNames(response)).toEqual([]);
     }
     expect(auth.verify).not.toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe("/auth/callback, conservée pendant la bascule", () => {
   it("sans vérificateur (autre navigateur) : lien refusé comme avant", async () => {
     const { GET: callback } = await import("@/app/auth/callback/route");
     const response = await callback(new Request(`${SITE}/auth/callback?code=c`));
-    expect(response.headers.get("location")).toBe("/connexion?erreur=lien&next=%2Fhistorique");
+    expect(response.headers.get("location")).toBe("/connexion/lien-expire?next=%2Fhistorique");
     expect(auth.exchange).not.toHaveBeenCalled();
   });
 });

@@ -1,33 +1,58 @@
 "use client";
 
-import { useActionState, useId } from "react";
+import { Suspense, useActionState, useId, type FormEvent } from "react";
 import { requestMagicLink, type LoginState } from "@/app/connexion/actions";
+import { NextFromUrl } from "@/app/connexion/login-from-url";
 import { track } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { safeNextPath } from "@/lib/auth/next-path";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const INITIAL: LoginState = { status: "idle", message: null };
 
-export function LoginForm({ next }: { next: string }) {
+// Formulaire de connexion (mission #074). L'action serveur est passée
+// DIRECTEMENT au formulaire : le navigateur seul sait l'envoyer, sans le moindre
+// fichier JavaScript. Avant, une fonction du navigateur s'intercalait pour la
+// mesure d'audience, et le HTML servi était
+//   <form action="javascript:throw new Error('React form unexpectedly submitted.')">
+// — si le fichier ne se chargeait pas (réseau mobile qui décroche), rien ne
+// partait, en silence.
+//
+// Sans JavaScript, l'envoi recharge la page : le serveur exécute l'action et
+// rend CE composant avec son résultat (lien envoyé, ou message d'erreur). Pour
+// que le résultat retrouve ce formulaire, il reste toujours à la même place dans
+// l'arbre : rien de ce qui dépend de l'adresse n'est autour de lui.
+export function LoginForm() {
   const [state, action, pending] = useActionState(requestMagicLink, INITIAL);
   const emailId = useId();
 
   if (state.status === "sent") {
-    return <LinkSent email={state.email ?? ""} next={next} />;
+    return <LinkSent email={state.email ?? ""} next={state.next ?? safeNextPath(null)} />;
+  }
+
+  // Au moment de l'envoi : mesure d'audience. Elle ne peut JAMAIS empêcher
+  // l'envoi : une erreur est avalée, et sans JavaScript elle n'existe pas.
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    if (pending) {
+      event.preventDefault();
+      return;
+    }
+    try {
+      track(ANALYTICS_EVENTS.emailSubmitted);
+    } catch {
+      // mesure indisponible : la connexion passe avant
+    }
   }
 
   return (
-    <form
-      action={(formData) => {
-        if (pending) return;
-        track(ANALYTICS_EVENTS.emailSubmitted);
-        return action(formData);
-      }}
-      aria-busy={pending}
-      className="flex flex-col gap-3"
-    >
-      <input type="hidden" name="next" value={next} />
+    <form action={action} onSubmit={onSubmit} aria-busy={pending} className="flex flex-col gap-3">
+      {/* Destination lue dans l'adresse, dans le navigateur (la page est
+          statique). Sans JavaScript, ce champ n'existe pas : l'action la
+          reprend dans l'adresse de la page qui envoie (actions.ts). */}
+      <Suspense fallback={null}>
+        <NextFromUrl />
+      </Suspense>
       {/* Étiquette visible : elle reste là quand le champ est rempli, ce que
           l'exemple dans le champ ne fait pas (mission #062, A7). */}
       <label htmlFor={emailId} className="text-small font-semibold text-encre">
