@@ -5,6 +5,8 @@ import { expiredCookieHeader, sessionCookieHeaders, type Session } from "@/lib/a
 export { signedInRedirectPath } from "@/lib/auth/next-path";
 import { flashCookieHeader } from "@/lib/auth/flash";
 import { sessionHintCookieHeader } from "@/lib/auth/session-hint";
+import { ownerHintCookieHeaderFor } from "@/lib/auth/owner-hint";
+import { isOwnerEmail } from "@/lib/admin/owner";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
 
 // Fin de connexion commune aux deux formats de lien magique.
@@ -103,6 +105,9 @@ export async function completeSignIn(
   const cookies = [
     ...sessionCookieHeaders(session),
     sessionHintCookieHeader(),
+    // Lien vers /dev/retours dans l'en-tête, pour le seul propriétaire
+    // (mission #080). N'autorise rien : le proxy et la page revérifient.
+    ownerHintCookieHeaderFor(isOwnerEmail(session.user.email)),
     // Bandeau « Connexion réussie » sur la page d'arrivée (components/flash-banner.tsx).
     flashCookieHeader("connexion", process.env.NODE_ENV === "production"),
     ...(options.extraCookies ?? []),

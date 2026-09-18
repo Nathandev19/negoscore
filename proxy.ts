@@ -13,6 +13,7 @@ import {
   type Session,
 } from "@/lib/auth/session";
 import { expiredSessionHintCookieHeader, SESSION_HINT_COOKIE, sessionHintCookieHeader } from "@/lib/auth/session-hint";
+import { expiredOwnerHintCookieHeader, OWNER_HINT_COOKIE, ownerHintCookieHeaderFor } from "@/lib/auth/owner-hint";
 
 // Avant tout rendu :
 //
@@ -71,6 +72,7 @@ export async function proxy(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   const hasHint = request.cookies.has(SESSION_HINT_COOKIE);
+  const hasOwnerHint = request.cookies.has(OWNER_HINT_COOKIE);
   const { pathname, search } = request.nextUrl;
   // /connexion/lien-expire : même page, avec le message d'erreur (mission #074).
   const onLoginPage = pathname === "/connexion" || pathname === "/connexion/lien-expire";
@@ -139,14 +141,20 @@ export async function proxy(request: NextRequest) {
     response.headers.append("Set-Cookie", expiredCookieHeader(REFRESH_COOKIE));
     // Session invalide : l'en-tête ne doit plus afficher l'état connecté.
     response.headers.append("Set-Cookie", expiredSessionHintCookieHeader());
+    if (hasOwnerHint) response.headers.append("Set-Cookie", expiredOwnerHintCookieHeader());
   } else if (refreshed) {
     for (const cookie of sessionCookieHeaders(refreshed)) response.headers.append("Set-Cookie", cookie);
     // L'indicateur suit la durée de la session rafraîchie.
     response.headers.append("Set-Cookie", sessionHintCookieHeader());
-  } else if (hasHint && !accessToken && !refreshToken) {
-    // Indicateur orphelin : aucun cookie de session derrière. Rien à vérifier,
-    // aucun appel à Supabase : il n'y a de toute façon pas de session.
-    response.headers.append("Set-Cookie", expiredSessionHintCookieHeader());
+    // Indicateur propriétaire (mission #080) : reposé ou effacé selon
+    // l'adresse de la session rafraîchie, vérifiée par Supabase.
+    const ownerNow = isOwnerEmail(refreshed.user.email);
+    if (ownerNow || hasOwnerHint) response.headers.append("Set-Cookie", ownerHintCookieHeaderFor(ownerNow));
+  } else if (!accessToken && !refreshToken) {
+    // Indicateurs orphelins : aucun cookie de session derrière. Rien à
+    // vérifier, aucun appel à Supabase : il n'y a de toute façon pas de session.
+    if (hasHint) response.headers.append("Set-Cookie", expiredSessionHintCookieHeader());
+    if (hasOwnerHint) response.headers.append("Set-Cookie", expiredOwnerHintCookieHeader());
   }
   return response;
 }

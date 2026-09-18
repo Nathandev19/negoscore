@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { HeaderNav, type HeaderTone } from "@/components/header-nav";
 import { hasSessionHint } from "@/lib/auth/session-hint";
+import { hasOwnerHint } from "@/lib/auth/owner-hint";
 
 // Composant client : les pages publiques restent statiques. L'état vient de
 // l'indicateur de session, jamais d'un jeton ; il ne sert qu'à choisir les liens.
@@ -22,5 +23,12 @@ export function SiteHeader({ tone = "creme" }: { tone?: HeaderTone }) {
     () => hasSessionHint(document.cookie),
     () => null,
   );
-  return <HeaderNav signedIn={signedIn} pathname={usePathname()} tone={tone} />;
+  // Mission #080 : lien vers /dev/retours. Faux au rendu serveur, comme tout
+  // ce qui dépend de la personne qui regarde.
+  const owner = useSyncExternalStore(
+    subscribe,
+    () => hasOwnerHint(document.cookie),
+    () => false,
+  );
+  return <HeaderNav signedIn={signedIn} owner={owner} pathname={usePathname()} tone={tone} />;
 }

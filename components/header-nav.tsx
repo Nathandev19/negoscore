@@ -9,14 +9,19 @@ import { cn } from "@/lib/utils";
 
 type NavItem = { href: string; label: string };
 
-// Entrées de navigation selon l'état affiché. signedIn vient du cookie
-// indicateur : il ne choisit que des liens, jamais un accès.
-export function navItems(signedIn: boolean): { main: NavItem[]; account: NavItem; cta: NavItem } {
+// Entrées de navigation selon l'état affiché. signedIn et owner viennent des
+// cookies indicateurs : ils ne choisissent que des liens, jamais un accès.
+// owner (mission #080) : lien vers les retours sur l'estimation, que le proxy
+// et la page ne servent qu'à l'adresse OWNER_EMAIL.
+export const OWNER_NAV_ITEM: NavItem = { href: "/dev/retours", label: "Retours" };
+
+export function navItems(signedIn: boolean, owner = false): { main: NavItem[]; account: NavItem; cta: NavItem } {
   return {
     main: [
       { href: "/#methode", label: "Comment ça marche" },
       { href: "/tarifs", label: "Tarifs" },
       ...(signedIn ? [{ href: "/historique", label: "Mes analyses" }] : []),
+      ...(signedIn && owner ? [OWNER_NAV_ITEM] : []),
     ],
     account: signedIn ? { href: "/compte", label: "Mon compte" } : { href: "/connexion", label: "Se connecter" },
     cta: { href: "/analyse", label: "Analyser un deal" },
@@ -52,18 +57,20 @@ const TONE: Record<HeaderTone, { header: string; link: string; cta: string; togg
 // 56 px quel que soit l'état ; le menu mobile s'ouvre par-dessus le contenu.
 export function HeaderNav({
   signedIn,
+  owner = false,
   pathname = null,
   tone = "creme",
 }: {
   // null : pas encore connu (rendu serveur, avant hydratation, mission #071).
   signedIn: boolean | null;
+  owner?: boolean;
   pathname?: string | null;
   tone?: HeaderTone;
 }) {
   const LINK = TONE[tone].link;
   const CTA = TONE[tone].cta;
   const unknown = signedIn === null;
-  const { main, account, cta } = navItems(signedIn === true);
+  const { main, account, cta } = navItems(signedIn === true, owner);
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
