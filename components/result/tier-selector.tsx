@@ -50,15 +50,12 @@ export function rememberTier(tier: Tier, now: number = Date.now()) {
 // Trois choix, près de la fourchette. Changer de niveau recalcule la page dans
 // le navigateur (lib/analysis/recompute.ts). changeable : faux pour une analyse
 // calculée avec une table plus ancienne, où le niveau est seulement indiqué.
-// original : le niveau avec lequel l'analyse a été calculée et enregistrée.
 export function TierSelector({
   tier,
-  original,
   changeable,
   onChange,
 }: {
   tier: Tier;
-  original: Tier;
   changeable: boolean;
   onChange: (tier: Tier) => void;
 }) {
@@ -109,8 +106,7 @@ export function TierSelector({
       {/* Ce que fait le choix, dit une fois (mission #065) : sans cette phrase,
           une analyse qui se rouvre sur son niveau d'origine passe pour un bug. */}
       <p id={`${legendId}-portee`} data-tier-scope className="text-small text-attenue">
-        Cette analyse garde le niveau avec lequel elle a été calculée : elle se rouvrira sur «&nbsp;
-        {TIER_LABEL[original].title}&nbsp;». Le niveau que tu choisis ici s&apos;appliquera à tes prochaines analyses.
+        Change de niveau pour voir ce que ça donne. Ton choix s&apos;appliquera à tes prochaines analyses.
       </p>
     </fieldset>
   );

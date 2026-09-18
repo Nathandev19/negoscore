@@ -15,11 +15,11 @@ const text = (html: string) =>
     .replaceAll(" ", " ");
 
 describe("phrase sous le sélecteur de niveau", () => {
-  it("nomme le niveau de calcul de l'analyse et dit que le choix vaut pour la suite", () => {
+  it("invite à essayer et dit que le choix vaut pour la suite", () => {
     const analysis = composeAnalysis(baseExtraction(), { tier: "experienced" });
     const html = renderToStaticMarkup(<AnalysisResult analysis={analysis} unlockHref="/connexion" />);
     expect(text(html)).toContain(
-      "Cette analyse garde le niveau avec lequel elle a été calculée : elle se rouvrira sur « C'est mon métier ». Le niveau que tu choisis ici s'appliquera à tes prochaines analyses.",
+      "Change de niveau pour voir ce que ça donne. Ton choix s'appliquera à tes prochaines analyses.",
     );
   });
 
