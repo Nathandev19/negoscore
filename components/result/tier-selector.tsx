@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useId } from "react";
-import { TIER_COOKIE, TIER_COOKIE_MAX_AGE, TIER_LABEL, TIERS, type Tier } from "@/lib/rates/tier";
+import { hasSessionHint } from "@/lib/auth/session-hint";
+import { encodeTierCookie, TIER_COOKIE, TIER_COOKIE_MAX_AGE, TIER_LABEL, TIERS, type Tier } from "@/lib/rates/tier";
 import { cn } from "@/lib/utils";
 
 // Niveau affiché sur la page de résultat. Fourni par AnalysisResult à ce qui
@@ -14,34 +15,50 @@ export function useTier(): Tier | null {
 
 // Mémorise le choix pour les analyses suivantes. Le recalcul, lui, a déjà eu
 // lieu : rien ici n'est attendu pour afficher les nouveaux chiffres.
-//   - cookie du navigateur, avec ou sans compte (lu par /api/analyse) ;
-//   - compte connecté : /api/niveau, en arrière-plan, pour un autre appareil.
-export function rememberTier(tier: Tier, toAccount: boolean) {
+//   - cookie du navigateur, avec ou sans compte (lu par /api/analyse), avec le
+//     moment du choix : c'est le plus récent, cookie ou compte, qui gagne ;
+//   - personne connectée : /api/niveau, en arrière-plan, pour un autre
+//     appareil. Quelle que soit l'analyse ouverte, à elle ou non, verrouillée
+//     ou non : le niveau est une préférence de personne (mission #065).
+// Un échec de l'envoi n'est pas montré : le cookie reste la référence, et la
+// prochaine analyse rattrape le compte (lib/rates/tier-preference.ts).
+export function rememberTier(tier: Tier, now: number = Date.now()) {
+  let signedIn = false;
   try {
+    // Lu AVANT l'écriture du cookie de niveau.
+    signedIn = hasSessionHint(document.cookie);
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
-    document.cookie = `${TIER_COOKIE}=${tier}; Path=/; Max-Age=${TIER_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+    document.cookie = `${TIER_COOKIE}=${encodeTierCookie(tier, now)}; Path=/; Max-Age=${TIER_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
   } catch {
     // cookies bloqués : le choix vaut pour cette page seulement
   }
-  if (toAccount) {
-    void fetch("/api/niveau", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tier }),
-      keepalive: true,
-    }).catch(() => undefined);
-  }
+  if (!signedIn) return;
+  const warn = (reason: string) =>
+    console.warn(JSON.stringify({ event: "rate_tier_save_failed", reason }));
+  void fetch("/api/niveau", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tier, at: now }),
+    keepalive: true,
+  })
+    .then((response) => {
+      if (!response.ok) warn(`HTTP ${response.status}`);
+    })
+    .catch(() => warn("réseau"));
 }
 
 // Trois choix, près de la fourchette. Changer de niveau recalcule la page dans
 // le navigateur (lib/analysis/recompute.ts). changeable : faux pour une analyse
 // calculée avec une table plus ancienne, où le niveau est seulement indiqué.
+// original : le niveau avec lequel l'analyse a été calculée et enregistrée.
 export function TierSelector({
   tier,
+  original,
   changeable,
   onChange,
 }: {
   tier: Tier;
+  original: Tier;
   changeable: boolean;
   onChange: (tier: Tier) => void;
 }) {
@@ -55,7 +72,7 @@ export function TierSelector({
     );
   }
   return (
-    <fieldset id="niveau" className="flex scroll-mt-24 flex-col gap-3" aria-describedby={`${legendId}-aide`}>
+    <fieldset id="niveau" className="flex scroll-mt-24 flex-col gap-3" aria-describedby={`${legendId}-aide ${legendId}-portee`}>
       <legend id={legendId} className="mb-1 font-semibold text-encre">
         Ton niveau
       </legend>
@@ -89,6 +106,12 @@ export function TierSelector({
           );
         })}
       </div>
+      {/* Ce que fait le choix, dit une fois (mission #065) : sans cette phrase,
+          une analyse qui se rouvre sur son niveau d'origine passe pour un bug. */}
+      <p id={`${legendId}-portee`} data-tier-scope className="text-small text-attenue">
+        Cette analyse garde le niveau avec lequel elle a été calculée : elle se rouvrira sur «&nbsp;
+        {TIER_LABEL[original].title}&nbsp;». Le niveau que tu choisis ici s&apos;appliquera à tes prochaines analyses.
+      </p>
     </fieldset>
   );
 }

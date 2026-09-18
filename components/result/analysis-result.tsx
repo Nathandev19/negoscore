@@ -38,7 +38,6 @@ export function AnalysisResult({
   unlockHref,
   before,
   children,
-  rememberOnAccount = false,
   retry,
 }: {
   analysis: ResultView;
@@ -47,8 +46,6 @@ export function AnalysisResult({
   before?: ReactNode;
   // Contenu sous les blocs (carte, avis, suppression).
   children?: ReactNode;
-  // Compte connecté : le niveau choisi est aussi mémorisé sur le compte.
-  rememberOnAccount?: boolean;
   // Offre incomplète : relance gratuite, juste sous la liste de ce qui manque.
   retry?: ReactNode;
 }) {
@@ -63,7 +60,9 @@ export function AnalysisResult({
     if (next === tier) return;
     setReplay({ count: replay.count + 1, from: analysis.score?.value ?? null });
     setTier(next);
-    rememberTier(next, rememberOnAccount);
+    // Mémorisé pour les analyses suivantes, et sur le compte dès qu'une
+    // session est ouverte, quelle que soit l'analyse (mission #065).
+    rememberTier(next);
   }
 
   const locked = !analysis.counter_offer || !analysis.ready_to_send_message;
@@ -121,7 +120,7 @@ export function AnalysisResult({
         ) : null}
         {incomplete ? null : (
           <Estimate estimate={analysis.estimate}>
-            <TierSelector tier={analysis.profile_tier} changeable={tierChangeAvailable(stored)} onChange={chooseTier} />
+            <TierSelector tier={analysis.profile_tier} original={stored.profile_tier} changeable={tierChangeAvailable(stored)} onChange={chooseTier} />
           </Estimate>
         )}
         <NegotiateList items={analysis.negotiate} />

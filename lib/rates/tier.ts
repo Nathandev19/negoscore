@@ -44,3 +44,32 @@ export const TIER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 export function parseTier(value: unknown): Tier | null {
   return typeof value === "string" && (TIERS as readonly string[]).includes(value) ? (value as Tier) : null;
 }
+
+// Un choix de niveau et le moment où il a été fait (millisecondes depuis
+// 1970). Le cookie et le compte portent chacun le leur : c'est le plus récent
+// qui s'applique à l'analyse suivante (mission #065). at = 0 : moment inconnu
+// (cookie écrit avant la #065, compte sans date) — plus ancien que tout choix daté.
+export type TierChoice = { tier: Tier; at: number };
+
+// Valeur du cookie : « niveau.horodatage », par exemple « starter.1758200000000 ».
+export function encodeTierCookie(tier: Tier, at: number): string {
+  return `${tier}.${Math.max(0, Math.round(at))}`;
+}
+
+// Lit les deux formats : l'ancien (« starter ») et le nouveau (« starter.1758… »).
+export function parseTierCookie(value: string | null): TierChoice | null {
+  if (!value) return null;
+  const [raw, stamp] = value.split(".");
+  const tier = parseTier(raw);
+  if (!tier) return null;
+  const at = stamp === undefined ? 0 : Number(stamp);
+  return { tier, at: Number.isSafeInteger(at) && at > 0 ? at : 0 };
+}
+
+// Le plus récent des deux. À égalité (y compris deux dates inconnues), le
+// compte l'emporte, comme avant la #065.
+export function latestTierChoice(account: TierChoice | null, cookie: TierChoice | null): TierChoice | null {
+  if (!account) return cookie;
+  if (!cookie) return account;
+  return cookie.at > account.at ? cookie : account;
+}

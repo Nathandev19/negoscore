@@ -1,0 +1,16 @@
+-- Mission #065 — le dernier choix de niveau gagne.
+--
+-- Le niveau choisi est gardé à deux endroits : un cookie du navigateur et le
+-- compte (profiles.rate_tier). Pour savoir lequel est le plus récent, chacun
+-- porte désormais le moment du choix. Le cookie le porte dans sa valeur
+-- (« starter.1758200000000 ») ; le compte, dans cette colonne.
+--
+-- Les lignes existantes restent à NULL : « moment inconnu », traité comme plus
+-- ancien que tout choix daté. Aucune donnée n'est réécrite.
+--
+-- Sans cette colonne, le code se replie (niveau du compte sans date) et
+-- journalise rate_tier_missing : rien ne casse. Mais le niveau du compte n'a
+-- alors plus de date : sur un appareil, le cookie daté l'emporte toujours, et
+-- deux requêtes arrivées dans le désordre peuvent laisser l'ancien choix sur
+-- le compte, donc sur les autres appareils.
+alter table public.profiles add column if not exists rate_tier_at timestamptz;

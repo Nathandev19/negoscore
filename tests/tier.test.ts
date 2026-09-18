@@ -207,9 +207,14 @@ describe("A2 — changer de niveau n'appelle ni le modèle ni le serveur", () =>
   const graph = [...importGraph("components/result/analysis-result.tsx")].map((file) => file.replace(ROOT, "").replaceAll("\\", "/"));
 
   it("le composant de résultat n'importe ni le modèle, ni la base, ni la facturation", () => {
+    // Seule exception dans lib/auth : l'indicateur de session (mission #065),
+    // module sans aucun import, qui dit seulement s'il faut aussi envoyer le
+    // niveau au compte. Il n'ouvre aucun accès.
+    const HINT = "/lib/auth/session-hint.ts";
     for (const forbidden of ["/lib/llm/extract", "/lib/llm/prompt", "/lib/supabase", "/lib/billing", "/lib/auth", "externe:openai", "externe:node:"]) {
-      expect(graph.filter((file) => file.includes(forbidden)), forbidden).toEqual([]);
+      expect(graph.filter((file) => file.includes(forbidden) && file !== HINT), forbidden).toEqual([]);
     }
+    expect(readFileSync(path.join(ROOT, HINT), "utf8")).not.toMatch(/^import /m);
     expect(graph).toContain("/lib/analysis/recompute.ts");
     expect(graph).toContain("/lib/rates/engine.ts");
   });
