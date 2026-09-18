@@ -165,7 +165,7 @@ describe("données structurées", () => {
       expect(typeof parsed["@type"]).toBe("string");
       expect(String(parsed.url)).toContain("https://www.negoscore.fr");
     }
-    expect(organizationJsonLd().sameAs).toEqual(["https://www.tiktok.com/@negoscore"]);
+    expect(organizationJsonLd().sameAs).toEqual(["https://www.tiktok.com/@negoscore", "https://www.instagram.com/negoscore"]);
     expect(organizationJsonLd().logo).toBe("https://www.negoscore.fr/icon2");
   });
 

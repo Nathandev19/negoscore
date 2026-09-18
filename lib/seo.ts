@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BRAND } from "@/lib/brand";
 import { PLANS } from "@/lib/billing/plans";
+import { SELLER } from "@/lib/legal/identity";
 import { SITE_PREVIEW_ALT, SITE_PREVIEW_SIZE } from "@/lib/share-card/site-preview";
 
 // Référencement et aperçus de partage (mission #047). Pas de pages écrites
@@ -127,7 +128,10 @@ export const ORGANIZATION_LOGO = `${CANONICAL_ORIGIN}/icon2`;
 // Comptes publics qui existent RÉELLEMENT, vérifiés à la main. Seul endroit à
 // compléter quand un compte s'ouvre : il alimente sameAs. Un compte inexistant
 // ici serait un signal négatif pour Google, et une fausse déclaration.
-export const SOCIAL_PROFILES = ["https://www.tiktok.com/@negoscore"] as const;
+// Vérifiés le 18/09/2026 (mission #072) : TikTok (statusCode 0, uniqueId
+// negoscore) et Instagram (page de profil @negoscore, pas « Profile n'est pas
+// disponible »), chacun comparé à un compte inexistant.
+export const SOCIAL_PROFILES = ["https://www.tiktok.com/@negoscore", "https://www.instagram.com/negoscore"] as const;
 
 // Identifiants des trois entités (mission #069) : ils relient l'organisation,
 // le site et l'application entre eux, et d'une page à l'autre.
@@ -135,6 +139,11 @@ export const ORGANIZATION_ID = `${CANONICAL_ORIGIN}/#organisation`;
 export const WEBSITE_ID = `${CANONICAL_ORIGIN}/#site`;
 export const APPLICATION_ID = `${CANONICAL_ORIGIN}/#application`;
 
+// Mission #072 : l'adresse de contact est celle du pied de page (SELLER.email),
+// jamais recopiée. Volontairement ABSENTS, et interdits par test : adresse
+// postale, fondateur, date de fondation. L'adresse des mentions légales est une
+// obligation légale, pas une raison de la servir en format machine, où elle
+// devient moissonnable ; le nom du fondateur n'est pas décidé, donc pas publié.
 export function organizationJsonLd() {
   return {
     "@context": "https://schema.org",
@@ -143,6 +152,7 @@ export function organizationJsonLd() {
     name: BRAND.name,
     url: CANONICAL_ORIGIN,
     logo: ORGANIZATION_LOGO,
+    email: SELLER.email,
     sameAs: [...SOCIAL_PROFILES],
   };
 }

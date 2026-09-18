@@ -87,6 +87,7 @@ describe("JSON-LD de la page d'accueil", () => {
       expect(texte, interdit).not.toContain(interdit);
     }
     expect(organizationJsonLd().sameAs).toEqual([...SOCIAL_PROFILES]);
-    expect([...SOCIAL_PROFILES]).toEqual(["https://www.tiktok.com/@negoscore"]);
+    // Les deux seuls comptes qui existent (vérifiés le 18/09/2026, mission #072).
+    expect([...SOCIAL_PROFILES]).toEqual(["https://www.tiktok.com/@negoscore", "https://www.instagram.com/negoscore"]);
   });
 });
