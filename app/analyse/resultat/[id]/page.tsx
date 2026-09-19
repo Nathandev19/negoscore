@@ -43,9 +43,6 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   const user = await getViewer();
   const result = await loadResultForViewer(id, { user, anonToken });
   if (!result) notFound();
-  // Avis déjà donné : pré-rempli. Table absente (migration 016 non appliquée) :
-  // le formulaire s'affiche vide et l'envoi répondra que c'est indisponible.
-  const feedback = await readFeedback(id).catch(() => null);
   // Offre incomplète : relance gratuite (mission #043). null : indisponible
   // (migration 018 non appliquée, ou erreur de lecture), rien n'est affiché.
   const retry =
@@ -64,6 +61,13 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   // Table disparue du code après un tour (mission #085) : pas de carte.
   const cardAnalysis = negotiated ? recomputeForDeal(result.analysis, negotiated.deal) : result.analysis;
   const cardAvailable = cardAnalysis !== null && shareCardAvailable(cardAnalysis);
+  // Mission #086 : le tour dont la page affiche les chiffres. Table de
+  // l'analyse disparue : la page montre ceux d'origine, tour 0.
+  const judgedTurn = negotiated && cardAnalysis !== null ? negotiated.turn : 0;
+  // Avis déjà donné sur CE tour : pré-rempli, jamais celui d'un autre tour.
+  // Table ou colonnes absentes (migrations non appliquées) : le formulaire
+  // s'affiche vide et l'envoi répondra que c'est indisponible.
+  const feedback = await readFeedback(id, judgedTurn).catch(() => null);
   const sent: SentMessage | undefined = owner ? (await loadSentMessages(id).catch(() => new Map<number, SentMessage>())).get(answeredTurn) : undefined;
 
   return (
@@ -99,9 +103,7 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
         {cardAvailable ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}
         <EstimateFeedback
           action={`/api/analyses/${id}/avis`}
-          // Mission #086 : le tour dont la page affiche les chiffres. Table de
-          // l'analyse disparue : la page montre ceux d'origine, tour 0.
-          turn={negotiated && cardAnalysis !== null ? negotiated.turn : 0}
+          turn={judgedTurn}
           initial={feedback === "missing" ? null : feedback}
         />
         {result.sourceRemoved ? (

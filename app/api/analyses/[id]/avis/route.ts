@@ -14,8 +14,8 @@ function json(status: number, body: Record<string, unknown>) {
 }
 
 // Avis sur l'estimation : réservé à la personne qui a lancé l'analyse, mêmes
-// règles que la page de résultat et la suppression. Une réponse par analyse,
-// remplacée à chaque envoi.
+// règles que la page de résultat et la suppression. Une réponse par analyse et
+// par tour jugé (mission #086), remplacée à chaque envoi sur ce même tour.
 export async function POST(request: Request, { params }: RouteContext<"/api/analyses/[id]/avis">) {
   const { id } = await params;
   const user = await getRequestUser(request);

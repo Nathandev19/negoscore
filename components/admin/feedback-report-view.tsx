@@ -122,7 +122,7 @@ export function EntryItem({ entry, link = true }: { entry: FeedbackEntry; link?:
       </dl>
       {link ? (
         <p className="text-small">
-          <Link href={`/dev/retours/${entry.analysisId}`} className="link">
+          <Link href={`/dev/retours/${entry.analysisId}?tour=${entry.turn ?? 0}`} className="link">
             Voir l&apos;analyse
           </Link>
         </p>
@@ -132,17 +132,19 @@ export function EntryItem({ entry, link = true }: { entry: FeedbackEntry; link?:
 }
 
 export function FeedbackReportView({ report }: { report: FeedbackReport }) {
-  const count = report.overall.total;
   return (
     <div className="flex flex-col gap-12">
       <section className="flex flex-col gap-3">
         <h2 className="text-h2">Sur l&apos;ensemble</h2>
         <p className="text-small">
-          {formatNumber(count, 0)} retour{count > 1 ? "s" : ""}. Un retour par analyse : la dernière réponse donnée compte.
+          {formatNumber(report.avis, 0)} avis sur {formatNumber(report.analyses, 0)} analyse{report.analyses > 1 ? "s" : ""}. Un
+          avis par analyse et par tour jugé ; renvoyé sur le même tour, il remplace le précédent. Les répartitions
+          ci-dessous, sauf celle par tour jugé, comptent chaque analyse une fois : son avis sur l&apos;offre d&apos;origine
+          s&apos;il existe (le seul qui juge un chiffrage non négocié), sinon celui du dernier tour jugé.
         </p>
         <DistributionTable
           caption="Répartition des réponses sur l'ensemble"
-          rows={[{ key: "ensemble", label: "Tous les retours", distribution: report.overall }]}
+          rows={[{ key: "ensemble", label: "Une analyse, un avis", distribution: report.overall }]}
         />
       </section>
 
@@ -163,8 +165,9 @@ export function FeedbackReportView({ report }: { report: FeedbackReport }) {
       <section className="flex flex-col gap-3">
         <h2 className="text-h2">Par tour jugé</h2>
         <p className="text-small">
-          Un avis sur l&apos;offre d&apos;origine et un avis après des tours de négociation ne jugent pas les mêmes termes.
-          Après un tour, les chiffres enregistrés et la forme du deal sont ceux des termes de ce tour.
+          Chaque avis compte ici, même quand une analyse en a plusieurs : un avis sur l&apos;offre d&apos;origine et un
+          avis après des tours de négociation ne jugent pas les mêmes termes. Après un tour, les chiffres enregistrés et
+          la forme du deal sont ceux des termes de ce tour.
         </p>
         <DistributionTable caption="Répartition des réponses par tour jugé" rows={report.byTurn} />
       </section>
@@ -198,7 +201,7 @@ export function FeedbackReportView({ report }: { report: FeedbackReport }) {
         <h2 className="text-h2">Les retours, du plus récent au plus ancien</h2>
         <ol className="flex flex-col border-b border-filet">
           {report.entries.map((entry) => (
-            <EntryItem key={entry.analysisId} entry={entry} />
+            <EntryItem key={`${entry.analysisId}:${entry.turn ?? 0}`} entry={entry} />
           ))}
         </ol>
       </section>

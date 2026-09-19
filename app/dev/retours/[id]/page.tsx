@@ -18,10 +18,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function FeedbackDetailPage({ params }: PageProps<"/dev/retours/[id]">) {
+export default async function FeedbackDetailPage({ params, searchParams }: PageProps<"/dev/retours/[id]">) {
   if (!isOwner(await getViewer())) notFound();
   const { id } = await params;
-  const detail = await loadFeedbackDetail(id);
+  // Mission #086 : un avis par tour. ?tour=N (0 ou absent : l'offre d'origine).
+  const tour = (await searchParams).tour;
+  const detail = await loadFeedbackDetail(id, typeof tour === "string" ? Number(tour) : 0);
   if (!detail) notFound();
   const { feedback, analysis, judgedDeal } = detail;
   // Mission #086 : après un tour, le deal et les chiffres jugés sont ceux des

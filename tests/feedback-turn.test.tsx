@@ -121,6 +121,7 @@ describe("B — la page des retours regroupe selon les termes du tour jugé", ()
     total_high: 2000,
     rate_table_version: "fr-2026.3",
     turn_number: 2,
+    turn_recorded: true,
     created_at: "2026-09-20T10:00:00.000Z",
     updated_at: "2026-09-20T10:00:00.000Z",
     analysis: { deal: original.deal },
@@ -166,7 +167,7 @@ describe("B — la page des retours regroupe selon les termes du tour jugé", ()
   });
 
   it("E — un avis d'avant l'enregistrement du tour : l'offre d'origine, et l'écran dit que c'est supposé", () => {
-    const old = row({ turn_number: null });
+    const old = row({ turn_number: 0, turn_recorded: false });
     expect(dealOf(old)).not.toBeNull();
     const report = buildReport([old]);
     const html = text(renderToStaticMarkup(<EntryItem entry={report.entries[0]} link={false} />));
@@ -183,22 +184,85 @@ describe("le formulaire d'avis", () => {
     expect(text(html)).toContain("La fourchette affichée plus haut, calculée sur les termes après le tour 3.");
   });
 
-  it("un avis donné sur un autre tour n'est pas pré-rempli, et le formulaire le dit", () => {
-    const html = text(
-      renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={{ rating: "too_high", comment: "ancien", turn: 0 }} turn={2} />),
+  it("B — l'avis de CE tour est pré-rempli ; celui d'un autre tour, jamais", () => {
+    const here = text(
+      renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={{ rating: "too_high", comment: "tour deux", turn: 2 }} turn={2} />),
     );
-    expect(html).toContain("Ton avis précédent portait sur l'offre d'origine. Un nouvel avis le remplace.");
-    expect(html).not.toContain("ancien");
-    expect(html).toContain("Envoyer mon avis");
+    expect(here).toContain("tour deux");
+    expect(here).toContain("Modifier mon avis");
+    const other = renderToStaticMarkup(
+      <EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={{ rating: "too_high", comment: "avis-d-origine", turn: 0 }} turn={2} />,
+    );
+    expect(other).not.toContain("avis-d-origine");
+    expect(other).not.toMatch(/value="too_high" checked/);
+    expect(text(other)).toContain("Envoyer mon avis");
   });
 
-  it("avis ancien (tour non enregistré) : supposé sur l'offre d'origine, et dit comme tel", () => {
-    const html = text(
-      renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={{ rating: "fair", comment: null, turn: null }} turn={2} />),
-    );
-    expect(html).toContain("Ton avis précédent portait sur l'offre d'origine (supposé : il date d'avant l'enregistrement du tour)");
+  it("avis ancien (tour non enregistré) : pré-rempli sur l'offre d'origine, et dit comme supposé", () => {
     const same = text(renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={{ rating: "fair", comment: "gardé", turn: null }} />));
     expect(same).toContain("gardé");
-    expect(same).toContain("Modifier mon avis");
+    expect(same).toContain("Ton avis enregistré date d'avant l'enregistrement du tour : il est compté sur l'offre d'origine.");
+    const later = text(renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={{ rating: "fair", comment: "gardé", turn: null }} turn={2} />));
+    expect(later).not.toContain("gardé");
+  });
+});
+
+describe("un avis par tour (clé analysis_id + turn_number)", () => {
+  it("A — un avis après le tour 2 s'ajoute : il n'écrase pas celui sur l'offre d'origine", async () => {
+    const { feedbackRow } = await import("@/lib/analysis/feedback");
+    const input = { rating: "fair" as const, comment: null, tier: "confirmed" as const, turn: 0 };
+    const origin = feedbackRow(ID, original, input, 0);
+    const after = feedbackRow(ID, original, { ...input, turn: 2 }, 2);
+    // Même analyse, tours différents : deux clés différentes.
+    expect([origin.analysis_id, origin.turn_number]).not.toEqual([after.analysis_id, after.turn_number]);
+    await post({ rating: "fair", tier: "confirmed", turn: 0 });
+    await post({ rating: "too_low", tier: "confirmed", turn: 2 });
+    expect(db.writes.map((w) => [w.analysis_id, w.turn_number, w.rating])).toEqual([
+      [ID, 0, "fair"],
+      [ID, 2, "too_low"],
+    ]);
+  });
+
+  it("B — la page lit l'avis du tour affiché, et seulement lui", async () => {
+    const { readFeedback } = await import("@/lib/analysis/feedback");
+    await readFeedback(ID, 3);
+    expect(db.queries.at(-1)).toContain(`analysis_id=eq.${ID}&turn_number=eq.3`);
+  });
+
+  it("C — deux avis sur une même analyse : comptée une fois dans les répartitions (son avis d'origine), deux fois par tour et dans la liste", async () => {
+    const { buildReport: build, onePerAnalysis } = await import("@/lib/admin/feedback-report");
+    const base = {
+      analysis_id: ID,
+      comment: null,
+      profile_tier: "confirmed" as const,
+      score: 40,
+      total_low: 1000,
+      total_high: 2000,
+      rate_table_version: "fr-2026.3",
+      turn_recorded: true,
+      created_at: "2026-09-20T10:00:00.000Z",
+      analysis: { deal: original.deal },
+    };
+    const originRow = { ...base, rating: "too_high" as const, turn_number: 0, updated_at: "2026-09-20T10:00:00.000Z" };
+    const laterRow = { ...base, rating: "too_low" as const, turn_number: 3, updated_at: "2026-09-21T10:00:00.000Z", turn_deal: payload.deal_after };
+    const other = { ...base, analysis_id: "22222222-2222-4222-8222-222222222222", rating: "fair" as const, turn_number: 2, updated_at: "2026-09-19T10:00:00.000Z", turn_deal: payload.deal_after };
+    expect(onePerAnalysis([laterRow, originRow, other]).map((r) => [r.analysis_id, r.turn_number])).toEqual([
+      [ID, 0],
+      ["22222222-2222-4222-8222-222222222222", 2],
+    ]);
+    const report = build([laterRow, originRow, other]);
+    expect(report.analyses).toBe(2);
+    expect(report.avis).toBe(3);
+    expect(report.overall.total).toBe(2);
+    expect(report.overall.counts).toEqual({ too_low: 0, fair: 1, too_high: 1 });
+    expect(report.byTier.find((g) => g.key === "confirmed")?.distribution.total).toBe(2);
+    expect(report.byTurn.map((g) => [g.key, g.distribution.total])).toEqual([
+      ["origine", 1],
+      ["apres-tour", 2],
+    ]);
+    expect(report.entries.map((e) => e.turn)).toEqual([3, 0, 2]);
+    const view = text(renderToStaticMarkup(<EntryItem entry={report.entries[0]} />));
+    expect(renderToStaticMarkup(<EntryItem entry={report.entries[0]} />)).toContain(`href="/dev/retours/${ID}?tour=3"`);
+    expect(view).toContain("Les termes après le tour 3 de négociation");
   });
 });

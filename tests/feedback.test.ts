@@ -73,7 +73,8 @@ describe("enregistrement de l'avis", () => {
     expect(db.writes).toEqual([
       {
         table: "analysis_feedback",
-        onConflict: "analysis_id",
+        // Mission #086 : un avis par analyse ET par tour.
+        onConflict: "analysis_id,turn_number",
         row: {
           analysis_id: ANON_ID,
           rating: "too_high",
@@ -82,6 +83,7 @@ describe("enregistrement de l'avis", () => {
           profile_tier: "confirmed",
           // Mission #086 : l'offre d'origine (aucun tour envoyé).
           turn_number: 0,
+          turn_recorded: true,
           score: 32,
           total_low: 510,
           total_high: 1100,
@@ -91,12 +93,12 @@ describe("enregistrement de l'avis", () => {
     ]);
   });
 
-  it("modifiable : un second envoi remplace le premier (même clé de conflit)", async () => {
+  it("modifiable : un second envoi sur le même tour remplace le premier (même clé de conflit)", async () => {
     await post(ANON_ID, OWNER, { rating: "fair", tier: "confirmed" });
     await post(ANON_ID, OWNER, { rating: "too_low", comment: "", tier: "confirmed" });
     expect(db.writes.map((w) => [w.row.analysis_id, w.row.rating, w.row.comment, w.onConflict])).toEqual([
-      [ANON_ID, "fair", null, "analysis_id"],
-      [ANON_ID, "too_low", null, "analysis_id"],
+      [ANON_ID, "fair", null, "analysis_id,turn_number"],
+      [ANON_ID, "too_low", null, "analysis_id,turn_number"],
     ]);
   });
 
@@ -104,7 +106,7 @@ describe("enregistrement de l'avis", () => {
     await post(ANON_ID, OWNER, { rating: "fair", tier: "confirmed" });
     const row = db.writes[0].row;
     expect(Object.keys(row).sort()).toEqual(
-      ["analysis_id", "comment", "profile_tier", "rate_table_version", "rating", "score", "total_high", "total_low", "turn_number", "updated_at"].sort(),
+      ["analysis_id", "comment", "profile_tier", "rate_table_version", "rating", "score", "total_high", "total_low", "turn_number", "turn_recorded", "updated_at"].sort(),
     );
     const serialized = JSON.stringify(row);
     for (const forbidden of ["Marque Exemple", "Camille", "Ortie", OWNER_TOKEN, "user-a"]) expect(serialized).not.toContain(forbidden);

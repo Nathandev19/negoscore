@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; tier: Tier } | { kind: "error"; message: string };
 
 // « Cette estimation te paraît juste ? » : trois réponses et un commentaire
-// facultatif. Une réponse par analyse, qu'on peut changer. action : l'adresse
+// facultatif. Une réponse par analyse et par tour, qu'on peut changer. action : l'adresse
 // d'enregistrement (null en prévisualisation, où rien n'est envoyé).
 // L'avis porte sur les chiffres du niveau affiché, envoyé avec la réponse : après
 // un changement de niveau, « c'est enregistré » disparaît, l'avis enregistré
@@ -32,8 +32,10 @@ type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; tier: Tie
 //
 // Mission #086 — turn : le tour dont la page affiche les chiffres (0 : l'offre
 // d'origine). Il part avec l'avis, et le serveur enregistre les chiffres de CE
-// tour. Un avis déjà donné sur un autre tour n'est pas pré-rempli : il jugeait
-// d'autres chiffres, et le formulaire le dit.
+// tour. Un avis par tour : initial est l'avis de CE tour (lu par la page pour
+// ce tour-là), jamais celui d'un autre ; en donner un ici n'écrase pas l'avis
+// sur l'offre d'origine. Un avis d'avant l'enregistrement du tour (turn null)
+// est rangé sur l'offre d'origine : pré-rempli sur elle, et dit comme supposé.
 export function EstimateFeedback({
   action,
   initial: stored,
@@ -43,10 +45,8 @@ export function EstimateFeedback({
   initial: StoredFeedback | null;
   turn?: number;
 }) {
-  // Avis d'avant la mission #086 : supposé porter sur l'offre d'origine.
   const storedTurn = stored ? (stored.turn ?? 0) : null;
   const initial = stored && storedTurn === turn ? stored : null;
-  const previous = stored && storedTurn !== turn ? stored : null;
   // Identifiant de l'analyse, lu dans l'adresse d'enregistrement.
   const analysisId = action?.match(/^\/api\/analyses\/([^/]+)\/avis$/)?.[1] ?? null;
   const [server, serverAction] = useActionState(saveFeedbackWithoutJs, { status: "idle" } as FeedbackWithoutJsState);
@@ -110,11 +110,10 @@ export function EstimateFeedback({
             La fourchette affichée plus haut, calculée sur {turnLabel(turn)}.
           </p>
         ) : null}
-        {previous ? (
+        {initial && initial.turn === null ? (
           <p className="text-small text-attenue">
-            Ton avis précédent portait sur {turnLabel(previous.turn ?? 0)}
-            {previous.turn === null ? " (supposé : il date d'avant l'enregistrement du tour)" : ""}. Un nouvel avis le
-            remplace.
+            Ton avis enregistré date d&apos;avant l&apos;enregistrement du tour : il est compté sur l&apos;offre
+            d&apos;origine.
           </p>
         ) : null}
         <div className="grid grid-cols-3 gap-2">

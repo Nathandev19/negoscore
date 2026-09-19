@@ -28,10 +28,12 @@ export type FeedbackRow = {
   total_low: number | null;
   total_high: number | null;
   rate_table_version: string;
-  // Mission #086 : tour jugé (0 : offre d'origine). null : avis d'avant la
-  // migration 20260920000024, traité comme un avis sur l'offre d'origine, et
-  // affiché comme supposé.
-  turn_number: number | null;
+  // Mission #086 : tour jugé (0 : offre d'origine, 2 à 5 : après ce tour). Un
+  // avis par analyse ET par tour.
+  turn_number: number;
+  // false : avis d'avant la migration 20260920000024, tour non noté ; rangé
+  // sur l'offre d'origine (turn_number 0), et affiché comme supposé.
+  turn_recorded: boolean;
   created_at: string;
   updated_at: string;
   analysis: { deal: unknown } | null;
@@ -69,6 +71,9 @@ export type FeedbackReport = {
   byTier: Group[];
   byVersion: Group[];
   byTurn: Group[];
+  // Nombre d'analyses comptées dans les répartitions, et nombre d'avis.
+  analyses: number;
+  avis: number;
   byRatio: Group[];
   byShape: Breakdown[];
   entries: FeedbackEntry[];
@@ -93,7 +98,7 @@ function distributionOf(rows: Array<{ rating: FeedbackRating }>): Distribution {
 // d'origine, ou avis ancien, supposé l'être). null : illisible (schéma
 // inconnu, tour introuvable). Mise en cohérence comme à l'affichage (#057).
 export function dealOf(row: Pick<FeedbackRow, "analysis" | "turn_number" | "turn_deal">): Deal | null {
-  const judged = row.turn_number !== null && row.turn_number > 0 ? row.turn_deal : row.analysis?.deal;
+  const judged = row.turn_number > 0 ? row.turn_deal : row.analysis?.deal;
   const parsed = analysisSchema.shape.deal.safeParse(judged);
   return parsed.success ? normalizeDeal(parsed.data) : null;
 }
@@ -181,15 +186,19 @@ function byRatio(entries: FeedbackEntry[]): Group[] {
 // l'enregistrement du tour sont comptés à part, avec ce qu'on en suppose.
 function byTurn(rows: FeedbackRow[]): Group[] {
   const groups: Group[] = [
-    { key: "origine", label: "Offre d'origine", distribution: distributionOf(rows.filter((row) => row.turn_number === 0)) },
+    {
+      key: "origine",
+      label: "Offre d'origine",
+      distribution: distributionOf(rows.filter((row) => row.turn_recorded && row.turn_number === 0)),
+    },
     {
       key: "apres-tour",
       label: "Après un tour de négociation",
       detail: "Chiffres et forme du deal : ceux des termes du tour jugé.",
-      distribution: distributionOf(rows.filter((row) => row.turn_number !== null && row.turn_number > 0)),
+      distribution: distributionOf(rows.filter((row) => row.turn_number > 0)),
     },
   ];
-  const unknown = rows.filter((row) => row.turn_number === null);
+  const unknown = rows.filter((row) => !row.turn_recorded);
   if (unknown.length > 0) {
     groups.push({
       key: "non-enregistre",
@@ -201,7 +210,41 @@ function byTurn(rows: FeedbackRow[]): Group[] {
   return groups;
 }
 
-export function buildReport(rows: FeedbackRow[]): FeedbackReport {
+// Mission #086, C — un avis par tour : une même analyse peut en avoir
+// plusieurs. Les répartitions (ensemble, niveau, version, rapport, forme)
+// comptent chaque analyse UNE fois : son avis sur l'offre d'origine s'il
+// existe (le seul qui juge un chiffrage non négocié), sinon celui du dernier
+// tour jugé. Le tableau par tour jugé et la liste montrent, eux, chaque avis.
+export function onePerAnalysis(rows: readonly FeedbackRow[]): FeedbackRow[] {
+  const kept = new Map<string, FeedbackRow>();
+  for (const row of rows) {
+    const current = kept.get(row.analysis_id);
+    const better = !current || (current.turn_number !== 0 && (row.turn_number === 0 || row.turn_number > current.turn_number));
+    if (better) kept.set(row.analysis_id, row);
+  }
+  return [...kept.values()];
+}
+
+function entryOf(row: FeedbackRow): FeedbackEntry {
+  const offered = offeredOf(dealOf(row));
+  return {
+    analysisId: row.analysis_id,
+    answeredAt: row.updated_at,
+    rating: row.rating,
+    comment: row.comment,
+    tier: row.profile_tier,
+    score: row.score,
+    offered,
+    rangeLow: row.total_low,
+    rangeHigh: row.total_high,
+    ratioToLow: offered && row.total_low ? offered.value / row.total_low : null,
+    rateTableVersion: row.rate_table_version,
+    turn: row.turn_recorded ? row.turn_number : null,
+  };
+}
+
+export function buildReport(allRows: FeedbackRow[]): FeedbackReport {
+  const rows = onePerAnalysis(allRows);
   const byTier = split(rows, TIERS.map((tier) => ({ key: tier, label: TIER_GROUP_LABEL[tier], test: (row) => row.profile_tier === tier })));
   const unknownTier = rows.filter((row) => row.profile_tier === null);
   if (unknownTier.length > 0) {
@@ -268,37 +311,32 @@ export function buildReport(rows: FeedbackRow[]): FeedbackReport {
     },
   ];
 
-  const entries = rows.map((row): FeedbackEntry => {
-    const offered = offeredOf(dealOf(row));
-    return {
-      analysisId: row.analysis_id,
-      answeredAt: row.updated_at,
-      rating: row.rating,
-      comment: row.comment,
-      tier: row.profile_tier,
-      score: row.score,
-      offered,
-      rangeLow: row.total_low,
-      rangeHigh: row.total_high,
-      ratioToLow: offered && row.total_low ? offered.value / row.total_low : null,
-      rateTableVersion: row.rate_table_version,
-      turn: row.turn_number,
-    };
-  });
+  // Liste : chaque avis, le plus récent d'abord.
+  const entries = allRows.map(entryOf);
   entries.sort((a, b) => b.answeredAt.localeCompare(a.answeredAt));
 
-  return { overall: distributionOf(rows), byTier, byVersion: byVersion(rows), byTurn: byTurn(rows), byRatio: byRatio(entries), byShape, entries };
+  return {
+    overall: distributionOf(rows),
+    analyses: rows.length,
+    avis: allRows.length,
+    byTier,
+    byVersion: byVersion(rows),
+    byTurn: byTurn(allRows),
+    byRatio: byRatio(rows.map(entryOf)),
+    byShape,
+    entries,
+  };
 }
 
 const PAGE_SIZE = 1000;
 const COLUMNS =
-  "analysis_id,rating,comment,profile_tier,score,total_low,total_high,rate_table_version,turn_number,created_at,updated_at,analysis:analyses(deal:payload->deal)";
+  "analysis_id,rating,comment,profile_tier,score,total_low,total_high,rate_table_version,turn_number,turn_recorded,created_at,updated_at,analysis:analyses(deal:payload->deal)";
 
 // Mission #086 — termes des tours jugés, lus dans negotiation_turns : seulement
 // payload->deal_after, jamais la réponse collée. Par lots d'identifiants.
 const TURN_BATCH = 100;
 export async function attachTurnDeals(rows: FeedbackRow[]): Promise<FeedbackRow[]> {
-  const wanted = rows.filter((row) => row.turn_number !== null && row.turn_number > 0);
+  const wanted = rows.filter((row) => row.turn_number > 0);
   if (wanted.length === 0) return rows;
   const ids = [...new Set(wanted.map((row) => row.analysis_id))].filter(isUuid);
   const deals = new Map<string, unknown>();
@@ -311,7 +349,7 @@ export async function attachTurnDeals(rows: FeedbackRow[]): Promise<FeedbackRow[
     for (const turn of found) deals.set(`${turn.analysis_id}:${turn.turn_number}`, turn.deal);
   }
   return rows.map((row) =>
-    row.turn_number !== null && row.turn_number > 0 ? { ...row, turn_deal: deals.get(`${row.analysis_id}:${row.turn_number}`) } : row,
+    row.turn_number > 0 ? { ...row, turn_deal: deals.get(`${row.analysis_id}:${row.turn_number}`) } : row,
   );
 }
 
@@ -334,7 +372,7 @@ export async function loadFeedbackRows(): Promise<FeedbackRow[] | "missing"> {
   }
 }
 
-// ─── Une analyse commentée (page /dev/retours/[id]) ──────────────────────────
+// ─── Un avis commenté (page /dev/retours/[id]?tour=N) ─────────────────────────
 
 // judgedDeal : forme du deal jugé (termes du tour pour un avis après un tour),
 // null si introuvable.
@@ -344,12 +382,13 @@ export type FeedbackDetail = { feedback: FeedbackEntry; analysis: Analysis; judg
 // page de résultat publique n'est lisible que par la personne qui a analysé
 // l'offre, le propriétaire du site n'y aurait qu'un 404. Seul le contenu de
 // l'analyse est lu, jamais le deal en base (compte, jeton, texte d'origine).
-// null : pas d'analyse, ou aucun retour sur elle.
-export async function loadFeedbackDetail(id: string): Promise<FeedbackDetail | null> {
-  if (!isUuid(id)) return null;
+// turn : le tour de l'avis (0 : l'offre d'origine, avis anciens compris).
+// null : pas d'analyse, ou aucun avis sur elle pour ce tour.
+export async function loadFeedbackDetail(id: string, turn = 0): Promise<FeedbackDetail | null> {
+  if (!isUuid(id) || !Number.isInteger(turn)) return null;
   let rows: FeedbackRow[];
   try {
-    rows = await selectRows<FeedbackRow>("analysis_feedback", `select=${COLUMNS}&analysis_id=eq.${id}&limit=1`);
+    rows = await selectRows<FeedbackRow>("analysis_feedback", `select=${COLUMNS}&analysis_id=eq.${id}&turn_number=eq.${turn}&limit=1`);
   } catch (caught) {
     if (isMissingRelation(caught) || isMissingColumn(caught)) return null;
     throw caught;
@@ -360,7 +399,7 @@ export async function loadFeedbackDetail(id: string): Promise<FeedbackDetail | n
   const parsed = analysisSchema.safeParse(stored?.payload);
   if (!parsed.success) return null;
   return {
-    feedback: buildReport([row]).entries[0],
+    feedback: entryOf(row),
     analysis: { ...parsed.data, deal: normalizeDeal(parsed.data.deal) },
     judgedDeal: dealOf(row),
   };

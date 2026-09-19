@@ -4,9 +4,10 @@ import { isMissingColumn, isMissingRelation, selectRows, upsertRow } from "@/lib
 
 export { feedbackInputSchema } from "@/lib/analysis/feedback-options";
 
-// « Cette estimation te paraît juste ? » : une réponse par analyse, modifiable.
+// « Cette estimation te paraît juste ? » : modifiable.
 // Stocké avec un instantané de ce qui a été montré (version de la table, score,
-// fourchette), jamais avec une donnée personnelle ni le texte de l'offre.
+// fourchette, tour), jamais avec une donnée personnelle ni le texte de l'offre.
+// Une réponse par analyse ET par tour (mission #086).
 // Table créée par la migration 20260917000016, niveau ajouté par 20260917000017,
 // tour jugé ajouté par 20260920000024 (mission #086).
 
@@ -21,14 +22,18 @@ function warnMissing(operation: string) {
   );
 }
 
-// null : pas encore de réponse. "missing" : la table n'existe pas encore.
-export async function readFeedback(analysisId: string): Promise<StoredFeedback | null | "missing"> {
+// L'avis de CE tour (0 : l'offre d'origine), jamais celui d'un autre : un avis
+// par tour (mission #086, clé analysis_id + turn_number).
+// null : pas encore de réponse pour ce tour. "missing" : table ou colonnes
+// absentes (migrations pas encore appliquées).
+export async function readFeedback(analysisId: string, turn: number): Promise<StoredFeedback | null | "missing"> {
   try {
-    const [row] = await selectRows<{ rating: StoredFeedback["rating"]; comment: string | null; turn_number: number | null }>(
+    const [row] = await selectRows<{ rating: StoredFeedback["rating"]; comment: string | null; turn_number: number; turn_recorded: boolean }>(
       "analysis_feedback",
-      `select=rating,comment,turn_number&analysis_id=eq.${analysisId}&limit=1`,
+      `select=rating,comment,turn_number,turn_recorded&analysis_id=eq.${analysisId}&turn_number=eq.${turn}&limit=1`,
     );
-    return row ? { rating: row.rating, comment: row.comment, turn: row.turn_number } : null;
+    // Avis d'avant la migration : rangé sur l'offre d'origine, tour non noté.
+    return row ? { rating: row.rating, comment: row.comment, turn: row.turn_recorded ? row.turn_number : null } : null;
   } catch (caught) {
     if (!isMissingRelation(caught) && !isMissingColumn(caught)) throw caught;
     warnMissing("read");
@@ -49,6 +54,7 @@ export function feedbackRow(analysisId: string, analysis: ResultView, input: Fee
     rate_table_version: analysis.estimate.rate_table_version,
     profile_tier: analysis.profile_tier,
     turn_number: turn,
+    turn_recorded: true,
     score: analysis.score?.value ?? null,
     total_low: analysis.estimate.total_low,
     total_high: analysis.estimate.total_high,
@@ -58,7 +64,9 @@ export function feedbackRow(analysisId: string, analysis: ResultView, input: Fee
 
 export async function saveFeedback(analysisId: string, analysis: ResultView, input: FeedbackInput, turn: number): Promise<"saved" | "missing"> {
   try {
-    await upsertRow("analysis_feedback", feedbackRow(analysisId, analysis, input, turn), "analysis_id");
+    // Un avis par tour : renvoyer un avis sur le même tour le remplace ; un
+    // avis sur un autre tour s'ajoute, il n'écrase jamais celui d'origine.
+    await upsertRow("analysis_feedback", feedbackRow(analysisId, analysis, input, turn), "analysis_id,turn_number");
     return "saved";
   } catch (caught) {
     // Colonne profile_tier ou turn_number absente : l'avis est refusé plutôt
