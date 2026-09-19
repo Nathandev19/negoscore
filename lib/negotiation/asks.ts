@@ -1,5 +1,5 @@
 import type { ResultView } from "@/lib/analysis/lock";
-import { quoteIsIn } from "@/lib/negotiation/quotes";
+import { checkQuote } from "@/lib/negotiation/quotes";
 import type { Ask, TurnReading } from "@/lib/negotiation/types";
 
 // Mission #080, B2 — ce qui a été demandé à la marque, et ce qu'elle en a fait.
@@ -21,6 +21,10 @@ export function originalAsks(analysis: ResultView): Ask[] {
   ];
 }
 
+// Demande dont la lecture n'a pas été retenue. clause : la phrase entière de la
+// marque quand la citation l'avait coupée de sa négation ou de sa condition.
+export type Unverified = { label: string; clause: string | null };
+
 // Statuts de ce tour, vérifiés : un statut autre que « sans réponse » n'est
 // retenu qu'avec une citation exacte de la marque (F4). Sans elle, la demande
 // reste où elle en était, et le doute est signalé.
@@ -35,8 +39,8 @@ export function mergeAsks(
   reading: Pick<TurnReading, "asks" | "global_agreement">,
   brandReply: string,
   turn: number,
-): { asks: Ask[]; unverified: string[]; globalAgreement: string | null } {
-  const unverified: string[] = [];
+): { asks: Ask[]; unverified: Unverified[]; globalAgreement: string | null } {
+  const unverified: Unverified[] = [];
   const counts = new Map<string, number>();
   for (const read of reading.asks) {
     // Seuls les accords comptent : un refus en bloc cité sur chaque demande
@@ -44,8 +48,8 @@ export function mergeAsks(
     if (read.status === "granted" && read.quote) counts.set(read.quote.trim(), (counts.get(read.quote.trim()) ?? 0) + 1);
   }
   const stamped = [...counts.entries()].find(([, n]) => n >= 2)?.[0] ?? null;
-  const declared = reading.global_agreement && quoteIsIn(reading.global_agreement, brandReply) ? reading.global_agreement : null;
-  const globalAgreement = declared ?? (stamped && quoteIsIn(stamped, brandReply) ? stamped : null);
+  const declared = reading.global_agreement && checkQuote(reading.global_agreement, brandReply).ok ? reading.global_agreement : null;
+  const globalAgreement = declared ?? (stamped && checkQuote(stamped, brandReply).ok ? stamped : null);
 
   const asks = previous.map((ask) => {
     const read = reading.asks.find((candidate) => candidate.id === ask.id);
@@ -56,8 +60,11 @@ export function mergeAsks(
       if (read.status !== "granted") return ask;
       return { ...ask, status: "granted" as const, quote: globalAgreement, turn, global: true };
     }
-    if (!quoteIsIn(read.quote, brandReply)) {
-      unverified.push(ask.label);
+    // Mission #081 : présente mot pour mot ET non coupée de ce qui la nie ou
+    // la conditionne (lib/negotiation/quotes.ts, checkQuote).
+    const check = checkQuote(read.quote, brandReply);
+    if (!check.ok) {
+      unverified.push(check.reason === "cut" ? { label: ask.label, clause: check.clause } : { label: ask.label, clause: null });
       return ask;
     }
     return { ...ask, status: read.status, quote: read.quote, turn, global: false };

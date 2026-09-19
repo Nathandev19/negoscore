@@ -1,4 +1,4 @@
-import { normalizeForQuote } from "@/lib/negotiation/quotes";
+import { clauseStart, normalizeForQuote, QUALIFIER } from "@/lib/negotiation/quotes";
 import { TERM_GROUP_LABEL, type Deal, type TermGroup } from "@/lib/negotiation/types";
 
 // Mission #080 quater, A2 et A3 — on n'enregistre que ce qui est ÉCRIT.
@@ -15,7 +15,9 @@ import { TERM_GROUP_LABEL, type Deal, type TermGroup } from "@/lib/negotiation/t
 // écrire 1 mois). Une valeur qui n'y figure pas revient à ce qu'elle était, et
 // le doute est dit à la créatrice : « pas de réponse claire », jamais un terme.
 
-export type Unwritten = { group: TermGroup; value: string; reason: "not_written" | "brand_account" };
+// bound : la valeur n'apparaît que dans une phrase qui la nie, la borne ou la
+// conditionne (mission #081, B) ; clause : cette phrase.
+export type Unwritten = { group: TermGroup; value: string; reason: "not_written" | "brand_account" | "bound"; clause?: string };
 
 const FR_NUMBERS: Record<number, string[]> = {
   1: ["un", "une"],
@@ -75,6 +77,45 @@ export function numberWritten(value: number, sources: readonly string[], unit: "
   return value % 12 === 0 && found(value / 12, "\\s+(an|ans|année|années|years?)([^\\p{L}]|$)");
 }
 
+// Mission #081, B — un nombre écrit dans une phrase qui le nie, le restreint,
+// le conditionne ou le borne n'est pas une valeur : « on ne peut pas
+// s'engager sur un délai inférieur à 45 jours » ne veut pas dire « 45 jours ».
+// Une valeur est retenue si elle est écrite dans une demande que la marque
+// accepte, ou si elle apparaît dans sa réponse au moins une fois hors d'une
+// telle phrase. Sinon, clause : la phrase qui la borne, à montrer. Jamais la
+// lecture la plus favorable à la marque : dans le doute, le terme ne bouge pas.
+export type NumberCheck = { ok: true } | { ok: false; clause: string | null };
+
+function numberPositions(value: number, text: string, unit: "months" | "plain"): number[] {
+  const spellings = (n: number) => [
+    String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "[\\s.,]?"),
+    ...(FR_NUMBERS[n] ?? []),
+    ...(EN_NUMBERS[n] ?? []),
+  ];
+  const positions = (n: number, after: string) =>
+    spellings(n).flatMap((spelling) =>
+      [...text.matchAll(new RegExp(`(^|[^\\p{L}\\d])((?:d')?${spelling}${after})`, "gu"))].map((m) => (m.index ?? 0) + m[1].length),
+    );
+  if (unit === "plain") return positions(value, "(?=[^\\p{L}\\d]|$)");
+  const found = positions(value, "\\s*(?:mois|months?)(?=[^\\p{L}]|$)");
+  return found.length > 0 || value % 12 !== 0 ? found : positions(value / 12, "\\s+(?:an|ans|année|années|years?)(?=[^\\p{L}]|$)");
+}
+
+export function numberCheck(
+  value: number,
+  texts: { brandReply: string; accepted: readonly string[] },
+  unit: "months" | "plain" = "plain",
+): NumberCheck {
+  if (numberWritten(value, texts.accepted, unit)) return { ok: true };
+  const text = normalizeForQuote(texts.brandReply);
+  const at = numberPositions(value, text, unit);
+  if (at.length === 0) return { ok: false, clause: null };
+  if (at.some((position) => !QUALIFIER.test(text.slice(clauseStart(text, position), position)))) return { ok: true };
+  const first = at[0];
+  const end = text.slice(first).search(/[.!?;\n]/);
+  return { ok: false, clause: text.slice(clauseStart(text, first), end < 0 ? undefined : first + end).trim() };
+}
+
 // Un texte (échéancier, territoire, catégorie) est-il écrit tel quel ? Chaque
 // morceau séparé par une virgule doit l'être : « 50 % à la signature, solde à
 // 30 jours » échoue si « solde à 30 jours » n'est écrit nulle part.
@@ -103,12 +144,25 @@ export function keepWritten(
   before: Deal,
   candidate: Deal,
   groups: readonly TermGroup[],
-  sources: readonly string[],
+  texts: { brandReply: string; accepted: readonly string[] },
   quotes: Partial<Record<TermGroup, string>>,
 ): { deal: Deal; unwritten: Unwritten[] } {
   const deal: Deal = structuredClone(candidate);
   const unwritten: Unwritten[] = [];
-  const reject = (group: TermGroup, value: string, reason: Unwritten["reason"] = "not_written") => unwritten.push({ group, value, reason });
+  const sources = [texts.brandReply, ...texts.accepted];
+  // Dernière phrase bornante rencontrée par num() : un refus de valeur qui en
+  // vient est dit comme une borne, pas comme une valeur absente.
+  let bound: string | null = null;
+  const num = (value: number, unit: "months" | "plain" = "plain") => {
+    const check = numberCheck(value, texts, unit);
+    bound = check.ok ? null : check.clause;
+    return check.ok;
+  };
+  const reject = (group: TermGroup, value: string, reason: Unwritten["reason"] = "not_written") => {
+    if (reason === "not_written" && bound) unwritten.push({ group, value, reason: "bound", clause: bound });
+    else unwritten.push({ group, value, reason });
+    bound = null;
+  };
 
   for (const group of groups) {
     switch (group) {
@@ -116,7 +170,7 @@ export function keepWritten(
         const unsupported = deal.deliverables.some((d, index) => {
           const was = before.deliverables[index];
           if (was && sameValue(was, d)) return false;
-          const quantityOk = d.quantity === null || (was && was.quantity === d.quantity) || numberWritten(d.quantity, sources);
+          const quantityOk = d.quantity === null || (was && was.quantity === d.quantity) || num(d.quantity);
           const formatOk = d.format === null || (was && was.format === d.format) || textWritten(d.format, sources);
           return !quantityOk || !formatOk;
         });
@@ -131,7 +185,7 @@ export function keepWritten(
         const was = before.payment.amount_eur;
         // Un montant écrit ne s'efface pas parce que le modèle ne sait pas le
         // représenter (fourchette acceptée, par exemple).
-        if (now === null ? was !== null : now !== was && !numberWritten(now, sources)) {
+        if (now === null ? was !== null : now !== was && !num(now)) {
           reject(group, now === null ? "aucun montant" : `${now} €`);
           deal.payment = { ...deal.payment, amount_eur: was, currency: before.payment.currency };
         }
@@ -140,7 +194,7 @@ export function keepWritten(
       case "in_kind": {
         const now = deal.in_kind_value_eur;
         const was = before.in_kind_value_eur;
-        if (now === null ? was !== null : now !== was && !numberWritten(now, sources)) {
+        if (now === null ? was !== null : now !== was && !num(now)) {
           reject(group, now === null ? "aucune valeur" : `${now} €`);
           deal.in_kind_value_eur = was;
         }
@@ -148,7 +202,7 @@ export function keepWritten(
       }
       case "usage_duration": {
         const { duration_months: months, perpetual } = deal.usage;
-        const monthsOk = months === null || months === before.usage.duration_months || numberWritten(months, sources, "months");
+        const monthsOk = months === null || months === before.usage.duration_months || num(months, "months");
         const perpetualOk = !perpetual || before.usage.perpetual || sources.some((source) => PERPETUAL.test(source));
         if (!monthsOk || !perpetualOk) {
           reject(group, perpetual ? "sans limite de durée" : `${months} mois`);
@@ -166,7 +220,7 @@ export function keepWritten(
       }
       case "exclusivity": {
         const { duration_months: months, category } = deal.exclusivity;
-        const monthsOk = months === null || months === before.exclusivity.duration_months || numberWritten(months, sources, "months");
+        const monthsOk = months === null || months === before.exclusivity.duration_months || num(months, "months");
         const categoryOk = category === null || category === before.exclusivity.category || textWritten(category, sources);
         if (!monthsOk) {
           reject(group, `${months} mois`);
@@ -180,7 +234,7 @@ export function keepWritten(
       }
       case "payment_terms": {
         const { terms_days: days, schedule } = deal.payment;
-        if (days !== null && days !== before.payment.terms_days && !numberWritten(days, sources)) {
+        if (days !== null && days !== before.payment.terms_days && !num(days)) {
           reject(group, `${days} jours`);
           deal.payment = { ...deal.payment, terms_days: before.payment.terms_days };
         }
@@ -246,6 +300,9 @@ export function changeFollowsAsk(group: TermGroup, deal: Deal, label: string): b
 // Ce que l'écran dit d'une valeur écartée : à la créatrice, en « tu ».
 export function unwrittenDoubt(item: Unwritten): string {
   const label = TERM_GROUP_LABEL[item.group];
+  if (item.reason === "bound") {
+    return `« ${label} » : la marque écrit « ${item.clause} ». C'est une limite ou une condition, pas une valeur convenue : le terme n'a pas été modifié.`;
+  }
   if (item.reason === "brand_account") {
     return "La marque parle de publier sur son propre compte, pas sur les tiens : la publication sur tes comptes n'a pas été retenue.";
   }

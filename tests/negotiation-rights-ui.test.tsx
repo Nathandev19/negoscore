@@ -251,3 +251,14 @@ describe("#080 quinquies, C — un terme prouvé qui va dans le sens d'une deman
     expect(unclear.join(" ")).not.toContain("Pas de réponse de la marque sur : Paiement à 30 jours");
   });
 });
+
+describe("#081 — à l'écran, la phrase entière de la marque, jamais un accord", () => {
+  it("scénario 15 : aucune demande « Accordé », le délai de paiement inchangé, la phrase niée montrée en entier", () => {
+    const payload = turnFrom("garde-negation-coupee");
+    const html = renderToStaticMarkup(<TurnCard turnNumber={2} createdAt="2026-09-19T10:00:00.000Z" brandReply={null} payload={payload} />);
+    expect(html).not.toContain(">Accordé<");
+    expect(payload.deal_after.payment.terms_days).toBe(payload.deal_before.payment.terms_days);
+    expect(html).toContain("Par contre on ne peut pas s&#x27;engager sur un délai de paiement inférieur à 45 jours");
+    expect(html).toContain("L&#x27;outil avait coupé cette phrase avant ce qui la nie ou la conditionne");
+  });
+});

@@ -4,7 +4,8 @@ import { insertPrice, messageProblems, withGreeting } from "@/lib/negotiation/me
 import { loadScenarios, runScenario, scenarioContext } from "@/lib/negotiation/scenarios";
 import { cleanDoubts } from "@/lib/negotiation/turn";
 import type { Ask, Deal } from "@/lib/negotiation/types";
-import { keepWritten, numberWritten, textWritten } from "@/lib/negotiation/written";
+import { checkQuote } from "@/lib/negotiation/quotes";
+import { keepWritten, numberCheck, numberWritten, textWritten, unwrittenDoubt } from "@/lib/negotiation/written";
 
 // Mission #080 quater — les corrections tirées de l'essai contre le vrai
 // modèle, chacune vérifiée par le code, pas seulement demandée au modèle.
@@ -98,16 +99,16 @@ describe("A7 — une citation est la preuve d'UN point ; un accord global est di
 describe("A2, A3 — on n'enregistre que ce qui est écrit", () => {
   it("« notre compte » (la marque) ne devient jamais une publication sur les comptes de la créatrice", () => {
     const candidate = { ...base, publication_required: true };
-    const brand = keepWritten(base, candidate, ["publication"], ["seulement publiées sur notre compte"], { publication: "les vidéos seront seulement publiées sur notre compte" });
+    const brand = keepWritten(base, candidate, ["publication"], { brandReply: "seulement publiées sur notre compte", accepted: [] }, { publication: "les vidéos seront seulement publiées sur notre compte" });
     expect(brand.deal.publication_required).toBe(false);
     expect(brand.unwritten[0]).toMatchObject({ reason: "brand_account" });
-    const creator = keepWritten(base, candidate, ["publication"], ["publiées sur votre compte TikTok"], { publication: "publiées sur votre compte TikTok" });
+    const creator = keepWritten(base, candidate, ["publication"], { brandReply: "publiées sur votre compte TikTok", accepted: [] }, { publication: "publiées sur votre compte TikTok" });
     expect(creator.deal.publication_required).toBe(true);
   });
 
   it("un échéancier non écrit tel quel revient à ce qu'il était ; le délai, écrit, reste", () => {
     const candidate = { ...base, payment: { ...base.payment, terms_days: 30, schedule: "50 % à la signature, solde à 30 jours" } };
-    const kept = keepWritten(base, candidate, ["payment_terms"], ["le paiement à 30 jours avec 50 % à la signature"], {});
+    const kept = keepWritten(base, candidate, ["payment_terms"], { brandReply: "le paiement à 30 jours avec 50 % à la signature", accepted: [] }, {});
     expect(kept.deal.payment.terms_days).toBe(30);
     expect(kept.deal.payment.schedule).toBe(base.payment.schedule);
     expect(kept.unwritten).toEqual([{ group: "payment_terms", value: "50 % à la signature, solde à 30 jours", reason: "not_written" }]);
@@ -115,7 +116,7 @@ describe("A2, A3 — on n'enregistre que ce qui est écrit", () => {
 
   it("B1 — un montant écrit ne s'efface pas parce que le modèle ne sait pas écrire une fourchette", () => {
     const candidate = { ...base, payment: { ...base.payment, amount_eur: null } };
-    expect(keepWritten(base, candidate, ["amount"], ["C'est d'accord pour tout"], {}).deal.payment.amount_eur).toBe(base.payment.amount_eur);
+    expect(keepWritten(base, candidate, ["amount"], { brandReply: "C'est d'accord pour tout", accepted: [] }, {}).deal.payment.amount_eur).toBe(base.payment.amount_eur);
   });
 
   it("nombres : chiffres, lettres, années, et pas de faux positif", () => {
@@ -164,6 +165,58 @@ describe("#080 quinquies, A — une citation recollée n'est jamais une preuve",
     const reply = "Bonjour, ok pour l'exclusivité d'un mois et pour le paiement à 30 jours avec 50 % à la signature.";
     const merged = mergeAsks(asks, { global_agreement: null, asks: [{ id: "c5", status: "granted", quote: "ok pour le paiement à 30 jours avec 50 % à la signature" }] }, reply, 2);
     expect(merged.asks[0].status).toBe("unanswered");
-    expect(merged.unverified).toEqual(["Paiement à 30 jours, 50 % à la signature"]);
+    expect(merged.unverified).toEqual([{ label: "Paiement à 30 jours, 50 % à la signature", clause: null }]);
+  });
+});
+
+describe("#081, A — une citation n'est jamais coupée de ce qui la nie ou la conditionne", () => {
+  const source = "Par contre on ne peut pas s'engager sur un délai de paiement inférieur à 45 jours.";
+  it("le cas réel de production : coupée juste après la négation, elle est refusée, et la phrase entière est rendue", () => {
+    expect(checkQuote("délai de paiement inférieur à 45 jours", source)).toEqual({
+      ok: false,
+      reason: "cut",
+      clause: "Par contre on ne peut pas s'engager sur un délai de paiement inférieur à 45 jours",
+    });
+  });
+  it("la phrase entière, négation comprise, est recevable", () => {
+    expect(checkQuote("on ne peut pas s'engager sur un délai de paiement inférieur à 45 jours", source)).toEqual({ ok: true });
+  });
+  it.each([
+    ["accepter 30 jours", "Nous ne pouvons pas accepter 30 jours."],
+    ["ok pour 30 jours", "Si le budget passe, ok pour 30 jours."],
+    ["le paiement à 30 jours", "Sauf exception, le paiement à 30 jours."],
+    ["à 3 mois", "L'exclusivité sera au maximum à 3 mois."],
+  ])("« %s » dans « %s » : refusée", (quote, text) => {
+    expect(checkQuote(quote, text)).toMatchObject({ ok: false, reason: "cut" });
+  });
+  it("les citations des scénarios sans négation restent recevables", () => {
+    expect(checkQuote("ok pour l'exclusivité d'un mois", "Bonjour, ok pour l'exclusivité d'un mois et pour le paiement à 30 jours.")).toEqual({ ok: true });
+    expect(checkQuote("sans pub", "les vidéos seront seulement publiées sur notre compte, sans pub.")).toEqual({ ok: true });
+  });
+});
+
+describe("#081, B — une borne n'est pas une valeur", () => {
+  const texts = (brandReply: string, accepted: string[] = []) => ({ brandReply, accepted });
+  it("« inférieur à 45 jours » dans une phrase niée : pas une valeur, la phrase est rendue", () => {
+    expect(numberCheck(45, texts("Par contre on ne peut pas s'engager sur un délai de paiement inférieur à 45 jours."))).toMatchObject({
+      ok: false,
+      clause: expect.stringContaining("inférieur à 45 jours"),
+    });
+  });
+  it.each(["Pas moins de 45 jours.", "Au minimum 45 jours de délai.", "Jusqu'à 45 jours, pas plus."])("« %s » : borne", (text) => {
+    expect(numberCheck(45, texts(text)).ok).toBe(false);
+  });
+  it("une valeur posée sans réserve est retenue", () => {
+    expect(numberCheck(45, texts("Nous paierons à 45 jours.")).ok).toBe(true);
+  });
+  it("une valeur écrite dans une demande acceptée est retenue, même si la réponse la borne ailleurs", () => {
+    expect(numberCheck(30, texts("Au moins 30 jours ailleurs.", ["Paiement à 30 jours, 50 % à la signature"])).ok).toBe(true);
+  });
+  it("le terme de paiement ne bouge pas, et le doute le dit", () => {
+    const candidate = { ...base, payment: { ...base.payment, terms_days: 45 } };
+    const kept = keepWritten(base, candidate, ["payment_terms"], texts("Par contre on ne peut pas s'engager sur un délai de paiement inférieur à 45 jours."), {});
+    expect(kept.deal.payment.terms_days).toBe(base.payment.terms_days);
+    expect(kept.unwritten[0]).toMatchObject({ reason: "bound" });
+    expect(unwrittenDoubt(kept.unwritten[0])).toContain("C'est une limite ou une condition, pas une valeur convenue");
   });
 });

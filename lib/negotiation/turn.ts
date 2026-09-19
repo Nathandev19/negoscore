@@ -4,7 +4,7 @@ import { mergeAsks, openAsks, originalAsks, PRICE_ASK_ID } from "@/lib/negotiati
 import { buildConclusion } from "@/lib/negotiation/conclusion";
 import { fallbackMessage, finalMessage } from "@/lib/negotiation/message";
 import { originPricing, priceFor } from "@/lib/negotiation/pricing";
-import { quoteIsIn } from "@/lib/negotiation/quotes";
+import { checkQuote, quoteIsIn } from "@/lib/negotiation/quotes";
 import { applyGroups, groupLabel } from "@/lib/negotiation/terms";
 import { changeFollowsAsk, keepWritten, unwrittenDoubt } from "@/lib/negotiation/written";
 import {
@@ -116,22 +116,28 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   // mois », c'est écrire 1 mois).
   const merged = mergeAsks(before.asks, reading, brandReply, turnNumber);
   const grantedNow = merged.asks.filter((ask) => ask.turn === turnNumber && ask.status === "granted").map((ask) => ask.label);
-  const sources = [brandReply, ...grantedNow];
 
   // Termes : un groupe n'est repris que s'il est cité mot pour mot, puis
   // chaque valeur changée doit être ÉCRITE (lib/negotiation/written.ts). Sans
   // quoi elle revient à ce qu'elle était et le doute est dit.
   const verified: TermGroup[] = [];
   const ignored: Array<{ group: TermGroup; quote: string }> = [];
+  // Changements refusés parce que la citation était coupée de sa négation ou
+  // de sa condition (mission #081) : la phrase entière est montrée.
+  const cut: Array<{ group: TermGroup; clause: string }> = [];
   const quotes: Partial<Record<TermGroup, string>> = {};
   for (const change of reading.changes) {
     if (verified.includes(change.group)) continue;
-    if (quoteIsIn(change.quote, brandReply)) {
+    const check = checkQuote(change.quote, brandReply);
+    if (check.ok) {
       verified.push(change.group);
       quotes[change.group] = change.quote;
-    } else ignored.push(change);
+    } else {
+      ignored.push({ group: change.group, quote: change.quote });
+      if (check.reason === "cut") cut.push({ group: change.group, clause: check.clause });
+    }
   }
-  const kept = keepWritten(before.deal, applyGroups(before.deal, reading.deal, verified), verified, sources, quotes);
+  const kept = keepWritten(before.deal, applyGroups(before.deal, reading.deal, verified), verified, { brandReply, accepted: grantedNow }, quotes);
   const candidate = normalizeDeal(kept.deal);
   const changes: TermChange[] = [];
   for (const group of verified) {
@@ -160,16 +166,29 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
     return follows ? { ...ask, aligned_group: follows.group, aligned_turn: turnNumber } : ask;
   });
   const alignedNow = new Set(asks.filter((ask) => ask.aligned_turn === turnNumber).map((ask) => ask.label));
+  const cutGroups = new Set(cut.map((item) => item.group));
 
   // Doutes affichés à la créatrice, en « tu » (A6). Ceux du modèle qui parlent
   // de sa propre mécanique (champ, schéma, JSON…) n'atteignent jamais l'écran.
   const uncertainties = [
     ...cleanDoubts(reading.uncertainties),
-    ...merged.unverified.filter((label) => !alignedNow.has(label)).map((label) => `Sur « ${label} », l'outil n'a trouvé aucun passage de la réponse qui le dise clairement.`),
-    ...ignored.map(
-      (change) =>
-        `« ${TERM_GROUP_LABEL[change.group]} » : l'outil a cru lire un changement, mais aucun passage de la réponse ne le dit. Ce n'est pas retenu.`,
+    ...merged.unverified
+      .filter((item) => !alignedNow.has(item.label))
+      .map((item) =>
+        item.clause
+          ? `Sur « ${item.label} », la marque écrit « ${item.clause} ». L'outil avait coupé cette phrase avant ce qui la nie ou la conditionne : rien n'est retenu, relis sa réponse.`
+          : `Sur « ${item.label} », l'outil n'a trouvé aucun passage de la réponse qui le dise clairement.`,
+      ),
+    ...cut.map(
+      (item) =>
+        `« ${TERM_GROUP_LABEL[item.group]} » : la marque écrit « ${item.clause} ». L'outil avait coupé cette phrase avant ce qui la nie ou la conditionne : le terme n'a pas été modifié.`,
     ),
+    ...ignored
+      .filter((change) => !cutGroups.has(change.group))
+      .map(
+        (change) =>
+          `« ${TERM_GROUP_LABEL[change.group]} » : l'outil a cru lire un changement, mais aucun passage de la réponse ne le dit. Ce n'est pas retenu.`,
+      ),
     ...kept.unwritten.map(unwrittenDoubt),
   ];
   // Questions de la marque : seulement celles qu'elle a vraiment posées.

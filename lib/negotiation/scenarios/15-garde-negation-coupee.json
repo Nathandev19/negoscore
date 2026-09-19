@@ -1,0 +1,75 @@
+{
+  "id": "15-garde-negation-coupee",
+  "titre": "Garde : citation vraie coupée de sa négation, et borne lue comme une valeur (cas réel de production, mission #081)",
+  "source": "garde",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "reponse_marque": "Par contre on ne peut pas s'engager sur un délai de paiement inférieur à 45 jours.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "partial",
+    "global_agreement": null,
+    "asks": [
+      {
+        "id": "prix",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c1",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c2",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c5",
+        "status": "granted",
+        "quote": "délai de paiement inférieur à 45 jours"
+      }
+    ],
+    "changes": [
+      {
+        "group": "payment_terms",
+        "quote": "on ne peut pas s'engager sur un délai de paiement inférieur à 45 jours"
+      }
+    ],
+    "deal": {
+      "payment": {
+        "terms_days": 45
+      }
+    },
+    "brand_questions": [],
+    "uncertainties": [],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci pour votre retour.\n\nJe reste disponible pour en discuter.\n\nBelle journée,",
+      "tone": "Poli et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "nouveau_chiffrage": false,
+    "termes_changes": [],
+    "demandes": {
+      "c5": "unanswered"
+    },
+    "doutes": true,
+    "valeurs_interdites": [
+      "45 jours"
+    ]
+  }
+}
