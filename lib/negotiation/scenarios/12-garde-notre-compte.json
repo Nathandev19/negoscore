@@ -1,0 +1,121 @@
+{
+  "id": "12-garde-notre-compte",
+  "titre": "Garde : « notre compte » lu comme le compte de la créatrice (faute réelle du modèle, essai du 19/09/2026)",
+  "source": "garde",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "reponse_marque": "Bonjour, on retire la partie publicité : les vidéos seront seulement publiées sur notre compte, sans pub. Et plus d'exclusivité, ce n'est finalement pas nécessaire.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "counter",
+    "asks": [
+      {
+        "id": "prix",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c1",
+        "status": "countered",
+        "quote": "on retire la partie publicité : les vidéos seront seulement publiées sur notre compte, sans pub."
+      },
+      {
+        "id": "c2",
+        "status": "countered",
+        "quote": "Et plus d'exclusivité, ce n'est finalement pas nécessaire."
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c5",
+        "status": "unanswered",
+        "quote": null
+      }
+    ],
+    "changes": [
+      {
+        "group": "usage_rights",
+        "quote": "on retire la partie publicité : les vidéos seront seulement publiées sur notre compte, sans pub."
+      },
+      {
+        "group": "publication",
+        "quote": "les vidéos seront seulement publiées sur notre compte"
+      },
+      {
+        "group": "exclusivity",
+        "quote": "Et plus d'exclusivité, ce n'est finalement pas nécessaire."
+      }
+    ],
+    "deal": {
+      "brand": "Marque Exemple",
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "tiktok",
+          "quantity": 2,
+          "format": null
+        }
+      ],
+      "publication_required": true,
+      "usage": {
+        "organic": true,
+        "paid_ads": false,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": 6,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": false,
+        "duration_months": null,
+        "category": null
+      },
+      "raw_footage": true,
+      "ip_transfer": "license",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": true
+      },
+      "payment": {
+        "amount_eur": 300,
+        "currency": "EUR",
+        "terms_days": 60,
+        "schedule": null
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "brand_questions": [],
+    "uncertainties": [
+      "La réponse ne précise pas si la durée de 6 mois des droits organiques est maintenue."
+    ],
+    "next_message": {
+      "text": "Bonjour, merci pour votre retour. Je prends note que les vidéos seront publiées uniquement sur votre compte, sans publicité, et que l’exclusivité n’est finalement pas nécessaire. Pour les 2 vidéos TikTok, ma rémunération se situe à {{CONTRE_OFFRE}}. Je reste également en attente de votre retour concernant le raw footage en option, les 2 révisions incluses, ainsi que les modalités de paiement avec 50 % à la signature et le solde à 30 jours. Merci !",
+      "tone": "chaleureux et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "counter",
+    "nouveau_chiffrage": true,
+    "termes_changes": [
+      "usage_rights",
+      "exclusivity"
+    ],
+    "doutes": true
+  }
+}

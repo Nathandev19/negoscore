@@ -1,5 +1,6 @@
 import type { CounterRange } from "@/lib/analysis/anchoring";
 import { pricePhrase } from "@/lib/analysis/engine-parts";
+import { formatEur } from "@/lib/money";
 import { PRICE_PLACEHOLDER } from "@/lib/llm/prompt";
 import { normalizeForQuote, quoteIsIn } from "@/lib/negotiation/quotes";
 import type { Ask, Deal, TurnMessage } from "@/lib/negotiation/types";
@@ -23,6 +24,7 @@ export const FALLBACK_REASON = {
   deadline: "une date limite ou un ultimatum",
   tone: "une formulation trop sèche",
   quote: "une phrase prêtée à la marque qu'elle n'a pas écrite",
+  gender: "une formule qui suppose ton genre (par exemple « ravie »)",
   empty: "un message vide",
 } as const;
 export type FallbackReason = keyof typeof FALLBACK_REASON;
@@ -84,6 +86,29 @@ const HARSH = new RegExp(
   "i",
 );
 
+// Mission #080 quater, A4 — le produit ne sait pas qui écrit : aucun accord
+// au masculin ni au féminin à la première personne (« je suis ravie », « je
+// reste ouvert »). Les deux genres sont refusés, « disponible » reste permis.
+const GENDERED_ADJECTIVES =
+  "ravie?|contente?|heureu(?:x|se)|prête?|ouverte?|intéressée?|enchantée?|certaine?|sûre?|motivée?|convaincue?|désolée?|touchée?|honorée?|flattée?|déçue?";
+const GENDERED = new RegExp(
+  `\\b(?:je (?:suis|reste|serai|serais|me sens)|suis|reste)\\s+(?:(?:très|vraiment|tout à fait|si|bien)\\s+)?(?:${GENDERED_ADJECTIVES})(?![\\p{L}])`,
+  "iu",
+);
+
+// A5 — un message à une marque commence par une salutation, sur sa propre
+// ligne. Absente : ajoutée. Collée à la phrase suivante : détachée.
+const GREETING = /^(bonjour|bonsoir|hello|hi|salut)\b([^,\n!.]{0,30})[,!.]?[ \t]*/i;
+export function withGreeting(text: string, language: Language): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(GREETING);
+  if (!match) return `${language === "en" ? "Hello," : "Bonjour,"}\n\n${trimmed}`;
+  const tail = trimmed.slice(match[0].length).replace(/^\n+/, "");
+  // « Bonjour, merci pour… » : la phrase détachée reprend sa majuscule.
+  const rest = tail.charAt(0).toUpperCase() + tail.slice(1);
+  return rest === "" ? `${match[1]}${match[2].trimEnd()},` : `${match[1]}${match[2].trimEnd()},\n\n${rest}`;
+}
+
 // Nombres qui ont une source : le deal (quantités, durées, délai, révisions),
 // les demandes déjà faites à la marque (« 2 révisions », « à 30 jours ») et ce
 // que la marque a écrit. Tout autre nombre dans le brouillon est suspect. Un
@@ -125,6 +150,7 @@ export function messageProblems(draft: string, deal: Deal, brandReply: string, a
   }
   if (DEADLINE.test(text)) problems.add("deadline");
   if (HARSH.test(text)) problems.add("tone");
+  if (GENDERED.test(text)) problems.add("gender");
   for (const segment of quotedSegments(text)) if (!quoteIsIn(segment, brandReply)) problems.add("quote");
   return [...problems];
 }
@@ -185,6 +211,50 @@ export function fallbackMessage({
   ].join("\n");
 }
 
+// Mission #080 quater, A1 — la contre-offre insérée s'accorde avec le mot qui
+// précède le marqueur, côté code : « une rémunération de {{CONTRE_OFFRE}} »
+// donnait « de entre 1 000 € et 2 400 € », « se situe à {{…}} » donnait « à
+// entre ». Le mot est remplacé avec la phrase. Renvoie aussi les phrases
+// insérées : ce sont les seuls montants du message, tous du moteur.
+export function insertPrice(draft: string, language: Language, counter: CounterRange): { text: string; phrases: string[] } {
+  const phrases: string[] = [];
+  const priced = counter.low !== null && counter.high !== null;
+  const low = priced ? formatEur(counter.low as number, language) : "";
+  const high = priced ? formatEur(counter.high as number, language) : "";
+  const quote = language === "en" ? "a rate I will detail in my quote" : "un tarif que je vous détaille dans mon devis";
+  const text = draft.replace(/(?:([\p{L}]+)'|([\p{L}]+)(\s+))?\{\{CONTRE_OFFRE\}\}/gu, (_all, elided: string | undefined, word: string | undefined, space: string | undefined) => {
+    const previous = (elided ?? word ?? "").toLowerCase();
+    const keep = elided ? `${elided}'` : word ? `${word}${space}` : "";
+    let phrase: string;
+    let replacement: string;
+    if (language === "fr" && (previous === "de" || previous === "d")) {
+      phrase = priced ? `de ${low} à ${high}` : `d'${quote}`;
+      replacement = phrase;
+    } else if (language === "fr" && previous === "à") {
+      phrase = priced ? `entre ${low} et ${high}` : `à ${quote}`;
+      replacement = phrase;
+    } else if (language === "fr" && previous === "pour") {
+      phrase = priced ? `pour un montant compris entre ${low} et ${high}` : `pour ${quote}`;
+      replacement = phrase;
+    } else if (language === "en" && previous === "at") {
+      phrase = priced ? `between ${low} and ${high}` : `at ${quote}`;
+      replacement = phrase;
+    } else {
+      phrase = pricePhrase(language, counter);
+      replacement = `${keep}${phrase}`;
+    }
+    phrases.push(phrase);
+    return replacement;
+  });
+  return { text, phrases };
+}
+
+// Toutes les formes que insertPrice peut écrire pour une contre-offre : les
+// seuls montants autorisés dans un message de tour.
+export function pricePhraseForms(language: Language, counter: CounterRange): string[] {
+  return ["de", "à", "pour", "at", "x"].map((word) => insertPrice(`${word} {{CONTRE_OFFRE}}`, language, counter).phrases[0]);
+}
+
 // Brouillon du modèle contrôlé, puis contre-offre insérée à la place du
 // marqueur. Contre-offre absente (plus rien à négocier sur le prix) : la
 // phrase neutre du moteur (« un tarif que je vous détaille dans mon devis »).
@@ -211,5 +281,5 @@ export function finalMessage({
   if (problems.length > 0) {
     return { text: fallback(), tone: "Poli et ferme", fallback: true, fallback_reasons: problems.map((p) => FALLBACK_REASON[p]) };
   }
-  return { text: draft.replaceAll(PRICE_PLACEHOLDER, pricePhrase(language, counter)).trim(), tone, fallback: false, fallback_reasons: [] };
+  return { text: withGreeting(insertPrice(draft, language, counter).text.trim(), language), tone, fallback: false, fallback_reasons: [] };
 }

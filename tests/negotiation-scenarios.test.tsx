@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TurnCard } from "@/components/result/negotiation/turn-card";
 import { pricePhrase } from "@/lib/analysis/engine-parts";
 import { WRITTEN_CONTRACT_THRESHOLD_EUR } from "@/lib/legal/fr";
-import { messageProblems } from "@/lib/negotiation/message";
+import { messageProblems, pricePhraseForms } from "@/lib/negotiation/message";
 import { originPricing } from "@/lib/negotiation/pricing";
 import { loadScenarios, runScenario, type Scenario } from "@/lib/negotiation/scenarios";
 import { OFF_TOPIC_MESSAGE, type Pricing, type TurnPayload } from "@/lib/negotiation/types";
@@ -77,7 +77,11 @@ describe("F8 — les scénarios couvrent les cas demandés", () => {
       expect(ids.some((id) => id.endsWith(required)), required).toBe(true);
     }
     // Chaque scénario dit s'il est inventé ou réel : le remplacement se voit.
-    for (const scenario of scenarios) expect(["inventé", "réel"]).toContain(scenario.source);
+    for (const scenario of scenarios) expect(["inventé", "réel", "garde"]).toContain(scenario.source);
+    // Les deux fautes réelles du modèle (essai du 19/09/2026) ont leur scénario de garde.
+    for (const required of ["garde-notre-compte", "garde-embellissement"]) {
+      expect(scenarios.find((s) => s.id.endsWith(required))?.source, required).toBe("garde");
+    }
   });
 });
 
@@ -105,6 +109,8 @@ describe.each(scenarios.map((s) => [s.id, s] as const))("scénario %s", (_id, sc
     if (attendu.conclusion !== undefined) expect(payload.conclusion !== null).toBe(attendu.conclusion);
     if (attendu.message_de_repli !== undefined) expect(payload.message.fallback).toBe(attendu.message_de_repli);
     if (attendu.doutes) expect(payload.uncertainties.length).toBeGreaterThan(0);
+    const retained = JSON.stringify([payload.deal_after, payload.changes, payload.conclusion?.recap ?? []]).toLowerCase();
+    for (const forbidden of attendu.valeurs_interdites ?? []) expect(retained, forbidden).not.toContain(forbidden.toLowerCase());
   });
 
   it("B2 — sans changement de termes, la fourchette est celle de l'analyse d'origine ; avec, ancien et nouveau côte à côte", () => {
@@ -129,8 +135,9 @@ describe.each(scenarios.map((s) => [s.id, s] as const))("scénario %s", (_id, sc
   it("F3, F5 — le message final : aucun montant hors moteur, aucune échéance, aucun ton sec, aucune citation inventée", () => {
     const { context, payload } = turnOf(scenario);
     const current = payload.pricing_after ?? payload.pricing_before;
-    const enginePhrase = pricePhrase(context.original.language, { low: current.counter_low, high: current.counter_high });
-    const text = payload.message.text.replace(enginePhrase, " ");
+    // Toutes les formes de la contre-offre du moteur, « de X à Y € » comprise.
+    const forms = [pricePhrase(context.original.language, { low: current.counter_low, high: current.counter_high }), ...pricePhraseForms(context.original.language, { low: current.counter_low, high: current.counter_high })];
+    const text = forms.reduce((acc, form) => acc.replaceAll(form, " "), payload.message.text);
     if (payload.conclusion) {
       // Conclusion : les seuls montants sont ceux des termes lus ou du moteur.
       for (const amount of displayedAmounts(text)) expect(allowedAmounts(payload).has(amount), String(amount)).toBe(true);
@@ -192,5 +199,15 @@ describe("schéma envoyé au modèle", () => {
       expect(object.additionalProperties).toBe(false);
       expect([...(object.required as string[])].sort()).toEqual(Object.keys(object.properties as object).sort());
     }
+  });
+});
+
+describe("C1 — les scénarios de garde ne sont jamais réenregistrés", () => {
+  it("le script d'enregistrement les écarte avant tout appel au modèle", async () => {
+    const { readFileSync } = await import("node:fs");
+    const script = readFileSync("evals/negotiation-record.ts", "utf8");
+    const filter = script.indexOf('s.source !== "garde"');
+    expect(filter).toBeGreaterThan(0);
+    expect(filter).toBeLessThan(script.indexOf("readBrandReply({"));
   });
 });

@@ -84,11 +84,16 @@ export const turnReadingSchema = z.object({
   // Phrase courte : pourquoi ce n'est pas une réponse, quand ce n'en est pas une.
   relevance_note: z.string(),
   outcome: z.enum(OUTCOMES),
+  // Mission #080 quater, A7 — accord global sans détail (« c'est d'accord pour
+  // tout ») : l'extrait qui le dit, une seule fois. null s'il n'y en a pas.
+  global_agreement: z.string().nullable(),
   asks: z.array(
     z.object({
       id: z.string(),
       status: z.enum(ASK_STATUSES),
-      // Extrait mot pour mot de la réponse de la marque. null si « unanswered ».
+      // Extrait mot pour mot de la réponse de la marque : le plus court passage
+      // qui dit CE point. null si « unanswered », ou si le point n'est accordé
+      // que par l'accord global.
       quote: z.string().nullable(),
     }),
   ),
@@ -129,6 +134,8 @@ export const askSchema = z.object({
   quote: z.string().nullable(),
   // Tour où ce statut a été constaté. null : jamais répondu.
   turn: z.number().nullable(),
+  // Accordé par un accord global, sans que la marque détaille ce point.
+  global: z.boolean().default(false),
 });
 export type Ask = z.infer<typeof askSchema>;
 

@@ -44,8 +44,13 @@ function verdict(scenario: Scenario, result: ReturnType<typeof processTurn>): st
 
 async function main() {
   const wanted = process.argv.slice(2);
-  const scenarios = loadScenarios().filter((s) => wanted.length === 0 || wanted.includes(s.id));
-  if (scenarios.length === 0) throw new Error(`Aucun scénario ne correspond à : ${wanted.join(", ")}`);
+  // C1 (#080 quater) : les scénarios de garde ne sont JAMAIS réenregistrés. Leur
+  // sortie écrite à la main teste le code face à un modèle qui dérape.
+  const all = loadScenarios().filter((s) => wanted.length === 0 || wanted.includes(s.id));
+  const guards = all.filter((s) => s.source === "garde");
+  const scenarios = all.filter((s) => s.source !== "garde");
+  if (guards.length > 0) console.log(`Scénarios de garde laissés tels quels : ${guards.map((s) => s.id).join(", ")}.`);
+  if (scenarios.length === 0) throw new Error(`Aucun scénario à enregistrer parmi : ${wanted.join(", ") || "tous"}`);
   let cost = 0;
   let failures = 0;
   for (const scenario of scenarios) {

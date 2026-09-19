@@ -9,6 +9,13 @@ n'appellent jamais le modèle.
 Les scénarios actuels sont **inventés** (`"source": "inventé"`), y compris la
 sortie du modèle, écrite à la main.
 
+Les scénarios de **garde** (`"source": "garde"`) ont une sortie du modèle
+volontairement fautive : ils vérifient que le CODE rattrape un modèle qui
+dérape (montant inventé, citation inventée, ultimatum, « notre compte » lu
+comme le compte de la créatrice, terme embelli). `pnpm negociation:enregistrer`
+ne les touche jamais. Les scénarios 12 et 13 reprennent mot pour mot deux
+fautes réelles du modèle, vues à l'essai du 19/09/2026.
+
 ## Remplacer un scénario inventé par un vrai échange
 
 1. Copie le fichier le plus proche (par exemple `05-refus-net.json`) sous un

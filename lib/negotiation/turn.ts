@@ -6,6 +6,7 @@ import { fallbackMessage, finalMessage } from "@/lib/negotiation/message";
 import { originPricing, priceFor } from "@/lib/negotiation/pricing";
 import { quoteIsIn } from "@/lib/negotiation/quotes";
 import { applyGroups, groupLabel } from "@/lib/negotiation/terms";
+import { keepWritten, unwrittenDoubt } from "@/lib/negotiation/written";
 import {
   TERM_GROUP_LABEL,
   TURN_SCHEMA_VERSION,
@@ -39,6 +40,19 @@ export type TurnResult =
   | { kind: "off_topic"; relevance: "other_offer" | "unrelated" | "unsure"; note: string }
   | { kind: "turn"; payload: TurnPayload };
 
+// Mission #080 quater, A6 — un doute du modèle qui parle de sa propre
+// mécanique (« le champ deal ne permet pas… ») ne s'affiche pas : il est
+// remplacé par une phrase qui dit à la créatrice ce qu'elle peut faire.
+const JARGON = /\b(champs?|sch[ée]mas?|json|null|bool[ée]en|boolean|enum|payload|field|variable)\b|\bdeal ne permet\b/i;
+
+export function cleanDoubts(doubts: readonly string[]): string[] {
+  const kept = doubts.map((doubt) => doubt.trim()).filter((doubt) => doubt.length > 0 && !JARGON.test(doubt));
+  if (kept.length < doubts.filter((doubt) => doubt.trim().length > 0).length) {
+    kept.push("Un point de la réponse n'a pas pu être lu avec certitude : relis-la avant d'envoyer ton message.");
+  }
+  return [...new Set(kept)];
+}
+
 // État à l'entrée d'un tour : le deal et les demandes après le tour précédent,
 // ou ceux de l'analyse d'origine.
 export function stateBefore(original: ResultView, previous: readonly TurnPayload[]): {
@@ -61,27 +75,38 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
 
   const before = stateBefore(original, previous);
 
-  // Termes : un groupe n'est repris que s'il est cité mot pour mot ET s'il
-  // change réellement quelque chose à l'affichage.
+  // Demandes d'abord : celles que la marque accorde dans CE tour sont une
+  // source écrite des nouveaux termes (accepter « exclusivité ramenée à 1
+  // mois », c'est écrire 1 mois).
+  const merged = mergeAsks(before.asks, reading, brandReply, turnNumber);
+  const grantedNow = merged.asks.filter((ask) => ask.turn === turnNumber && ask.status === "granted").map((ask) => ask.label);
+  const sources = [brandReply, ...grantedNow];
+
+  // Termes : un groupe n'est repris que s'il est cité mot pour mot, puis
+  // chaque valeur changée doit être ÉCRITE (lib/negotiation/written.ts). Sans
+  // quoi elle revient à ce qu'elle était et le doute est dit.
   const verified: TermGroup[] = [];
   const ignored: Array<{ group: TermGroup; quote: string }> = [];
+  const quotes: Partial<Record<TermGroup, string>> = {};
   for (const change of reading.changes) {
     if (verified.includes(change.group)) continue;
-    if (quoteIsIn(change.quote, brandReply)) verified.push(change.group);
-    else ignored.push(change);
+    if (quoteIsIn(change.quote, brandReply)) {
+      verified.push(change.group);
+      quotes[change.group] = change.quote;
+    } else ignored.push(change);
   }
-  const candidate = applyGroups(before.deal, reading.deal, verified);
+  const kept = keepWritten(before.deal, applyGroups(before.deal, reading.deal, verified), verified, sources, quotes);
+  const candidate = normalizeDeal(kept.deal);
   const changes: TermChange[] = [];
   for (const group of verified) {
     const was = groupLabel(before.deal, group);
     const now = groupLabel(candidate, group);
     if (was === now) continue;
-    const quote = reading.changes.find((change) => change.group === group)?.quote ?? "";
-    changes.push({ group, before: was, after: now, quote });
+    changes.push({ group, before: was, after: now, quote: quotes[group] ?? "" });
   }
   // Seuls les groupes qui changent vraiment sont appliqués : les autres
   // restent identiques octet pour octet.
-  const dealAfter = changes.length > 0 ? applyGroups(before.deal, reading.deal, changes.map((c) => c.group)) : before.deal;
+  const dealAfter = changes.length > 0 ? applyGroups(before.deal, candidate, changes.map((c) => c.group)) : before.deal;
   const changedSinceOrigin = before.changedSinceOrigin || changes.length > 0;
 
   // Chiffrage : rien n'a jamais changé → l'analyse d'origine ; sinon le moteur.
@@ -89,11 +114,16 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   const pricingAfter = changes.length > 0 ? priceFor(dealAfter, tier) : null;
   const current = pricingAfter ?? pricingBefore;
 
-  const merged = mergeAsks(before.asks, reading, brandReply, turnNumber);
+  // Doutes affichés à la créatrice, en « tu » (A6). Ceux du modèle qui parlent
+  // de sa propre mécanique (champ, schéma, JSON…) n'atteignent jamais l'écran.
   const uncertainties = [
-    ...reading.uncertainties,
-    ...merged.unverified.map((label) => `ce que la marque répond sur « ${label} » (aucun extrait exact de sa réponse ne le dit)`),
-    ...ignored.map((change) => `un changement de « ${TERM_GROUP_LABEL[change.group].toLowerCase()} » que la réponse ne dit pas mot pour mot : il n'a pas été retenu`),
+    ...cleanDoubts(reading.uncertainties),
+    ...merged.unverified.map((label) => `Sur « ${label} », l'outil n'a trouvé aucun passage de la réponse qui le dise clairement.`),
+    ...ignored.map(
+      (change) =>
+        `« ${TERM_GROUP_LABEL[change.group]} » : l'outil a cru lire un changement, mais aucun passage de la réponse ne le dit. Ce n'est pas retenu.`,
+    ),
+    ...kept.unwritten.map(unwrittenDoubt),
   ];
   // Questions de la marque : seulement celles qu'elle a vraiment posées.
   const questions = reading.brand_questions.filter((q) => quoteIsIn(q.quote, brandReply));
@@ -165,7 +195,10 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
 // son offre de départ : le montant convenu n'est écrit nulle part.
 function counterAcceptedWithoutAmount(asks: readonly Ask[], original: ResultView, deal: Deal): boolean {
   const price = asks.find((ask) => ask.id === PRICE_ASK_ID);
-  return price?.status === "granted" && deal.payment.amount_eur === normalizeDeal(original.deal).payment.amount_eur;
+  // B1 : le montant peut aussi avoir été effacé (le modèle ne sait pas écrire
+  // une fourchette) ; ce n'est pas un montant convenu pour autant.
+  const amount = deal.payment.amount_eur;
+  return price?.status === "granted" && (amount === null || amount === normalizeDeal(original.deal).payment.amount_eur);
 }
 
 // Conclusion sans nouvelle réponse de la marque : la personne décide

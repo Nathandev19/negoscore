@@ -1,0 +1,120 @@
+{
+  "id": "13-garde-embellissement",
+  "titre": "Garde : « solde à 30 jours » ajouté à un échéancier que la marque n'a pas écrit (faute réelle du modèle, essai du 19/09/2026)",
+  "source": "garde",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "reponse_marque": "Bonjour, ok pour l'exclusivité d'un mois et pour le paiement à 30 jours avec 50 % à la signature. Par contre le budget reste fixé, on ne peut pas aller au-delà de ce qui était prévu.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "partial",
+    "asks": [
+      {
+        "id": "prix",
+        "status": "refused",
+        "quote": "Par contre le budget reste fixé, on ne peut pas aller au-delà de ce qui était prévu."
+      },
+      {
+        "id": "c1",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c2",
+        "status": "granted",
+        "quote": "ok pour l'exclusivité d'un mois"
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c5",
+        "status": "granted",
+        "quote": "pour le paiement à 30 jours avec 50 % à la signature"
+      }
+    ],
+    "changes": [
+      {
+        "group": "exclusivity",
+        "quote": "ok pour l'exclusivité d'un mois"
+      },
+      {
+        "group": "payment_terms",
+        "quote": "pour le paiement à 30 jours avec 50 % à la signature"
+      }
+    ],
+    "deal": {
+      "brand": "Marque Exemple",
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "tiktok",
+          "quantity": 2,
+          "format": null
+        }
+      ],
+      "publication_required": false,
+      "usage": {
+        "organic": true,
+        "paid_ads": true,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": 6,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": true,
+        "duration_months": 1,
+        "category": "cosmétique"
+      },
+      "raw_footage": true,
+      "ip_transfer": "license",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": true
+      },
+      "payment": {
+        "amount_eur": 300,
+        "currency": "EUR",
+        "terms_days": 30,
+        "schedule": "50 % à la signature, solde à 30 jours"
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "brand_questions": [],
+    "uncertainties": [
+      "La marque ne précise pas si les droits publicitaires doivent être facturés séparément ou inclus dans le budget fixé."
+    ],
+    "next_message": {
+      "text": "Bonjour, merci pour votre retour. Je vous remercie pour votre accord concernant l’exclusivité d’un mois ainsi que le paiement à 30 jours avec 50 % à la signature. Je comprends que le budget reste fixé. Pour avancer, je vous propose une rémunération de {{CONTRE_OFFRE}}, avec les droits publicitaires facturés séparément. Je souhaiterais également confirmer le raw footage en option et 2 révisions incluses. Merci de me dire si ces éléments peuvent être intégrés au devis.",
+      "tone": "chaleureux et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "partial",
+    "nouveau_chiffrage": true,
+    "termes_changes": [
+      "exclusivity",
+      "payment_terms"
+    ],
+    "doutes": true,
+    "valeurs_interdites": [
+      "solde à 30 jours"
+    ]
+  }
+}

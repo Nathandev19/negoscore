@@ -54,6 +54,9 @@ export function unclearPoints(deal: Deal, asks: readonly Ask[], uncertainties: r
     deal.payment.terms_days === null && deal.payment.schedule === null ? "Le délai et les modalités de paiement." : null,
     deal.ip_transfer === "unclear" ? "Ce que deviennent les droits sur tes contenus." : null,
     deal.revisions.count === null && !deal.revisions.unlimited ? "Le nombre de retouches comprises." : null,
+    ...(asks.some((ask) => ask.global)
+      ? ["La marque a donné un accord global sans reprendre chaque point : fais-les-lui confirmer un par un, par écrit."]
+      : []),
     ...asks.filter((ask) => ask.status === "unanswered").map((ask) => `Pas de réponse de la marque sur : ${ask.label}`),
     ...uncertainties.map((doubt) => `L'outil n'est pas sûr d'avoir bien lu : ${doubt}`),
   ].filter((point): point is string => point !== null);

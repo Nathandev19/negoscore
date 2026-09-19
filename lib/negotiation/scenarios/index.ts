@@ -29,14 +29,16 @@ export type Scenario = {
   id: string;
   titre: string;
   // « inventé » : écrit à la main. « réel » : un vrai échange, anonymisé.
-  source: "inventé" | "réel";
+  // « garde » : sortie du modèle écrite À LA MAIN pour tester le code face à
+  // un modèle qui dérape ; jamais réenregistrée (mission #080 quater, C1).
+  source: "inventé" | "réel" | "garde";
   // Offre de départ : lib/fixtures/<offre>.json (extraction du modèle).
   offre: string;
   niveau: Tier;
   reponse_marque: string;
   // Sortie du modèle. « deal » peut n'être qu'un correctif de l'offre de
   // départ (scénario inventé) ; une sortie enregistrée le contient en entier.
-  sortie_modele: Omit<TurnReading, "deal"> & { deal?: DealPatch };
+  sortie_modele: Omit<TurnReading, "deal" | "global_agreement"> & { deal?: DealPatch; global_agreement?: string | null };
   attendu: {
     type: "tour" | "hors_sujet";
     issue?: TurnReading["outcome"];
@@ -51,6 +53,9 @@ export type Scenario = {
     termes_changes?: string[];
     // Au moins un doute doit être affiché.
     doutes?: boolean;
+    // Valeurs qui ne doivent figurer nulle part dans les termes retenus
+    // (mission #080 quater : ce que la marque n'a pas écrit).
+    valeurs_interdites?: string[];
   };
 };
 
@@ -80,7 +85,8 @@ function patchDeal(base: Deal, patch: DealPatch = {}): Deal {
 // mal écrit échoue ici, comme une vraie sortie invalide.
 export function readingOf(scenario: Scenario, original: Pick<Analysis, "deal">): TurnReading {
   const { deal, ...rest } = scenario.sortie_modele;
-  return turnReadingSchema.parse({ ...rest, deal: patchDeal(original.deal, deal) });
+  // global_agreement absent (scénario écrit avant la mission #080 quater) : aucun.
+  return turnReadingSchema.parse({ global_agreement: null, ...rest, deal: patchDeal(original.deal, deal) });
 }
 
 export function scenarioContext(scenario: Scenario): TurnContext {

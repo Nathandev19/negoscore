@@ -73,7 +73,8 @@ function AskGroup({ status, asks }: { status: AskStatus; asks: Ask[] }) {
         {asks.map((ask) => (
           <li key={ask.id} className="flex flex-col gap-0.5">
             <span>{ask.label}</span>
-            {ask.quote ? <q className="text-attenue">{ask.quote}</q> : null}
+            {/* Accord global : la phrase est citée une seule fois, au-dessus. */}
+            {ask.quote && !ask.global ? <q className="text-attenue">{ask.quote}</q> : null}
           </li>
         ))}
       </ul>
@@ -95,6 +96,7 @@ export function TurnCard({
   // Demandes tranchées dans CE tour, puis celles qui n'ont toujours pas de réponse.
   const decidedNow = payload.asks.filter((ask) => ask.turn === turnNumber);
   const stillOpen = payload.asks.filter((ask) => ask.status === "unanswered");
+  const globalQuote = decidedNow.find((ask) => ask.global)?.quote ?? null;
   const current = payload.pricing_after ?? payload.pricing_before;
   const currentRange = formatEurRange(current.total_low, current.total_high);
   const offered = offeredOf(payload.deal_after);
@@ -120,6 +122,12 @@ export function TurnCard({
       {decidedNow.length > 0 || stillOpen.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h4 className="font-bold text-encre">Ce que la marque répond à tes demandes</h4>
+          {globalQuote ? (
+            <p className="border-l-4 border-encre py-1 pl-3 text-small">
+              Accord global, sans détail point par point : <q>{globalQuote}</q>. La marque n&apos;a repris aucun point
+              un par un : fais-les-lui confirmer par écrit.
+            </p>
+          ) : null}
           <AskGroup status="granted" asks={decidedNow.filter((a) => a.status === "granted")} />
           <AskGroup status="refused" asks={decidedNow.filter((a) => a.status === "refused")} />
           <AskGroup status="countered" asks={decidedNow.filter((a) => a.status === "countered")} />
