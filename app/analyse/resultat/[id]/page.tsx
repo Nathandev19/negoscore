@@ -15,7 +15,6 @@ import { readFeedback } from "@/lib/analysis/feedback";
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { retryStateFor, type RetryPageState } from "@/lib/analysis/retry";
 import { getViewer } from "@/lib/auth/viewer";
-import { turnRightStatus, type TurnRight } from "@/lib/billing/entitlement";
 import { loadSentMessages, type SentMessage } from "@/lib/negotiation/sent";
 import { loadThread, type Thread } from "@/lib/negotiation/store";
 import { shareCardAvailable } from "@/lib/share-card/element";
@@ -54,8 +53,8 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   // plutôt qu'un fil vide qui ferait croire qu'il n'y a rien.
   const owner = result.unlocked && user !== null;
   const thread: Thread | "missing" | null = owner ? await loadThread(id).catch(() => "missing" as const) : null;
-  const right: TurnRight | null = owner ? await turnRightStatus(user).catch(() => null) : { kind: "signed_out" };
-  const showThread = thread !== "missing" && right !== null;
+  // Compris dans l'analyse (mission #080 ter) : ouvert au propriétaire connecté.
+  const showThread = thread !== "missing";
   // Message retenu comme envoyé pour le dernier tour (mission #080 bis).
   const answeredTurn = 1 + (thread && thread !== "missing" ? thread.turns.length : 0);
   const sent: SentMessage | undefined = owner ? (await loadSentMessages(id).catch(() => new Map<number, SentMessage>())).get(answeredTurn) : undefined;
@@ -81,7 +80,7 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
               analysisId={id}
               turns={(thread?.turns ?? []).map(({ turnNumber, createdAt, brandReply, payload }) => ({ turnNumber, createdAt, brandReply, payload }))}
               conclusion={thread?.conclusion?.payload.conclusion ?? null}
-              right={right}
+              access={owner ? "open" : "signed_out"}
               sent={sent ? { text: sent.text, source: sent.source, updatedAt: sent.updatedAt } : null}
             />
           ) : null

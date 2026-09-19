@@ -88,7 +88,9 @@ describe.each(scenarios.map((s) => [s.id, s] as const))("scénario %s", (_id, sc
     it("B3 — dit que ce n'est pas une réponse, n'invente rien", () => {
       const { result } = runScenario(scenario);
       expect(result.kind).toBe("off_topic");
-      if (result.kind === "off_topic") expect(OFF_TOPIC_MESSAGE[result.relevance]).toContain("Rien n'a été décompté");
+      // Le message dit ce qu'il faut faire, et ne parle d'aucun coût (#080 ter).
+      if (result.kind === "off_topic") expect(OFF_TOPIC_MESSAGE[result.relevance]).toMatch(/Colle|nouvelle analyse/);
+      if (result.kind === "off_topic") expect(OFF_TOPIC_MESSAGE[result.relevance]).not.toMatch(/décompt|crédit/);
     });
     return;
   }

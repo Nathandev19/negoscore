@@ -2,10 +2,9 @@ import Link from "next/link";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { EstimateFeedback } from "@/components/result/estimate-feedback";
 import { NegotiationThread, type ThreadTurnView } from "@/components/result/negotiation/negotiation-thread";
-import type { TurnRight } from "@/lib/billing/entitlement";
 import { loadScenarios, readingOf, scenarioContext } from "@/lib/negotiation/scenarios/index";
 import { processTurn } from "@/lib/negotiation/turn";
-import type { TurnPayload } from "@/lib/negotiation/types";
+import type { ThreadAccess, TurnPayload } from "@/lib/negotiation/types";
 import { RetryPanel, type RetryPanelState } from "@/components/result/retry-panel";
 import { ShareCardLink } from "@/components/result/share-card-link";
 import { SiteFooter } from "@/components/site-footer";
@@ -24,15 +23,15 @@ function retryPreview(value: string | string[] | undefined): RetryPanelState {
 }
 
 // Suite de l'échange (mission #080), rendue depuis les scénarios de réponses
-// de marque (lib/negotiation/scenarios) : ?echange=fil|partiel|refus|conclu|question|repli|sans-formule.
-const THREAD_PREVIEWS: Record<string, { scenarios: string[]; right: TurnRight }> = {
-  fil: { scenarios: ["03-termes-a-la-hausse", "06-reponse-vague"], right: { kind: "pack", balance: 2 } },
-  partiel: { scenarios: ["02-acceptation-partielle"], right: { kind: "pro", remaining: 12 } },
-  refus: { scenarios: ["05-refus-net"], right: { kind: "pack", balance: 1 } },
-  conclu: { scenarios: ["01-acceptation-franche"], right: { kind: "pack", balance: 1 } },
-  question: { scenarios: ["07-question-a-la-creatrice"], right: { kind: "pack", balance: 1 } },
-  repli: { scenarios: ["10-garde-citation-inventee"], right: { kind: "pack", balance: 1 } },
-  "sans-formule": { scenarios: [], right: { kind: "plan_required", message: "" } },
+// de marque (lib/negotiation/scenarios) : ?echange=fil|partiel|refus|conclu|question|repli|non-connecte.
+const THREAD_PREVIEWS: Record<string, { scenarios: string[]; access: ThreadAccess }> = {
+  fil: { scenarios: ["03-termes-a-la-hausse", "06-reponse-vague"], access: "open" },
+  partiel: { scenarios: ["02-acceptation-partielle"], access: "open" },
+  refus: { scenarios: ["05-refus-net"], access: "open" },
+  conclu: { scenarios: ["01-acceptation-franche"], access: "open" },
+  question: { scenarios: ["07-question-a-la-creatrice"], access: "open" },
+  repli: { scenarios: ["10-garde-citation-inventee"], access: "open" },
+  "non-connecte": { scenarios: [], access: "signed_out" },
 };
 
 function threadPreview(name: string) {
@@ -49,7 +48,7 @@ function threadPreview(name: string) {
     previous.push(result.payload);
     turns.push({ turnNumber: context.turnNumber, createdAt: "2026-09-19T10:00:00.000Z", brandReply: scenario.reponse_marque, payload: result.payload });
   }
-  return { analysis: base.original, turns, right: preview.right };
+  return { analysis: base.original, turns, access: preview.access };
 }
 
 export default async function ResultPreviewPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -80,7 +79,7 @@ export default async function ResultPreviewPage({ searchParams }: { searchParams
         // Relance : état choisi par ?relance=available|used|expired|retry_still_incomplete.
         retry={<RetryPanel state={retryPreview(relance)} originId={null} />}
         afterMessage={
-          thread ? <NegotiationThread key="echange" analysisId="apercu" turns={thread.turns} conclusion={null} right={thread.right} /> : null
+          thread ? <NegotiationThread key="echange" analysisId="apercu" turns={thread.turns} conclusion={null} access={thread.access} /> : null
         }
       >
         {shareCardAvailable(analysis) ? <ShareCardLink href={`/dev/carte?etat=${state}`} /> : null}

@@ -3,18 +3,17 @@ import { loadResultForViewer } from "@/lib/analysis/load";
 import { analysisPaused, ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
 import { recomputeForTier } from "@/lib/analysis/recompute";
 import { getRequestUser } from "@/lib/auth/request-user";
-import { reserveTurn, type Grant } from "@/lib/billing/entitlement";
-import { classifyModelError, modelFailureMessage } from "@/lib/llm/errors";
+import { classifyModelError } from "@/lib/llm/errors";
 import { readBrandReply } from "@/lib/llm/turn";
 import { TURN_PROMPT_VERSION } from "@/lib/llm/turn-prompt";
 import { cleanSentText, loadSentMessages, messageForNextTurn, saveSentMessage } from "@/lib/negotiation/sent";
 import { loadThread, threadConcluded, turnForKey, TURNS_TABLE } from "@/lib/negotiation/store";
 import { processTurn, stateBefore } from "@/lib/negotiation/turn";
-import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, OFF_TOPIC_MESSAGE } from "@/lib/negotiation/types";
+import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, OFF_TOPIC_MESSAGE, TURN_FAILURE_MESSAGE } from "@/lib/negotiation/types";
 import { parseTier } from "@/lib/rates/tier";
 import { clientIp, hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
-import { deleteRows, insertRow, SupabaseRequestError } from "@/lib/supabase/server";
+import { insertRow, SupabaseRequestError } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -22,13 +21,13 @@ export const maxDuration = 120;
 // Mission #080 — un tour de négociation : la réponse de la marque, collée par
 // la personne, s'ajoute à CETTE analyse (B1).
 //
-// Mêmes gardes que l'analyse, dans le même ordre (D4) : rejeu par clé
-// d'idempotence avant tout, filet horaire par IP, droit VÉRIFIÉ avant l'appel au
-// modèle, DÉCOMPTÉ seulement après l'enregistrement du tour. Un texte qui n'est
-// pas une réponse à cette offre ne coûte rien (B3) : l'appel au modèle est à
-// nos frais.
+// Un tour ne consomme ni crédit ni quota (mission #080 ter) : l'analyse de
+// l'offre, déjà payée, couvre toute la négociation, jusqu'à cinq tours. Gardes
+// qui restent : rejeu par clé d'idempotence avant tout, filet horaire par IP,
+// plafond de cinq tours, refus d'un texte qui n'est pas une réponse à cette
+// offre (rien n'est alors enregistré).
 
-const UNAVAILABLE = "Le suivi de l'échange n'est pas disponible pour le moment. Réessaie plus tard : rien n'a été décompté.";
+const UNAVAILABLE = "Le suivi de l'échange n'est pas disponible pour le moment. Réessaie plus tard.";
 
 function json(status: number, body: Record<string, unknown>) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -56,16 +55,9 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
   if (!tier) return json(400, { error: "Recharge la page et réessaie." });
   if (analysisPaused()) return json(503, { error: ANALYSIS_PAUSED_MESSAGE, reason: "paused" });
 
-  let grant: Grant | null = null;
   let hourlyKey: string | null = null;
-  let savedTurnId: string | null = null;
   async function abandon() {
     const steps: Array<() => Promise<unknown>> = [];
-    if (savedTurnId) {
-      const turnId = savedTurnId;
-      steps.push(() => deleteRows(TURNS_TABLE, `id=eq.${turnId}`));
-    }
-    if (grant) steps.push(grant.release);
     if (hourlyKey) {
       const guardKey = hourlyKey;
       steps.push(() => releaseUsageGuard(guardKey));
@@ -84,7 +76,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     const thread = await loadThread(id);
     if (thread === "missing") return json(503, { error: UNAVAILABLE, reason: "unavailable" });
 
-    // Rejeu : ce tour a déjà été enregistré, rien n'est refait ni décompté.
+    // Rejeu : ce tour a déjà été enregistré, rien n'est refait.
     let keyToWrite = key;
     if (key) {
       const replay = await turnForKey(id, key);
@@ -102,13 +94,6 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     const guard = await hitUsageGuard(guardKey);
     if (!guard.allowed) return json(429, { error: `Tu as lancé 5 analyses en une heure. Réessaie dans ${guard.retryInMinutes} min.` });
     hourlyKey = guardKey;
-
-    const entitlement = await reserveTurn(user);
-    if (!entitlement.allowed) {
-      await abandon();
-      return json(402, { error: entitlement.message, paywall: true, reason: entitlement.reason });
-    }
-    grant = entitlement;
 
     const original = result.analysis;
     const previous = thread.turns.map((turn) => turn.payload);
@@ -135,20 +120,19 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
       if (!failure) throw caught;
       await abandon();
       console.error(JSON.stringify({ event: failure.event.replace("analyse_", "tour_"), provider: failure.provider, status: failure.status, error_type: failure.errorType }));
-      return json(failure.kind === "timeout" ? 504 : 503, { error: modelFailureMessage(failure.kind, entitlement.plan), reason: failure.kind });
+      return json(failure.kind === "timeout" ? 504 : 503, { error: TURN_FAILURE_MESSAGE[failure.kind], reason: failure.kind });
     }
 
     const outcome = processTurn({ original, previous, turnNumber, tier, brandReply: reply }, read.reading);
     if (outcome.kind === "off_topic") {
-      // B3 : rien n'est enregistré ni décompté.
+      // B3 : rien n'est enregistré.
       await abandon();
       console.warn(JSON.stringify({ event: "tour_hors_sujet", relevance: outcome.relevance }));
       return json(422, { error: OFF_TOPIC_MESSAGE[outcome.relevance], reason: "off_topic" });
     }
 
-    let saved: { id: string };
     try {
-      saved = await insertRow<{ id: string }>(TURNS_TABLE, {
+      await insertRow<{ id: string }>(TURNS_TABLE, {
         analysis_id: id,
         user_id: user.id,
         kind: "reply",
@@ -170,22 +154,13 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
       }
       throw caught;
     }
-    savedTurnId = saved.id;
-
-    // Tour enregistré : le crédit est décompté MAINTENANT, jamais avant.
-    if (!(await grant.commit())) {
-      await abandon();
-      return json(402, { error: "Tu n'as plus de crédit. Choisis une formule pour continuer.", paywall: true, reason: "no_credit" });
-    }
-    grant = null;
-    savedTurnId = null;
+    // Tour enregistré : le filet horaire reste compté.
     hourlyKey = null;
 
     console.log(
       JSON.stringify({
         event: "tour",
         turn: turnNumber,
-        plan: entitlement.plan,
         outcome: outcome.payload.outcome,
         terms_changed: outcome.payload.changes.length,
         ignored_changes: outcome.payload.ignored_changes.length,

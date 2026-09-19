@@ -1,6 +1,5 @@
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { getRequestUser } from "@/lib/auth/request-user";
-import { turnRightStatus } from "@/lib/billing/entitlement";
 import { loadThread, threadConcluded, TURNS_TABLE } from "@/lib/negotiation/store";
 import { concludeNow } from "@/lib/negotiation/turn";
 import { TURN_SCHEMA_VERSION, type ConclusionPayload } from "@/lib/negotiation/types";
@@ -12,8 +11,8 @@ export const runtime = "nodejs";
 // Mission #080, C — « J'accepte ces termes » : la personne décide d'accepter
 // l'échange en l'état, sans nouvelle réponse de la marque. La conclusion est
 // écrite par le code (lib/negotiation/conclusion.ts) : aucun appel au modèle,
-// aucun crédit (D2). Ouverte à qui a accès au suivi de l'échange : un compte
-// avec formule, ou dont l'échange a déjà des tours.
+// aucun crédit. Ouverte à la personne connectée qui a lancé l'analyse, quelle
+// que soit sa formule (mission #080 ter).
 
 const UNAVAILABLE = "La conclusion n'a pas pu être enregistrée. Réessaie plus tard.";
 
@@ -35,13 +34,6 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     const thread = await loadThread(id);
     if (thread === "missing") return json(503, { error: UNAVAILABLE });
     if (threadConcluded(thread)) return json(200, { concluded: true });
-
-    if (thread.turns.length === 0) {
-      const right = await turnRightStatus(user);
-      if (right.kind === "plan_required" || right.kind === "signed_out") {
-        return json(402, { error: "La conclusion de l'échange est comprise dans le Pack Deal et l'abonnement Pro.", paywall: true });
-      }
-    }
 
     const previous = thread.turns.map((turn) => turn.payload);
     const { deal, conclusion } = concludeNow(result.analysis, previous, tier);

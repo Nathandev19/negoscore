@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScenarios, readingOf, scenarioContext } from "@/lib/negotiation/scenarios";
 import type { TurnReading } from "@/lib/negotiation/types";
 
-// Mission #080, D — les gardes d'un tour de négociation, traversées par la
-// vraie route : compte obligatoire, formule payante, crédit décompté une seule
-// fois et seulement après l'enregistrement, rien de décompté pour un texte hors
-// sujet ou un échec du modèle, rejeu par clé d'idempotence, cinq tours au plus.
+// Mission #080 — les gardes d'un tour de négociation, traversées par la vraie
+// route. Depuis la mission #080 ter, un tour ne consomme ni crédit ni quota :
+// l'analyse de l'offre couvre toute la négociation. Gardes qui restent : compte
+// connecté propriétaire de l'analyse, filet horaire, clé d'idempotence, cinq
+// tours au plus, refus des textes hors sujet.
 
 const scenarios = loadScenarios();
 const byId = (suffix: string) => scenarios.find((s) => s.id.endsWith(suffix))!;
@@ -14,10 +15,8 @@ const USER = { id: "u1", email: "nina@exemple.test" };
 
 const state = vi.hoisted(() => ({
   user: null as { id: string; email: string } | null,
-  plan: "pack" as "free" | "pack" | "pro",
-  balance: 3,
-  commits: 0,
-  releases: 0,
+  // Tables lues ou écrites : aucune table de crédits ou de quota ne doit y figurer.
+  tables: [] as string[],
   modelCalls: 0,
   reading: null as unknown,
   modelError: null as Error | null,
@@ -38,25 +37,6 @@ vi.mock("@/lib/analysis/load", async () => {
       id === "11111111-1111-4111-8111-111111111111" && viewer.user ? { analysis: original, unlocked: true } : null,
   };
 });
-vi.mock("@/lib/billing/entitlement", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/billing/entitlement")>()),
-  reserveTurn: async () => {
-    if (state.plan === "free") return { allowed: false, reason: "plan_required", message: "formule requise" };
-    if (state.balance <= 0) return { allowed: false, reason: "no_credit", message: "plus de crédit" };
-    return {
-      allowed: true,
-      plan: state.plan,
-      commit: async () => {
-        state.commits += 1;
-        state.balance -= 1;
-        return true;
-      },
-      release: async () => {
-        state.releases += 1;
-      },
-    };
-  },
-}));
 vi.mock("@/lib/llm/turn", () => ({
   readBrandReply: async (input: { lastMessage: string }) => {
     state.modelCalls += 1;
@@ -76,6 +56,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
   return {
     ...actual,
     selectRows: async (table: string, query: string) => {
+      state.tables.push(table);
       if (table === "negotiation_sent_messages") return state.sent;
       if (table !== "negotiation_turns") return [];
       const key = query.match(/idempotency_key=eq\.([^&]+)/)?.[1];
@@ -83,6 +64,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
       return state.rows.map((r) => ({ ...r, created_at: "2026-09-19T10:00:00.000Z" }));
     },
     insertRow: async (table: string, row: Record<string, unknown>) => {
+      state.tables.push(table);
       if (table !== "negotiation_turns") throw new Error(table);
       const clash = state.rows.some((r) => r.kind === "reply" && r.turn_number === row.turn_number && row.kind === "reply");
       if (clash) throw new actual.SupabaseRequestError("doublon", 409, "23505");
@@ -91,6 +73,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
       return saved;
     },
     upsertRow: async (table: string, row: Record<string, unknown>) => {
+      state.tables.push(table);
       if (table !== "negotiation_sent_messages") throw new Error(table);
       state.sent = state.sent.filter((m) => m.turn_number !== row.turn_number);
       state.sent.push(row as (typeof state.sent)[number]);
@@ -121,10 +104,7 @@ function use(suffix: string): string {
 
 beforeEach(() => {
   state.user = USER;
-  state.plan = "pack";
-  state.balance = 3;
-  state.commits = 0;
-  state.releases = 0;
+  state.tables = [];
   state.modelCalls = 0;
   state.modelError = null;
   state.rows = [];
@@ -138,6 +118,10 @@ beforeEach(() => {
   vi.stubEnv("IP_HASH_SALT", "sel-de-test");
 });
 
+// Aucune table de droits : ni crédits, ni gratuité, ni analyses comptées.
+const BILLING_TABLES = ["credits", "free_usage", "analyses", "deals", "whop_events"];
+const touchedBilling = () => state.tables.filter((table) => BILLING_TABLES.includes(table));
+
 describe("tour de négociation — gardes", () => {
   it("sans compte : refusé avant tout, rien d'appelé", async () => {
     state.user = null;
@@ -146,58 +130,51 @@ describe("tour de négociation — gardes", () => {
     expect(state.modelCalls).toBe(0);
   });
 
-  it("D3 — compte gratuit : pas de tour suivant, modèle jamais appelé, rien enregistré", async () => {
-    state.plan = "free";
-    const r = await send({ reply: use("reponse-vague") });
-    expect(r.status).toBe(402);
-    expect(await r.json()).toMatchObject({ paywall: true, reason: "plan_required" });
-    expect(state.modelCalls).toBe(0);
-    expect(state.rows).toEqual([]);
-  });
-
-  it("D1 — un tour réussi : enregistré sur CETTE analyse, un crédit décompté, après l'enregistrement", async () => {
+  it("#080 ter, C1 et C3 — un tour réussi : enregistré sur CETTE analyse, sans toucher ni crédit ni quota, quelle que soit la formule", async () => {
     const reply = use("acceptation-partielle");
     const r = await send({ reply, idempotencyKey: "cle-de-test-0000000001" });
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({ turnNumber: 2 });
     expect(state.rows).toHaveLength(1);
     expect(state.rows[0]).toMatchObject({ analysis_id: ANALYSIS_ID, user_id: USER.id, kind: "reply", turn_number: 2, brand_reply: reply });
-    expect(state.commits).toBe(1);
-    expect(state.balance).toBe(2);
+    expect(touchedBilling()).toEqual([]);
   });
 
-  it("D4 — le même tour envoyé deux fois (même clé) ne débite qu'un crédit et n'appelle le modèle qu'une fois", async () => {
+  it("#080 ter — la route ne consulte plus aucun droit : ni réservation, ni décompte", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("app/api/analyses/[id]/tours/route.ts", "utf8").replace(/^\s*\/\/.*$/gm, "");
+    expect(source).not.toMatch(/entitlement|reserve|commit\(|paywall|crédit/);
+  });
+
+  it("D4 — le même tour envoyé deux fois (même clé) n'appelle le modèle qu'une fois et n'enregistre qu'un tour", async () => {
     const reply = use("acceptation-partielle");
     await send({ reply, idempotencyKey: "cle-de-test-0000000002" });
     const again = await send({ reply, idempotencyKey: "cle-de-test-0000000002" });
     expect(again.status).toBe(200);
     expect(await again.json()).toMatchObject({ turnNumber: 2, replayed: true });
     expect(state.modelCalls).toBe(1);
-    expect(state.commits).toBe(1);
     expect(state.rows).toHaveLength(1);
   });
 
-  it("B3 — texte hors sujet : on le dit, rien n'est enregistré ni décompté", async () => {
+  it("B3 — texte hors sujet : on le dit, rien n'est enregistré", async () => {
     const r = await send({ reply: use("hors-sujet") });
     expect(r.status).toBe(422);
-    expect((await r.json()).error).toContain("Rien n'a été décompté");
+    expect((await r.json()).error).toContain("ne ressemble pas à une réponse de la marque");
     expect(state.rows).toEqual([]);
-    expect(state.commits).toBe(0);
     expect(state.guardReleased).toBe(1);
   });
 
-  it("échec du modèle : rien de décompté, le filet horaire est rendu", async () => {
+  it("échec du modèle : rien d'enregistré, le filet horaire est rendu, le message ne parle d'aucun crédit", async () => {
     const { ExtractionError } = await import("@/lib/llm/extract");
     state.modelError = new ExtractionError("sortie invalide");
     const r = await send({ reply: use("reponse-vague") });
     expect(r.status).toBe(503);
-    expect(state.commits).toBe(0);
+    expect((await r.json()).error).not.toMatch(/crédit|décompt|droit/);
     expect(state.rows).toEqual([]);
     expect(state.guardReleased).toBe(1);
   });
 
-  it("B4 — cinq tours au plus : le tour 6 est refusé, sans appel au modèle", async () => {
-    state.balance = 10;
+  it("B4, C5 — cinq tours au plus : le tour 6 est refusé, sans appel au modèle", async () => {
     for (let turn = 2; turn <= 5; turn++) {
       await send({ reply: use("reponse-vague") });
     }
@@ -206,6 +183,7 @@ describe("tour de négociation — gardes", () => {
     const r = await send({ reply: use("reponse-vague") });
     expect(r.status).toBe(409);
     expect(state.modelCalls).toBe(calls);
+    expect(touchedBilling()).toEqual([]);
   });
 
   it("C — après une acceptation, l'échange est conclu : plus de tour", async () => {
@@ -215,9 +193,7 @@ describe("tour de négociation — gardes", () => {
     expect((await r.json()).reason).toBe("concluded");
   });
 
-  it("D2 — « J'accepte ces termes » : conclusion enregistrée, aucun crédit, aucun appel au modèle", async () => {
-    await send({ reply: use("reponse-vague") });
-    const commits = state.commits;
+  it("« J'accepte ces termes » : conclusion enregistrée, aucun appel au modèle, ouverte sans condition de formule", async () => {
     const calls = state.modelCalls;
     const r = await CONCLUDE(
       new Request(`http://localhost/api/analyses/${ANALYSIS_ID}/conclusion`, { method: "POST", body: JSON.stringify({ tier: "confirmed" }) }),
@@ -225,8 +201,8 @@ describe("tour de négociation — gardes", () => {
     );
     expect(r.status).toBe(200);
     expect(state.rows.at(-1)).toMatchObject({ kind: "conclusion" });
-    expect(state.commits).toBe(commits);
     expect(state.modelCalls).toBe(calls);
+    expect(touchedBilling()).toEqual([]);
     // Et plus de tour ensuite.
     expect((await send({ reply: use("reponse-vague") })).status).toBe(409);
   });
@@ -281,7 +257,6 @@ PS : je peux aussi livrer une version courte.`;
   });
 
   it("au tour suivant, c'est le message du tour 2 copié qui compte, pas celui du tour 1", async () => {
-    state.balance = 10;
     await copy(1, "Message du tour 1");
     await send({ reply: use("reponse-vague") });
     await copy(2, "Message du tour 2, modifié avant envoi");
@@ -291,7 +266,7 @@ PS : je peux aussi livrer une version courte.`;
 
   it("B4 — enregistrer un message ne consomme rien et n'appelle pas le modèle", async () => {
     await copy(1, "Un message");
-    expect(state.commits).toBe(0);
+    expect(touchedBilling()).toEqual([]);
     expect(state.modelCalls).toBe(0);
   });
 

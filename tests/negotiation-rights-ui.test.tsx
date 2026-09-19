@@ -4,10 +4,12 @@ import { loadScenarios, runScenario, scenarioContext, readingOf } from "@/lib/ne
 import { processTurn } from "@/lib/negotiation/turn";
 import type { TurnPayload } from "@/lib/negotiation/types";
 
-// Mission #080 — ce que coûte un tour (D) et ce que la zone affiche selon le
-// compte, puis l'enchaînement de plusieurs tours (B2, B4) et la conclusion (C).
+// Mission #080 — ce que la zone affiche, l'enchaînement de plusieurs tours
+// (B2, B4) et la conclusion (C). Mission #080 ter : un tour ne coûte rien, le
+// quota Pro ne compte que les analyses.
 
 const db = vi.hoisted(() => ({
+  tables: [] as string[],
   credits: null as null | { plan: string; balance: number; period_end: string | null },
   analysesInPeriod: 0,
   turnsInPeriod: 0,
@@ -17,6 +19,7 @@ const db = vi.hoisted(() => ({
 vi.mock("@/lib/supabase/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/supabase/server")>()),
   selectRows: async (table: string) => {
+    db.tables.push(table);
     if (table === "credits") return db.credits ? [db.credits] : [];
     if (table === "analyses") return Array.from({ length: db.analysesInPeriod }, (_, i) => ({ id: `a${i}` }));
     if (table === "negotiation_turns") return Array.from({ length: db.turnsInPeriod }, (_, i) => ({ id: `t${i}` }));
@@ -31,8 +34,8 @@ vi.mock("next/navigation", async (importOriginal) => ({
   useRouter: () => ({ refresh: () => undefined, push: () => undefined }),
 }));
 
-const { reserveTurn, turnRightStatus } = await import("@/lib/billing/entitlement");
-const { NegotiationThread, costNotice } = await import("@/components/result/negotiation/negotiation-thread");
+const { reserveAnalysis } = await import("@/lib/billing/entitlement");
+const { NegotiationThread } = await import("@/components/result/negotiation/negotiation-thread");
 
 const USER = { id: "u1", email: "nina@exemple.test" };
 const inAMonth = () => new Date(Date.now() + 20 * 24 * 3600 * 1000).toISOString();
@@ -42,35 +45,24 @@ beforeEach(() => {
   db.analysesInPeriod = 0;
   db.turnsInPeriod = 0;
   db.freeUsed = 1;
+  db.tables = [];
 });
 
-describe("D — ce que coûte un tour", () => {
-  it("D3 — compte gratuit : pas de tour, même avec son analyse gratuite encore disponible", async () => {
-    db.freeUsed = 0;
-    expect(await reserveTurn(USER)).toMatchObject({ allowed: false, reason: "plan_required" });
-    expect(await turnRightStatus(USER)).toMatchObject({ kind: "plan_required" });
-  });
-
-  it("D1 — Pack : un tour se réserve comme une analyse, sur le solde", async () => {
-    db.credits = { plan: "pack", balance: 2, period_end: null };
-    expect(await reserveTurn(USER)).toMatchObject({ allowed: true, plan: "pack" });
-    expect(await turnRightStatus(USER)).toEqual({ kind: "pack", balance: 2 });
-  });
-
-  it("D1 — Pro : un tour compte dans le quota mensuel, avec les analyses", async () => {
+describe("#080 ter, C2 — le quota Pro compte les analyses, pas les tours", () => {
+  it("29 analyses et 10 tours sur la période : l'analyse suivante reste possible", async () => {
     db.credits = { plan: "pro", balance: 0, period_end: inAMonth() };
-    db.analysesInPeriod = 20;
-    db.turnsInPeriod = 5;
-    expect(await turnRightStatus(USER)).toEqual({ kind: "pro", remaining: 5 });
+    db.analysesInPeriod = 29;
     db.turnsInPeriod = 10;
-    // 20 analyses + 10 tours = 30 : le quota est atteint, par les tours aussi.
-    expect(await reserveTurn(USER)).toMatchObject({ allowed: false, reason: "no_credit" });
-    expect(await turnRightStatus(USER)).toMatchObject({ kind: "no_credit" });
+    expect(await reserveAnalysis({ user: USER, anonToken: null, ip: "203.0.113.7" })).toMatchObject({ allowed: true, plan: "pro" });
+    // La table des tours n'est même pas lue pour décider d'un droit.
+    expect(db.tables).not.toContain("negotiation_turns");
   });
 
-  it("D1 — le coût est dit avant l'envoi, avec ce qu'il reste", () => {
-    expect(costNotice({ kind: "pack", balance: 2 })).toBe("Analyser cette réponse utilise 1 crédit de ton Pack Deal, comme une analyse. Il t'en reste 2.");
-    expect(costNotice({ kind: "pro", remaining: 7 })).toContain("compte pour 1 analyse de ton abonnement Pro. Il t'en reste 7");
+  it("30 analyses : le quota est atteint, par les analyses seules", async () => {
+    db.credits = { plan: "pro", balance: 0, period_end: inAMonth() };
+    db.analysesInPeriod = 30;
+    db.turnsInPeriod = 0;
+    expect(await reserveAnalysis({ user: USER, anonToken: null, ip: "203.0.113.7" })).toMatchObject({ allowed: false, reason: "no_credit" });
   });
 });
 
@@ -86,27 +78,26 @@ const view = (payload: TurnPayload, turnNumber = 2) => ({ turnNumber, createdAt:
 
 function render(props: Partial<Parameters<typeof NegotiationThread>[0]>) {
   return renderToStaticMarkup(
-    <NegotiationThread analysisId="11111111-1111-4111-8111-111111111111" turns={[]} conclusion={null} right={{ kind: "pack", balance: 2 }} {...props} />,
+    <NegotiationThread analysisId="11111111-1111-4111-8111-111111111111" turns={[]} conclusion={null} access="open" {...props} />,
   );
 }
 
 describe("la zone « La marque t'a répondu ? »", () => {
-  it("B1, D1 — avec formule : zone de texte, bouton, et le coût écrit AVANT le bouton", () => {
+  it("B1, C3, C4 — connecté, quelle que soit la formule : zone de texte, bouton, « compris dans l'analyse », aucun coût annoncé", () => {
     const html = render({});
     expect(html).toContain("La marque t&#x27;a répondu ?");
     expect(html).toContain("<textarea");
     expect(html).toContain("ce n&#x27;est pas une nouvelle analyse");
-    const notice = html.indexOf("utilise 1 crédit de ton Pack Deal");
-    expect(notice).toBeGreaterThan(0);
-    expect(notice).toBeLessThan(html.indexOf("Analyser sa réponse"));
+    expect(html).toContain("C&#x27;est compris dans l&#x27;analyse de cette offre, jusqu&#x27;à la conclusion.");
+    expect(html).not.toMatch(/crédit|décompt|Pack Deal|abonnement|il t&#x27;en reste|formule/i);
   });
 
-  it("D3 — sans formule : la zone est visible, dit comment y accéder, sans formulaire", () => {
-    const html = render({ right: { kind: "plan_required", message: "" } });
+  it("non connecté : la zone est visible et propose de se connecter, sans formulaire ni formule à acheter", () => {
+    const html = render({ access: "signed_out" });
     expect(html).toContain("La marque t&#x27;a répondu ?");
-    expect(html).toContain("compris dans le Pack Deal et l&#x27;abonnement Pro");
-    expect(html).toContain('href="/tarifs"');
+    expect(html).toContain("/connexion?next=");
     expect(html).not.toContain("<textarea");
+    expect(html).not.toContain('href="/tarifs"');
     expect(html).not.toContain("J&#x27;accepte ces termes");
   });
 
@@ -204,7 +195,7 @@ describe("B3 — au moment de coller, le message que l'outil croit envoyé, repl
   );
   const renderWith = (props: Partial<Parameters<typeof NegotiationThread>[0]>) =>
     renderToStaticMarkup(
-      withFirst(<NegotiationThread analysisId="11111111-1111-4111-8111-111111111111" turns={[]} conclusion={null} right={{ kind: "pack", balance: 2 }} {...props} />),
+      withFirst(<NegotiationThread analysisId="11111111-1111-4111-8111-111111111111" turns={[]} conclusion={null} access="open" {...props} />),
     );
 
   it("jamais copié : le message proposé, présenté comme une hypothèse, dans un bloc replié", () => {
@@ -213,7 +204,7 @@ describe("B3 — au moment de coller, le message que l'outil croit envoyé, repl
     expect(html).not.toMatch(/<details[^>]*open/);
     expect(html).toContain("Merci pour votre message, le projet m&#x27;intéresse beaucoup.");
     expect(html).toContain("Tu ne l&#x27;as pas copié depuis l&#x27;outil : c&#x27;est le message proposé, supposé envoyé.");
-    expect(html).toContain("Ça ne décompte rien.");
+    expect(html).not.toMatch(/décompt|crédit/);
   });
 
   it("copié : le texte retenu à la copie, avec sa date", () => {

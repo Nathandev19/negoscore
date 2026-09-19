@@ -203,9 +203,20 @@ export const MIN_REPLY_LENGTH = 2;
 export const MAX_REPLY_LENGTH = 8000;
 
 // B3 — texte qui n'est pas une réponse à cette offre : dit tel quel, rien
-// d'inventé, rien de décompté.
+// d'inventé, rien d'enregistré.
 export const OFF_TOPIC_MESSAGE = {
-  other_offer: "Ce texte ressemble à une autre offre, pas à la réponse de la marque à celle-ci. Pour une nouvelle offre, lance une nouvelle analyse. Rien n'a été décompté.",
-  unrelated: "Ce texte ne ressemble pas à une réponse de la marque à cette offre. Colle le message que la marque t'a envoyé. Rien n'a été décompté.",
-  unsure: "L'outil n'est pas sûr que ce texte soit la réponse de la marque à cette offre, et préfère ne rien inventer. Colle son message tel qu'elle te l'a envoyé. Rien n'a été décompté.",
+  other_offer: "Ce texte ressemble à une autre offre, pas à la réponse de la marque à celle-ci. Pour une nouvelle offre, lance une nouvelle analyse.",
+  unrelated: "Ce texte ne ressemble pas à une réponse de la marque à cette offre. Colle le message que la marque t'a envoyé.",
+  unsure: "L'outil n'est pas sûr que ce texte soit la réponse de la marque à cette offre, et préfère ne rien inventer. Colle son message tel qu'elle te l'a envoyé.",
+} as const;
+
+// Mission #080 ter — l'unité facturée est le deal : une analyse couvre une
+// offre du premier message à la conclusion, ses tours compris. Les tours ne
+// consomment ni crédit ni quota. Le suivi est ouvert à la personne connectée
+// qui a lancé l'analyse, quelle que soit sa formule, gratuite comprise.
+export type ThreadAccess = "open" | "signed_out";
+
+export const TURN_FAILURE_MESSAGE = {
+  timeout: "La lecture de la réponse a pris trop de temps et n'a pas abouti. Réessaie dans quelques minutes.",
+  unavailable: "La lecture de la réponse est momentanément indisponible. Réessaie dans quelques minutes.",
 } as const;

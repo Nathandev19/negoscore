@@ -74,7 +74,7 @@ export function threadConcluded(thread: Thread): boolean {
 }
 
 // Clé d'idempotence (D4) : tour déjà enregistré sous cette clé pour cette
-// analyse (rejeu : rien n'est refait ni décompté), ou clé déjà prise ailleurs
+// analyse (rejeu : rien n'est refait ni réenregistré), ou clé déjà prise ailleurs
 // (elle n'est pas réécrite).
 export async function turnForKey(analysisId: string, key: string): Promise<{ kind: "turn"; turnNumber: number } | { kind: "taken" } | null> {
   const [row] = await selectRows<{ turn_number: number | null; analysis_id: string }>(
