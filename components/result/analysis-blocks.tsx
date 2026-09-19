@@ -10,11 +10,38 @@ import {
 import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 
-export function DealRecap({ deal }: { deal: Analysis["deal"] }) {
+// Mission #084 — blocs écrits par le modèle sur l'offre d'origine, affichés
+// après un ou plusieurs tours : ils le disent, et les points dont le terme a
+// changé depuis sont retirés (lib/negotiation/current.ts), nommés ici.
+export type OriginOnly = { withdrawn: string[] };
+
+function OriginNote() {
+  return (
+    <p className="text-small text-attenue">
+      D&apos;après l&apos;offre d&apos;origine, avant l&apos;échange avec la marque. Ce bloc n&apos;est pas recalculé après
+      les tours.
+    </p>
+  );
+}
+
+function Withdrawn({ origin }: { origin: OriginOnly }) {
+  if (origin.withdrawn.length === 0) return null;
+  return (
+    <p className="text-small">
+      Retiré, car le terme a changé pendant l&apos;échange avec la marque :{" "}
+      {origin.withdrawn.map((label) => `« ${label} »`).join(", ")}.
+    </p>
+  );
+}
+
+// Après un tour (mission #084) : les termes actuels, et le bloc le dit. Le
+// titre reste « Le deal proposé » : les hypothèses du moteur y renvoient.
+export function DealRecap({ deal, updatedAtTurn = null }: { deal: Analysis["deal"]; updatedAtTurn?: number | null }) {
   const rows = dealRecapRows(deal);
   if (rows.length === 0) return null;
   return (
     <Section title="Le deal proposé">
+      {updatedAtTurn !== null ? <p className="text-small text-attenue">À jour des termes du tour {updatedAtTurn}.</p> : null}
       <dl className="flex flex-col divide-y divide-filet border-y border-filet">
         {rows.map((row) => (
           <div key={row.label} className="flex justify-between gap-4 py-2.5">
@@ -27,10 +54,11 @@ export function DealRecap({ deal }: { deal: Analysis["deal"] }) {
   );
 }
 
-export function GoodPoints({ items }: { items: Analysis["good_points"] }) {
-  if (items.length === 0) return null;
+export function GoodPoints({ items, origin }: { items: Analysis["good_points"]; origin?: OriginOnly }) {
+  if (items.length === 0 && !origin?.withdrawn.length) return null;
   return (
     <Section title="Ce qui est bon">
+      {origin ? <OriginNote /> : null}
       <ul className="flex flex-col gap-4">
         {items.map((item) => (
           <li key={item.label} className="flex flex-col gap-0.5">
@@ -39,14 +67,16 @@ export function GoodPoints({ items }: { items: Analysis["good_points"] }) {
           </li>
         ))}
       </ul>
+      {origin ? <Withdrawn origin={origin} /> : null}
     </Section>
   );
 }
 
-export function NegotiateList({ items }: { items: Analysis["negotiate"] }) {
-  if (items.length === 0) return null;
+export function NegotiateList({ items, origin }: { items: Analysis["negotiate"]; origin?: OriginOnly }) {
+  if (items.length === 0 && !origin?.withdrawn.length) return null;
   return (
     <Section title="Ce qu'il faut négocier">
+      {origin ? <OriginNote /> : null}
       <ol className="flex flex-col divide-y divide-filet">
         {sortByPriority(items).map((item, index) => {
           const impact = formatEurRange(item.eur_impact_low, item.eur_impact_high);
@@ -65,14 +95,16 @@ export function NegotiateList({ items }: { items: Analysis["negotiate"] }) {
           );
         })}
       </ol>
+      {origin ? <Withdrawn origin={origin} /> : null}
     </Section>
   );
 }
 
-export function RedFlags({ items }: { items: Analysis["red_flags"] }) {
-  if (items.length === 0) return null;
+export function RedFlags({ items, origin }: { items: Analysis["red_flags"]; origin?: OriginOnly }) {
+  if (items.length === 0 && !origin?.withdrawn.length) return null;
   return (
     <Section title="Red flags">
+      {origin ? <OriginNote /> : null}
       <ul className="flex flex-col divide-y divide-filet">
         {items.map((item) => (
           <li key={item.label} className="flex flex-col gap-1.5 py-3 first:pt-0">
@@ -91,6 +123,7 @@ export function RedFlags({ items }: { items: Analysis["red_flags"] }) {
           </li>
         ))}
       </ul>
+      {origin ? <Withdrawn origin={origin} /> : null}
     </Section>
   );
 }

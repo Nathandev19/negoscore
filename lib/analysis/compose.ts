@@ -1,3 +1,4 @@
+import { toneLabel } from "@/lib/tone";
 import { engineParts, pricePhrase, topicImpact } from "@/lib/analysis/engine-parts";
 import { evaluability, incompleteRequestMessage, termsRequestMessage } from "@/lib/analysis/evaluability";
 import { normalizeDeal } from "@/lib/analysis/normalize";
@@ -56,7 +57,7 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
       changes: extraction.counter_offer.changes,
     },
     ready_to_send_message: {
-      tone: extraction.ready_to_send_message.tone,
+      tone: toneLabel(extraction.ready_to_send_message.tone),
       // Offre incomplète ou aux conditions inconnues : aucun tarif annoncé, le
       // message demande ce qui manque pour pouvoir juger.
       text:

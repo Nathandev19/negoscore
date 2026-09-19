@@ -19,7 +19,8 @@ import { IncompleteCard, TermsUnknownCard, UnpricedCard } from "@/components/res
 import { counterOfferRange, counterSameAsEstimate } from "@/lib/analysis/anchoring";
 import { missingInformation } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
-import { recomputeForTier, tierChangeAvailable } from "@/lib/analysis/recompute";
+import { recomputeForDeal, recomputeForTier, tierChangeAvailable } from "@/lib/analysis/recompute";
+import { changedGroups, splitByChange, type Negotiated } from "@/lib/negotiation/current";
 import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
 import { BAND_LABEL } from "@/lib/display";
 import { formatEurRange } from "@/lib/money";
@@ -65,6 +66,7 @@ export function AnalysisResult({
   retry,
   afterMessage,
   analysisId = null,
+  negotiated = null,
 }: {
   analysis: ResultView;
   unlockHref: string;
@@ -79,13 +81,32 @@ export function AnalysisResult({
   // Propriétaire connecté seulement : copier un message l'enregistre comme
   // message envoyé (mission #080 bis). null : simple copie.
   analysisId?: string | null;
+  // Mission #084 — termes actuels après les tours de négociation. null : aucun
+  // tour, la page décrit l'offre telle qu'elle a été analysée.
+  negotiated?: Negotiated | null;
 }) {
   const [tier, setTier] = useState<Tier>(stored.profile_tier);
   // Changement de niveau : le bandeau est remonté (key) pour rejouer l'animation,
   // depuis le score affiché juste avant. prefers-reduced-motion : valeur finale
   // directement (règle globale de globals.css).
   const [replay, setReplay] = useState<{ count: number; from: number | null }>({ count: 0, from: null });
-  const analysis = useMemo(() => recomputeForTier(stored, tier), [stored, tier]);
+  // origin : l'offre analysée, au niveau choisi. C'est sur elle que portent la
+  // contre-offre et le premier message, déjà envoyés. analysis : ce que le code
+  // déduit des termes (score, fourchette, deal, loi), recalculé sur les termes
+  // ACTUELS après un tour (mission #084), sans appel au modèle.
+  const origin = useMemo(() => recomputeForTier(stored, tier), [stored, tier]);
+  const analysis = useMemo(() => (negotiated ? recomputeForDeal(origin, negotiated.deal) : origin), [origin, negotiated]);
+  // Textes du modèle, écrits sur l'offre d'origine : un point dont le terme a
+  // changé depuis est retiré, et le bloc dit d'où il vient.
+  const changed = useMemo(() => (negotiated ? changedGroups(stored.deal, negotiated.deal) : null), [stored.deal, negotiated]);
+  const fromOrigin = <T extends { label: string; why: string }>(items: readonly T[]) => {
+    if (!negotiated || !changed) return { items: [...items], origin: undefined };
+    const { kept, withdrawn } = splitByChange(items, changed);
+    return { items: kept, origin: { withdrawn: withdrawn.map((item) => item.label) } };
+  };
+  const negotiate = fromOrigin(origin.negotiate);
+  const redFlags = fromOrigin(origin.red_flags);
+  const goodPoints = fromOrigin(origin.good_points);
 
   function chooseTier(next: Tier) {
     if (next === tier) return;
@@ -96,7 +117,7 @@ export function AnalysisResult({
     rememberTier(next);
   }
 
-  const locked = !analysis.counter_offer || !analysis.ready_to_send_message;
+  const locked = !origin.counter_offer || !origin.ready_to_send_message;
   const incomplete = analysis.evaluability === "incomplete";
 
   // Arrivée juste après la connexion qui débloque (mission #067) : le lien
@@ -134,15 +155,18 @@ export function AnalysisResult({
   // Sans montant de contre-offre (offre incomplète, ou montant déjà au-dessus de
   // la fourchette), le titre n'annonce pas de chiffre. Recalculé ici car la vue
   // verrouillée ne reçoit pas la contre-offre.
-  const { estimate, deal } = analysis;
+  // Contre-offre du premier message : calculée sur l'offre d'origine.
+  const { estimate, deal } = origin;
   const priced = counterOfferRange(deal.payment.amount_eur, estimate.total_low, estimate.total_high).low !== null;
   const counterOfferTitle = incomplete || !priced ? "Ta contre-offre" : undefined;
   // Mission #082 : contre-offre visible (débloquée) ET identique à la
   // fourchette : les deux ne s'affichent qu'une fois, sur une seule ligne.
-  const counterSame = counterSameAsEstimate(deal.payment.amount_eur, analysis.counter_offer, estimate);
+  // Après un tour, la fourchette affichée est celle des termes actuels : la
+  // contre-offre d'origine n'est plus fusionnée avec elle.
+  const counterSame = negotiated ? null : counterSameAsEstimate(deal.payment.amount_eur, origin.counter_offer, estimate);
   return (
     <TierContext value={analysis.profile_tier}>
-    <SentMessageContext value={{ analysisId, firstMessage: analysis.ready_to_send_message?.text ?? null }}>
+    <SentMessageContext value={{ analysisId, firstMessage: origin.ready_to_send_message?.text ?? null }}>
       {/* Le bandeau et le h1 sont DANS main (mission #062, A9) : ils portent
           l'essentiel du résultat et n'étaient dans aucun point de repère. */}
       <main id="contenu" className="flex flex-1 flex-col">
@@ -160,6 +184,12 @@ export function AnalysisResult({
         </p>
         <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 pt-8 pb-16 sm:px-6 md:pt-12 md:pb-24 [&>*]:max-w-2xl">
         {before}
+        {negotiated ? (
+          <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small">
+            Score, fourchette et deal sont à jour des termes du tour {negotiated.turn}. Ta contre-offre et ton premier
+            message restent ceux du début de l&apos;échange, calculés sur l&apos;offre d&apos;origine.
+          </p>
+        ) : null}
         {incomplete ? (
           <>
             <IncompleteCard missing={missingInformation(analysis)} />
@@ -178,22 +208,22 @@ export function AnalysisResult({
             <TierSelector tier={analysis.profile_tier} changeable={tierChangeAvailable(stored)} onChange={chooseTier} />
           </Estimate>
         )}
-        <NegotiateList items={analysis.negotiate} />
-        <DealRecap deal={analysis.deal} />
-        {analysis.counter_offer ? (
-          <CounterOffer offer={analysis.counter_offer} title={counterOfferTitle} justUnlocked={justUnlocked} sameAsEstimate={counterSame} />
+        <NegotiateList items={negotiate.items} origin={negotiate.origin} />
+        <DealRecap deal={analysis.deal} updatedAtTurn={negotiated?.turn ?? null} />
+        {origin.counter_offer ? (
+          <CounterOffer offer={origin.counter_offer} title={counterOfferTitle} justUnlocked={justUnlocked} sameAsEstimate={counterSame} />
         ) : (
           <LockedCounterOfferPlaceholder title={counterOfferTitle} />
         )}
-        {analysis.ready_to_send_message ? (
-          <ReadyMessage message={analysis.ready_to_send_message} justUnlocked={justUnlocked} />
+        {origin.ready_to_send_message ? (
+          <ReadyMessage message={origin.ready_to_send_message} justUnlocked={justUnlocked} />
         ) : (
           <LockedMessagePlaceholder />
         )}
         {locked ? <UnlockCta href={unlockHref} /> : null}
         {afterMessage}
-        <RedFlags items={analysis.red_flags} />
-        <GoodPoints items={analysis.good_points} />
+        <RedFlags items={redFlags.items} origin={redFlags.origin} />
+        <GoodPoints items={goodPoints.items} origin={goodPoints.origin} />
         <LegalNotice legal={analysis.fr_legal} />
         {children}
         </div>

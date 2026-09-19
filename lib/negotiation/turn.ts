@@ -1,3 +1,4 @@
+import { TONES, toneLabel } from "@/lib/tone";
 import type { ResultView } from "@/lib/analysis/lock";
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { mergeAsks, openAsks, originalAsks, outcomeFromAsks, PRICE_ASK_ID, REMAINING_FALLBACK } from "@/lib/negotiation/asks";
@@ -257,10 +258,10 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
 
   const priceOpen = asks.some((ask) => ask.id === PRICE_ASK_ID && ask.status !== "granted");
   const message = conclusion
-    ? { text: conclusion.message, tone: "Poli et clair", fallback: false, fallback_reasons: [] }
+    ? { text: conclusion.message, tone: TONES.clear, fallback: false, fallback_reasons: [] }
     : finalMessage({
         draft: reading.next_message.text,
-        tone: reading.next_message.tone,
+        tone: toneLabel(reading.next_message.tone),
         deal: dealAfter,
         brandReply,
         language: original.language,

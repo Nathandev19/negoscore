@@ -1,3 +1,4 @@
+import { TONES } from "@/lib/tone";
 import type { CounterRange } from "@/lib/analysis/anchoring";
 import { pricePhrase } from "@/lib/analysis/engine-parts";
 import { formatEur } from "@/lib/money";
@@ -310,7 +311,7 @@ export function finalMessage({
 }): TurnMessage {
   const problems = messageProblems(draft, deal, brandReply, askLabels, unverifiedLabels);
   if (problems.length > 0) {
-    return { text: fallback(), tone: "Poli et ferme", fallback: true, fallback_reasons: problems.map((p) => FALLBACK_REASON[p]) };
+    return { text: fallback(), tone: TONES.firm, fallback: true, fallback_reasons: problems.map((p) => FALLBACK_REASON[p]) };
   }
   return { text: withGreeting(insertPrice(draft, language, counter).text.trim(), language), tone, fallback: false, fallback_reasons: [] };
 }

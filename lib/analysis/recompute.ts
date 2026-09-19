@@ -1,8 +1,14 @@
 import { engineParts, pricePhrase, topicImpact } from "@/lib/analysis/engine-parts";
+import { evaluability } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
 import rates from "@/lib/rates/fr-2026.3.json";
 import { LEGACY_ENGINE_ASSUMPTIONS, type EstimateLine } from "@/lib/rates/engine";
 import type { Tier } from "@/lib/rates/tier";
+import { computeEscalation } from "@/lib/legal/escalate";
+import { computeFrLegal } from "@/lib/legal/fr";
+import type { Analysis } from "@/lib/schema";
+
+type Deal = Analysis["deal"];
 
 // Changement de niveau sur la page de résultat (mission #039) : tout ce qui
 // dépend du niveau est recalculé DANS LE NAVIGATEUR, par le même code que
@@ -61,6 +67,30 @@ export function recomputeForTier<T extends ResultView>(analysis: T, tier: Tier):
     };
   }
   return next;
+}
+
+// Mission #084 — après un tour de négociation, les termes ont changé. Tout ce
+// que le CODE déduit des termes est recalculé sur le deal actuel, par le même
+// moteur, sans appel au modèle : évaluabilité, fourchette et détail, score,
+// couche légale, escalade. Au même niveau que l'analyse affichée.
+// Inchangé ici, et traité par la page : ce qui vient du modèle (points forts,
+// red flags, points à négocier) et ce qui a été ENVOYÉ (contre-offre et premier
+// message), qui décrivent l'offre d'origine.
+export function recomputeForDeal<T extends ResultView>(analysis: T, deal: Deal): T {
+  const state = evaluability(deal);
+  const before = engineParts(analysis.deal, analysis.evaluability, analysis.profile_tier);
+  const engineWritten = new Set([...before.estimate.assumptions, ...LEGACY_ENGINE_ASSUMPTIONS]);
+  const extra = analysis.estimate.assumptions.filter((assumption) => !engineWritten.has(assumption));
+  const after = engineParts(deal, state, analysis.profile_tier, extra);
+  return {
+    ...analysis,
+    deal,
+    evaluability: state,
+    estimate: after.estimate,
+    score: after.score,
+    fr_legal: computeFrLegal(deal),
+    escalate_to_professional: computeEscalation(deal),
+  };
 }
 
 // Impact de chaque point recalculé sur son sujet. Une analyse antérieure au

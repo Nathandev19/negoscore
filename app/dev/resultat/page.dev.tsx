@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { EstimateFeedback } from "@/components/result/estimate-feedback";
 import { NegotiationThread, type ThreadTurnView } from "@/components/result/negotiation/negotiation-thread";
+import { currentState } from "@/lib/negotiation/current";
 import { loadScenarios, readingOf, scenarioContext } from "@/lib/negotiation/scenarios/index";
 import { processTurn } from "@/lib/negotiation/turn";
 import type { ThreadAccess, TurnPayload } from "@/lib/negotiation/types";
@@ -79,6 +80,7 @@ export default async function ResultPreviewPage({ searchParams }: { searchParams
         unlockHref="/connexion"
         // Relance : état choisi par ?relance=available|used|expired|retry_still_incomplete.
         retry={<RetryPanel state={retryPreview(relance)} originId={null} />}
+        negotiated={thread ? currentState({ turns: thread.turns, conclusion: null }) : null}
         afterMessage={
           thread ? <NegotiationThread key="echange" analysisId="apercu" turns={thread.turns} conclusion={null} access={thread.access} /> : null
         }

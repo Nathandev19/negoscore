@@ -3,6 +3,7 @@ import { RecordedCopyButton } from "@/components/result/negotiation/sent-message
 import { Section } from "@/components/result/section";
 import { formatEurRange } from "@/lib/display";
 import type { Analysis } from "@/lib/schema";
+import { toneLabel } from "@/lib/tone";
 
 // Ancre du message prêt à envoyer : c'est là qu'arrive la personne qui vient
 // de donner son email pour le débloquer (mission #067).
@@ -65,7 +66,7 @@ export function ReadyMessage({
 }) {
   return (
     <Section id={MESSAGE_ANCHOR} title="Ton message prêt à envoyer" badge={justUnlocked ? <JustUnlockedBadge /> : undefined}>
-      <p className="text-small text-attenue">Ton : {message.tone}</p>
+      <p className="text-small text-attenue">Ton : {toneLabel(message.tone)}</p>
       <p className="border-l-4 border-encre py-1 pl-4 text-lg leading-relaxed whitespace-pre-line text-encre">
         {message.text}
       </p>

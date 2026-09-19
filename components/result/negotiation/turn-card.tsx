@@ -13,8 +13,10 @@ import {
   type TermGroup,
   type TurnPayload,
 } from "@/lib/negotiation/types";
+import { normalizeForQuote } from "@/lib/negotiation/quotes";
 import { groupLabel, offeredOf } from "@/lib/negotiation/terms";
 import { TIER_LABEL } from "@/lib/rates/tier";
+import { toneLabel } from "@/lib/tone";
 
 // Mission #080 — un tour de l'échange, tel qu'il s'affiche. Chaque chiffre de
 // cette carte vient du moteur de tarifs (pricing_*) ou des termes lus (montant
@@ -72,6 +74,12 @@ function PricingCompare({ before, after }: { before: Pricing; after: Pricing }) 
       ))}
     </dl>
   );
+}
+
+// Mêmes mots, à la casse, aux espaces et à la ponctuation près.
+function sameWords(a: string, b: string): boolean {
+  const words = (text: string) => normalizeForQuote(text).replace(/[^\p{L}\d]+/gu, " ").trim();
+  return words(a) === words(b);
 }
 
 function AskGroup({ status, asks }: { status: AskStatus; asks: Ask[] }) {
@@ -275,8 +283,10 @@ export function TurnCard({
           <ul className="flex flex-col gap-2 text-small">
             {payload.brand_questions.map((question) => (
               <li key={question.quote} className="flex flex-col gap-0.5">
-                <span>{question.question}</span>
-                <q className="text-attenue">{question.quote}</q>
+                {/* Mission #084, B1 : reformulation identique à la citation
+                    (« Ça te va ? » deux fois) : la citation seule suffit. */}
+                {sameWords(question.question, question.quote) ? null : <span>{question.question}</span>}
+                <q className={sameWords(question.question, question.quote) ? undefined : "text-attenue"}>{question.quote}</q>
               </li>
             ))}
           </ul>
@@ -306,7 +316,7 @@ export function TurnCard({
               un message simple, qui reprend tes demandes.
             </p>
           ) : (
-            <p className="text-small text-attenue">Ton : {payload.message.tone}</p>
+            <p className="text-small text-attenue">Ton : {toneLabel(payload.message.tone)}</p>
           )}
           <EditableMessage text={payload.message.text} turn={turnNumber} />
         </section>

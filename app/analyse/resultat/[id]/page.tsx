@@ -13,8 +13,10 @@ import { SiteHeader } from "@/components/site-header";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { readFeedback } from "@/lib/analysis/feedback";
 import { loadResultForViewer } from "@/lib/analysis/load";
+import { recomputeForDeal } from "@/lib/analysis/recompute";
 import { retryStateFor, type RetryPageState } from "@/lib/analysis/retry";
 import { getViewer } from "@/lib/auth/viewer";
+import { currentState } from "@/lib/negotiation/current";
 import { loadSentMessages, type SentMessage } from "@/lib/negotiation/sent";
 import { loadThread, type Thread } from "@/lib/negotiation/store";
 import { shareCardAvailable } from "@/lib/share-card/element";
@@ -57,6 +59,9 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   const showThread = thread !== "missing";
   // Message retenu comme envoyé pour le dernier tour (mission #080 bis).
   const answeredTurn = 1 + (thread && thread !== "missing" ? thread.turns.length : 0);
+  // Mission #084 : termes actuels après les tours (null : aucun tour).
+  const negotiated = thread && thread !== "missing" ? currentState(thread) : null;
+  const cardAvailable = shareCardAvailable(negotiated ? recomputeForDeal(result.analysis, negotiated.deal) : result.analysis);
   const sent: SentMessage | undefined = owner ? (await loadSentMessages(id).catch(() => new Map<number, SentMessage>())).get(answeredTurn) : undefined;
 
   return (
@@ -71,6 +76,9 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
         retry={retry ? <RetryPanel state={retry} originId={id} /> : null}
         // Copier un message l'enregistre comme envoyé : propriétaire connecté seulement.
         analysisId={owner ? id : null}
+        // Mission #084 : après un tour, ce qui se déduit des termes est
+        // recalculé sur les termes actuels.
+        negotiated={negotiated}
         afterMessage={
           showThread ? (
             // Clé explicite : élément serveur passé en propriété à un composant
@@ -86,7 +94,7 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
           ) : null
         }
       >
-        {shareCardAvailable(result.analysis) ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}
+        {cardAvailable ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}
         <EstimateFeedback
           action={`/api/analyses/${id}/avis`}
           initial={feedback === "missing" ? null : feedback}

@@ -18,14 +18,16 @@ export type Topic = {
 const word = (body: string) => new RegExp(`(?<![\\p{L}])(?:${body})`, "iu");
 
 export const TOPICS: readonly Topic[] = [
-  { key: "amount", groups: ["amount"], rows: ["Rémunération"], pattern: word("rémunération|budget|tarif|prix|montant|contre-offre|cachet") },
+  { key: "amount", groups: ["amount"], rows: ["Rémunération"], pattern: word("rémunér|budget|tarif|prix|montant|contre-offre|cachet|sous-pay") },
   { key: "payment", groups: ["payment_terms"], rows: ["Paiement"], pattern: word("paiement|payer|payé|acompte|règlement|signature|facturation") },
   { key: "exclusivity", groups: ["exclusivity"], rows: ["Exclusivité"], pattern: word("exclusivit") },
   {
     key: "usage",
     groups: ["usage_rights", "usage_duration"],
     rows: ["Droits d'utilisation"],
-    pattern: word("droits?(?![\\p{L}])|pub(?![\\p{L}])|publicit|utilisation|usage|whitelisting|spark"),
+    // « Droit » seul ne suffit pas : « droit d'entraînement IA » n'est pas un
+    // droit d'utilisation publicitaire (mission #084).
+    pattern: word("droits? (?:pub|de diffusion)|pub(?![\\p{L}])|publicit|(?:ré)?utilis|usage|whitelisting|spark"),
   },
   { key: "territory", groups: ["territory"], rows: ["Territoire"], pattern: word("territoire|pays(?![\\p{L}])|zone") },
   { key: "deliverables", groups: ["deliverables"], rows: ["Livrables", "Contenus"], pattern: word("vidéos?(?![\\p{L}])|livrable|stor(?:y|ies)|reels?(?![\\p{L}])") },
