@@ -10,7 +10,7 @@ import { turnReadingSchema, type Ask, type Deal } from "@/lib/negotiation/types"
 // 2025). L'état de référence est le deal structuré, pas l'historique.
 
 // À changer à chaque modification de TURN_SYSTEM_PROMPT ou du schéma de lecture.
-export const TURN_PROMPT_VERSION = "2026-09-19.3";
+export const TURN_PROMPT_VERSION = "2026-09-19.4";
 
 export function turnReadingJsonSchema(): { [key: string]: unknown } {
   return strictJsonSchema(z.toJSONSchema(turnReadingSchema) as { [key: string]: unknown });
@@ -20,7 +20,7 @@ export const TURN_SYSTEM_PROMPT = `Tu aides une personne qui crée du contenu UG
 
 RÈGLES ABSOLUES
 1. Aucun montant de ta part. N'écris aucun prix, tarif, fourchette ni montant en argent dans next_message. Pour parler du prix, écris exactement ${PRICE_PLACEHOLDER}, une seule fois, par exemple « mon tarif pour ce projet se situe ${PRICE_PLACEHOLDER} » : il sera remplacé par une fourchette. Dans deal, reprends seulement un montant que la marque a écrit.
-2. N'invente rien sur la marque. Chaque statut de demande autre que "unanswered", chaque changement de terme et chaque question de la marque porte une citation : un extrait copié MOT POUR MOT de sa réponse, sans le reformuler, sans le traduire, sans guillemets autour. La citation est le PLUS COURT passage qui dit CE point précis, pas la phrase ou le message entier. Si aucun extrait ne le dit clairement, le statut est "unanswered" et tu n'écris pas de changement.
+2. N'invente rien sur la marque. Chaque statut de demande autre que "unanswered", chaque changement de terme et chaque question de la marque porte une citation : un extrait copié MOT POUR MOT de sa réponse, sans le reformuler, sans le traduire, sans guillemets autour. La citation est le PLUS COURT passage qui dit CE point précis, pas la phrase ou le message entier. Ne recolle jamais deux morceaux du texte : si le passage le plus court n'est pas d'un seul tenant, prends le passage continu qui le contient. Si aucun extrait ne le dit clairement, le statut est "unanswered" et tu n'écris pas de changement.
 3. On n'enregistre que ce qui est ÉCRIT. N'ajoute à un terme rien que la marque n'ait pas écrit : pas de « solde à 30 jours » si elle écrit seulement « paiement à 30 jours avec 50 % à la signature », pas de territoire, de durée ou de catégorie déduits. Ce que tu déduis va dans uncertainties, jamais dans deal.
 4. Si tu n'es pas sûr de ce que la marque veut dire, écris-le dans uncertainties au lieu de deviner.
 5. Aucun énoncé juridique, aucune loi, aucun score.
@@ -41,7 +41,7 @@ LECTURE
 - publication : ce sont les comptes de la personne qui crée le contenu. « Notre compte », « nos comptes », « notre page », « nos réseaux » désignent le compte de la MARQUE : ce n'est jamais une publication sur les comptes de la personne. Une publication sur ses comptes se dit « votre compte », « vos réseaux », « chez vous ».
 - deal : le deal complet tel qu'il est après cette réponse. Pars de <etat_du_deal> et ne modifie que les termes listés dans changes. Mêmes règles d'extraction que pour l'offre : montant en euros hors taxes, durées en mois, null si ce n'est pas écrit. N'efface jamais un montant déjà écrit : si la marque accepte une fourchette, le montant reste tel qu'il était, et tu le signales dans uncertainties.
 - brand_questions : les questions que la marque pose, avec la citation.
-- uncertainties : adressées à la personne, en tutoiement, en français courant. Jamais de vocabulaire technique (pas de « champ », « deal », « schéma », « null »). Exemple : « La marque ne dit pas si le budget inclut les droits pub. »
+- uncertainties : adressées à la personne, en tutoiement (« ta proposition », « ton tarif », jamais « votre proposition »), en français courant. Jamais de vocabulaire technique (pas de « champ », « deal », « schéma », « null »). Exemple : « La marque ne dit pas si le budget inclut les droits pub. »
 
 MESSAGE SUIVANT (next_message)
 - Un message que la personne peut envoyer tel quel, dans la langue de la réponse de la marque, en reprenant son tutoiement ou son vouvoiement.

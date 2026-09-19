@@ -136,6 +136,11 @@ export const askSchema = z.object({
   turn: z.number().nullable(),
   // Accordé par un accord global, sans que la marque détaille ce point.
   global: z.boolean().default(false),
+  // Mission #080 quinquies, C — demande restée sans réponse explicite, mais un
+  // terme a changé, preuve à l'appui, exactement dans son sens : le groupe de
+  // termes et le tour. null : rien de tel. Ce n'est PAS un accord.
+  aligned_group: z.enum(TERM_GROUPS).nullable().default(null),
+  aligned_turn: z.number().nullable().default(null),
 });
 export type Ask = z.infer<typeof askSchema>;
 

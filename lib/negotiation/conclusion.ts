@@ -57,7 +57,13 @@ export function unclearPoints(deal: Deal, asks: readonly Ask[], uncertainties: r
     ...(asks.some((ask) => ask.global)
       ? ["La marque a donné un accord global sans reprendre chaque point : fais-les-lui confirmer un par un, par écrit."]
       : []),
-    ...asks.filter((ask) => ask.status === "unanswered").map((ask) => `Pas de réponse de la marque sur : ${ask.label}`),
+    ...asks
+      .filter((ask) => ask.status === "unanswered")
+      .map((ask) =>
+        ask.aligned_group
+          ? `« ${ask.label} » : le terme a changé dans ce sens, sans phrase explicite de la marque. Fais-le-lui confirmer par écrit.`
+          : `Pas de réponse de la marque sur : ${ask.label}`,
+      ),
     ...uncertainties.map((doubt) => `L'outil n'est pas sûr d'avoir bien lu : ${doubt}`),
   ].filter((point): point is string => point !== null);
 }

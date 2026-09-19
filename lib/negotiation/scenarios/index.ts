@@ -56,6 +56,9 @@ export type Scenario = {
     // Valeurs qui ne doivent figurer nulle part dans les termes retenus
     // (mission #080 quater : ce que la marque n'a pas écrit).
     valeurs_interdites?: string[];
+    // Demandes restées sans réponse explicite, dont un terme prouvé a changé
+    // dans leur sens (mission #080 quinquies, C).
+    alignees?: string[];
   };
 };
 

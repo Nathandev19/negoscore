@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScenarios, runScenario, scenarioContext, readingOf } from "@/lib/negotiation/scenarios";
 import { processTurn } from "@/lib/negotiation/turn";
+import { unclearPoints } from "@/lib/negotiation/conclusion";
+import { TurnCard } from "@/components/result/negotiation/turn-card";
 import type { TurnPayload } from "@/lib/negotiation/types";
 
 // Mission #080 — ce que la zone affiche, l'enchaînement de plusieurs tours
@@ -225,5 +227,27 @@ describe("B3 — l'extrait du message", () => {
   it("saute la ligne de salutation, coupe proprement un message long", () => {
     expect(excerpt("Bonjour,\n\nMerci pour votre retour, avec plaisir.")).toBe("Merci pour votre retour, avec plaisir.");
     expect(excerpt(`Merci ${"beaucoup ".repeat(20)}`, 30)).toMatch(/^Merci beaucoup beaucoup[^…]*…$/);
+  });
+});
+
+describe("#080 quinquies, C — un terme prouvé qui va dans le sens d'une demande n'est plus affiché « sans réponse »", () => {
+  it("scénario 14 : la demande apparaît sous « changé dans ce sens », pas sous « toujours sans réponse »", () => {
+    const payload = turnFrom("garde-citation-recollee");
+    const html = renderToStaticMarkup(<TurnCard turnNumber={2} createdAt="2026-09-19T10:00:00.000Z" brandReply={null} payload={payload} />);
+    const aligned = html.indexOf("Le terme a changé dans ce sens, sans phrase explicite de la marque");
+    expect(aligned).toBeGreaterThan(0);
+    const label = "Paiement à 30 jours, 50 % à la signature";
+    expect(html.indexOf(label, aligned)).toBeGreaterThan(aligned);
+    const stillOpen = html.indexOf("Toujours sans réponse");
+    if (stillOpen > 0) expect(html.slice(stillOpen, html.indexOf("</div>", stillOpen))).not.toContain(label);
+    // Et ce n'est pas présenté comme un accord.
+    expect(html.slice(html.indexOf("Accordé"), aligned)).not.toContain(label);
+  });
+
+  it("dans la conclusion : un point à faire confirmer, pas « pas de réponse de la marque »", () => {
+    const payload = turnFrom("garde-citation-recollee");
+    const unclear = unclearPoints(payload.deal_after, payload.asks);
+    expect(unclear).toContain("« Paiement à 30 jours, 50 % à la signature » : le terme a changé dans ce sens, sans phrase explicite de la marque. Fais-le-lui confirmer par écrit.");
+    expect(unclear.join(" ")).not.toContain("Pas de réponse de la marque sur : Paiement à 30 jours");
   });
 });

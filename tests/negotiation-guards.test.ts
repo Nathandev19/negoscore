@@ -71,7 +71,7 @@ describe("A6 — aucun jargon interne à l'écran", () => {
 });
 
 describe("A7 — une citation est la preuve d'UN point ; un accord global est dit comme tel", () => {
-  const asks: Ask[] = ["prix", "c1", "c2"].map((id) => ({ id, label: id, status: "unanswered", quote: null, turn: null, global: false }));
+  const asks: Ask[] = ["prix", "c1", "c2"].map((id) => ({ id, label: id, status: "unanswered", quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null }));
   const reply = "Bonjour ! C'est d'accord pour tout, on part sur votre proposition.";
 
   it("accord global déclaré : les demandes sans citation propre sont accordées au titre de l'accord global", () => {
@@ -137,5 +137,33 @@ describe("B1 — contre-offre acceptée, montant effacé par le modèle : la con
     const amount = result.payload.conclusion?.recap.find((row) => row.label === "Rémunération")?.value ?? "";
     expect(amount).toContain("Ta contre-offre");
     expect(amount).toContain("sans écrire le montant exact");
+  });
+});
+
+describe("#080 quinquies, B — les doutes s'adressent à elle, en « tu »", () => {
+  it("le vouvoiement converti là où c'est sûr, avec le bon possessif", () => {
+    expect(cleanDoubts(["La marque indique qu'elle examine votre proposition en interne."])).toEqual([
+      "La marque indique qu'elle examine ta proposition en interne.",
+    ]);
+    expect(cleanDoubts(["La marque ne dit rien de votre exclusivité ni de votre tarif."])).toEqual([
+      "La marque ne dit rien de ton exclusivité ni de ton tarif.",
+    ]);
+  });
+  it("les mots de la marque, cités entre « », ne sont jamais touchés", () => {
+    expect(cleanDoubts(["La marque écrit « on revient vers vous » sans date."])).toEqual(["La marque écrit « on revient vers vous » sans date."]);
+  });
+  it("un « vous » impossible à convertir sûrement : phrase générique, jamais un vouvoiement à l'écran", () => {
+    const doubts = cleanDoubts(["La marque vous remercie pour votre patience."]);
+    expect(doubts.join(" ").replace(/«[^»]*»/g, "")).not.toMatch(/\b(vous|votre|vos)\b/i);
+  });
+});
+
+describe("#080 quinquies, A — une citation recollée n'est jamais une preuve", () => {
+  it("deux morceaux recollés : la demande reste sans réponse explicite, et rien n'est prêté à la marque", () => {
+    const asks: Ask[] = [{ id: "c5", label: "Paiement à 30 jours, 50 % à la signature", status: "unanswered", quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null }];
+    const reply = "Bonjour, ok pour l'exclusivité d'un mois et pour le paiement à 30 jours avec 50 % à la signature.";
+    const merged = mergeAsks(asks, { global_agreement: null, asks: [{ id: "c5", status: "granted", quote: "ok pour le paiement à 30 jours avec 50 % à la signature" }] }, reply, 2);
+    expect(merged.asks[0].status).toBe("unanswered");
+    expect(merged.unverified).toEqual(["Paiement à 30 jours, 50 % à la signature"]);
   });
 });

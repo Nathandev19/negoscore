@@ -6,7 +6,7 @@ import { fallbackMessage, finalMessage } from "@/lib/negotiation/message";
 import { originPricing, priceFor } from "@/lib/negotiation/pricing";
 import { quoteIsIn } from "@/lib/negotiation/quotes";
 import { applyGroups, groupLabel } from "@/lib/negotiation/terms";
-import { keepWritten, unwrittenDoubt } from "@/lib/negotiation/written";
+import { changeFollowsAsk, keepWritten, unwrittenDoubt } from "@/lib/negotiation/written";
 import {
   TERM_GROUP_LABEL,
   TURN_SCHEMA_VERSION,
@@ -45,11 +45,47 @@ export type TurnResult =
 // remplacé par une phrase qui dit à la créatrice ce qu'elle peut faire.
 const JARGON = /\b(champs?|sch[ée]mas?|json|null|bool[ée]en|boolean|enum|payload|field|variable)\b|\bdeal ne permet\b/i;
 
+// Mission #080 quinquies, B — les doutes s'adressent à elle, en « tu ». Le
+// vouvoiement est converti là où c'est sûr (« votre proposition » → « ta
+// proposition », « vers vous » → « vers toi ») ; ce qui est cité entre « »
+// (les mots de la marque) n'est jamais touché. Un « vous » qui reste : le doute
+// est remplacé par la phrase générique, plutôt que de mal s'adresser à elle.
+const FEMININE = "proposition|demande|contre-offre|réponse|rémunération|vidéo|collaboration|disponibilité";
+const VOWEL_FEMININE = "offre|exclusivité|audience|option";
+const MASCULINE = "message|tarif|devis|compte|profil|travail|contenu|prix|budget|retour|accord|dernier message";
+const TO_TU: Array<[RegExp, string]> = [
+  [new RegExp(`\\b[Vv]otre (${FEMININE})(?![\\p{L}])`, "gu"), "ta $1"],
+  // « ton » devant un nom masculin, ou féminin commençant par une voyelle
+  // (« ton offre », « ton exclusivité »).
+  [new RegExp(`\\b[Vv]otre (${MASCULINE}|${VOWEL_FEMININE})(?![\\p{L}])`, "gu"), "ton $1"],
+  [/\b[Vv]os\b/g, "tes"],
+  [/\b(vers|à|pour|avec|chez|de) vous\b/g, "$1 toi"],
+];
+const VOUS = /\b(vous|votre|vos)\b/i;
+
+function addressedToYou(doubt: string): string | null {
+  // Segments cités (« … ») laissés tels quels ; seul le texte autour change.
+  const parts = doubt.split(/(«[^»]*»)/);
+  const converted = parts
+    .map((part) => (part.startsWith("«") ? part : TO_TU.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), part)))
+    .join("");
+  const outsideQuotes = converted.replace(/«[^»]*»/g, "");
+  return VOUS.test(outsideQuotes) ? null : converted;
+}
+
+const GENERIC_DOUBT = "Un point de la réponse n'a pas pu être lu avec certitude : relis-la avant d'envoyer ton message.";
+
 export function cleanDoubts(doubts: readonly string[]): string[] {
-  const kept = doubts.map((doubt) => doubt.trim()).filter((doubt) => doubt.length > 0 && !JARGON.test(doubt));
-  if (kept.length < doubts.filter((doubt) => doubt.trim().length > 0).length) {
-    kept.push("Un point de la réponse n'a pas pu être lu avec certitude : relis-la avant d'envoyer ton message.");
+  const kept: string[] = [];
+  let replaced = false;
+  for (const raw of doubts) {
+    const doubt = raw.trim();
+    if (doubt.length === 0) continue;
+    const addressed = JARGON.test(doubt) ? null : addressedToYou(doubt);
+    if (addressed === null) replaced = true;
+    else kept.push(addressed);
   }
+  if (replaced) kept.push(GENERIC_DOUBT);
   return [...new Set(kept)];
 }
 
@@ -114,11 +150,22 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   const pricingAfter = changes.length > 0 ? priceFor(dealAfter, tier) : null;
   const current = pricingAfter ?? pricingBefore;
 
+  // Mission #080 quinquies, C — demande restée sans réponse explicite alors
+  // qu'un terme a changé, preuve à l'appui, exactement dans son sens : l'écran
+  // le dit tel quel, sans affirmer que la marque a accepté (et sans la
+  // contradiction « sans réponse » à côté d'un terme qui a bougé).
+  const asks = merged.asks.map((ask) => {
+    if (ask.status !== "unanswered" || ask.aligned_group) return ask;
+    const follows = changes.find((change) => changeFollowsAsk(change.group, dealAfter, ask.label));
+    return follows ? { ...ask, aligned_group: follows.group, aligned_turn: turnNumber } : ask;
+  });
+  const alignedNow = new Set(asks.filter((ask) => ask.aligned_turn === turnNumber).map((ask) => ask.label));
+
   // Doutes affichés à la créatrice, en « tu » (A6). Ceux du modèle qui parlent
   // de sa propre mécanique (champ, schéma, JSON…) n'atteignent jamais l'écran.
   const uncertainties = [
     ...cleanDoubts(reading.uncertainties),
-    ...merged.unverified.map((label) => `Sur « ${label} », l'outil n'a trouvé aucun passage de la réponse qui le dise clairement.`),
+    ...merged.unverified.filter((label) => !alignedNow.has(label)).map((label) => `Sur « ${label} », l'outil n'a trouvé aucun passage de la réponse qui le dise clairement.`),
     ...ignored.map(
       (change) =>
         `« ${TERM_GROUP_LABEL[change.group]} » : l'outil a cru lire un changement, mais aucun passage de la réponse ne le dit. Ce n'est pas retenu.`,
@@ -135,19 +182,19 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   const conclusion = accepted
     ? buildConclusion({
         deal: dealAfter,
-        asks: merged.asks,
+        asks,
         uncertainties,
         language: original.language,
         source: "brand_accepted",
         // La contre-offre acceptée est celle du message ENVOYÉ, donc d'avant ce
         // tour : un chiffrage refait après coup n'est pas ce que la marque a lu.
-        counterAccepted: counterAcceptedWithoutAmount(merged.asks, original, dealAfter)
+        counterAccepted: counterAcceptedWithoutAmount(asks, original, dealAfter)
           ? { low: pricingBefore.counter_low, high: pricingBefore.counter_high }
           : null,
       })
     : null;
 
-  const priceOpen = merged.asks.some((ask) => ask.id === PRICE_ASK_ID && ask.status !== "granted");
+  const priceOpen = asks.some((ask) => ask.id === PRICE_ASK_ID && ask.status !== "granted");
   const message = conclusion
     ? { text: conclusion.message, tone: "Poli et clair", fallback: false, fallback_reasons: [] }
     : finalMessage({
@@ -157,11 +204,11 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
         brandReply,
         language: original.language,
         counter,
-        askLabels: merged.asks.map((ask) => ask.label),
+        askLabels: asks.map((ask) => ask.label),
         fallback: () =>
           fallbackMessage({
             language: original.language,
-            open: openAsks(merged.asks),
+            open: openAsks(asks),
             counter,
             priceOpen,
             questions: questions.length,
@@ -175,7 +222,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
       schema_version: TURN_SCHEMA_VERSION,
       tier,
       outcome: reading.outcome,
-      asks: merged.asks,
+      asks: asks,
       changes,
       ignored_changes: ignored,
       deal_before: before.deal,

@@ -206,6 +206,43 @@ export function keepWritten(
   return { deal, unwritten };
 }
 
+// Mission #080 quinquies, C — un terme changé, preuve à l'appui, va-t-il
+// exactement dans le sens d'une demande ? Oui quand la demande parle de ce
+// terme ET que chaque nouvelle valeur y est écrite (« Paiement à 30 jours, 50 %
+// à la signature » et un paiement passé à 30 jours, 50 % à la signature). Ce
+// n'est pas un accord de la marque : seulement un constat sur les termes.
+const TOPIC: Partial<Record<TermGroup, RegExp>> = {
+  payment_terms: /paiement|payer|pay[ée]|acompte|signature|jours/i,
+  exclusivity: /exclusivit/i,
+  usage_duration: /droit|pub|usage|utilisation|diffusion/i,
+  territory: /territoire|pays|monde|europe|france|zone|diffusion/i,
+  in_kind: /produit|dotation|nature/i,
+};
+
+export function changeFollowsAsk(group: TermGroup, deal: Deal, label: string): boolean {
+  const topic = TOPIC[group];
+  if (!topic || !topic.test(label)) return false;
+  const sources = [label];
+  switch (group) {
+    case "payment_terms": {
+      const { terms_days: days, schedule } = deal.payment;
+      if (days === null && schedule === null) return false;
+      return (days === null || numberWritten(days, sources)) && (schedule === null || textWritten(schedule, sources));
+    }
+    case "exclusivity":
+      if (!deal.exclusivity.present) return /supprim|retir|sans exclusivit|pas d'exclusivit|aucune exclusivit/i.test(label);
+      return deal.exclusivity.duration_months !== null && numberWritten(deal.exclusivity.duration_months, sources, "months");
+    case "usage_duration":
+      return deal.usage.duration_months !== null && numberWritten(deal.usage.duration_months, sources, "months");
+    case "territory":
+      return deal.usage.territory !== null && textWritten(deal.usage.territory, sources);
+    case "in_kind":
+      return deal.in_kind_value_eur !== null && numberWritten(deal.in_kind_value_eur, sources);
+    default:
+      return false;
+  }
+}
+
 // Ce que l'écran dit d'une valeur écartée : à la créatrice, en « tu ».
 export function unwrittenDoubt(item: Unwritten): string {
   const label = TERM_GROUP_LABEL[item.group];

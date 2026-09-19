@@ -8,9 +8,10 @@ import {
   type Ask,
   type AskStatus,
   type Pricing,
+  type TermGroup,
   type TurnPayload,
 } from "@/lib/negotiation/types";
-import { offeredOf } from "@/lib/negotiation/terms";
+import { groupLabel, offeredOf } from "@/lib/negotiation/terms";
 import { TIER_LABEL } from "@/lib/rates/tier";
 
 // Mission #080 — un tour de l'échange, tel qu'il s'affiche. Chaque chiffre de
@@ -95,7 +96,10 @@ export function TurnCard({
 }) {
   // Demandes tranchées dans CE tour, puis celles qui n'ont toujours pas de réponse.
   const decidedNow = payload.asks.filter((ask) => ask.turn === turnNumber);
-  const stillOpen = payload.asks.filter((ask) => ask.status === "unanswered");
+  // Mission #080 quinquies, C : une demande sans réponse explicite dont le
+  // terme a changé, preuve à l'appui, dans son sens n'est pas « sans réponse ».
+  const aligned = payload.asks.filter((ask) => ask.status === "unanswered" && ask.aligned_group !== null);
+  const stillOpen = payload.asks.filter((ask) => ask.status === "unanswered" && ask.aligned_group === null);
   const globalQuote = decidedNow.find((ask) => ask.global)?.quote ?? null;
   const current = payload.pricing_after ?? payload.pricing_before;
   const currentRange = formatEurRange(current.total_low, current.total_high);
@@ -119,7 +123,7 @@ export function TurnCard({
         )}
       </header>
 
-      {decidedNow.length > 0 || stillOpen.length > 0 ? (
+      {decidedNow.length > 0 || stillOpen.length > 0 || aligned.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h4 className="font-bold text-encre">Ce que la marque répond à tes demandes</h4>
           {globalQuote ? (
@@ -131,6 +135,21 @@ export function TurnCard({
           <AskGroup status="granted" asks={decidedNow.filter((a) => a.status === "granted")} />
           <AskGroup status="refused" asks={decidedNow.filter((a) => a.status === "refused")} />
           <AskGroup status="countered" asks={decidedNow.filter((a) => a.status === "countered")} />
+          {aligned.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              <h5 className="font-semibold text-encre">Le terme a changé dans ce sens, sans phrase explicite de la marque</h5>
+              <ul className="flex flex-col gap-2 text-small">
+                {aligned.map((ask) => (
+                  <li key={ask.id} className="flex flex-col gap-0.5">
+                    <span>{ask.label}</span>
+                    <span className="text-attenue">
+                      Maintenant : {groupLabel(payload.deal_after, ask.aligned_group as TermGroup)}. Fais-le-lui confirmer par écrit.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <AskGroup status="unanswered" asks={stillOpen} />
         </section>
       ) : null}

@@ -15,9 +15,9 @@ export function originalAsks(analysis: ResultView): Ask[] {
   if (!offer) return [];
   return [
     ...(offer.amount_low !== null
-      ? [{ id: PRICE_ASK_ID, label: "La rémunération demandée (ta contre-offre)", status: "unanswered" as const, quote: null, turn: null, global: false }]
+      ? [{ id: PRICE_ASK_ID, label: "La rémunération demandée (ta contre-offre)", status: "unanswered" as const, quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null }]
       : []),
-    ...offer.changes.map((change, index) => ({ id: `c${index + 1}`, label: change, status: "unanswered" as const, quote: null, turn: null, global: false })),
+    ...offer.changes.map((change, index) => ({ id: `c${index + 1}`, label: change, status: "unanswered" as const, quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null })),
   ];
 }
 

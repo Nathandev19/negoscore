@@ -79,7 +79,7 @@ describe("F8 — les scénarios couvrent les cas demandés", () => {
     // Chaque scénario dit s'il est inventé ou réel : le remplacement se voit.
     for (const scenario of scenarios) expect(["inventé", "réel", "garde"]).toContain(scenario.source);
     // Les deux fautes réelles du modèle (essai du 19/09/2026) ont leur scénario de garde.
-    for (const required of ["garde-notre-compte", "garde-embellissement"]) {
+    for (const required of ["garde-notre-compte", "garde-embellissement", "garde-citation-recollee"]) {
       expect(scenarios.find((s) => s.id.endsWith(required))?.source, required).toBe("garde");
     }
   });
@@ -111,6 +111,12 @@ describe.each(scenarios.map((s) => [s.id, s] as const))("scénario %s", (_id, sc
     if (attendu.doutes) expect(payload.uncertainties.length).toBeGreaterThan(0);
     const retained = JSON.stringify([payload.deal_after, payload.changes, payload.conclusion?.recap ?? []]).toLowerCase();
     for (const forbidden of attendu.valeurs_interdites ?? []) expect(retained, forbidden).not.toContain(forbidden.toLowerCase());
+    for (const id of attendu.alignees ?? []) {
+      const ask = payload.asks.find((a) => a.id === id);
+      expect(ask?.aligned_group, id).not.toBeNull();
+      // Pas de contradiction : ni doute « aucun passage », ni « toujours sans réponse » pour elle.
+      expect(payload.uncertainties.join(" "), id).not.toContain(`Sur « ${ask?.label} »`);
+    }
   });
 
   it("B2 — sans changement de termes, la fourchette est celle de l'analyse d'origine ; avec, ancien et nouveau côte à côte", () => {
