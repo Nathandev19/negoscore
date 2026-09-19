@@ -4,7 +4,8 @@ import { normalizeDeal } from "@/lib/analysis/normalize";
 import { mergeAsks, openAsks, originalAsks, outcomeFromAsks, PRICE_ASK_ID, REMAINING_FALLBACK } from "@/lib/negotiation/asks";
 import { buildConclusion } from "@/lib/negotiation/conclusion";
 import { fallbackMessage, finalMessage } from "@/lib/negotiation/message";
-import { originPricing, priceFor } from "@/lib/negotiation/pricing";
+import { tableOf } from "@/lib/analysis/recompute";
+import { originPricing, priceFor, unavailablePricing } from "@/lib/negotiation/pricing";
 import { checkQuote, quoteIsIn } from "@/lib/negotiation/quotes";
 import { applyGroups, groupLabel } from "@/lib/negotiation/terms";
 import { groupsOf } from "@/lib/negotiation/topics";
@@ -160,8 +161,17 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   const changedSinceOrigin = before.changedSinceOrigin || changes.length > 0;
 
   // Chiffrage : rien n'a jamais changé → l'analyse d'origine ; sinon le moteur.
-  const pricingBefore = before.changedSinceOrigin ? priceFor(before.deal, tier) : originPricing(original, tier);
-  const pricingAfter = changes.length > 0 ? priceFor(dealAfter, tier) : null;
+  // Mission #085 — toujours avec la table de l'analyse d'origine. Disparue du
+  // code et termes changés : aucun chiffre, le message n'en cite aucun.
+  const table = tableOf(original);
+  const version = original.estimate.rate_table_version;
+  const pricingBefore = before.changedSinceOrigin
+    ? table
+      ? priceFor(before.deal, tier, table)
+      : unavailablePricing(version, tier)
+    : originPricing(original, tier);
+  const pricingAfter = changes.length > 0 && table ? priceFor(dealAfter, tier, table) : null;
+  const pricingUnavailable = !table && changedSinceOrigin;
   const current = pricingAfter ?? pricingBefore;
 
   // Mission #080 quinquies, C — demande restée sans réponse explicite alors
@@ -234,7 +244,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   // Questions de la marque : seulement celles qu'elle a vraiment posées.
   const questions = reading.brand_questions.filter((q) => quoteIsIn(q.quote, brandReply));
 
-  const counter = { low: current.counter_low, high: current.counter_high };
+  const counter = pricingUnavailable ? { low: null, high: null } : { low: current.counter_low, high: current.counter_high };
 
   // Mission #083, D — le titre du tour vient des statuts affichés.
   const outcome = outcomeFromAsks(asks, turnNumber, { model: reading.outcome, changed: changes.length > 0, questions: questions.length });
@@ -293,6 +303,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
       changed_since_origin: changedSinceOrigin,
       pricing_before: pricingBefore,
       pricing_after: pricingAfter,
+      pricing_unavailable: pricingUnavailable,
       brand_questions: questions,
       uncertainties,
       message,

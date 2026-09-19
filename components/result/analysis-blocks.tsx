@@ -7,6 +7,7 @@ import {
   SEVERITY_LABEL,
   sortByPriority,
 } from "@/lib/display";
+import { rateTable } from "@/lib/rates/tables";
 import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 
@@ -209,6 +210,15 @@ export function Estimate({
           {" "}
           Table de tarifs <span className="tabular-nums">{estimate.rate_table_version}</span>.
         </p>
+        {/* Mission #085 : la version affichée est toujours celle des chiffres.
+            Disparue du code : on ne lui substitue pas la table actuelle, on le dit. */}
+        {rateTable(estimate.rate_table_version) === null ? (
+          <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small">
+            La table {estimate.rate_table_version} n&apos;existe plus dans l&apos;outil. Ces chiffres sont ceux calculés le
+            jour de l&apos;analyse : ils ne sont plus recalculés, ni au changement de niveau, ni après les tours de
+            négociation.
+          </p>
+        ) : null}
       </div>
     </Section>
   );

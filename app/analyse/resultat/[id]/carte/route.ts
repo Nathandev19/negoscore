@@ -41,7 +41,10 @@ export async function GET(request: Request, { params }: RouteContext<"/analyse/r
   if (thread === "error") return unavailable();
   const negotiated = thread && thread !== "missing" ? currentState(thread) : null;
   const analysis = negotiated ? recomputeForDeal(atTier, negotiated.deal) : atTier;
-  if (!shareCardAvailable(analysis)) return notFound();
+  // Mission #085 : table de l'analyse disparue du code, les chiffres ne
+  // peuvent pas suivre les termes actuels. Pas de carte, plutôt qu'une carte
+  // aux chiffres de l'offre d'origine (la page ne propose alors pas le bouton).
+  if (!analysis || !shareCardAvailable(analysis)) return notFound();
   return renderShareCard(analysis, {
     "Content-Disposition": `attachment; filename="${SHARE_CARD_FILENAME}"`,
     // Image propre à son propriétaire : jamais mise en cache partagé.

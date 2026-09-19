@@ -1,6 +1,7 @@
 import { counterOfferRange, type CounterRange } from "@/lib/analysis/anchoring";
 import { formatEur } from "@/lib/money";
 import { computeEstimate, type EstimateLine } from "@/lib/rates/engine";
+import type { RateTable } from "@/lib/rates/tables";
 import { computeScore } from "@/lib/rates/score";
 import type { Tier } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";
@@ -34,8 +35,11 @@ export function engineParts(
   state: Analysis["evaluability"],
   tier: Tier,
   extraAssumptions: readonly string[] = [],
+  // Table de l'analyse (mission #085). Absente : la table actuelle, pour une
+  // analyse nouvelle uniquement.
+  table?: RateTable,
 ): EngineParts {
-  const computed = computeEstimate(deal, { tier });
+  const computed = computeEstimate(deal, { tier, table });
 
   // « incomplete » : on ne sait pas ce qui est livré ni ce que la marque en
   // fera. Toute valeur serait inventée, donc l'estimation est vide (bornes à

@@ -20,6 +20,7 @@ import { counterOfferRange, counterSameAsEstimate } from "@/lib/analysis/anchori
 import { missingInformation } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
 import { recomputeForDeal, recomputeForTier, tierChangeAvailable } from "@/lib/analysis/recompute";
+import { computeFrLegal } from "@/lib/legal/fr";
 import { changedGroups, splitByChange, type Negotiated } from "@/lib/negotiation/current";
 import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
 import { BAND_LABEL } from "@/lib/display";
@@ -95,7 +96,14 @@ export function AnalysisResult({
   // déduit des termes (score, fourchette, deal, loi), recalculé sur les termes
   // ACTUELS après un tour (mission #084), sans appel au modèle.
   const origin = useMemo(() => recomputeForTier(stored, tier), [stored, tier]);
-  const analysis = useMemo(() => (negotiated ? recomputeForDeal(origin, negotiated.deal) : origin), [origin, negotiated]);
+  // Table de l'analyse disparue du code (mission #085) : rien n'est recalculé,
+  // score et fourchette restent ceux enregistrés, et la page le dit. Le deal
+  // et la loi, qui ne dépendent d'aucune table, suivent les termes actuels.
+  const recomputed = useMemo(() => (negotiated ? recomputeForDeal(origin, negotiated.deal) : origin), [origin, negotiated]);
+  const analysis = recomputed ?? origin;
+  const unpriced = negotiated !== null && recomputed === null;
+  const currentDeal = negotiated?.deal ?? analysis.deal;
+  const legal = unpriced ? computeFrLegal(currentDeal) : analysis.fr_legal;
   // Textes du modèle, écrits sur l'offre d'origine : un point dont le terme a
   // changé depuis est retiré, et le bloc dit d'où il vient.
   const changed = useMemo(() => (negotiated ? changedGroups(stored.deal, negotiated.deal) : null), [stored.deal, negotiated]);
@@ -184,10 +192,17 @@ export function AnalysisResult({
         </p>
         <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 pt-8 pb-16 sm:px-6 md:pt-12 md:pb-24 [&>*]:max-w-2xl">
         {before}
-        {negotiated ? (
+        {negotiated && !unpriced ? (
           <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small">
             Score, fourchette et deal sont à jour des termes du tour {negotiated.turn}. Ta contre-offre et ton premier
             message restent ceux du début de l&apos;échange, calculés sur l&apos;offre d&apos;origine.
+          </p>
+        ) : null}
+        {negotiated && unpriced ? (
+          <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small">
+            Le deal est à jour des termes du tour {negotiated.turn}. Le score et la fourchette, eux, restent ceux de
+            l&apos;offre d&apos;origine : la table de tarifs {stored.estimate.rate_table_version} de cette analyse
+            n&apos;existe plus dans l&apos;outil, ils ne peuvent pas être recalculés sur les termes actuels.
           </p>
         ) : null}
         {incomplete ? (
@@ -209,7 +224,7 @@ export function AnalysisResult({
           </Estimate>
         )}
         <NegotiateList items={negotiate.items} origin={negotiate.origin} />
-        <DealRecap deal={analysis.deal} updatedAtTurn={negotiated?.turn ?? null} />
+        <DealRecap deal={currentDeal} updatedAtTurn={negotiated?.turn ?? null} />
         {origin.counter_offer ? (
           <CounterOffer offer={origin.counter_offer} title={counterOfferTitle} justUnlocked={justUnlocked} sameAsEstimate={counterSame} />
         ) : (
@@ -224,7 +239,7 @@ export function AnalysisResult({
         {afterMessage}
         <RedFlags items={redFlags.items} origin={redFlags.origin} />
         <GoodPoints items={goodPoints.items} origin={goodPoints.origin} />
-        <LegalNotice legal={analysis.fr_legal} />
+        <LegalNotice legal={legal} />
         {children}
         </div>
       </main>

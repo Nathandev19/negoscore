@@ -130,7 +130,10 @@ export function TurnCard({
   const stillOpen = payload.asks.filter((ask) => ask.status === "unanswered" && ask.aligned_group === null && !isUnverified(ask));
   const globalQuote = decidedNow.find((ask) => ask.global)?.quote ?? null;
   const current = payload.pricing_after ?? payload.pricing_before;
-  const currentRange = formatEurRange(current.total_low, current.total_high);
+  // Mission #085 : termes changés, table de l'analyse disparue du code. Aucun
+  // chiffre n'est actuel : ni celui d'origine, ni celui d'une autre table.
+  const unpriced = payload.pricing_unavailable;
+  const currentRange = unpriced ? null : formatEurRange(current.total_low, current.total_high);
   const offered = offeredOf(payload.deal_after);
   const reading = dealRecapRows(payload.deal_after);
 
@@ -231,10 +234,18 @@ export function TurnCard({
 
       <section className="flex flex-col gap-3">
         <h4 className="font-bold text-encre">Chiffrage</h4>
-        {payload.pricing_after ? (
+        {unpriced ? (
+          <p className="text-small">
+            Les termes ont changé, mais la table de tarifs {payload.pricing_before.rate_table_version} de cette analyse
+            n&apos;existe plus dans l&apos;outil : ni la fourchette ni ta contre-offre ne peuvent être recalculées sur ces
+            termes. Le message suivant ne cite donc aucun montant.
+          </p>
+        ) : payload.pricing_after ? (
           <>
             <p className="text-small">Les termes ont changé : voici le nouveau chiffrage, à côté de l&apos;ancien.</p>
             <PricingCompare before={payload.pricing_before} after={payload.pricing_after} />
+            {/* Tours enregistrés avant la mission #085 seulement : depuis, un fil se
+                chiffre entier avec la table de son analyse. */}
             {payload.pricing_after.rate_table_version !== payload.pricing_before.rate_table_version ? (
               <p className="text-small text-attenue">
                 Nouveau chiffrage calculé avec la table {payload.pricing_after.rate_table_version} ; l&apos;ancien venait de la table{" "}
@@ -257,13 +268,13 @@ export function TurnCard({
           <dl className="flex flex-col gap-1 text-small">
             <div className="flex justify-between gap-4">
               <dt className="text-attenue">Fourchette estimée</dt>
-              <dd className="font-semibold text-encre tabular-nums">{currentRange ?? "Pas d'estimation"}</dd>
+              <dd className="font-semibold text-encre tabular-nums">{unpriced ? "Non recalculable" : (currentRange ?? "Pas d'estimation")}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-attenue">{offered?.kind === "products" ? "Valeur des produits proposés" : "Montant proposé par la marque"}</dt>
               <dd className="font-semibold text-encre tabular-nums">{offered ? formatEur(offered.value) : "Aucun montant écrit"}</dd>
             </div>
-            {offered && current.total_low !== null ? (
+            {offered && !unpriced && current.total_low !== null ? (
               <div className="flex justify-between gap-4">
                 <dt className="text-attenue">Écart avec le bas de la fourchette</dt>
                 <dd className="font-semibold text-encre tabular-nums">{signedEur(offered.value - current.total_low)}</dd>

@@ -43,7 +43,7 @@ const page = () => text(renderToStaticMarkup(<AnalysisResult analysis={original}
 
 describe("A2 — ce que le code déduit des termes est recalculé sur les termes actuels", () => {
   it("fourchette et score : ceux des termes actuels, les mêmes que le tour", () => {
-    const current = recomputeForDeal(original, payload.deal_after);
+    const current = recomputeForDeal(original, payload.deal_after)!;
     expect(current.estimate.total_low).toBe(payload.pricing_after?.total_low);
     expect(current.estimate.total_high).toBe(payload.pricing_after?.total_high);
     expect(current.estimate.total_low).not.toBe(original.estimate.total_low);
@@ -121,6 +121,15 @@ describe("A4 — la carte partageable porte les termes actuels", () => {
     const { GET } = await import("@/app/analyse/resultat/[id]/carte/route");
     const response = await GET(new Request("http://localhost/analyse/resultat/abc/carte"), { params: Promise.resolve({ id: "abc" }) });
     expect(response.status).toBe(503);
+    expect(rendered.last).toBeNull();
+  });
+
+  it("mission #085 — après un tour, table de l'analyse disparue du code : pas de carte aux chiffres d'origine", async () => {
+    loaded.current = { analysis: { ...original, estimate: { ...original.estimate, rate_table_version: "fr-2026.1" } }, unlocked: true };
+    thread.current = { turns: [{ id: "t", turnNumber: 2, brandReply: null, createdAt: "", payload }], conclusion: null };
+    const { GET } = await import("@/app/analyse/resultat/[id]/carte/route");
+    const response = await GET(new Request("http://localhost/analyse/resultat/abc/carte"), { params: Promise.resolve({ id: "abc" }) });
+    expect(response.status).toBe(404);
     expect(rendered.last).toBeNull();
   });
 

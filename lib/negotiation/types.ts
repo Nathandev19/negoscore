@@ -212,6 +212,10 @@ export const turnPayloadSchema = z.object({
   pricing_before: pricingSchema,
   // null : aucun terme n'a changé dans ce tour, la fourchette ne bouge pas.
   pricing_after: pricingSchema.nullable(),
+  // Mission #085 — les termes ont changé, mais la table de l'analyse n'existe
+  // plus dans le code : rien n'est chiffré (ni fourchette, ni contre-offre),
+  // et l'écran le dit. Jamais la table actuelle à sa place.
+  pricing_unavailable: z.boolean().default(false),
   brand_questions: z.array(z.object({ question: z.string(), quote: z.string() })),
   uncertainties: z.array(z.string()),
   message: messageSchema,

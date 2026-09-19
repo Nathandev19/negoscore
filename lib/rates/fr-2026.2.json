@@ -1,0 +1,77 @@
+{
+  "version": "fr-2026.2",
+  "disclaimer": "Estimation fondée sur des benchmarks de marché. Ce ne sont pas des tarifs officiels.",
+  "base_rates_eur": {
+    "starter": { "low": 100, "high": 180, "confidence": "medium" },
+    "confirmed": { "low": 250, "high": 500, "confidence": "medium" },
+    "experienced": { "low": 500, "high": 800, "confidence": "low" },
+    "default_tier": "confirmed"
+  },
+  "deliverable_weights": {
+    "video": { "weight": 1.0, "confidence": "medium" },
+    "live": { "weight": 1.0, "confidence": "low" },
+    "photo": { "weight": 0.35, "confidence": "low" },
+    "story": { "weight": 0.25, "confidence": "low" }
+  },
+  "volume_discount": {
+    "shape": "piecewise_linear_billable_units",
+    "anchors": [
+      { "weighted_units": 0, "billable_units": 0 },
+      { "weighted_units": 2, "billable_units": 2.0 },
+      { "weighted_units": 4, "billable_units": 3.6 },
+      { "weighted_units": 8, "billable_units": 6.4 }
+    ],
+    "marginal_factor_beyond_last_anchor": 0.7,
+    "confidence": "low"
+  },
+  "uplift_caps": {
+    "standard": { "max_cumulative_uplift": 1.5, "confidence": "low" },
+    "heavy": { "max_cumulative_uplift": 2.5, "confidence": "low" }
+  },
+  "multipliers": {
+    "paid_ads_1m": { "low": 0.2, "high": 0.3, "confidence": "low" },
+    "paid_ads_3m": { "low": 0.3, "high": 0.5, "confidence": "medium" },
+    "paid_ads_6m": { "low": 0.5, "high": 0.7, "confidence": "low" },
+    "paid_ads_12m": { "low": 0.8, "high": 1.2, "confidence": "low" },
+    "paid_ads_perpetual": { "low": 1.5, "high": 2.5, "confidence": "low" },
+    "whitelisting_per_month": { "low": 0.25, "high": 0.35, "confidence": "medium" },
+    "spark_ads_per_month": { "low": 0.25, "high": 0.35, "confidence": "medium" },
+    "exclusivity_1m": { "low": 0.15, "high": 0.25, "confidence": "low" },
+    "exclusivity_3m": { "low": 0.3, "high": 0.5, "confidence": "low" },
+    "exclusivity_6m_plus": { "low": 0.6, "high": 0.9, "confidence": "low" },
+    "raw_footage": { "low": 0.35, "high": 0.45, "confidence": "medium" },
+    "territory_worldwide": { "low": 0.2, "high": 0.3, "confidence": "low" },
+    "extra_platform": { "low": 0.1, "high": 0.2, "confidence": "low" },
+    "ip_full_assignment": { "low": 1.0, "high": 2.0, "confidence": "low" }
+  },
+  "flat_eur": {
+    "extra_hook_or_cta": { "low": 40, "high": 60, "confidence": "medium" }
+  },
+  "source_notes": {
+    "starter": "Benchmark de marché observé sur des offres UGC françaises pour des créateurs débutants.",
+    "confirmed": "Benchmark de marché observé sur des offres UGC françaises pour des créateurs avec portfolio.",
+    "experienced": "Valeur interpolée à partir des paliers inférieurs, peu d'observations directes : à recalibrer.",
+    "video": "Unité de référence : les tarifs de base sont exprimés par vidéo.",
+    "live": "Aligné sur la vidéo faute d'observations distinctes : à recalibrer.",
+    "photo": "Valeur interpolée, peu d'offres UGC chiffrent la photo seule : à recalibrer.",
+    "story": "Valeur interpolée, peu d'offres UGC chiffrent la story seule : à recalibrer.",
+    "volume_discount": "Unités facturées en fonction affine par morceaux des unités pondérées, ancrées sur les anciens paliers (2, 4, 8) pour ne changer aucun prix à ces volumes ; interpolées à partir de lots observés : à recalibrer.",
+    "uplift_standard": "Majoration cumulée maximale (+150 %) au-delà de laquelle un annonceur refuse en pratique, interpolée : à recalibrer.",
+    "uplift_heavy": "Majoration cumulée maximale (+250 %) quand l'offre demande une utilisation à vie ou une cession totale, interpolée : à recalibrer.",
+    "paid_ads_1m": "Valeur interpolée à partir du palier 3 mois : à recalibrer.",
+    "paid_ads_3m": "Benchmark de marché observé sur des licences publicitaires de 3 mois.",
+    "paid_ads_6m": "Valeur interpolée entre les paliers 3 et 12 mois : à recalibrer.",
+    "paid_ads_12m": "Valeur interpolée à partir du palier 3 mois, peu d'observations directes : à recalibrer.",
+    "paid_ads_perpetual": "Valeur interpolée, les licences perpétuelles sont rarement chiffrées publiquement : à recalibrer.",
+    "whitelisting_per_month": "Benchmark de marché observé sur des offres de whitelisting mensuelles.",
+    "spark_ads_per_month": "Benchmark de marché observé sur des offres de boost de publication mensuelles.",
+    "exclusivity_1m": "Valeur interpolée à partir du palier 3 mois : à recalibrer.",
+    "exclusivity_3m": "Valeur interpolée à partir de quelques offres observées, échantillon trop faible : à recalibrer.",
+    "exclusivity_6m_plus": "Valeur interpolée par extrapolation du palier 3 mois : à recalibrer.",
+    "raw_footage": "Benchmark de marché observé sur des cessions de rushs bruts.",
+    "territory_worldwide": "Valeur interpolée, peu d'offres comparent France et monde : à recalibrer.",
+    "extra_platform": "Valeur interpolée à partir des déclinaisons multi-plateformes observées : à recalibrer.",
+    "ip_full_assignment": "Valeur interpolée, les cessions totales sont rarement chiffrées publiquement : à recalibrer.",
+    "extra_hook_or_cta": "Benchmark de marché observé sur les variantes d'accroche ou d'appel à l'action."
+  }
+}

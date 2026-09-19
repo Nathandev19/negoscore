@@ -1,17 +1,20 @@
-import rates from "@/lib/rates/fr-2026.3.json";
 import { isForeignCurrency } from "@/lib/analysis/normalize";
 import { formatNumber } from "@/lib/display";
+import { CURRENT_RATE_TABLE, type RateTable } from "@/lib/rates/tables";
 import { DEFAULT_TIER, type Tier } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";
 
 // Chiffrage déterministe. Toutes les valeurs de tarif viennent de la table
-// versionnée : ce fichier ne contient que des règles d'application.
+// versionnée : ce fichier ne contient que des règles d'application. La table
+// est un paramètre (mission #085) : une analyse se recalcule avec la sienne.
 
 type Deal = Analysis["deal"];
 type Estimate = Analysis["estimate"];
 
 export type { Tier };
-export type Profile = { tier?: Tier };
+// table : celle de l'analyse recalculée. Absente : la table actuelle (analyse
+// nouvelle).
+export type Profile = { tier?: Tier; table?: RateTable };
 
 // Sujet de négociation auquel une ligne se rattache. Sert à reporter
 // l'impact en euros sur les points à négocier.
@@ -29,7 +32,7 @@ export type RateTopic =
 export type EstimateLine = Estimate["lines"][number] & { topic: RateTopic };
 export type ComputedEstimate = Omit<Estimate, "lines"> & { lines: EstimateLine[] };
 
-type MultiplierKey = keyof typeof rates.multipliers;
+type MultiplierKey = keyof RateTable["multipliers"];
 
 // Durée retenue quand la durée d'un droit n'est pas écrite.
 const ASSUMED_MONTHS = 3;
@@ -112,7 +115,7 @@ export function isFarAboveOffer(amountEur: number | null, totalLow: number | nul
 // morceaux, continue et croissante, entre les ancres de la table, puis pente
 // fixe au-delà de la dernière. Un livrable de plus ne fait donc jamais baisser
 // le prix (les anciens paliers faisaient payer 9 unités moins cher que 8).
-export function billableUnits(weightedUnits: number): number {
+export function billableUnits(weightedUnits: number, rates: RateTable = CURRENT_RATE_TABLE): number {
   if (weightedUnits <= 0) return 0;
   const { anchors, marginal_factor_beyond_last_anchor: beyond } = rates.volume_discount;
   for (let i = 1; i < anchors.length; i++) {
@@ -128,12 +131,12 @@ export function billableUnits(weightedUnits: number): number {
 }
 
 // Facteur moyen appliqué au volume : sert à annoncer la dégressivité.
-export function volumeDiscountFactor(weightedUnits: number): number {
-  return weightedUnits > 0 ? billableUnits(weightedUnits) / weightedUnits : 1;
+export function volumeDiscountFactor(weightedUnits: number, rates: RateTable = CURRENT_RATE_TABLE): number {
+  return weightedUnits > 0 ? billableUnits(weightedUnits, rates) / weightedUnits : 1;
 }
 
 // Plafond « heavy » quand l'offre demande une utilisation à vie ou une cession totale.
-export function upliftCap(deal: Deal): number {
+export function upliftCap(deal: Deal, rates: RateTable = CURRENT_RATE_TABLE): number {
   const heavy = deal.usage.perpetual || deal.ip_transfer === "full_assignment";
   return heavy ? rates.uplift_caps.heavy.max_cumulative_uplift : rates.uplift_caps.standard.max_cumulative_uplift;
 }
@@ -154,6 +157,7 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   const assumptions: string[] = [];
   // Le niveau est un choix affiché sur la page de résultat, pas une hypothèse.
   const tier: Tier = profile.tier ?? DEFAULT_TIER;
+  const rates = profile.table ?? CURRENT_RATE_TABLE;
 
   // Somme pondérée des livrables : une story ou une photo ne vaut pas une vidéo.
   // Le poids de chaque type vient de la table (vidéo = 1).
@@ -174,8 +178,8 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   }
 
   // Dégressivité : un lot se négocie moins cher à l'unité.
-  const billed = billableUnits(weightedUnits);
-  if (volumeDiscountFactor(weightedUnits) < 1) {
+  const billed = billableUnits(weightedUnits, rates);
+  if (volumeDiscountFactor(weightedUnits, rates) < 1) {
     assumptions.push("Tarif unitaire réduit pour tenir compte du volume de contenus demandés.");
   }
 
@@ -276,7 +280,7 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   // Plafond de majoration cumulée. Quand la somme dépasse le plafond, chaque
   // ligne est réduite dans la même proportion : les lignes restent cohérentes
   // avec le total et l'impact de chaque point de négociation.
-  const cap = upliftCap(deal);
+  const cap = upliftCap(deal, rates);
   const sumLow = uplifts.reduce((sum, u) => sum + u.low, 0);
   const sumHigh = uplifts.reduce((sum, u) => sum + u.high, 0);
   const scaleLow = sumLow > cap ? cap / sumLow : 1;

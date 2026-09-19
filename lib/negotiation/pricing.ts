@@ -4,6 +4,7 @@ import { evaluability } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
 import { recomputeForTier } from "@/lib/analysis/recompute";
 import type { Deal, Pricing } from "@/lib/negotiation/types";
+import type { RateTable } from "@/lib/rates/tables";
 import type { Tier } from "@/lib/rates/tier";
 
 // Mission #080, F1 — tout chiffre d'un tour sort du moteur de tarifs, jamais
@@ -11,10 +12,12 @@ import type { Tier } from "@/lib/rates/tier";
 //   - rien n'a changé depuis l'analyse d'origine : ses chiffres, recalculés au
 //     niveau affiché exactement comme la page de résultat le fait. La
 //     fourchette ne bouge pas (B2) ;
-//   - un terme a changé : le moteur, sur le deal mis à jour.
+//   - un terme a changé : le moteur, sur le deal mis à jour, avec la table de
+//     l'analyse d'origine (mission #085) : un fil entier se chiffre avec la
+//     même table, du premier chiffrage à la conclusion.
 
-export function priceFor(deal: Deal, tier: Tier): Pricing {
-  const { estimate, counter } = engineParts(deal, evaluability(deal), tier);
+export function priceFor(deal: Deal, tier: Tier, table: RateTable): Pricing {
+  const { estimate, counter } = engineParts(deal, evaluability(deal), tier, [], table);
   return {
     total_low: estimate.total_low,
     total_high: estimate.total_high,
@@ -41,6 +44,12 @@ export function originPricing(original: ResultView, tier: Tier): Pricing {
     rate_table_version: estimate.rate_table_version,
     tier: shown.profile_tier,
   };
+}
+
+// Table de l'analyse disparue du code (mission #085) : aucun chiffre, plutôt
+// que ceux d'une autre table. La version reste celle de l'analyse.
+export function unavailablePricing(version: string, tier: Tier): Pricing {
+  return { total_low: null, total_high: null, counter_low: null, counter_high: null, rate_table_version: version, tier };
 }
 
 export function samePricing(a: Pricing, b: Pricing): boolean {

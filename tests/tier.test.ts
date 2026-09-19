@@ -157,7 +157,9 @@ describe("A2 — recalcul côté navigateur identique à une analyse lancée à 
       expect(tierChangeAvailable(stored)).toBe(true);
       const expected = composeAnalysis(extraction, { tier: "starter" });
       const recomputed = recomputeForTier(stored, "starter");
-      expect(recomputed.estimate, name).toEqual(expected.estimate);
+      // Mission #085 : recalculée avec SA table, fr-2026.2 (mêmes tarifs) : mêmes
+      // chiffres, et la version affichée reste celle de l'analyse.
+      expect(recomputed.estimate, name).toEqual({ ...expected.estimate, rate_table_version: "fr-2026.2" });
       expect(recomputed.score, name).toEqual(expected.score);
       expect(recomputed.counter_offer, name).toEqual(expected.counter_offer);
       expect(recomputed.ready_to_send_message, name).toEqual(expected.ready_to_send_message);

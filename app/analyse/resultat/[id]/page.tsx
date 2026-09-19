@@ -61,7 +61,9 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   const answeredTurn = 1 + (thread && thread !== "missing" ? thread.turns.length : 0);
   // Mission #084 : termes actuels après les tours (null : aucun tour).
   const negotiated = thread && thread !== "missing" ? currentState(thread) : null;
-  const cardAvailable = shareCardAvailable(negotiated ? recomputeForDeal(result.analysis, negotiated.deal) : result.analysis);
+  // Table disparue du code après un tour (mission #085) : pas de carte.
+  const cardAnalysis = negotiated ? recomputeForDeal(result.analysis, negotiated.deal) : result.analysis;
+  const cardAvailable = cardAnalysis !== null && shareCardAvailable(cardAnalysis);
   const sent: SentMessage | undefined = owner ? (await loadSentMessages(id).catch(() => new Map<number, SentMessage>())).get(answeredTurn) : undefined;
 
   return (
