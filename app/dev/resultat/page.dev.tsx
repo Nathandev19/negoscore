@@ -23,7 +23,7 @@ function retryPreview(value: string | string[] | undefined): RetryPanelState {
 }
 
 // Suite de l'échange (mission #080), rendue depuis les scénarios de réponses
-// de marque (lib/negotiation/scenarios) : ?echange=fil|partiel|refus|conclu|question|repli|non-connecte.
+// de marque (lib/negotiation/scenarios) : ?echange=fil|partiel|refus|conclu|question|repli|non-verifiable|non-connecte.
 const THREAD_PREVIEWS: Record<string, { scenarios: string[]; access: ThreadAccess }> = {
   fil: { scenarios: ["03-termes-a-la-hausse", "06-reponse-vague"], access: "open" },
   partiel: { scenarios: ["02-acceptation-partielle"], access: "open" },
@@ -31,6 +31,7 @@ const THREAD_PREVIEWS: Record<string, { scenarios: string[]; access: ThreadAcces
   conclu: { scenarios: ["01-acceptation-franche"], access: "open" },
   question: { scenarios: ["07-question-a-la-creatrice"], access: "open" },
   repli: { scenarios: ["10-garde-citation-inventee"], access: "open" },
+  "non-verifiable": { scenarios: ["18-garde-accord-non-verifiable"], access: "open" },
   "non-connecte": { scenarios: [], access: "signed_out" },
 };
 

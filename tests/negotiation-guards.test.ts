@@ -72,7 +72,7 @@ describe("A6 — aucun jargon interne à l'écran", () => {
 });
 
 describe("A7 — une citation est la preuve d'UN point ; un accord global est dit comme tel", () => {
-  const asks: Ask[] = ["prix", "c1", "c2"].map((id) => ({ id, label: id, status: "unanswered", quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null, remaining: null }));
+  const asks: Ask[] = ["prix", "c1", "c2"].map((id) => ({ id, label: id, status: "unanswered", quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null, remaining: null, unverified_turn: null }));
   const reply = "Bonjour ! C'est d'accord pour tout, on part sur votre proposition.";
 
   it("accord global déclaré : les demandes sans citation propre sont accordées au titre de l'accord global", () => {
@@ -161,7 +161,7 @@ describe("#080 quinquies, B — les doutes s'adressent à elle, en « tu »", ()
 
 describe("#080 quinquies, A — une citation recollée n'est jamais une preuve", () => {
   it("deux morceaux recollés : la demande reste sans réponse explicite, et rien n'est prêté à la marque", () => {
-    const asks: Ask[] = [{ id: "c5", label: "Paiement à 30 jours, 50 % à la signature", status: "unanswered", quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null, remaining: null }];
+    const asks: Ask[] = [{ id: "c5", label: "Paiement à 30 jours, 50 % à la signature", status: "unanswered", quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null, remaining: null, unverified_turn: null }];
     const reply = "Bonjour, ok pour l'exclusivité d'un mois et pour le paiement à 30 jours avec 50 % à la signature.";
     const merged = mergeAsks(asks, { global_agreement: null, asks: [{ id: "c5", status: "granted", quote: "ok pour le paiement à 30 jours avec 50 % à la signature" }] }, reply, 2);
     expect(merged.asks[0].status).toBe("unanswered");

@@ -1,0 +1,111 @@
+{
+  "id": "20-garde-titre-du-tour",
+  "titre": "Garde : une demande accordée en partie sous le titre « la marque propose d'autres termes » (sortie réelle, mission #083)",
+  "source": "garde",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "demandes": [
+    "Limiter l'utilisation publicitaire aux supports et au territoire définis"
+  ],
+  "offre_modifs": {
+    "usage": {
+      "duration_months": 12,
+      "territory": null
+    }
+  },
+  "reponse_marque": "Bonjour, on peut réduire les droits pub à 6 mois au lieu de 12, sur la France uniquement.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "counter",
+    "global_agreement": null,
+    "asks": [
+      {
+        "id": "prix",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c1",
+        "status": "partial",
+        "quote": "droits pub à 6 mois au lieu de 12, sur la France uniquement",
+        "remaining": "les supports de diffusion"
+      }
+    ],
+    "changes": [
+      {
+        "group": "usage_duration",
+        "quote": "droits pub à 6 mois au lieu de 12"
+      },
+      {
+        "group": "territory",
+        "quote": "sur la France uniquement"
+      }
+    ],
+    "deal": {
+      "brand": "Marque Exemple",
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "tiktok",
+          "quantity": 2,
+          "format": null
+        }
+      ],
+      "publication_required": false,
+      "usage": {
+        "organic": true,
+        "paid_ads": true,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": 6,
+        "territory": "France",
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": true,
+        "duration_months": 3,
+        "category": "cosmétique"
+      },
+      "raw_footage": true,
+      "ip_transfer": "license",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": true
+      },
+      "payment": {
+        "amount_eur": 300,
+        "currency": "EUR",
+        "terms_days": 60,
+        "schedule": null
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "brand_questions": [],
+    "uncertainties": [
+      "Les supports de diffusion publicitaire ne sont pas précisés."
+    ],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci pour votre retour. Je prends note de la réduction des droits pub à 6 mois, sur la France uniquement.\n\nPouvez-vous me préciser les supports de diffusion concernés ?\n\nConcernant la rémunération, mon tarif pour ce projet se situe {{CONTRE_OFFRE}}.\n\nBelle journée,",
+      "tone": "poli et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "partial",
+    "nouveau_chiffrage": true,
+    "demandes": {
+      "c1": "partial"
+    },
+    "termes_changes": [
+      "usage_duration",
+      "territory"
+    ]
+  }
+}

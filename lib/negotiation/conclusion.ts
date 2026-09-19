@@ -9,6 +9,7 @@ import {
   usageDurationLabel,
   usageRightsLabel,
 } from "@/lib/negotiation/terms";
+import { topicsOf } from "@/lib/negotiation/topics";
 import type { Ask, Conclusion, Deal } from "@/lib/negotiation/types";
 
 // Mission #080, C — la conclusion, écrite ENTIÈREMENT par le code à partir des
@@ -65,10 +66,74 @@ export function unclearPoints(deal: Deal, asks: readonly Ask[], uncertainties: r
       .map((ask) =>
         ask.aligned_group
           ? `« ${ask.label} » : le terme a changé dans ce sens, sans phrase explicite de la marque. Fais-le-lui confirmer par écrit.`
-          : `Pas de réponse de la marque sur : ${ask.label}`,
+          : ask.unverified_turn !== null
+            ? `« ${ask.label} » : la réponse de la marque sur ce point n'a pas pu être vérifiée. Relis-la, et fais-le-lui confirmer par écrit.`
+            : `Pas de réponse de la marque sur : ${ask.label}`,
       ),
-    ...uncertainties.map((doubt) => `L'outil n'est pas sûr d'avoir bien lu : ${doubt}`),
+    ...uncertainties.map(unclearDoubt),
   ].filter((point): point is string => point !== null);
+}
+
+// Mission #083, E2 — « L'outil n'est pas sûr d'avoir bien lu : » ne précède
+// qu'un vrai doute de lecture. Un doute déjà rédigé par le code dit lui-même ce
+// que l'outil a lu ou écarté ; un conseil (« le contrat devra préciser… ») est
+// une recommandation, pas une incertitude. Les deux restent tels quels.
+const ALREADY_SAID = /l'outil|^«|^sur «|^la marque parle de|n'a pas pu être lu/iu;
+const ADVICE =
+  /(?<![\p{L}])(?:devra|devront|devrait|devraient|doit|doivent|il faut|pense à|penser à|n'oublie|assure-toi|vérifie|demande-lui|fais-lui|mieux vaut|il est conseillé|il vaut mieux)(?![\p{L}])/iu;
+
+export function unclearDoubt(doubt: string): string {
+  return ALREADY_SAID.test(doubt) || ADVICE.test(doubt) ? doubt : `L'outil n'est pas sûr d'avoir bien lu : ${doubt}`;
+}
+
+// Mission #083, E3 — une demande accordée dont le sujet a déjà sa ligne dans
+// le récapitulatif n'y est pas répétée :
+//   - la ligne dit déjà tout ce que dit la demande (« Exclusivité ramenée à
+//     1 mois » et « Oui, 1 mois (cosmétique) ») : la demande n'est pas reprise ;
+//   - la demande dit tout ce que dit la ligne, et plus (« Paiement à 30 jours,
+//     50 % à la signature » et « À 30 jours ») : la ligne prend ses mots ;
+//   - sinon (la demande porte autre chose, « facturés en plus de la
+//     création »), elle reste dans la liste : rien d'accordé n'est perdu.
+const STOPWORDS = new Set(["a", "à", "au", "aux", "de", "des", "du", "d", "en", "et", "la", "le", "les", "l", "un", "une", "sur", "par", "pour", "avec"]);
+const CHANGE_VERB = /^(ramen|rédui|redui|réduct|pass[ée]|limit|port[ée]|fix[ée]|abaiss|baiss|augment|mont[ée]|ajust)/u;
+
+function words(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^\p{L}\d]+/u)
+    .filter((word) => word !== "" && !STOPWORDS.has(word));
+}
+
+type Row = { label: string; value: string };
+
+export function foldGranted(rows: Row[], granted: readonly string[], capitalize: boolean): { rows: Row[]; rest: string[] } {
+  const next = rows.map((row) => ({ ...row }));
+  const rest: string[] = [];
+  for (const label of granted) {
+    const targets = topicsOf(label)
+      .flatMap((topic) => topic.rows)
+      .map((name) => next.find((row) => row.label === name))
+      .filter((row): row is Row => row !== undefined);
+    const row = targets.length === 1 ? targets[0] : null;
+    if (!row) {
+      rest.push(label);
+      continue;
+    }
+    const heading = new Set(words(row.label));
+    const own = words(label).filter((word) => !heading.has(word) && !CHANGE_VERB.test(word));
+    const value = new Set(words(row.value));
+    if (own.every((word) => value.has(word))) continue;
+    const said = new Set(words(label));
+    if ([...value].every((word) => said.has(word))) {
+      // Les mots de la demande, sans le nom de la rubrique qui les précède.
+      const first = label.trim().split(/\s+/)[0] ?? "";
+      const body = heading.has(first.toLowerCase()) ? label.trim().slice(first.length).trim() : label.trim();
+      row.value = capitalize ? body.charAt(0).toUpperCase() + body.slice(1) : body.charAt(0).toLowerCase() + body.slice(1);
+      continue;
+    }
+    rest.push(label);
+  }
+  return { rows: next, rest };
 }
 
 // Points à faire préciser dans le message : ceux qui tiennent aux termes, pas
@@ -162,7 +227,11 @@ export function conclusionMessage(
           : `selon ma proposition, entre ${formatEur(counterAccepted.low)} et ${formatEur(counterAccepted.high)}`,
     });
   }
-  if (granted.length > 0) known.push({ label: language === "en" ? "Also agreed" : "Convenu en plus", value: granted.join(" ; ") });
+  // E3 — ce qui a déjà sa ligne n'est pas répété dans « Convenu en plus ».
+  // Les libellés anglais ne sont pas ceux des sujets : rien n'y est replié.
+  const folded = language === "fr" ? foldGranted(known, granted, false) : { rows: known, rest: [...granted] };
+  known.splice(0, known.length, ...folded.rows);
+  if (folded.rest.length > 0) known.push({ label: language === "en" ? "Also agreed" : "Convenu en plus", value: folded.rest.join(" ; ") });
   const questions = questionsForBrand(deal).map((q) =>
     counterAccepted && q === "le montant de la rémunération" ? "le montant exact retenu dans cette fourchette" : q,
   );
@@ -224,16 +293,19 @@ export function buildConclusion({
 }): Conclusion {
   const counterRange = counterAccepted ? formatEurRange(counterAccepted.low, counterAccepted.high) : null;
   const deal: Deal = counterRange ? { ...read, payment: { ...read.payment, amount_eur: null } } : read;
-  const recap = recapRows(deal).map((row) =>
+  const rows = recapRows(deal).map((row) =>
     counterRange && row.label === "Rémunération"
       ? { ...row, value: `Ta contre-offre, ${counterRange} : la marque l'a acceptée sans écrire le montant exact` }
       : row,
   );
   // Demandes accordées par la marque (hors prix, déjà dans « Rémunération ») :
   // révisions, rushs, modalités… Tout ce qu'elle a accepté figure dans le
-  // récapitulatif et dans le message, même ce que les termes suivis ne portent pas.
+  // récapitulatif et dans le message, même ce que les termes suivis ne portent
+  // pas ; ce qui a déjà sa ligne n'y est pas répété (E3).
   const granted = asks.filter((ask) => ask.status === "granted" && ask.id !== "prix").map((ask) => ask.label);
-  if (granted.length > 0) recap.push({ label: "Accordé par la marque", value: granted.join(" ; ") });
+  const folded = foldGranted(rows, granted, true);
+  const recap = folded.rows;
+  if (folded.rest.length > 0) recap.push({ label: "Accordé par la marque", value: folded.rest.join(" ; ") });
   const unclear = unclearPoints(deal, asks, uncertainties).map((point) =>
     counterRange && point.startsWith("Le montant de la rémunération")
       ? "Le montant exact convenu : la marque a accepté ta contre-offre sans l'écrire."

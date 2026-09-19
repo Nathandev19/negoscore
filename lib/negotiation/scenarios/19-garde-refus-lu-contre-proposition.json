@@ -1,0 +1,115 @@
+{
+  "id": "19-garde-refus-lu-contre-proposition",
+  "titre": "Garde : « notre budget est de 300 € et il n'est pas négociable », lu comme une contre-proposition (sortie réelle, mission #083)",
+  "source": "garde",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "reponse_marque": "Merci pour votre retour mais ce n'est pas possible pour nous : notre budget est de 300 € et il n'est pas négociable. Nous allons chercher un autre profil.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "refused",
+    "global_agreement": null,
+    "asks": [
+      {
+        "id": "prix",
+        "status": "countered",
+        "quote": "notre budget est de 300 € et il n'est pas négociable",
+        "remaining": null
+      },
+      {
+        "id": "c1",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c2",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c5",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      }
+    ],
+    "changes": [],
+    "deal": {
+      "brand": "Marque Exemple",
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "tiktok",
+          "quantity": 2,
+          "format": null
+        }
+      ],
+      "publication_required": false,
+      "usage": {
+        "organic": true,
+        "paid_ads": true,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": 6,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": true,
+        "duration_months": 3,
+        "category": "cosmétique"
+      },
+      "raw_footage": true,
+      "ip_transfer": "license",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": true
+      },
+      "payment": {
+        "amount_eur": 300,
+        "currency": "EUR",
+        "terms_days": 60,
+        "schedule": null
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "brand_questions": [],
+    "uncertainties": [
+      "La marque refuse ta contre-offre et indique que son budget de 300 € n'est pas négociable.",
+      "Les autres demandes ne sont pas abordées."
+    ],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci pour votre retour. Je prends note de votre décision et vous remercie pour la transparence. Je reste disponible si une opportunité plus adaptée se présente à l'avenir.\n\nBelle journée,",
+      "tone": "Poli et ouvert"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "refused",
+    "nouveau_chiffrage": false,
+    "demandes": {
+      "prix": "refused"
+    },
+    "termes_changes": []
+  }
+}

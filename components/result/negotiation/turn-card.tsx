@@ -5,6 +5,8 @@ import {
   ASK_STATUS_LABEL,
   OUTCOME_LABEL,
   TERM_GROUP_LABEL,
+  UNVERIFIED_HINT,
+  UNVERIFIED_LABEL,
   type Ask,
   type AskStatus,
   type Pricing,
@@ -106,11 +108,18 @@ export function TurnCard({
   payload: TurnPayload;
 }) {
   // Demandes tranchées dans CE tour, puis celles qui n'ont toujours pas de réponse.
-  const decidedNow = payload.asks.filter((ask) => ask.turn === turnNumber);
+  // Mission #083, A1 : une demande dont la lecture a été écartée n'est ni
+  // accordée ni « sans réponse » : elle est dite non vérifiable, dans le tour
+  // où c'est arrivé, et tant qu'aucune réponse vérifiée ne l'a remplacée.
+  const unverified = payload.asks.filter(
+    (ask) => ask.unverified_turn !== null && (ask.unverified_turn === turnNumber || ask.status === "unanswered"),
+  );
+  const isUnverified = (ask: Ask) => unverified.includes(ask);
+  const decidedNow = payload.asks.filter((ask) => ask.turn === turnNumber && !isUnverified(ask));
   // Mission #080 quinquies, C : une demande sans réponse explicite dont le
   // terme a changé, preuve à l'appui, dans son sens n'est pas « sans réponse ».
   const aligned = payload.asks.filter((ask) => ask.status === "unanswered" && ask.aligned_group !== null);
-  const stillOpen = payload.asks.filter((ask) => ask.status === "unanswered" && ask.aligned_group === null);
+  const stillOpen = payload.asks.filter((ask) => ask.status === "unanswered" && ask.aligned_group === null && !isUnverified(ask));
   const globalQuote = decidedNow.find((ask) => ask.global)?.quote ?? null;
   const current = payload.pricing_after ?? payload.pricing_before;
   const currentRange = formatEurRange(current.total_low, current.total_high);
@@ -134,7 +143,7 @@ export function TurnCard({
         )}
       </header>
 
-      {decidedNow.length > 0 || stillOpen.length > 0 || aligned.length > 0 ? (
+      {decidedNow.length > 0 || stillOpen.length > 0 || aligned.length > 0 || unverified.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h4 className="font-bold text-encre">Ce que la marque répond à tes demandes</h4>
           {globalQuote ? (
@@ -157,6 +166,19 @@ export function TurnCard({
                     <span className="text-attenue">
                       Maintenant : {groupLabel(payload.deal_after, ask.aligned_group as TermGroup)}. Fais-le-lui confirmer par écrit.
                     </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {unverified.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              <h5 className="font-semibold text-encre">{UNVERIFIED_LABEL}</h5>
+              <ul className="flex flex-col gap-2 text-small">
+                {unverified.map((ask) => (
+                  <li key={ask.id} className="flex flex-col gap-0.5">
+                    <span>{ask.label}</span>
+                    <span className="text-attenue">{UNVERIFIED_HINT}</span>
                   </li>
                 ))}
               </ul>

@@ -58,6 +58,12 @@ export const ASK_STATUS_LABEL: Record<AskStatus, string> = {
   unanswered: "Toujours sans réponse",
 };
 
+// Mission #083, A1 — ce qui s'affiche pour un point dont la lecture n'a pas pu
+// être vérifiée dans la réponse de la marque.
+export const UNVERIFIED_LABEL = "Non vérifiable";
+export const UNVERIFIED_HINT =
+  "L'outil n'a pas retrouvé mot pour mot la phrase de la marque sur ce point : relis sa réponse toi-même avant de le considérer comme accordé ou non.";
+
 // Allure générale de la réponse.
 //   accepted  : la marque accepte ce qui a été demandé ;
 //   partial   : elle accepte une partie ;
@@ -149,6 +155,11 @@ export const askSchema = z.object({
   aligned_turn: z.number().nullable().default(null),
   // Accordé en partie (mission #082) : ce qui reste à préciser.
   remaining: z.string().nullable().default(null),
+  // Mission #083, A1 — le modèle a lu une réponse sur ce point, mais sa
+  // citation a été écartée (introuvable mot pour mot, ou coupée de ce qui la
+  // nie) : le tour où c'est arrivé. Ce n'est ni un accord ni une absence de
+  // réponse : l'écran dit que ce n'est pas vérifiable. null : rien de tel.
+  unverified_turn: z.number().nullable().default(null),
 });
 export type Ask = z.infer<typeof askSchema>;
 

@@ -1,11 +1,12 @@
 import type { ResultView } from "@/lib/analysis/lock";
 import { normalizeDeal } from "@/lib/analysis/normalize";
-import { mergeAsks, openAsks, originalAsks, PRICE_ASK_ID, REMAINING_FALLBACK } from "@/lib/negotiation/asks";
+import { mergeAsks, openAsks, originalAsks, outcomeFromAsks, PRICE_ASK_ID, REMAINING_FALLBACK } from "@/lib/negotiation/asks";
 import { buildConclusion } from "@/lib/negotiation/conclusion";
 import { fallbackMessage, finalMessage } from "@/lib/negotiation/message";
 import { originPricing, priceFor } from "@/lib/negotiation/pricing";
 import { checkQuote, quoteIsIn } from "@/lib/negotiation/quotes";
 import { applyGroups, groupLabel } from "@/lib/negotiation/terms";
+import { groupsOf } from "@/lib/negotiation/topics";
 import { changeFollowsAsk, changeRestrictsAsk, keepWritten, unwrittenDoubt } from "@/lib/negotiation/written";
 import {
   TERM_GROUP_LABEL,
@@ -43,7 +44,13 @@ export type TurnResult =
 // Mission #080 quater, A6 — un doute du modèle qui parle de sa propre
 // mécanique (« le champ deal ne permet pas… ») ne s'affiche pas : il est
 // remplacé par une phrase qui dit à la créatrice ce qu'elle peut faire.
-const JARGON = /\b(champs?|sch[ée]mas?|json|null|bool[ée]en|boolean|enum|payload|field|variable)\b|\bdeal ne permet\b/i;
+// Mission #083, E1 — « l'état du deal » : le nom interne de la lecture.
+const JARGON = /(?<![\p{L}])(champs?|sch[ée]mas?|json|null|bool[ée]en|boolean|enum|payload|field|variable|deal ne permet|[ée]tat du deal)(?![\p{L}])/iu;
+
+// Mission #083, B — « notre budget est de 300 € et il n'est pas négociable »,
+// « on ne peut pas aller au-delà de ce qui était prévu » : s'en tenir à son
+// montant, c'est refuser la contre-offre, pas en proposer une autre.
+const NEGATION = /(?<![\p{L}])(?:n'|(?:ne|pas|jamais|aucune?|impossible|non)(?![\p{L}]))/iu;
 
 // Mission #080 quinquies, B — les doutes s'adressent à elle, en « tu ». Le
 // vouvoiement est converti là où c'est sûr (« votre proposition » → « ta
@@ -161,6 +168,19 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   // le dit tel quel, sans affirmer que la marque a accepté (et sans la
   // contradiction « sans réponse » à côté d'un terme qui a bougé).
   const asks = merged.asks.map((ask) => {
+    // Mission #083, B — le prix lu « contre-proposé » sur une phrase qui nie,
+    // sans aucun nouveau montant retenu : la marque s'en tient au sien, c'est
+    // un refus. Avec un nouveau montant écrit, c'est bien une contre-proposition.
+    if (
+      ask.id === PRICE_ASK_ID &&
+      ask.turn === turnNumber &&
+      ask.status === "countered" &&
+      ask.quote !== null &&
+      NEGATION.test(ask.quote) &&
+      !changes.some((change) => change.group === "amount")
+    ) {
+      return { ...ask, status: "refused" as const };
+    }
     // Mission #082, C — une demande de limiter lue comme « contre-proposée »
     // alors qu'un changement prouvé resserre justement ce terme : accordée en
     // partie, pas une contre-proposition.
@@ -176,41 +196,50 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
     }
     if (ask.status !== "unanswered" || ask.aligned_group) return ask;
     const follows = changes.find((change) => changeFollowsAsk(change.group, dealAfter, ask.label));
-    return follows ? { ...ask, aligned_group: follows.group, aligned_turn: turnNumber } : ask;
+    // Aligné : le terme a changé, preuve à l'appui, dans son sens. C'est ce que
+    // l'écran dit alors, plutôt que « non vérifiable ».
+    return follows ? { ...ask, aligned_group: follows.group, aligned_turn: turnNumber, unverified_turn: null } : ask;
   });
   const alignedNow = new Set(asks.filter((ask) => ask.aligned_turn === turnNumber).map((ask) => ask.label));
   const cutGroups = new Set(cut.map((item) => item.group));
+  // Mission #083, A3 — un seul doute par point : la demande non vérifiable a
+  // le sien ; le changement de terme écarté sur le même sujet n'en ajoute pas.
+  const unverifiedNow = merged.unverified.filter((item) => !alignedNow.has(item.label));
+  const coveredGroups = new Set(unverifiedNow.flatMap((item) => [...groupsOf(item.label)]));
 
   // Doutes affichés à la créatrice, en « tu » (A6). Ceux du modèle qui parlent
   // de sa propre mécanique (champ, schéma, JSON…) n'atteignent jamais l'écran.
   const uncertainties = [
     ...cleanDoubts(reading.uncertainties),
-    ...merged.unverified
-      .filter((item) => !alignedNow.has(item.label))
-      .map((item) =>
+    ...unverifiedNow.map((item) =>
         item.clause
           ? `Sur « ${item.label} », la marque écrit « ${item.clause} ». L'outil avait coupé cette phrase avant ce qui la nie ou la conditionne : rien n'est retenu, relis sa réponse.`
           : `Sur « ${item.label} », l'outil n'a trouvé aucun passage de la réponse qui le dise clairement.`,
-      ),
-    ...cut.map(
-      (item) =>
-        `« ${TERM_GROUP_LABEL[item.group]} » : la marque écrit « ${item.clause} ». L'outil avait coupé cette phrase avant ce qui la nie ou la conditionne : le terme n'a pas été modifié.`,
     ),
+    ...cut
+      .filter((item) => !coveredGroups.has(item.group))
+      .map(
+        (item) =>
+          `« ${TERM_GROUP_LABEL[item.group]} » : la marque écrit « ${item.clause} ». L'outil avait coupé cette phrase avant ce qui la nie ou la conditionne : le terme n'a pas été modifié.`,
+      ),
     ...ignored
-      .filter((change) => !cutGroups.has(change.group))
+      .filter((change) => !cutGroups.has(change.group) && !coveredGroups.has(change.group))
       .map(
         (change) =>
           `« ${TERM_GROUP_LABEL[change.group]} » : l'outil a cru lire un changement, mais aucun passage de la réponse ne le dit. Ce n'est pas retenu.`,
       ),
-    ...kept.unwritten.map(unwrittenDoubt),
+    ...kept.unwritten.filter((item) => !coveredGroups.has(item.group)).map(unwrittenDoubt),
   ];
   // Questions de la marque : seulement celles qu'elle a vraiment posées.
   const questions = reading.brand_questions.filter((q) => quoteIsIn(q.quote, brandReply));
 
   const counter = { low: current.counter_low, high: current.counter_high };
 
+  // Mission #083, D — le titre du tour vient des statuts affichés.
+  const outcome = outcomeFromAsks(asks, turnNumber, { model: reading.outcome, changed: changes.length > 0, questions: questions.length });
+
   // Acceptation : la conclusion ferme l'échange dans ce même tour (D2).
-  const accepted = reading.outcome === "accepted";
+  const accepted = outcome === "accepted";
   const conclusion = accepted
     ? buildConclusion({
         deal: dealAfter,
@@ -237,6 +266,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
         language: original.language,
         counter,
         askLabels: asks.map((ask) => ask.label),
+        unverifiedLabels: asks.filter((ask) => ask.unverified_turn === turnNumber).map((ask) => ask.label),
         fallback: () =>
           fallbackMessage({
             language: original.language,
@@ -244,7 +274,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
             counter,
             priceOpen,
             questions: questions.length,
-            refused: reading.outcome === "refused",
+            refused: outcome === "refused",
           }),
       });
 
@@ -253,7 +283,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
     payload: {
       schema_version: TURN_SCHEMA_VERSION,
       tier,
-      outcome: reading.outcome,
+      outcome,
       asks: asks,
       changes,
       ignored_changes: ignored,

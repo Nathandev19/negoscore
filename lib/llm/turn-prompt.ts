@@ -10,7 +10,7 @@ import { turnReadingSchema, type Ask, type Deal } from "@/lib/negotiation/types"
 // 2025). L'état de référence est le deal structuré, pas l'historique.
 
 // À changer à chaque modification de TURN_SYSTEM_PROMPT ou du schéma de lecture.
-export const TURN_PROMPT_VERSION = "2026-09-19.6";
+export const TURN_PROMPT_VERSION = "2026-09-19.7";
 
 export function turnReadingJsonSchema(): { [key: string]: unknown } {
   return strictJsonSchema(z.toJSONSchema(turnReadingSchema) as { [key: string]: unknown });
@@ -41,13 +41,14 @@ LECTURE
   - "granted" : la marque fait ce qui est demandé, même avec ses propres valeurs plutôt qu'avec les mots de la demande (demande « limiter la durée des droits », réponse « 6 mois » : accordé).
   - "partial" : elle fait ce qui est demandé, mais n'en couvre qu'une part. Écris alors dans remaining, en quelques mots et en tutoiement, ce qui reste à préciser (demande « limiter l'utilisation aux supports et au territoire définis », réponse « sur la France uniquement » : partial, remaining « les supports de diffusion »).
   - "countered" : seulement quand elle propose autre chose que ce qui est demandé, ou le contraire. Une réponse qui va dans le sens de la demande n'est jamais "countered".
-  - "refused" : refusée. "unanswered" : la réponse n'en dit rien.
+  - "refused" : refusée. S'en tenir à son montant ou à son budget d'origine (« le budget reste fixé », « on ne peut pas aller au-delà de ce qui était prévu », « notre budget est de 300 € et il n'est pas négociable ») est un refus de la demande de rémunération, pas une contre-proposition : "countered" exige que la marque propose une autre valeur que celle de son offre de départ.
+  - "unanswered" : la réponse n'en dit rien.
   - remaining : null pour tout statut autre que "partial".
 - changes : seulement les termes que la marque CHANGE dans cette réponse (group parmi deliverables, amount, in_kind, usage_rights, usage_duration, territory, exclusivity, payment_terms, publication), avec la citation qui le dit. Quand la marque accorde une demande qui modifie l'un de ces termes (par exemple une exclusivité plus courte ou un autre délai de paiement), c'est aussi un changement, avec la valeur écrite dans cette demande.
 - publication : ce sont les comptes de la personne qui crée le contenu. « Notre compte », « nos comptes », « notre page », « nos réseaux » désignent le compte de la MARQUE : ce n'est jamais une publication sur les comptes de la personne. Une publication sur ses comptes se dit « votre compte », « vos réseaux », « chez vous ».
 - deal : le deal complet tel qu'il est après cette réponse. Pars de <etat_du_deal> et ne modifie que les termes listés dans changes. Mêmes règles d'extraction que pour l'offre : montant en euros hors taxes, durées en mois, null si ce n'est pas écrit. N'efface jamais un montant déjà écrit : si la marque accepte une fourchette, le montant reste tel qu'il était, et tu le signales dans uncertainties.
 - brand_questions : les questions que la marque pose, avec la citation.
-- uncertainties : adressées à la personne, en tutoiement (« ta proposition », « ton tarif », jamais « votre proposition »), en français courant. Jamais de vocabulaire technique (pas de « champ », « deal », « schéma », « null »). Exemple : « La marque ne dit pas si le budget inclut les droits pub. »
+- uncertainties : adressées à la personne, en tutoiement (« ta proposition », « ton tarif », jamais « votre proposition »), en français courant. Jamais de vocabulaire technique (pas de « champ », « deal », « état du deal », « schéma », « null »). Seulement ce que tu n'es pas sûr d'avoir compris dans la réponse de la marque : aucun conseil, aucune recommandation (pas de « le contrat devra préciser… »). Exemple : « La marque ne dit pas si le budget inclut les droits pub. »
 
 MESSAGE SUIVANT (next_message)
 - Un message que la personne peut envoyer tel quel, dans la langue de la réponse de la marque, en reprenant son tutoiement ou son vouvoiement.

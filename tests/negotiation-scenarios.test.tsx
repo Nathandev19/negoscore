@@ -79,7 +79,7 @@ describe("F8 — les scénarios couvrent les cas demandés", () => {
     // Chaque scénario dit s'il est inventé ou réel : le remplacement se voit.
     for (const scenario of scenarios) expect(["inventé", "réel", "garde"]).toContain(scenario.source);
     // Les deux fautes réelles du modèle (essai du 19/09/2026) ont leur scénario de garde.
-    for (const required of ["garde-notre-compte", "garde-embellissement", "garde-citation-recollee", "garde-negation-coupee", "garde-accord-partiel"]) {
+    for (const required of ["garde-notre-compte", "garde-embellissement", "garde-citation-recollee", "garde-negation-coupee", "garde-accord-partiel", "garde-accord-non-verifiable", "garde-refus-lu-contre-proposition", "garde-titre-du-tour"]) {
       expect(scenarios.find((s) => s.id.endsWith(required))?.source, required).toBe("garde");
     }
   });
@@ -116,6 +116,27 @@ describe.each(scenarios.map((s) => [s.id, s] as const))("scénario %s", (_id, sc
       expect(ask?.aligned_group, id).not.toBeNull();
       // Pas de contradiction : ni doute « aucun passage », ni « toujours sans réponse » pour elle.
       expect(payload.uncertainties.join(" "), id).not.toContain(`Sur « ${ask?.label} »`);
+    }
+    // Mission #083, A1 — lecture écartée : « Non vérifiable », jamais « Toujours
+    // sans réponse » (le rendu est vérifié section par section).
+    if (attendu.non_verifiables) {
+      const html = renderToStaticMarkup(<TurnCard turnNumber={2} createdAt="2026-09-19T10:00:00.000Z" brandReply={null} payload={payload} />);
+      const section = (heading: string) => {
+        const at = html.indexOf(`>${heading}</h5>`);
+        if (at < 0) return "";
+        const end = html.indexOf("</ul>", at);
+        return html.slice(at, end);
+      };
+      for (const id of attendu.non_verifiables) {
+        const ask = payload.asks.find((a) => a.id === id);
+        expect(ask?.unverified_turn, id).toBe(2);
+        expect(section("Non vérifiable"), id).toContain(ask?.label.replace(/'/g, "&#x27;"));
+        expect(section("Toujours sans réponse"), id).not.toContain(ask?.label.replace(/'/g, "&#x27;"));
+      }
+    }
+    // Mission #083, A3 — un seul doute par point.
+    for (const word of attendu.un_seul_doute_sur ?? []) {
+      expect(payload.uncertainties.filter((doubt) => doubt.includes(word)), word).toHaveLength(1);
     }
   });
 

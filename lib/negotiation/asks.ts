@@ -1,6 +1,6 @@
 import type { ResultView } from "@/lib/analysis/lock";
 import { checkQuote } from "@/lib/negotiation/quotes";
-import type { Ask, TurnReading } from "@/lib/negotiation/types";
+import type { Ask, Outcome, TurnReading } from "@/lib/negotiation/types";
 
 // Mission #080, B2 — ce qui a été demandé à la marque, et ce qu'elle en a fait.
 // Les demandes sont celles de l'analyse d'origine : la contre-offre chiffrée
@@ -12,7 +12,7 @@ export const PRICE_ASK_ID = "prix";
 
 // Une demande encore sans réponse.
 export function newAsk(id: string, label: string): Ask {
-  return { id, label, status: "unanswered", quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null, remaining: null };
+  return { id, label, status: "unanswered", quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null, remaining: null, unverified_turn: null };
 }
 
 export function originalAsks(analysis: ResultView): Ask[] {
@@ -65,14 +65,16 @@ export function mergeAsks(
     if (viaGlobal) {
       // Un accord global n'accorde que : il ne refuse ni ne contre-propose rien.
       if (read.status !== "granted") return ask;
-      return { ...ask, status: "granted" as const, quote: globalAgreement, turn, global: true };
+      return { ...ask, status: "granted" as const, quote: globalAgreement, turn, global: true, unverified_turn: null };
     }
     // Mission #081 : présente mot pour mot ET non coupée de ce qui la nie ou
     // la conditionne (lib/negotiation/quotes.ts, checkQuote).
     const check = checkQuote(read.quote, brandReply);
     if (!check.ok) {
       unverified.push(check.reason === "cut" ? { label: ask.label, clause: check.clause } : { label: ask.label, clause: null });
-      return ask;
+      // Mission #083, A1 — la demande garde son statut d'avant, mais l'écran
+      // ne peut plus la dire « sans réponse » : la marque a peut-être répondu.
+      return { ...ask, unverified_turn: turn };
     }
     return {
       ...ask,
@@ -81,9 +83,47 @@ export function mergeAsks(
       turn,
       global: false,
       remaining: read.status === "partial" ? read.remaining?.trim() || REMAINING_FALLBACK : null,
+      unverified_turn: null,
     };
   });
   return { asks, unverified, globalAgreement };
+}
+
+// Mission #083, D — le titre du tour se déduit des statuts affichés sous lui,
+// pas de ce que le modèle en dit. Ne comptent que les réponses vérifiées de CE
+// tour. Règles :
+//   - toutes les demandes accordées (dans ce tour ou avant) : « accepte » ;
+//   - des demandes accordées (même en partie) et plus d'accords que de refus et
+//     contre-propositions réunis, ou aucune contre-proposition : « accepte en
+//     partie » ;
+//   - sinon une contre-proposition : « propose d'autres termes » ; sinon
+//     seulement des refus : « refuse » ;
+//   - aucune réponse vérifiée : des termes changés, preuve à l'appui, sont une
+//     proposition ; sinon une question de la marque, ou le titre du modèle s'il
+//     ne prétend rien que l'écran ne montre (« ne tranche pas », « refuse »).
+//     Un accord ou une contre-proposition que rien ne montre devient « ne
+//     tranche pas ».
+// Sans aucune demande suivie (pas de contre-offre), rien à compter : le titre
+// du modèle est gardé.
+export function outcomeFromAsks(
+  asks: readonly Ask[],
+  turn: number,
+  { model, changed, questions }: { model: Outcome; changed: boolean; questions: number },
+): Outcome {
+  if (asks.length === 0) return model;
+  const now = asks.filter((ask) => ask.turn === turn && ask.status !== "unanswered");
+  const count = (...statuses: Ask["status"][]) => now.filter((ask) => statuses.includes(ask.status)).length;
+  const yes = count("granted", "partial");
+  const no = count("refused", "countered");
+  if (now.length === 0) {
+    if (changed) return "counter";
+    if (questions > 0) return "question";
+    return model === "refused" || model === "question" ? model : "vague";
+  }
+  // Tout est accordé, dans ce tour ou dans un précédent.
+  if (asks.every((ask) => ask.status === "granted")) return "accepted";
+  if (yes > 0 && (yes > no || count("countered") === 0)) return "partial";
+  return count("countered") > 0 ? "counter" : "refused";
 }
 
 // Demandes qui restent à obtenir : sans réponse, refusées ou contre-proposées.

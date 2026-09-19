@@ -56,7 +56,7 @@ export type Scenario = {
     // true : le brouillon du modèle doit être écarté par les contrôles.
     message_de_repli?: boolean;
     // Statut attendu de certaines demandes après ce tour.
-    demandes?: Record<string, "granted" | "refused" | "countered" | "unanswered">;
+    demandes?: Record<string, "granted" | "partial" | "refused" | "countered" | "unanswered">;
     // Groupes de termes qui doivent changer (et eux seuls).
     termes_changes?: string[];
     // Au moins un doute doit être affiché.
@@ -67,6 +67,12 @@ export type Scenario = {
     // Demandes restées sans réponse explicite, dont un terme prouvé a changé
     // dans leur sens (mission #080 quinquies, C).
     alignees?: string[];
+    // Demandes dont la lecture a été écartée : affichées « non vérifiables »,
+    // jamais « toujours sans réponse » (mission #083, A1).
+    non_verifiables?: string[];
+    // Chacun de ces mots n'apparaît que dans un seul doute : un doute par
+    // point (mission #083, A3).
+    un_seul_doute_sur?: string[];
   };
 };
 

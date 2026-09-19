@@ -3,6 +3,7 @@ import { pricePhrase } from "@/lib/analysis/engine-parts";
 import { formatEur } from "@/lib/money";
 import { PRICE_PLACEHOLDER } from "@/lib/llm/prompt";
 import { normalizeForQuote, quoteIsIn } from "@/lib/negotiation/quotes";
+import { topicsOf } from "@/lib/negotiation/topics";
 import type { Ask, Deal, TurnMessage } from "@/lib/negotiation/types";
 
 // Mission #080, F3 à F5 — le message suivant, contrôlé par le code avant d'être
@@ -13,7 +14,9 @@ import type { Ask, Deal, TurnMessage } from "@/lib/negotiation/types";
 //   - un nombre que le deal ne porte pas (quantité, durée, délai) ;
 //   - une date, une échéance ou un ultimatum ;
 //   - un mot sec ou agressif ;
-//   - une citation que la marque n'a pas écrite.
+//   - une citation que la marque n'a pas écrite ;
+//   - un accord sur un point dont la lecture n'a pas pu être vérifiée
+//     (mission #083, A2).
 // Les raisons de l'écart sont enregistrées et affichées.
 
 type Language = "fr" | "en";
@@ -26,6 +29,7 @@ export const FALLBACK_REASON = {
   quote: "une phrase prêtée à la marque qu'elle n'a pas écrite",
   gender: "une formule qui suppose ton genre (par exemple « ravie »)",
   empty: "un message vide",
+  agreement: "un accord que la réponse de la marque ne permet pas de vérifier",
 } as const;
 export type FallbackReason = keyof typeof FALLBACK_REASON;
 
@@ -139,7 +143,30 @@ function quotedSegments(text: string): string[] {
   return [...text.matchAll(/«\s*([^»]{4,})\s*»|“([^”]{4,})”|"([^"]{4,})"/g)].map((m) => (m[1] ?? m[2] ?? m[3]).trim());
 }
 
-export function messageProblems(draft: string, deal: Deal, brandReply: string, askLabels: readonly string[] = []): FallbackReason[] {
+// Mission #083, A2 — une phrase qui affirme un accord (« je prends bonne note
+// de l'accord concernant… », « merci d'avoir accepté… »). Une question (« pouvez-
+// vous me confirmer votre accord ? ») n'affirme rien.
+const AGREEMENT =
+  /(?<![\p{L}])(?:accord|accept|ok pour|okay pour|prends (?:bonne )?note|pris (?:bonne )?note|noté|entendu pour|validé|validez|merci d'avoir|je retiens|agree|noted)/iu;
+
+// Le brouillon affirme-t-il un accord sur l'un de ces points ? Un point est
+// reconnu par son sujet (paiement, exclusivité…), pas par ses mots exacts.
+export function claimsAgreementOn(draft: string, labels: readonly string[]): boolean {
+  const topics = labels.flatMap((label) => topicsOf(label));
+  if (topics.length === 0) return false;
+  const sentences = draft.match(/[^.!?\n]+[.!?]?/g) ?? [];
+  return sentences.some(
+    (sentence) => !sentence.trim().endsWith("?") && AGREEMENT.test(sentence) && topics.some((topic) => topic.pattern.test(sentence)),
+  );
+}
+
+export function messageProblems(
+  draft: string,
+  deal: Deal,
+  brandReply: string,
+  askLabels: readonly string[] = [],
+  unverifiedLabels: readonly string[] = [],
+): FallbackReason[] {
   const problems = new Set<FallbackReason>();
   const text = draft.replaceAll(PRICE_PLACEHOLDER, " ");
   if (normalizeForQuote(text) === "") problems.add("empty");
@@ -152,6 +179,7 @@ export function messageProblems(draft: string, deal: Deal, brandReply: string, a
   if (HARSH.test(text)) problems.add("tone");
   if (GENDERED.test(text)) problems.add("gender");
   for (const segment of quotedSegments(text)) if (!quoteIsIn(segment, brandReply)) problems.add("quote");
+  if (claimsAgreementOn(text, unverifiedLabels)) problems.add("agreement");
   return [...problems];
 }
 
@@ -266,6 +294,7 @@ export function finalMessage({
   language,
   counter,
   askLabels = [],
+  unverifiedLabels = [],
   fallback,
 }: {
   draft: string;
@@ -275,9 +304,11 @@ export function finalMessage({
   language: Language;
   counter: CounterRange;
   askLabels?: readonly string[];
+  // Demandes dont la lecture a été écartée dans ce tour (mission #083, A2).
+  unverifiedLabels?: readonly string[];
   fallback: () => string;
 }): TurnMessage {
-  const problems = messageProblems(draft, deal, brandReply, askLabels);
+  const problems = messageProblems(draft, deal, brandReply, askLabels, unverifiedLabels);
   if (problems.length > 0) {
     return { text: fallback(), tone: "Poli et ferme", fallback: true, fallback_reasons: problems.map((p) => FALLBACK_REASON[p]) };
   }

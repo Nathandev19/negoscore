@@ -1,0 +1,136 @@
+{
+  "id": "18-garde-accord-non-verifiable",
+  "titre": "Garde : un accord cité en recollant deux passages, et un message qui l'affirme quand même (sortie réelle, mission #083)",
+  "source": "garde",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "reponse_marque": "Bonjour, ok pour l'exclusivité d'un mois et pour le paiement à 30 jours avec 50 % à la signature. Par contre le budget reste fixé, on ne peut pas aller au-delà de ce qui était prévu.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "C'est bien une réponse de la marque à ta proposition.",
+    "outcome": "partial",
+    "global_agreement": null,
+    "asks": [
+      {
+        "id": "prix",
+        "status": "countered",
+        "quote": "on ne peut pas aller au-delà de ce qui était prévu",
+        "remaining": null
+      },
+      {
+        "id": "c1",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c2",
+        "status": "granted",
+        "quote": "ok pour l'exclusivité d'un mois",
+        "remaining": null
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c5",
+        "status": "granted",
+        "quote": "ok pour le paiement à 30 jours avec 50 % à la signature",
+        "remaining": null
+      }
+    ],
+    "changes": [
+      {
+        "group": "exclusivity",
+        "quote": "ok pour l'exclusivité d'un mois"
+      },
+      {
+        "group": "payment_terms",
+        "quote": "ok pour le paiement à 30 jours avec 50 % à la signature"
+      }
+    ],
+    "deal": {
+      "brand": "Marque Exemple",
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "tiktok",
+          "quantity": 2,
+          "format": null
+        }
+      ],
+      "publication_required": false,
+      "usage": {
+        "organic": true,
+        "paid_ads": true,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": 6,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": true,
+        "duration_months": 1,
+        "category": "cosmétique"
+      },
+      "raw_footage": true,
+      "ip_transfer": "license",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": null,
+        "unlimited": true
+      },
+      "payment": {
+        "amount_eur": 300,
+        "currency": "EUR",
+        "terms_days": 30,
+        "schedule": "50 % à la signature"
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "brand_questions": [],
+    "uncertainties": [
+      "La marque ne précise pas le montant exact du budget prévu.",
+      "La marque ne précise pas si les droits pub sont facturés en plus de la création.",
+      "La marque ne répond pas à ta proposition concernant le raw footage et les révisions."
+    ],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci pour votre réponse. Je prends bonne note de l’accord concernant l’exclusivité et les conditions de paiement.\n\nConcernant le budget, mon tarif pour ce projet se situe {{CONTRE_OFFRE}}. Pouvez-vous me confirmer si les droits pub sont prévus en complément de la création ? Je souhaite également confirmer que le raw footage reste en option et que les révisions incluses sont bien prises en compte.\n\nBelle journée,",
+      "tone": "Poli et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "partial",
+    "nouveau_chiffrage": true,
+    "message_de_repli": true,
+    "demandes": {
+      "prix": "refused",
+      "c2": "granted",
+      "c5": "unanswered"
+    },
+    "non_verifiables": [
+      "c5"
+    ],
+    "un_seul_doute_sur": [
+      "Paiement"
+    ],
+    "termes_changes": [
+      "exclusivity"
+    ]
+  }
+}
