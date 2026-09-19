@@ -106,12 +106,21 @@ describe("A2, A3 — on n'enregistre que ce qui est écrit", () => {
     expect(creator.deal.publication_required).toBe(true);
   });
 
-  it("un échéancier non écrit tel quel revient à ce qu'il était ; le délai, écrit, reste", () => {
+  // Mission #084 : la partie écrite de l'échéancier est retenue, et le doute ne
+  // vise que la partie introuvable — jamais ce qui est retenu par ailleurs.
+  it("un échéancier écrit en partie : la partie écrite reste, le doute ne vise que le reste ; le délai, écrit, reste", () => {
     const candidate = { ...base, payment: { ...base.payment, terms_days: 30, schedule: "50 % à la signature, solde à 30 jours" } };
     const kept = keepWritten(base, candidate, ["payment_terms"], { brandReply: "le paiement à 30 jours avec 50 % à la signature", accepted: [] }, {});
     expect(kept.deal.payment.terms_days).toBe(30);
+    expect(kept.deal.payment.schedule).toBe("50 % à la signature");
+    expect(kept.unwritten).toEqual([{ group: "payment_terms", value: "solde à 30 jours", reason: "not_written" }]);
+  });
+
+  it("un échéancier dont rien n'est écrit revient à ce qu'il était, le doute le vise en entier", () => {
+    const candidate = { ...base, payment: { ...base.payment, schedule: "30 % à la commande, solde à la livraison" } };
+    const kept = keepWritten(base, candidate, ["payment_terms"], { brandReply: "ok pour le paiement", accepted: [] }, {});
     expect(kept.deal.payment.schedule).toBe(base.payment.schedule);
-    expect(kept.unwritten).toEqual([{ group: "payment_terms", value: "50 % à la signature, solde à 30 jours", reason: "not_written" }]);
+    expect(kept.unwritten).toEqual([{ group: "payment_terms", value: "30 % à la commande, solde à la livraison", reason: "not_written" }]);
   });
 
   it("B1 — un montant écrit ne s'efface pas parce que le modèle ne sait pas écrire une fourchette", () => {

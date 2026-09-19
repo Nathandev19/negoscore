@@ -73,6 +73,8 @@ export type Scenario = {
     // Chacun de ces mots n'apparaît que dans un seul doute : un doute par
     // point (mission #083, A3).
     un_seul_doute_sur?: string[];
+    // Chacun de ces extraits figure dans l'un des doutes (mission #084).
+    doutes_exacts?: string[];
   };
 };
 

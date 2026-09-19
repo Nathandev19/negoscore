@@ -79,7 +79,7 @@ describe("F8 — les scénarios couvrent les cas demandés", () => {
     // Chaque scénario dit s'il est inventé ou réel : le remplacement se voit.
     for (const scenario of scenarios) expect(["inventé", "réel", "garde"]).toContain(scenario.source);
     // Les deux fautes réelles du modèle (essai du 19/09/2026) ont leur scénario de garde.
-    for (const required of ["garde-notre-compte", "garde-embellissement", "garde-citation-recollee", "garde-negation-coupee", "garde-accord-partiel", "garde-accord-non-verifiable", "garde-refus-lu-contre-proposition", "garde-titre-du-tour"]) {
+    for (const required of ["garde-notre-compte", "garde-embellissement", "garde-citation-recollee", "garde-negation-coupee", "garde-accord-partiel", "garde-accord-non-verifiable", "garde-refus-lu-contre-proposition", "garde-titre-du-tour", "garde-doute-trop-large"]) {
       expect(scenarios.find((s) => s.id.endsWith(required))?.source, required).toBe("garde");
     }
   });
@@ -137,6 +137,31 @@ describe.each(scenarios.map((s) => [s.id, s] as const))("scénario %s", (_id, sc
     // Mission #083, A3 — un seul doute par point.
     for (const word of attendu.un_seul_doute_sur ?? []) {
       expect(payload.uncertainties.filter((doubt) => doubt.includes(word)), word).toHaveLength(1);
+    }
+    for (const excerpt of attendu.doutes_exacts ?? []) {
+      expect(payload.uncertainties.some((doubt) => doubt.includes(excerpt)), excerpt).toBe(true);
+    }
+  });
+
+  // Mission #084 — un doute n'englobe jamais une partie retenue par ailleurs :
+  // sinon l'écran dit d'un même terme qu'il est à la fois pris en compte et
+  // écarté. Chaque morceau de ce que l'outil « a cru lire » est confronté aux
+  // termes retenus (deal après le tour, changements, récapitulatif).
+  it("aucun doute ne dit écarté ce qui est retenu ailleurs", () => {
+    const { payload } = turnOf(scenario);
+    const retained = [
+      ...payload.changes.map((change) => change.after),
+      ...(payload.conclusion?.recap.map((row) => row.value) ?? []),
+      JSON.stringify(payload.deal_after),
+    ]
+      .join("\n")
+      .toLowerCase();
+    for (const doubt of payload.uncertainties) {
+      const read = doubt.match(/l'outil a cru lire « ([^»]+) »/)?.[1];
+      if (!read) continue;
+      for (const part of read.split(/[,;]| et /).map((p) => p.trim().toLowerCase()).filter(Boolean)) {
+        expect(retained, `${scenario.id} : « ${part} »`).not.toContain(part);
+      }
     }
   });
 

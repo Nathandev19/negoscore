@@ -1,0 +1,144 @@
+{
+  "id": "21-garde-doute-trop-large",
+  "titre": "Garde : un doute qui englobe « 50 % à la signature », pourtant retenu par ailleurs, en plus de « le solde à 30 jours », vraiment introuvable (sortie réelle, mission #084)",
+  "source": "garde",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "reponse_marque": "Bonjour ! C'est d'accord pour tout, on part sur votre proposition. On vous envoie le contrat cette semaine.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "accepted",
+    "global_agreement": "C'est d'accord pour tout",
+    "asks": [
+      {
+        "id": "prix",
+        "status": "granted",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c1",
+        "status": "granted",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c2",
+        "status": "granted",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c3",
+        "status": "granted",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c4",
+        "status": "granted",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c5",
+        "status": "granted",
+        "quote": null,
+        "remaining": null
+      }
+    ],
+    "changes": [
+      {
+        "group": "amount",
+        "quote": "on part sur votre proposition"
+      },
+      {
+        "group": "exclusivity",
+        "quote": "on part sur votre proposition"
+      },
+      {
+        "group": "in_kind",
+        "quote": "on part sur votre proposition"
+      },
+      {
+        "group": "deliverables",
+        "quote": "on part sur votre proposition"
+      },
+      {
+        "group": "payment_terms",
+        "quote": "on part sur votre proposition"
+      }
+    ],
+    "deal": {
+      "brand": "Marque Exemple",
+      "deliverables": [
+        {
+          "type": "video",
+          "platform": "tiktok",
+          "quantity": 2,
+          "format": null
+        }
+      ],
+      "publication_required": false,
+      "usage": {
+        "organic": true,
+        "paid_ads": true,
+        "whitelisting": false,
+        "spark_ads": false,
+        "duration_months": 6,
+        "territory": null,
+        "perpetual": false
+      },
+      "exclusivity": {
+        "present": true,
+        "duration_months": 1,
+        "category": "cosmétique"
+      },
+      "raw_footage": false,
+      "ip_transfer": "license",
+      "ai_training_rights": "absent",
+      "revisions": {
+        "count": 2,
+        "unlimited": false
+      },
+      "payment": {
+        "amount_eur": 300,
+        "currency": "EUR",
+        "terms_days": 30,
+        "schedule": "50 % à la signature et le solde à 30 jours"
+      },
+      "in_kind_value_eur": null,
+      "deadlines": [],
+      "kill_fee": null,
+      "termination": null,
+      "governing_law": null
+    },
+    "brand_questions": [],
+    "uncertainties": [
+      "La marque accepte ta fourchette tarifaire, mais ne précise pas quel montant elle retient.",
+      "La réponse ne précise pas le montant éventuel de l'option raw footage ni celui des droits publicitaires facturés en plus."
+    ],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci pour votre réponse. Je vous remercie pour votre accord sur l’ensemble de la proposition.\n\nJe confirme donc les 2 vidéos TikTok, les droits publicitaires de 6 mois en complément de la création, l’exclusivité d’un mois, les 2 révisions incluses, ainsi que le raw footage en option. Le paiement est prévu à 50 % à la signature, puis le solde à 30 jours.\n\nJe reste disponible à réception du contrat.\n\nBelle journée,",
+      "tone": "chaleureux et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "accepted",
+    "nouveau_chiffrage": true,
+    "conclusion": true,
+    "doutes": true,
+    "termes_changes": [
+      "exclusivity",
+      "payment_terms"
+    ],
+    "valeurs_interdites": [
+      "solde à 30 jours"
+    ],
+    "doutes_exacts": [
+      "l'outil a cru lire « le solde à 30 jours »"
+    ]
+  }
+}

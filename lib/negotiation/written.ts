@@ -120,12 +120,21 @@ export function numberCheck(
 // morceau séparé par une virgule doit l'être : « 50 % à la signature, solde à
 // 30 jours » échoue si « solde à 30 jours » n'est écrit nulle part.
 export function textWritten(value: string, sources: readonly string[]): boolean {
+  return writtenParts(value, sources).missing.length === 0;
+}
+
+// Mission #084 — les morceaux d'un texte, séparés en écrits et introuvables,
+// dans les mots du texte lu. Sert à ne dire écarté QUE ce qui l'est.
+export function writtenParts(value: string, sources: readonly string[]): { written: string[]; missing: string[] } {
   const text = sources.map(normalizeForQuote).join(" \n ");
-  return value
+  const parts = value
     .split(/[,;]| et /)
-    .map((part) => normalizeForQuote(part).replace(/^[.\s]+|[.\s]+$/g, ""))
-    .filter((part) => part.length > 0)
-    .every((part) => text.includes(part));
+    .map((part) => part.trim().replace(/^[.\s]+|[.\s]+$/g, ""))
+    .filter((part) => normalizeForQuote(part).length > 0);
+  return {
+    written: parts.filter((part) => text.includes(normalizeForQuote(part))),
+    missing: parts.filter((part) => !text.includes(normalizeForQuote(part))),
+  };
 }
 
 // A2 — « notre compte », « nos réseaux » : la marque parle des SIENS. Une
@@ -239,8 +248,13 @@ export function keepWritten(
           deal.payment = { ...deal.payment, terms_days: before.payment.terms_days };
         }
         if (schedule !== null && schedule !== before.payment.schedule && !textWritten(schedule, sources)) {
-          reject(group, schedule);
-          deal.payment = { ...deal.payment, schedule: before.payment.schedule };
+          // Mission #084 — « 50 % à la signature et le solde à 30 jours », où
+          // seul « 50 % à la signature » est écrit (dans une demande acceptée) :
+          // la partie écrite est retenue, le doute ne vise que le reste. Un
+          // doute n'englobe jamais ce qui est retenu par ailleurs.
+          const { written, missing } = writtenParts(schedule, sources);
+          reject(group, missing.join(", "));
+          deal.payment = { ...deal.payment, schedule: written.length > 0 ? written.join(", ") : before.payment.schedule };
         }
         break;
       }
