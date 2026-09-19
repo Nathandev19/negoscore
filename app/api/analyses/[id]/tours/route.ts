@@ -7,6 +7,7 @@ import { reserveTurn, type Grant } from "@/lib/billing/entitlement";
 import { classifyModelError, modelFailureMessage } from "@/lib/llm/errors";
 import { readBrandReply } from "@/lib/llm/turn";
 import { TURN_PROMPT_VERSION } from "@/lib/llm/turn-prompt";
+import { cleanSentText, loadSentMessages, messageForNextTurn, saveSentMessage } from "@/lib/negotiation/sent";
 import { loadThread, threadConcluded, turnForKey, TURNS_TABLE } from "@/lib/negotiation/store";
 import { processTurn, stateBefore } from "@/lib/negotiation/turn";
 import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, OFF_TOPIC_MESSAGE } from "@/lib/negotiation/types";
@@ -38,7 +39,13 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
   const user = await getRequestUser(request);
   if (!user) return json(401, { error: "Connecte-toi pour suivre l'échange avec la marque.", reason: "signed_out" });
 
-  const body = (await request.json().catch(() => null)) as { reply?: unknown; tier?: unknown; idempotencyKey?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as {
+    reply?: unknown;
+    tier?: unknown;
+    idempotencyKey?: unknown;
+    // B3 : message corrigé par la créatrice au moment de coller la réponse.
+    sentMessage?: unknown;
+  } | null;
   const reply = typeof body?.reply === "string" ? body.reply.trim() : "";
   const tier = parseTier(body?.tier);
   const key = readIdempotencyKey(body?.idempotencyKey);
@@ -106,7 +113,19 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     const original = result.analysis;
     const previous = thread.turns.map((turn) => turn.payload);
     const state = stateBefore(original, previous);
-    const lastMessage = previous.at(-1)?.message.text ?? recomputeForTier(original, tier).ready_to_send_message?.text ?? "";
+    // Le message auquel la marque répond (B) : corrigé à l'instant, sinon
+    // enregistré à la copie, sinon le message proposé, gardé comme hypothèse.
+    const answeredTurn = turnNumber - 1;
+    const corrected = cleanSentText(body?.sentMessage);
+    if (corrected) {
+      await saveSentMessage({ analysisId: id, userId: user.id, turnNumber: answeredTurn, text: corrected, source: "corrected" });
+    }
+    const sent = messageForNextTurn({
+      corrected,
+      recorded: (await loadSentMessages(id)).get(answeredTurn),
+      proposed: previous.at(-1)?.message.text ?? recomputeForTier(original, tier).ready_to_send_message?.text ?? "",
+    });
+    const lastMessage = sent.text;
 
     let read: Awaited<ReturnType<typeof readBrandReply>>;
     try {
@@ -171,6 +190,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
         terms_changed: outcome.payload.changes.length,
         ignored_changes: outcome.payload.ignored_changes.length,
         message_fallback: outcome.payload.message.fallback,
+        sent_message_basis: sent.basis,
         concluded: outcome.payload.conclusion !== null,
         model: read.usage.model,
         cost_eur: Number(read.usage.costEur.toFixed(6)),

@@ -195,3 +195,44 @@ describe("C4 — le seuil du contrat écrit quand la marque accepte une fourchet
     expect(conclusion.legal_note).not.toContain("Le montant n'est pas connu");
   });
 });
+
+const { SentMessageContext } = await import("@/components/result/negotiation/sent-message");
+
+describe("B3 — au moment de coller, le message que l'outil croit envoyé, repliable et corrigeable", () => {
+  const withFirst = (node: React.ReactNode) => (
+    <SentMessageContext value={{ analysisId: "11111111-1111-4111-8111-111111111111", firstMessage: "Bonjour,\n\nMerci pour votre message, le projet m'intéresse beaucoup." }}>{node}</SentMessageContext>
+  );
+  const renderWith = (props: Partial<Parameters<typeof NegotiationThread>[0]>) =>
+    renderToStaticMarkup(
+      withFirst(<NegotiationThread analysisId="11111111-1111-4111-8111-111111111111" turns={[]} conclusion={null} right={{ kind: "pack", balance: 2 }} {...props} />),
+    );
+
+  it("jamais copié : le message proposé, présenté comme une hypothèse, dans un bloc replié", () => {
+    const html = renderWith({});
+    expect(html).toMatch(/<details[^>]*>\s*<summary/);
+    expect(html).not.toMatch(/<details[^>]*open/);
+    expect(html).toContain("Merci pour votre message, le projet m&#x27;intéresse beaucoup.");
+    expect(html).toContain("Tu ne l&#x27;as pas copié depuis l&#x27;outil : c&#x27;est le message proposé, supposé envoyé.");
+    expect(html).toContain("Ça ne décompte rien.");
+  });
+
+  it("copié : le texte retenu à la copie, avec sa date", () => {
+    const html = renderWith({ sent: { text: "Mon message modifié avant envoi.", source: "copied", updatedAt: "2026-09-19T08:30:00.000Z" } });
+    expect(html).toContain("Mon message modifié avant envoi.");
+    expect(html).toContain("Retenu quand tu l&#x27;as copié, le 19 septembre à 10:30.");
+  });
+
+  it("au tour suivant, l'hypothèse est le message proposé par le dernier tour", () => {
+    const html = renderWith({ turns: [view(turnFrom("reponse-vague"))] });
+    expect(html).toContain("Je reste disponible si vous avez des questions sur ma proposition");
+  });
+});
+
+const { excerpt } = await import("@/components/result/negotiation/negotiation-thread");
+
+describe("B3 — l'extrait du message", () => {
+  it("saute la ligne de salutation, coupe proprement un message long", () => {
+    expect(excerpt("Bonjour,\n\nMerci pour votre retour, avec plaisir.")).toBe("Merci pour votre retour, avec plaisir.");
+    expect(excerpt(`Merci ${"beaucoup ".repeat(20)}`, 30)).toMatch(/^Merci beaucoup beaucoup[^…]*…$/);
+  });
+});

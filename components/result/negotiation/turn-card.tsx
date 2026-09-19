@@ -235,7 +235,7 @@ export function TurnCard({
       ) : null}
 
       {payload.conclusion ? (
-        <ConclusionView conclusion={payload.conclusion} />
+        <ConclusionView conclusion={payload.conclusion} turn={turnNumber} />
       ) : (
         <section className="flex flex-col gap-2">
           <h4 className="font-bold text-encre">Ton message suivant</h4>
@@ -247,7 +247,7 @@ export function TurnCard({
           ) : (
             <p className="text-small text-attenue">Ton : {payload.message.tone}</p>
           )}
-          <EditableMessage text={payload.message.text} />
+          <EditableMessage text={payload.message.text} turn={turnNumber} />
         </section>
       )}
     </article>

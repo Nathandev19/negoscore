@@ -7,7 +7,9 @@ import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 
 // Action primaire de la page débloquée : copier le message.
-export function CopyButton({ text }: { text: string }) {
+// onCopied (mission #080 bis) : appelé avec le texte copié, pour l'enregistrer
+// comme message envoyé à la marque.
+export function CopyButton({ text, onCopied }: { text: string; onCopied?: (text: string) => void }) {
   const [copied, setCopied] = useState(false);
   return (
     <>
@@ -26,6 +28,7 @@ export function CopyButton({ text }: { text: string }) {
           await navigator.clipboard.writeText(text);
           setCopied(true);
           track(ANALYTICS_EVENTS.messageCopied);
+          onCopied?.(text);
         } catch {
           setCopied(false);
         }

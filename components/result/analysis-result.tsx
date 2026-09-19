@@ -13,6 +13,7 @@ import {
 import { LockedCounterOfferPlaceholder, LockedMessagePlaceholder, UnlockCta } from "@/components/result/locked-blocks";
 import { ScoreBand } from "@/components/result/score-band";
 import { rememberTier, TierContext, TierSelector } from "@/components/result/tier-selector";
+import { SentMessageContext } from "@/components/result/negotiation/sent-message";
 import { CounterOffer, MESSAGE_ANCHOR, ReadyMessage } from "@/components/result/unlocked-blocks";
 import { IncompleteCard, TermsUnknownCard, UnpricedCard } from "@/components/result/verdict-card";
 import { counterOfferRange } from "@/lib/analysis/anchoring";
@@ -63,6 +64,7 @@ export function AnalysisResult({
   children,
   retry,
   afterMessage,
+  analysisId = null,
 }: {
   analysis: ResultView;
   unlockHref: string;
@@ -74,6 +76,9 @@ export function AnalysisResult({
   retry?: ReactNode;
   // Sous le message à envoyer : la suite de l'échange avec la marque (#080).
   afterMessage?: ReactNode;
+  // Propriétaire connecté seulement : copier un message l'enregistre comme
+  // message envoyé (mission #080 bis). null : simple copie.
+  analysisId?: string | null;
 }) {
   const [tier, setTier] = useState<Tier>(stored.profile_tier);
   // Changement de niveau : le bandeau est remonté (key) pour rejouer l'animation,
@@ -134,6 +139,7 @@ export function AnalysisResult({
   const counterOfferTitle = incomplete || !priced ? "Ta contre-offre" : undefined;
   return (
     <TierContext value={analysis.profile_tier}>
+    <SentMessageContext value={{ analysisId, firstMessage: analysis.ready_to_send_message?.text ?? null }}>
       {/* Le bandeau et le h1 sont DANS main (mission #062, A9) : ils portent
           l'essentiel du résultat et n'étaient dans aucun point de repère. */}
       <main id="contenu" className="flex flex-1 flex-col">
@@ -189,6 +195,7 @@ export function AnalysisResult({
         {children}
         </div>
       </main>
+    </SentMessageContext>
     </TierContext>
   );
 }

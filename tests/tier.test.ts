@@ -223,7 +223,16 @@ describe("A2 — changer de niveau n'appelle ni le modèle ni le serveur", () =>
     const fetches = graph
       .filter((file) => !file.startsWith("externe:") && !file.endsWith(".json"))
       .flatMap((file) => [...readFileSync(path.join(ROOT, file), "utf8").matchAll(/fetch\(\s*["'`]([^"'`]+)/g)].map((m) => `${file} ${m[1]}`));
-    expect(fetches).toEqual(["/components/result/tier-selector.tsx /api/niveau"]);
+    // Mission #080 bis : copier un message l'enregistre comme message envoyé.
+    // Déclenché par le bouton « Copier le message », jamais par un changement
+    // de niveau (vérifié ci-dessous : seul onCopied l'appelle).
+    expect(fetches.sort()).toEqual([
+      "/components/result/negotiation/sent-message.tsx /api/analyses/${analysisId}/message-envoye",
+      "/components/result/tier-selector.tsx /api/niveau",
+    ]);
+    const sent = readFileSync(path.join(ROOT, "components/result/negotiation/sent-message.tsx"), "utf8");
+    expect(sent.match(/recordSentMessage\(/g)).toHaveLength(2); // définition + appel dans onCopied
+    expect(sent).toMatch(/onCopied=\{async \(copied\) => \{[\s\S]*?recordSentMessage\(analysisId, turn, copied\)/);
     const selector = readFileSync(path.join(ROOT, "components/result/tier-selector.tsx"), "utf8");
     expect(selector).toMatch(/void fetch\("\/api\/niveau"/);
     const result = readFileSync(path.join(ROOT, "components/result/analysis-result.tsx"), "utf8");

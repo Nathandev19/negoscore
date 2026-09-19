@@ -5,7 +5,7 @@ import type { Conclusion } from "@/lib/negotiation/types";
 // flous (C2), message de confirmation écrite (C3), rappel de la loi française
 // (C4). Aucune recommandation : la décision a été prise par la personne, ou
 // par la marque qui accepte (C5).
-export function ConclusionView({ conclusion }: { conclusion: Conclusion }) {
+export function ConclusionView({ conclusion, turn }: { conclusion: Conclusion; turn?: number }) {
   return (
     <section aria-labelledby="conclusion-echange" className="flex flex-col gap-5 border-2 border-encre p-4 sm:p-6">
       <div className="flex flex-col gap-1">
@@ -46,7 +46,7 @@ export function ConclusionView({ conclusion }: { conclusion: Conclusion }) {
         )}
       </div>
 
-      <EditableMessage text={conclusion.message} label="Message de confirmation à envoyer" />
+      <EditableMessage text={conclusion.message} label="Message de confirmation à envoyer" turn={turn} />
 
       <p className="border-l-4 border-encre py-1 pl-3 text-small">{conclusion.legal_note}</p>
     </section>

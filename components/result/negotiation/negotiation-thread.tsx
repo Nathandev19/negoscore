@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { ConclusionView } from "@/components/result/negotiation/conclusion-view";
+import { useSentRecorder } from "@/components/result/negotiation/sent-message";
 import { TurnCard } from "@/components/result/negotiation/turn-card";
 import { useTier } from "@/components/result/tier-selector";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,17 @@ import { DEFAULT_TIER } from "@/lib/rates/tier";
 export const THREAD_ANCHOR = "echange";
 
 export type ThreadTurnView = { turnNumber: number; createdAt: string; brandReply: string | null; payload: TurnPayload };
+
+// Message enregistré comme envoyé pour le dernier tour (mission #080 bis).
+export type SentView = { text: string; source: "copied" | "corrected"; updatedAt: string };
+
+const SENT_DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+
+// Extrait lisible d'un message : sa première ligne utile, coupée proprement.
+export function excerpt(text: string, max = 90): string {
+  const line = text.split("\n").map((l) => l.trim()).find((l) => l.length > 0 && !/^(bonjour|hello|hi)\b[\s,!.]*$/i.test(l)) ?? text.trim();
+  return line.length <= max ? line : `${line.slice(0, max).replace(/\s+\S*$/, "")}…`;
+}
 
 // Coût du prochain tour, annoncé avant l'envoi.
 export function costNotice(right: TurnRight): string | null {
@@ -41,12 +53,14 @@ export function NegotiationThread({
   turns,
   conclusion,
   right,
+  sent = null,
 }: {
   analysisId: string;
   turns: ThreadTurnView[];
   // Conclusion décidée par la personne (sans nouveau tour).
   conclusion: Conclusion | null;
   right: TurnRight;
+  sent?: SentView | null;
 }) {
   const router = useRouter();
   const tier = useTier() ?? DEFAULT_TIER;
@@ -56,6 +70,15 @@ export function NegotiationThread({
   // Clé d'idempotence gardée tant que le tour n'a pas abouti (D4) : un second
   // clic ou une reprise après coupure retombe sur le même tour.
   const keyRef = useRef<string | null>(null);
+  // B2, B3 — le message auquel la marque répond, selon l'outil : celui retenu
+  // à la copie (ou corrigé), sinon le message proposé, gardé comme hypothèse.
+  const { firstMessage } = useSentRecorder();
+  const proposed = turns.at(-1)?.payload.message.text ?? firstMessage ?? "";
+  const assumed = sent?.text ?? proposed;
+  // null : pas touché. Sinon, le texte corrigé par la personne.
+  const [sentDraft, setSentDraft] = useState<string | null>(null);
+  const correction = sentDraft !== null && sentDraft.trim() !== "" && sentDraft.trim() !== assumed.trim() ? sentDraft.trim() : null;
+  const sentFieldId = useId();
   const fieldId = useId();
   const noticeId = useId();
 
@@ -79,12 +102,13 @@ export function NegotiationThread({
       const response = await fetch(`/api/analyses/${analysisId}/tours`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reply, tier, idempotencyKey: keyRef.current }),
+        body: JSON.stringify({ reply, tier, idempotencyKey: keyRef.current, ...(correction ? { sentMessage: correction } : {}) }),
       });
       const body = (await response.json().catch(() => ({}))) as { error?: string; paywall?: boolean };
       if (response.ok) {
         keyRef.current = null;
         setReply("");
+        setSentDraft(null);
         router.refresh();
         return;
       }
@@ -150,6 +174,36 @@ export function NegotiationThread({
             sans réponse, puis prépare ton message suivant. Elle s&apos;ajoute à cette analyse, ce n&apos;est pas une nouvelle
             analyse.
           </p>
+          {assumed ? (
+            <details className="text-small">
+              <summary className="cursor-pointer text-attenue">
+                La marque répond à ce message, selon l&apos;outil : <span className="text-encre">« {excerpt(assumed)} »</span>
+              </summary>
+              <div className="mt-2 flex flex-col gap-2 border-l-4 border-filet pl-3">
+                <p>
+                  {sent
+                    ? sent.source === "corrected"
+                      ? `Corrigé par toi le ${SENT_DATE.format(new Date(sent.updatedAt))}.`
+                      : `Retenu quand tu l'as copié, le ${SENT_DATE.format(new Date(sent.updatedAt))}.`
+                    : "Tu ne l'as pas copié depuis l'outil : c'est le message proposé, supposé envoyé."}{" "}
+                  Si tu as envoyé autre chose (copié à la main, modifié après la copie), corrige-le ici : c&apos;est ce texte
+                  que l&apos;outil aura en tête pour lire la réponse. Ça ne décompte rien.
+                </p>
+                <label htmlFor={sentFieldId} className="font-semibold text-encre">
+                  Le message que tu as envoyé
+                </label>
+                <textarea
+                  id={sentFieldId}
+                  value={sentDraft ?? assumed}
+                  onChange={(event) => setSentDraft(event.target.value)}
+                  maxLength={MAX_REPLY_LENGTH}
+                  rows={6}
+                  className="w-full rounded-control border-2 border-encre bg-creme px-3 py-2 text-base text-encre"
+                />
+                {correction ? <p className="font-semibold text-encre">Ta correction sera retenue quand tu lanceras l&apos;analyse de la réponse.</p> : null}
+              </div>
+            </details>
+          ) : null}
           <textarea
             id={fieldId}
             value={reply}

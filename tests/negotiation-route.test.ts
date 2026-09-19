@@ -24,6 +24,9 @@ const state = vi.hoisted(() => ({
   rows: [] as Array<Record<string, unknown>>,
   deleted: [] as string[],
   guardReleased: 0,
+  // Mission #080 bis : messages enregistrés comme envoyés, et ce que le modèle a reçu.
+  sent: [] as Array<{ analysis_id: string; turn_number: number; text: string; source: string; updated_at: string }>,
+  lastMessages: [] as string[],
 }));
 
 vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => state.user }));
@@ -55,8 +58,9 @@ vi.mock("@/lib/billing/entitlement", async (importOriginal) => ({
   },
 }));
 vi.mock("@/lib/llm/turn", () => ({
-  readBrandReply: async () => {
+  readBrandReply: async (input: { lastMessage: string }) => {
     state.modelCalls += 1;
+    state.lastMessages.push(input.lastMessage);
     if (state.modelError) throw state.modelError;
     return { reading: state.reading, usage: { model: "test", costEur: 0.001, latencyMs: 5 } };
   },
@@ -72,6 +76,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
   return {
     ...actual,
     selectRows: async (table: string, query: string) => {
+      if (table === "negotiation_sent_messages") return state.sent;
       if (table !== "negotiation_turns") return [];
       const key = query.match(/idempotency_key=eq\.([^&]+)/)?.[1];
       if (key) return state.rows.filter((r) => r.idempotency_key === decodeURIComponent(key));
@@ -84,6 +89,11 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
       const saved = { id: `t${state.rows.length + 1}`, ...row };
       state.rows.push(saved);
       return saved;
+    },
+    upsertRow: async (table: string, row: Record<string, unknown>) => {
+      if (table !== "negotiation_sent_messages") throw new Error(table);
+      state.sent = state.sent.filter((m) => m.turn_number !== row.turn_number);
+      state.sent.push(row as (typeof state.sent)[number]);
     },
     deleteRows: async (_table: string, filter: string) => {
       const id = filter.replace("id=eq.", "");
@@ -120,6 +130,8 @@ beforeEach(() => {
   state.rows = [];
   state.deleted = [];
   state.guardReleased = 0;
+  state.sent = [];
+  state.lastMessages = [];
   vi.spyOn(console, "log").mockImplementation(() => undefined);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -217,5 +229,77 @@ describe("tour de négociation — gardes", () => {
     expect(state.modelCalls).toBe(calls);
     // Et plus de tour ensuite.
     expect((await send({ reply: use("reponse-vague") })).status).toBe(409);
+  });
+});
+
+// ─── Mission #080 bis, B5 — le message réellement envoyé ─────────────────────
+
+const { POST: RECORD } = await import("@/app/api/analyses/[id]/message-envoye/route");
+const { recomputeForTier } = await import("@/lib/analysis/recompute");
+
+function copy(turn: number, text: string) {
+  return RECORD(
+    new Request(`http://localhost/api/analyses/${ANALYSIS_ID}/message-envoye`, { method: "POST", body: JSON.stringify({ turn, text }) }),
+    { params: Promise.resolve({ id: ANALYSIS_ID }) },
+  );
+}
+
+const proposedFirst = () => {
+  const original = scenarioContext(byId("reponse-vague")).original;
+  return recomputeForTier(original, "confirmed").ready_to_send_message?.text ?? "";
+};
+
+describe("B5 — le tour suivant lit la réponse à la lumière du message réellement envoyé", () => {
+  it("message copié tel quel : c'est lui que reçoit le tour suivant", async () => {
+    expect((await copy(1, proposedFirst())).status).toBe(200);
+    await send({ reply: use("reponse-vague") });
+    expect(state.lastMessages).toEqual([proposedFirst()]);
+    expect(state.sent[0]).toMatchObject({ turn_number: 1, source: "copied" });
+  });
+
+  it("message modifié puis copié : le texte modifié, pas celui proposé", async () => {
+    const edited = `${proposedFirst()}
+
+PS : je peux aussi livrer une version courte.`;
+    await copy(1, edited);
+    await send({ reply: use("reponse-vague") });
+    expect(state.lastMessages).toEqual([edited]);
+  });
+
+  it("jamais copié : le message proposé reste l'hypothèse", async () => {
+    await send({ reply: use("reponse-vague") });
+    expect(state.lastMessages).toEqual([proposedFirst()]);
+    expect(state.sent).toEqual([]);
+  });
+
+  it("corrigé à la main au moment de coller la réponse : la correction l'emporte, et elle est retenue", async () => {
+    await copy(1, proposedFirst());
+    const corrected = "Bonjour, mon tarif pour ce projet est de 900 €, droits pub compris. Belle journée";
+    await send({ reply: use("reponse-vague"), sentMessage: corrected });
+    expect(state.lastMessages).toEqual([corrected]);
+    expect(state.sent.find((m) => m.turn_number === 1)).toMatchObject({ text: corrected, source: "corrected" });
+  });
+
+  it("au tour suivant, c'est le message du tour 2 copié qui compte, pas celui du tour 1", async () => {
+    state.balance = 10;
+    await copy(1, "Message du tour 1");
+    await send({ reply: use("reponse-vague") });
+    await copy(2, "Message du tour 2, modifié avant envoi");
+    await send({ reply: use("reponse-vague") });
+    expect(state.lastMessages).toEqual(["Message du tour 1", "Message du tour 2, modifié avant envoi"]);
+  });
+
+  it("B4 — enregistrer un message ne consomme rien et n'appelle pas le modèle", async () => {
+    await copy(1, "Un message");
+    expect(state.commits).toBe(0);
+    expect(state.modelCalls).toBe(0);
+  });
+
+  it("refusé pour un tour qui n'existe pas encore, pour un texte vide, et sans compte", async () => {
+    expect((await copy(3, "texte")).status).toBe(404);
+    expect((await copy(1, "   ")).status).toBe(400);
+    state.user = null;
+    expect((await copy(1, "texte")).status).toBe(401);
+    expect(state.sent).toEqual([]);
   });
 });

@@ -16,6 +16,7 @@ import { loadResultForViewer } from "@/lib/analysis/load";
 import { retryStateFor, type RetryPageState } from "@/lib/analysis/retry";
 import { getViewer } from "@/lib/auth/viewer";
 import { turnRightStatus, type TurnRight } from "@/lib/billing/entitlement";
+import { loadSentMessages, type SentMessage } from "@/lib/negotiation/sent";
 import { loadThread, type Thread } from "@/lib/negotiation/store";
 import { shareCardAvailable } from "@/lib/share-card/element";
 import { ANON_COOKIE } from "@/lib/security/request";
@@ -55,6 +56,9 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   const thread: Thread | "missing" | null = owner ? await loadThread(id).catch(() => "missing" as const) : null;
   const right: TurnRight | null = owner ? await turnRightStatus(user).catch(() => null) : { kind: "signed_out" };
   const showThread = thread !== "missing" && right !== null;
+  // Message retenu comme envoyé pour le dernier tour (mission #080 bis).
+  const answeredTurn = 1 + (thread && thread !== "missing" ? thread.turns.length : 0);
+  const sent: SentMessage | undefined = owner ? (await loadSentMessages(id).catch(() => new Map<number, SentMessage>())).get(answeredTurn) : undefined;
 
   return (
     <>
@@ -66,6 +70,8 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
         // Retour sur le message prêt à envoyer, une fois débloqué (mission #067).
         unlockHref={`/connexion?next=${encodeURIComponent(`/analyse/resultat/${id}#message`)}`}
         retry={retry ? <RetryPanel state={retry} originId={id} /> : null}
+        // Copier un message l'enregistre comme envoyé : propriétaire connecté seulement.
+        analysisId={owner ? id : null}
         afterMessage={
           showThread ? (
             // Clé explicite : élément serveur passé en propriété à un composant
@@ -76,6 +82,7 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
               turns={(thread?.turns ?? []).map(({ turnNumber, createdAt, brandReply, payload }) => ({ turnNumber, createdAt, brandReply, payload }))}
               conclusion={thread?.conclusion?.payload.conclusion ?? null}
               right={right}
+              sent={sent ? { text: sent.text, source: sent.source, updatedAt: sent.updatedAt } : null}
             />
           ) : null
         }

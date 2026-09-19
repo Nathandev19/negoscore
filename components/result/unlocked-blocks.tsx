@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CopyButton } from "@/components/result/copy-button";
+import { RecordedCopyButton } from "@/components/result/negotiation/sent-message";
 import { Section } from "@/components/result/section";
 import { formatEurRange } from "@/lib/display";
 import type { Analysis } from "@/lib/schema";
@@ -56,7 +56,8 @@ export function ReadyMessage({
       <p className="border-l-4 border-encre py-1 pl-4 text-lg leading-relaxed whitespace-pre-line text-encre">
         {message.text}
       </p>
-      <CopyButton text={message.text} />
+      {/* Copier retient ce texte comme message envoyé (tour 1, mission #080 bis). */}
+      <RecordedCopyButton text={message.text} turn={1} />
     </Section>
   );
 }
