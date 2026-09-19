@@ -5,6 +5,8 @@ import { purgeLoginClaims } from "@/lib/auth/login-claims";
 // telle qu'annoncée dans la politique de confidentialité :
 //   - documents déposés : 30 jours (lignes deal_documents ET fichiers du bucket) ;
 //   - texte collé des offres (deals.raw_text) : 30 jours, remplacé par NULL ;
+//   - réponses de marque collées (negotiation_turns.brand_reply, mission #080) :
+//     30 jours, remplacées par NULL ; le tour et ce qui en a été tiré restent ;
 //     le deal et son analyse restent consultables ;
 //   - analyses lancées sans compte : 30 jours, deal et analyse supprimés ;
 //   - adresses IP hachées (usage_guard) : 30 jours au maximum ;
@@ -49,6 +51,8 @@ export type PurgeScope = {
   consentIds?: string[];
   // Réclamations de connexion (mission #067).
   loginClaimIds?: string[];
+  // Tours de négociation dont la réponse collée peut être effacée (mission #080).
+  brandReplyTurnIds?: string[];
 };
 
 export type PurgeReport = {
@@ -60,6 +64,7 @@ export type PurgeReport = {
   whop_events: number;
   checkout_consents: number;
   login_claims: number;
+  brand_replies: number;
 };
 
 export function purgeCutoffs(now: Date) {
@@ -127,6 +132,19 @@ async function purgeWhopEvents(cutoff: string, restrict: string): Promise<string
   }
 }
 
+async function purgeBrandReplies(cutoff: string, restrict: string): Promise<Array<{ id: string }>> {
+  try {
+    return await updateRows<{ id: string }>(
+      "negotiation_turns",
+      `brand_reply=not.is.null&created_at=lt.${encodeURIComponent(cutoff)}${restrict}&select=id`,
+      { brand_reply: null },
+    );
+  } catch (caught) {
+    if (caught instanceof SupabaseRequestError && (caught.status === 404 || caught.code === "42P01" || caught.code === "PGRST205")) return [];
+    throw caught;
+  }
+}
+
 export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Promise<PurgeReport> {
   const cutoffs = purgeCutoffs(now);
 
@@ -187,6 +205,12 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
   const claimScope = scopeFilter(scope, scope?.loginClaimIds, "id");
   const loginClaims = claimScope === null ? [] : await purgeLoginClaims(now, claimScope);
 
+  // Réponses de marque collées (mission #080) : même durée que le texte des
+  // offres, même règle. Table absente (migration 022 non appliquée) : rien à
+  // effacer.
+  const replyScope = scopeFilter(scope, scope?.brandReplyTurnIds, "id");
+  const brandReplies = replyScope === null ? [] : await purgeBrandReplies(cutoffs.sourceTexts, replyScope);
+
   return {
     documents,
     files_removed: filesRemoved,
@@ -196,5 +220,6 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
     whop_events: whopEvents.length,
     checkout_consents: consents.length,
     login_claims: loginClaims.length,
+    brand_replies: brandReplies.length,
   };
 }

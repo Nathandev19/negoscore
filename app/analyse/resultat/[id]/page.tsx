@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { TrackView } from "@/components/analytics/track-view";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { EstimateFeedback } from "@/components/result/estimate-feedback";
+import { NegotiationThread } from "@/components/result/negotiation/negotiation-thread";
 import { RetryPanel, type RetryPanelState } from "@/components/result/retry-panel";
 import { ShareCardLink } from "@/components/result/share-card-link";
 import { SiteFooter } from "@/components/site-footer";
@@ -14,6 +15,8 @@ import { readFeedback } from "@/lib/analysis/feedback";
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { retryStateFor, type RetryPageState } from "@/lib/analysis/retry";
 import { getViewer } from "@/lib/auth/viewer";
+import { turnRightStatus, type TurnRight } from "@/lib/billing/entitlement";
+import { loadThread, type Thread } from "@/lib/negotiation/store";
 import { shareCardAvailable } from "@/lib/share-card/element";
 import { ANON_COOKIE } from "@/lib/security/request";
 
@@ -45,6 +48,13 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   // (migration 018 non appliquée, ou erreur de lecture), rien n'est affiché.
   const retry =
     result.analysis.evaluability === "incomplete" ? panelState(await retryStateFor(id).catch(() => null)) : null;
+  // Suite de l'échange (mission #080) : pour la personne connectée qui a lancé
+  // l'analyse. Table absente ou lecture en échec : le fil ne s'affiche pas,
+  // plutôt qu'un fil vide qui ferait croire qu'il n'y a rien.
+  const owner = result.unlocked && user !== null;
+  const thread: Thread | "missing" | null = owner ? await loadThread(id).catch(() => "missing" as const) : null;
+  const right: TurnRight | null = owner ? await turnRightStatus(user).catch(() => null) : { kind: "signed_out" };
+  const showThread = thread !== "missing" && right !== null;
 
   return (
     <>
@@ -56,6 +66,19 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
         // Retour sur le message prêt à envoyer, une fois débloqué (mission #067).
         unlockHref={`/connexion?next=${encodeURIComponent(`/analyse/resultat/${id}#message`)}`}
         retry={retry ? <RetryPanel state={retry} originId={id} /> : null}
+        afterMessage={
+          showThread ? (
+            // Clé explicite : élément serveur passé en propriété à un composant
+            // client, sinon React signale une clé manquante en développement.
+            <NegotiationThread
+              key="echange"
+              analysisId={id}
+              turns={(thread?.turns ?? []).map(({ turnNumber, createdAt, brandReply, payload }) => ({ turnNumber, createdAt, brandReply, payload }))}
+              conclusion={thread?.conclusion?.payload.conclusion ?? null}
+              right={right}
+            />
+          ) : null
+        }
       >
         {shareCardAvailable(result.analysis) ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}
         <EstimateFeedback

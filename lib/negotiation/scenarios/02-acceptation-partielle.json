@@ -1,0 +1,89 @@
+{
+  "source": "inventé",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "id": "02-acceptation-partielle",
+  "titre": "Acceptation partielle",
+  "reponse_marque": "Bonjour, ok pour l'exclusivité d'un mois et pour le paiement à 30 jours avec 50 % à la signature. Par contre le budget reste fixé, on ne peut pas aller au-delà de ce qui était prévu.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "partial",
+    "asks": [
+      {
+        "id": "prix",
+        "status": "refused",
+        "quote": "le budget reste fixé"
+      },
+      {
+        "id": "c1",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c2",
+        "status": "granted",
+        "quote": "ok pour l'exclusivité d'un mois"
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c5",
+        "status": "granted",
+        "quote": "pour le paiement à 30 jours avec 50 % à la signature"
+      }
+    ],
+    "changes": [
+      {
+        "group": "exclusivity",
+        "quote": "ok pour l'exclusivité d'un mois"
+      },
+      {
+        "group": "payment_terms",
+        "quote": "le paiement à 30 jours avec 50 % à la signature"
+      }
+    ],
+    "brand_questions": [],
+    "uncertainties": [],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci pour votre retour, et merci d'avoir accepté l'exclusivité d'un mois et le paiement à 30 jours avec 50 % à la signature.\n\nPour le budget, je comprends vos contraintes. Pour 2 vidéos TikTok avec 6 mois de droits pub, mon tarif se situe {{CONTRE_OFFRE}} : c'est ce que représentent la création et l'usage publicitaire.\n\nPouvez-vous me dire si une marge est possible de votre côté ?\n\nBelle journée,",
+      "tone": "Poli et ferme"
+    },
+    "deal": {
+      "exclusivity": {
+        "present": true,
+        "duration_months": 1,
+        "category": "cosmétique"
+      },
+      "payment": {
+        "terms_days": 30,
+        "schedule": "50 % à la signature"
+      }
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "partial",
+    "nouveau_chiffrage": true,
+    "conclusion": false,
+    "message_de_repli": false,
+    "demandes": {
+      "prix": "refused",
+      "c2": "granted",
+      "c5": "granted",
+      "c1": "unanswered"
+    },
+    "termes_changes": [
+      "exclusivity",
+      "payment_terms"
+    ]
+  }
+}

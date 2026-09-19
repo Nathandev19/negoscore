@@ -41,6 +41,7 @@ export default function PrivacyPage() {
             "Documents déposés : supprimés 30 jours après l'analyse.",
             "Texte des offres collé dans le champ d'analyse : supprimé 30 jours après l'analyse. L'analyse, elle, reste disponible et conserve la marque, les montants et des phrases rédigées par l'outil d'analyse, qui peuvent citer le prénom de ton interlocuteur. Supprimer l'analyse efface tout.",
             "Compte et analyses : jusqu'à la suppression du compte par l'utilisateur. Une analyse lancée sans compte est supprimée au bout de 30 jours au maximum, avec l'offre qui l'a produite : c'est aussi la durée pendant laquelle ce navigateur peut la consulter et la supprimer lui-même.",
+            "Réponses d'une marque que tu colles pour suivre l'échange : supprimées 30 jours après avoir été collées. Ce que l'outil en a tiré (termes lus, chiffrage, message proposé) reste avec l'analyse, et part avec elle quand tu supprimes l'analyse ou ton compte.",
             "Avis sur une estimation (réponse et commentaire facultatif de 200 caractères au plus, que tu rédiges toi-même) : conservés tant que l'analyse existe, et supprimés avec elle, que tu supprimes l'analyse ou ton compte.",
             "Journal des paiements et preuves de consentement : 5 ans, y compris après la suppression du compte.",
             "Adresses IP hachées : 30 jours au maximum.",

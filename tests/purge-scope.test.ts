@@ -59,8 +59,18 @@ describe("portée de la purge", () => {
     // login_claims : réclamations de connexion expirées (mission #067).
     expect(db.deletes.map((d) => d.table)).toEqual(["usage_guard", "deals", "whop_events", "checkout_consents", "login_claims"]);
     for (const { filter } of db.deletes) expect(filter).not.toMatch(/(^|&)(id|event_id)=in\./);
-    expect(db.updates).toHaveLength(1);
-    expect(db.updates[0].filter).not.toContain("id=in.");
+    // Texte des offres, puis réponses de marque collées (mission #080).
+    expect(db.updates.map((u) => u.table)).toEqual(["deals", "negotiation_turns"]);
+    for (const update of db.updates) expect(update.filter).not.toContain("id=in.");
+  });
+
+  it("mission #080 : réponses de marque collées effacées au bout de 30 jours, le tour reste", async () => {
+    await runPurge(NOW);
+    const replies = db.updates.find((u) => u.table === "negotiation_turns");
+    expect(replies?.patch).toEqual({ brand_reply: null });
+    expect(replies?.filter).toContain("brand_reply=not.is.null");
+    expect(decodeURIComponent(replies?.filter ?? "")).toContain("created_at=lt.2026-08-19T03:00:00.000Z");
+    expect(db.deletes.map((d) => d.table)).not.toContain("negotiation_turns");
   });
 
   it("avec portée : chaque requête est limitée aux lignes désignées", async () => {
@@ -104,8 +114,9 @@ describe("portée de la purge", () => {
     expect(dealsSupprimes).toHaveLength(1);
     expect(dealsSupprimes[0].filter).toContain("user_id=is.null");
     expect(decodeURIComponent(dealsSupprimes[0].filter)).toContain("created_at=lt.2026-08-19T03:00:00.000Z");
-    expect(db.updates).toHaveLength(2);
-    for (const update of db.updates) {
+    const dealUpdates = db.updates.filter((u) => u.table !== "negotiation_turns");
+    expect(dealUpdates).toHaveLength(2);
+    for (const update of dealUpdates) {
       expect(update.table).toBe("deals");
       expect(update.patch).toEqual({ raw_text: null });
       expect(update.filter).toContain("raw_text=not.is.null");

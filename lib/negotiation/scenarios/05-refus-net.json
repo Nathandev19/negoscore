@@ -1,0 +1,63 @@
+{
+  "source": "inventé",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "id": "05-refus-net",
+  "titre": "Refus net",
+  "reponse_marque": "Merci pour votre retour mais ce n'est pas possible pour nous : notre budget est de 300 € et il n'est pas négociable. Nous allons chercher un autre profil.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "refused",
+    "asks": [
+      {
+        "id": "prix",
+        "status": "refused",
+        "quote": "il n'est pas négociable"
+      },
+      {
+        "id": "c1",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c2",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c5",
+        "status": "unanswered",
+        "quote": null
+      }
+    ],
+    "changes": [],
+    "brand_questions": [],
+    "uncertainties": [],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci pour votre réponse claire, je comprends.\n\nSi le budget ou le périmètre du projet évoluent, n'hésitez pas à revenir vers moi : ce serait avec plaisir.\n\nBelle continuation,",
+      "tone": "Poli et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "refused",
+    "nouveau_chiffrage": false,
+    "conclusion": false,
+    "message_de_repli": false,
+    "demandes": {
+      "prix": "refused"
+    },
+    "termes_changes": []
+  }
+}

@@ -5,7 +5,7 @@ import { FREE_ANALYSES, PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
 import { NO_FREE_LEFT_MESSAGE } from "@/lib/billing/right-hint";
 import { hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
-import { adjustInteger, countRows, isMissingColumn, selectRows } from "@/lib/supabase/server";
+import { adjustInteger, countRows, isMissingColumn, isMissingRelation, selectRows } from "@/lib/supabase/server";
 
 // Droit d'analyser, décidé uniquement côté serveur.
 //
@@ -26,7 +26,7 @@ const FREE_IP_WINDOW_SECONDS = 24 * 60 * 60;
 
 export type Denial = {
   allowed: false;
-  reason: "free_used" | "no_credit" | "rate_limited";
+  reason: "free_used" | "no_credit" | "rate_limited" | "plan_required";
   message: string;
 };
 
@@ -54,14 +54,32 @@ const nothingToRelease = async () => undefined;
 // enregistrée : on compte toutes les analyses, comme avant.
 async function analysesInPeriod(userId: string, start: Date, end: Date): Promise<number> {
   const query = `select=id,deal:deals!inner(user_id)&deal.user_id=eq.${userId}&created_at=gt.${start.toISOString()}&created_at=lte.${end.toISOString()}`;
+  let analyses: number;
   try {
     // Lecture plutôt que comptage : une requête HEAD ne renvoie pas le code d'erreur
     // qui distingue une colonne absente. Le quota est petit, la lecture aussi.
     const rows = await selectRows<{ id: string }>("analyses", `${query}&is_retry=is.false&limit=${PRO_ANALYSES_PER_PERIOD + 1}`);
-    return rows.length;
+    analyses = rows.length;
   } catch (caught) {
     if (!isMissingColumn(caught)) throw caught;
-    return countRows("analyses", query);
+    analyses = await countRows("analyses", query);
+  }
+  return analyses + (await turnsInPeriod(userId, start, end));
+}
+
+// Mission #080, D1 — un tour de négociation compte comme une analyse dans le
+// quota Pro. Table absente (migration 022 non appliquée) : aucun tour n'a pu
+// être enregistré, donc zéro.
+async function turnsInPeriod(userId: string, start: Date, end: Date): Promise<number> {
+  try {
+    const rows = await selectRows<{ id: string }>(
+      "negotiation_turns",
+      `select=id&user_id=eq.${userId}&kind=eq.reply&created_at=gt.${start.toISOString()}&created_at=lte.${end.toISOString()}&limit=${PRO_ANALYSES_PER_PERIOD + 1}`,
+    );
+    return rows.length;
+  } catch (caught) {
+    if (isMissingRelation(caught)) return 0;
+    throw caught;
   }
 }
 
@@ -230,4 +248,53 @@ export async function analysisRightStatus(
 ): Promise<{ allowed: true } | Omit<Denial, "allowed"> & { allowed: false }> {
   const decision = await decideRight(user, anonToken);
   return decision.allowed ? { allowed: true } : decision;
+}
+
+// ─── Tours de négociation (mission #080, D) ──────────────────────────────────
+
+// D3 — le suivi de l'échange est réservé aux formules payantes. Dit simplement :
+// c'est ce que la formule apporte, pas une faute de la personne.
+export const TURN_PLAN_REQUIRED_MESSAGE =
+  "Le suivi de l'échange avec la marque est compris dans le Pack Deal et l'abonnement Pro : chaque réponse analysée compte pour une analyse.";
+
+// D1, D4 — un tour se réserve et se décompte exactement comme une analyse :
+// vérifié avant l'appel au modèle, décompté après l'enregistrement du tour.
+// Seule différence : un compte gratuit n'a pas de tour suivant.
+export async function reserveTurn(user: SessionUser): Promise<Grant | Denial> {
+  const decision = await decideRight(user, null);
+  if (!decision.allowed) return decision;
+  if (decision.plan === "free") return { allowed: false, reason: "plan_required", message: TURN_PLAN_REQUIRED_MESSAGE };
+  if (decision.plan === "pack") return grantPack(user.id);
+  const { inPeriod } = decision;
+  return {
+    allowed: true,
+    plan: "pro",
+    commit: async () => (await inPeriod()) <= PRO_ANALYSES_PER_PERIOD,
+    release: nothingToRelease,
+  };
+}
+
+// Ce que coûtera le prochain tour, pour le dire AVANT l'envoi (D1). Lecture
+// seule : ne réserve rien.
+export type TurnRight =
+  | { kind: "signed_out" }
+  | { kind: "plan_required"; message: string }
+  | { kind: "no_credit"; message: string }
+  | { kind: "pack"; balance: number }
+  | { kind: "pro"; remaining: number };
+
+export async function turnRightStatus(user: SessionUser | null): Promise<TurnRight> {
+  if (!user) return { kind: "signed_out" };
+  const decision = await decideRight(user, null);
+  if (!decision.allowed) {
+    const [credits] = await selectRows<{ plan: string }>("credits", `select=plan&user_id=eq.${user.id}&limit=1`);
+    // Jamais payé : c'est la formule qui manque, pas un crédit.
+    return credits?.plan === "pack" || credits?.plan === "pro"
+      ? { kind: "no_credit", message: decision.message }
+      : { kind: "plan_required", message: TURN_PLAN_REQUIRED_MESSAGE };
+  }
+  if (decision.plan === "free") return { kind: "plan_required", message: TURN_PLAN_REQUIRED_MESSAGE };
+  if (decision.plan === "pro") return { kind: "pro", remaining: Math.max(0, PRO_ANALYSES_PER_PERIOD - (await decision.inPeriod())) };
+  const [credits] = await selectRows<{ balance: number }>("credits", `select=balance&user_id=eq.${user.id}&limit=1`);
+  return { kind: "pack", balance: credits?.balance ?? 0 };
 }

@@ -120,12 +120,42 @@ export function extractDealFromPdf(pdf: PdfInput): Promise<ExtractResult> {
 }
 
 async function run(input: OpenAI.Responses.ResponseCreateParams["input"], options: ExtractOptions = {}): Promise<ExtractResult> {
+  const result = await callStructured({
+    instructions: SYSTEM_PROMPT,
+    input,
+    schemaName: "deal_analysis",
+    schema: extractionJsonSchema(),
+    parse: problemWith,
+    options,
+  });
+  return { ...result.usage, extraction: result.value.extraction };
+}
+
+export type StructuredUsage = Omit<ExtractResult, "extraction">;
+
+// Appel au modèle avec sortie JSON stricte, commun à l'analyse et aux tours de
+// négociation (mission #080) : même modèle, même délai global, une seule
+// reprise si la sortie est invalide, même calcul du coût.
+export async function callStructured<T>({
+  instructions,
+  input,
+  schemaName,
+  schema,
+  parse,
+  options = {},
+}: {
+  instructions: string;
+  input: OpenAI.Responses.ResponseCreateParams["input"];
+  schemaName: string;
+  schema: { [key: string]: unknown };
+  parse: (outputText: string) => T | { problem: string };
+  options?: ExtractOptions;
+}): Promise<{ value: T; usage: StructuredUsage }> {
   const apiKey = process.env[MODEL.envKey];
   if (!apiKey) throw new MissingApiKeyError(`${MODEL.envKey} absente`);
 
   const client = new OpenAI({ apiKey, timeout: TIMEOUT_MS, maxRetries: 1 });
   const deadline = AbortSignal.timeout(EXTRACTION_BUDGET_MS);
-  const schema = extractionJsonSchema();
   const started = performance.now();
   let inputTokens = 0;
   let cachedInputTokens = 0;
@@ -139,11 +169,11 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"], option
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const response = await client.responses.create({
       model: MODEL.id,
-      instructions: SYSTEM_PROMPT,
+      instructions,
       input,
       max_output_tokens: 16000,
       text: {
-        format: { type: "json_schema", name: "deal_analysis", schema, strict: true },
+        format: { type: "json_schema", name: schemaName, schema, strict: true },
         // Absent quand la verbosité vaut null : valeur par défaut de l'API.
         ...(textVerbosity ? { verbosity: textVerbosity } : {}),
       },
@@ -155,25 +185,27 @@ async function run(input: OpenAI.Responses.ResponseCreateParams["input"], option
     outputTokens += response.usage?.output_tokens ?? 0;
     reasoningTokens += response.usage?.output_tokens_details?.reasoning_tokens ?? 0;
 
-    const result = problemWith(response.output_text);
-    if ("extraction" in result) {
+    const result = parse(response.output_text);
+    if (!(typeof result === "object" && result !== null && "problem" in result)) {
       if (attempt === 1) schemaValidFirstTry = true;
-      const { input, cachedInput, output } = MODEL.pricingUsdPerMillion;
+      const { input: inputPrice, cachedInput, output } = MODEL.pricingUsdPerMillion;
       const costUsd =
-        ((inputTokens - cachedInputTokens) * input + cachedInputTokens * cachedInput + outputTokens * output) /
+        ((inputTokens - cachedInputTokens) * inputPrice + cachedInputTokens * cachedInput + outputTokens * output) /
         1_000_000;
       return {
-        extraction: result.extraction,
-        model: MODEL.id,
-        inputTokens,
-        outputTokens,
-        reasoningTokens,
-        reasoningEffort,
-        textVerbosity,
-        costEur: costUsd / MODEL.usdPerEur,
-        latencyMs: Math.round(performance.now() - started),
-        schemaValidFirstTry,
-        attempts: attempt,
+        value: result,
+        usage: {
+          model: MODEL.id,
+          inputTokens,
+          outputTokens,
+          reasoningTokens,
+          reasoningEffort,
+          textVerbosity,
+          costEur: costUsd / MODEL.usdPerEur,
+          latencyMs: Math.round(performance.now() - started),
+          schemaValidFirstTry,
+          attempts: attempt,
+        },
       };
     }
     lastProblem = result.problem;

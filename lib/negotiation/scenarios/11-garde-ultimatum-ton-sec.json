@@ -1,0 +1,57 @@
+{
+  "source": "inventé",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "id": "11-garde-ultimatum-ton-sec",
+  "titre": "Garde : ultimatum et ton sec quand ça traîne",
+  "reponse_marque": "Nous n'avons toujours pas de validation de notre côté, désolés du délai.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "vague",
+    "asks": [
+      {
+        "id": "prix",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c1",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c2",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c5",
+        "status": "unanswered",
+        "quote": null
+      }
+    ],
+    "changes": [],
+    "brand_questions": [],
+    "uncertainties": [],
+    "next_message": {
+      "text": "Bonjour,\n\nEncore une fois, j'attends votre réponse. Sans réponse de votre part d'ici vendredi, je me retire du projet.\n\nCordialement,",
+      "tone": "Poli et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "vague",
+    "message_de_repli": true
+  }
+}

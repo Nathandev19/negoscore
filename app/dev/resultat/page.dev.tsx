@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { EstimateFeedback } from "@/components/result/estimate-feedback";
+import { NegotiationThread, type ThreadTurnView } from "@/components/result/negotiation/negotiation-thread";
+import type { TurnRight } from "@/lib/billing/entitlement";
+import { loadScenarios, readingOf, scenarioContext } from "@/lib/negotiation/scenarios/index";
+import { processTurn } from "@/lib/negotiation/turn";
+import type { TurnPayload } from "@/lib/negotiation/types";
 import { RetryPanel, type RetryPanelState } from "@/components/result/retry-panel";
 import { ShareCardLink } from "@/components/result/share-card-link";
 import { SiteFooter } from "@/components/site-footer";
@@ -18,13 +23,44 @@ function retryPreview(value: string | string[] | undefined): RetryPanelState {
   return { kind: "available", until: "1er octobre" };
 }
 
+// Suite de l'échange (mission #080), rendue depuis les scénarios de réponses
+// de marque (lib/negotiation/scenarios) : ?echange=fil|partiel|refus|conclu|question|repli|sans-formule.
+const THREAD_PREVIEWS: Record<string, { scenarios: string[]; right: TurnRight }> = {
+  fil: { scenarios: ["03-termes-a-la-hausse", "06-reponse-vague"], right: { kind: "pack", balance: 2 } },
+  partiel: { scenarios: ["02-acceptation-partielle"], right: { kind: "pro", remaining: 12 } },
+  refus: { scenarios: ["05-refus-net"], right: { kind: "pack", balance: 1 } },
+  conclu: { scenarios: ["01-acceptation-franche"], right: { kind: "pack", balance: 1 } },
+  question: { scenarios: ["07-question-a-la-creatrice"], right: { kind: "pack", balance: 1 } },
+  repli: { scenarios: ["10-garde-citation-inventee"], right: { kind: "pack", balance: 1 } },
+  "sans-formule": { scenarios: [], right: { kind: "plan_required", message: "" } },
+};
+
+function threadPreview(name: string) {
+  const preview = THREAD_PREVIEWS[name];
+  const all = loadScenarios();
+  const chosen = preview.scenarios.map((id) => all.find((s) => s.id === id)!);
+  const base = scenarioContext(all[0]);
+  const previous: TurnPayload[] = [];
+  const turns: ThreadTurnView[] = [];
+  for (const scenario of chosen) {
+    const context = { ...base, previous: [...previous], turnNumber: 2 + previous.length, brandReply: scenario.reponse_marque };
+    const result = processTurn(context, readingOf(scenario, base.original));
+    if (result.kind !== "turn") continue;
+    previous.push(result.payload);
+    turns.push({ turnNumber: context.turnNumber, createdAt: "2026-09-19T10:00:00.000Z", brandReply: scenario.reponse_marque, payload: result.payload });
+  }
+  return { analysis: base.original, turns, right: preview.right };
+}
+
 export default async function ResultPreviewPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const requested = (await searchParams).etat;
   const state: PreviewState =
     typeof requested === "string" && (PREVIEW_STATES as readonly string[]).includes(requested)
       ? (requested as PreviewState)
       : "debloque";
-  const { analysis } = previewAnalysis(state);
+  const echange = (await searchParams).echange;
+  const thread = typeof echange === "string" && echange in THREAD_PREVIEWS ? threadPreview(echange) : null;
+  const analysis = thread ? thread.analysis : previewAnalysis(state).analysis;
   const relance = (await searchParams).relance;
 
   return (
@@ -43,6 +79,9 @@ export default async function ResultPreviewPage({ searchParams }: { searchParams
         unlockHref="/connexion"
         // Relance : état choisi par ?relance=available|used|expired|retry_still_incomplete.
         retry={<RetryPanel state={retryPreview(relance)} originId={null} />}
+        afterMessage={
+          thread ? <NegotiationThread key="echange" analysisId="apercu" turns={thread.turns} conclusion={null} right={thread.right} /> : null
+        }
       >
         {shareCardAvailable(analysis) ? <ShareCardLink href={`/dev/carte?etat=${state}`} /> : null}
         <EstimateFeedback action={null} initial={null} />

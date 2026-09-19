@@ -1,0 +1,64 @@
+{
+  "source": "inventé",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "id": "06-reponse-vague",
+  "titre": "Réponse vague",
+  "reponse_marque": "Merci pour votre message, on regarde ça en interne et on revient vers vous.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "vague",
+    "asks": [
+      {
+        "id": "prix",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c1",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c2",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c5",
+        "status": "unanswered",
+        "quote": null
+      }
+    ],
+    "changes": [],
+    "brand_questions": [],
+    "uncertainties": [],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci pour votre retour, avec plaisir.\n\nJe reste disponible si vous avez des questions sur ma proposition ou si vous souhaitez ajuster certains points.\n\nBelle journée,",
+      "tone": "Poli et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "vague",
+    "nouveau_chiffrage": false,
+    "conclusion": false,
+    "message_de_repli": false,
+    "demandes": {
+      "prix": "unanswered",
+      "c1": "unanswered"
+    },
+    "termes_changes": []
+  }
+}

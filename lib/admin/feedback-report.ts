@@ -1,5 +1,6 @@
 import { FEEDBACK_RATINGS, type FeedbackRating } from "@/lib/analysis/feedback-options";
 import { normalizeDeal } from "@/lib/analysis/normalize";
+import { offeredOf, type Offered } from "@/lib/negotiation/terms";
 import rates from "@/lib/rates/fr-2026.3.json";
 import { TIERS, type Tier } from "@/lib/rates/tier";
 import { analysisSchema, type Analysis } from "@/lib/schema";
@@ -34,9 +35,8 @@ export type Distribution = { total: number; counts: Record<FeedbackRating, numbe
 export type Group = { key: string; label: string; detail?: string; distribution: Distribution };
 export type Breakdown = { key: string; title: string; groups: Group[] };
 
-// Montant confronté à la fourchette, comme le verdict (lib/analysis/verdict.ts) :
-// l'argent proposé, sinon la valeur des produits offerts quand elle est écrite.
-export type Offered = { value: number; kind: "money" | "products" } | null;
+// Montant confronté à la fourchette : lib/negotiation/terms.ts (offeredOf).
+export type { Offered } from "@/lib/negotiation/terms";
 
 export type FeedbackEntry = {
   analysisId: string;
@@ -89,12 +89,6 @@ export function hasAdRights(deal: Deal): boolean {
   return deal.usage.paid_ads || deal.usage.whitelisting || deal.usage.spark_ads;
 }
 
-export function offeredOf(deal: Deal | null): Offered {
-  if (!deal) return null;
-  if (deal.payment.amount_eur !== null) return { value: deal.payment.amount_eur, kind: "money" };
-  if (deal.in_kind_value_eur !== null) return { value: deal.in_kind_value_eur, kind: "products" };
-  return null;
-}
 
 // Un groupe par modalité, dans un ordre fixe. Les groupes vides sont gardés :
 // « aucun retour » est une information, pas une absence de ligne.

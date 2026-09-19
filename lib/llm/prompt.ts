@@ -56,9 +56,15 @@ type JsonSchema = { [key: string]: unknown };
 // JSON Schema strict, accepté par les trois fournisseurs : chaque objet
 // ferme ses propriétés et les rend toutes obligatoires.
 export function extractionJsonSchema(): JsonSchema {
-  const schema = z.toJSONSchema(extractionSchema) as JsonSchema;
-  delete schema.$schema;
-  return strictify(schema) as JsonSchema;
+  return strictJsonSchema(z.toJSONSchema(extractionSchema) as JsonSchema);
+}
+
+// Même mise en forme stricte pour tout schéma envoyé au modèle (mission #080 :
+// lecture des réponses de marque, lib/llm/turn-prompt.ts).
+export function strictJsonSchema(schema: JsonSchema): JsonSchema {
+  const copy = { ...schema };
+  delete copy.$schema;
+  return strictify(copy) as JsonSchema;
 }
 
 function strictify(node: unknown): unknown {

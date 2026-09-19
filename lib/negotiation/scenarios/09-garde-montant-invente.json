@@ -1,0 +1,58 @@
+{
+  "source": "inventé",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "id": "09-garde-montant-invente",
+  "titre": "Garde : montant inventé dans le brouillon",
+  "reponse_marque": "Merci pour votre message, on regarde ça en interne et on revient vers vous.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "vague",
+    "asks": [
+      {
+        "id": "prix",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c1",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c2",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c3",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c4",
+        "status": "unanswered",
+        "quote": null
+      },
+      {
+        "id": "c5",
+        "status": "unanswered",
+        "quote": null
+      }
+    ],
+    "changes": [],
+    "brand_questions": [],
+    "uncertainties": [],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci ! Pour vous faciliter les choses, je peux descendre à 800 € pour les 2 vidéos.\n\nBelle journée,",
+      "tone": "Poli et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "vague",
+    "nouveau_chiffrage": false,
+    "message_de_repli": true
+  }
+}

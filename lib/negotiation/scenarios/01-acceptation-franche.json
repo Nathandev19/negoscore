@@ -1,0 +1,86 @@
+{
+  "source": "inventé",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "id": "01-acceptation-franche",
+  "titre": "Acceptation franche",
+  "reponse_marque": "Bonjour ! C'est d'accord pour tout, on part sur votre proposition. On vous envoie le contrat cette semaine.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "accepted",
+    "asks": [
+      {
+        "id": "prix",
+        "status": "granted",
+        "quote": "C'est d'accord pour tout"
+      },
+      {
+        "id": "c1",
+        "status": "granted",
+        "quote": "C'est d'accord pour tout"
+      },
+      {
+        "id": "c2",
+        "status": "granted",
+        "quote": "C'est d'accord pour tout"
+      },
+      {
+        "id": "c3",
+        "status": "granted",
+        "quote": "C'est d'accord pour tout"
+      },
+      {
+        "id": "c4",
+        "status": "granted",
+        "quote": "C'est d'accord pour tout"
+      },
+      {
+        "id": "c5",
+        "status": "granted",
+        "quote": "C'est d'accord pour tout"
+      }
+    ],
+    "changes": [
+      {
+        "group": "exclusivity",
+        "quote": "C'est d'accord pour tout"
+      },
+      {
+        "group": "payment_terms",
+        "quote": "C'est d'accord pour tout"
+      }
+    ],
+    "brand_questions": [],
+    "uncertainties": [],
+    "next_message": {
+      "text": "Merci beaucoup !",
+      "tone": "Poli et ferme"
+    },
+    "deal": {
+      "exclusivity": {
+        "present": true,
+        "duration_months": 1,
+        "category": "cosmétique"
+      },
+      "payment": {
+        "terms_days": 30,
+        "schedule": "50 % à la signature"
+      }
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "accepted",
+    "nouveau_chiffrage": true,
+    "conclusion": true,
+    "demandes": {
+      "prix": "granted",
+      "c2": "granted"
+    },
+    "termes_changes": [
+      "exclusivity",
+      "payment_terms"
+    ]
+  }
+}

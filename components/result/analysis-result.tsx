@@ -62,6 +62,7 @@ export function AnalysisResult({
   before,
   children,
   retry,
+  afterMessage,
 }: {
   analysis: ResultView;
   unlockHref: string;
@@ -71,6 +72,8 @@ export function AnalysisResult({
   children?: ReactNode;
   // Offre incomplète : relance gratuite, juste sous la liste de ce qui manque.
   retry?: ReactNode;
+  // Sous le message à envoyer : la suite de l'échange avec la marque (#080).
+  afterMessage?: ReactNode;
 }) {
   const [tier, setTier] = useState<Tier>(stored.profile_tier);
   // Changement de niveau : le bandeau est remonté (key) pour rejouer l'animation,
@@ -179,6 +182,7 @@ export function AnalysisResult({
           <LockedMessagePlaceholder />
         )}
         {locked ? <UnlockCta href={unlockHref} /> : null}
+        {afterMessage}
         <RedFlags items={analysis.red_flags} />
         <GoodPoints items={analysis.good_points} />
         <LegalNotice legal={analysis.fr_legal} />
