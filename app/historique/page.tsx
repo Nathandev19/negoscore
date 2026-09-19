@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { HistoryView, type HistoryRow } from "@/components/account/history-view";
 import { getViewer, getViewerAccessToken } from "@/lib/auth/viewer";
+import { loadNegotiationSummaries } from "@/lib/negotiation/history-load";
 import { selectRowsAsUser } from "@/lib/supabase/as-user";
 
 export const metadata: Metadata = {
@@ -23,5 +24,18 @@ export default async function HistoryPage() {
     "select=id,created_at,score,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability,tier:payload->>profile_tier&order=created_at.desc&limit=100",
   );
 
-  return <HistoryView rows={rows} />;
+  // Mission #087 : état des échanges et chiffres actuels, pour les analyses
+  // listées qui ont des tours (lib/negotiation/history-load.ts).
+  const summaries = await loadNegotiationSummaries(
+    user.id,
+    token,
+    rows.map((row) => row.id),
+  );
+
+  return (
+    <HistoryView
+      rows={rows.map((row) => ({ ...row, negotiation: summaries?.get(row.id) ?? null }))}
+      negotiationUnavailable={summaries === null}
+    />
+  );
 }
