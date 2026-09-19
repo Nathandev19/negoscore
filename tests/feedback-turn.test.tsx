@@ -1,0 +1,204 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mission #086 — l'avis porte sur les chiffres réellement jugés : ceux du tour
+// affiché, enregistrés avec son numéro, et regroupés selon les termes de ce
+// tour sur la page des retours.
+
+const db = vi.hoisted(() => ({
+  writes: [] as Array<Record<string, unknown>>,
+  turns: [] as Array<{ analysis_id: string; turn_number: number; deal: unknown }>,
+  queries: [] as string[],
+}));
+const loaded = vi.hoisted(() => ({ current: null as unknown }));
+const thread = vi.hoisted(() => ({ current: null as unknown }));
+
+vi.mock("@/lib/supabase/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/supabase/server")>();
+  return {
+    ...actual,
+    selectRows: async (table: string, query: string) => {
+      db.queries.push(`${table}?${query}`);
+      return table === "negotiation_turns" ? db.turns : [];
+    },
+    upsertRow: async (_table: string, row: Record<string, unknown>) => {
+      db.writes.push(row);
+    },
+  };
+});
+vi.mock("@/lib/analysis/load", () => ({ loadResultForViewer: async () => loaded.current }));
+vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => ({ id: "u1", email: "u@exemple.fr" }) }));
+vi.mock("@/lib/negotiation/store", () => ({ loadThread: async () => thread.current }));
+
+const { POST } = await import("@/app/api/analyses/[id]/avis/route");
+const { recomputeForDeal } = await import("@/lib/analysis/recompute");
+const { loadScenarios, runScenario } = await import("@/lib/negotiation/scenarios");
+const { attachTurnDeals, buildReport, dealOf } = await import("@/lib/admin/feedback-report");
+const { EntryItem } = await import("@/components/admin/feedback-report-view");
+const { EstimateFeedback } = await import("@/components/result/estimate-feedback");
+
+const ID = "11111111-1111-4111-8111-111111111111";
+const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/[\s  ]+/g, " ");
+
+// Tour 2 du fil d'exemple : 3 vidéos, droits pub 12 mois, 450 €.
+const s = loadScenarios().find((x) => x.id.endsWith("termes-a-la-hausse"))!;
+const { context, result } = runScenario(s);
+if (result.kind !== "turn") throw new Error("pas un tour");
+const original = context.original;
+const payload = result.payload;
+const storedThread = { turns: [{ id: "t2", turnNumber: 2, brandReply: null, createdAt: "", payload }], conclusion: null };
+
+function post(body: unknown) {
+  return POST(
+    new Request(`http://localhost:3000/api/analyses/${ID}/avis`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+    { params: Promise.resolve({ id: ID }) },
+  );
+}
+
+beforeEach(() => {
+  db.writes = [];
+  db.turns = [];
+  db.queries = [];
+  loaded.current = { analysis: original, unlocked: true };
+  thread.current = storedThread;
+  vi.spyOn(console, "log").mockImplementation(() => undefined);
+});
+
+describe("A — les chiffres affichés et le tour, enregistrés avec l'avis", () => {
+  it("après le tour 2 : la fourchette et le score des termes du tour 2, et le tour", async () => {
+    const response = await post({ rating: "too_low", tier: "confirmed", turn: 2 });
+    expect(response.status).toBe(200);
+    const expected = recomputeForDeal(original, payload.deal_after)!;
+    expect(db.writes[0]).toMatchObject({
+      turn_number: 2,
+      total_low: expected.estimate.total_low,
+      total_high: expected.estimate.total_high,
+      score: expected.score?.value ?? null,
+      rate_table_version: "fr-2026.3",
+    });
+    expect(db.writes[0].total_low).not.toBe(original.estimate.total_low);
+  });
+
+  it("sur l'offre d'origine : ses chiffres, tour 0", async () => {
+    await post({ rating: "fair", tier: "confirmed", turn: 0 });
+    expect(db.writes[0]).toMatchObject({ turn_number: 0, total_low: original.estimate.total_low, total_high: original.estimate.total_high });
+  });
+
+  it("un tour qui n'existe pas dans le fil : refusé, rien d'écrit", async () => {
+    const response = await post({ rating: "fair", tier: "confirmed", turn: 3 });
+    expect(response.status).toBe(409);
+    expect(db.writes).toEqual([]);
+    expect((await post({ rating: "fair", tier: "confirmed", turn: 1 })).status).toBe(400);
+  });
+
+  it("table de l'analyse disparue : la page montrait les chiffres d'origine, l'avis porte sur eux (tour 0)", async () => {
+    loaded.current = { analysis: { ...original, estimate: { ...original.estimate, rate_table_version: "fr-2026.1" } }, unlocked: true };
+    await post({ rating: "fair", tier: "confirmed", turn: 2 });
+    expect(db.writes[0]).toMatchObject({ turn_number: 0, total_low: original.estimate.total_low, rate_table_version: "fr-2026.1" });
+  });
+});
+
+describe("B — la page des retours regroupe selon les termes du tour jugé", () => {
+  // L'offre d'origine a des droits pub et 300 € ; le tour jugé : sans droits
+  // pub, sans exclusivité, 900 €.
+  const turnDeal = {
+    ...payload.deal_after,
+    usage: { ...payload.deal_after.usage, paid_ads: false },
+    exclusivity: { present: false, duration_months: null, category: null },
+    payment: { ...payload.deal_after.payment, amount_eur: 900 },
+  };
+  const row = (overrides: Record<string, unknown>) => ({
+    analysis_id: ID,
+    rating: "fair" as const,
+    comment: null,
+    profile_tier: "confirmed" as const,
+    score: 40,
+    total_low: 1000,
+    total_high: 2000,
+    rate_table_version: "fr-2026.3",
+    turn_number: 2,
+    created_at: "2026-09-20T10:00:00.000Z",
+    updated_at: "2026-09-20T10:00:00.000Z",
+    analysis: { deal: original.deal },
+    ...overrides,
+  });
+
+  it("les termes du tour sont lus dans negotiation_turns (deal_after seulement)", async () => {
+    db.turns = [{ analysis_id: ID, turn_number: 2, deal: turnDeal }];
+    const [attached] = await attachTurnDeals([row({})]);
+    expect(attached.turn_deal).toEqual(turnDeal);
+    expect(db.queries[0]).toContain("negotiation_turns?select=analysis_id,turn_number,deal:payload->deal_after");
+    expect(db.queries[0]).not.toContain("brand_reply");
+  });
+
+  it("droits pub, exclusivité et montant proposé : ceux du tour 2, pas de l'offre d'origine", () => {
+    expect(original.deal.usage.paid_ads).toBe(true);
+    const report = buildReport([row({ turn_deal: turnDeal })]);
+    const group = (key: string, label: string) =>
+      report.byShape.find((b) => b.key === key)!.groups.find((g) => g.label === label)!.distribution.total;
+    expect(group("droits-pub", "Sans droits pub")).toBe(1);
+    expect(group("droits-pub", "Avec droits pub")).toBe(0);
+    expect(group("exclusivite", "Sans exclusivité")).toBe(1);
+    expect(report.entries[0].offered).toEqual({ value: 900, kind: "money" });
+    expect(report.entries[0].ratioToLow).toBeCloseTo(0.9);
+  });
+
+  it("tour introuvable : rangé à part, jamais sous la forme de l'offre d'origine", () => {
+    const report = buildReport([row({})]);
+    expect(dealOf(row({}))).toBeNull();
+    const pub = report.byShape.find((b) => b.key === "droits-pub")!.groups;
+    expect(pub.find((g) => g.key === "illisible")?.distribution.total).toBe(1);
+    expect(pub.find((g) => g.key === "avec")?.distribution.total).toBe(0);
+  });
+
+  it("C — le tour est visible dans la liste, et compté par tour", () => {
+    const report = buildReport([row({ turn_deal: turnDeal }), row({ analysis_id: "22222222-2222-4222-8222-222222222222", turn_number: 0 })]);
+    const html = text(renderToStaticMarkup(<EntryItem entry={report.entries[0]} link={false} />));
+    expect(html).toContain("Porte sur Les termes après le tour 2 de négociation");
+    expect(report.byTurn.map((g) => [g.key, g.distribution.total])).toEqual([
+      ["origine", 1],
+      ["apres-tour", 1],
+    ]);
+  });
+
+  it("E — un avis d'avant l'enregistrement du tour : l'offre d'origine, et l'écran dit que c'est supposé", () => {
+    const old = row({ turn_number: null });
+    expect(dealOf(old)).not.toBeNull();
+    const report = buildReport([old]);
+    const html = text(renderToStaticMarkup(<EntryItem entry={report.entries[0]} link={false} />));
+    expect(html).toContain("L'offre d'origine (supposé : avis donné avant l'enregistrement du tour)");
+    expect(report.byTurn.find((g) => g.key === "non-enregistre")?.distribution.total).toBe(1);
+    expect(report.byShape.find((b) => b.key === "droits-pub")!.groups.find((g) => g.key === "avec")?.distribution.total).toBe(1);
+  });
+});
+
+describe("le formulaire d'avis", () => {
+  it("il envoie le tour affiché, et dit sur quoi porte l'avis", () => {
+    const html = renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={null} turn={3} />);
+    expect(html).toContain('name="turn" value="3"');
+    expect(text(html)).toContain("La fourchette affichée plus haut, calculée sur les termes après le tour 3.");
+  });
+
+  it("un avis donné sur un autre tour n'est pas pré-rempli, et le formulaire le dit", () => {
+    const html = text(
+      renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={{ rating: "too_high", comment: "ancien", turn: 0 }} turn={2} />),
+    );
+    expect(html).toContain("Ton avis précédent portait sur l'offre d'origine. Un nouvel avis le remplace.");
+    expect(html).not.toContain("ancien");
+    expect(html).toContain("Envoyer mon avis");
+  });
+
+  it("avis ancien (tour non enregistré) : supposé sur l'offre d'origine, et dit comme tel", () => {
+    const html = text(
+      renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={{ rating: "fair", comment: null, turn: null }} turn={2} />),
+    );
+    expect(html).toContain("Ton avis précédent portait sur l'offre d'origine (supposé : il date d'avant l'enregistrement du tour)");
+    const same = text(renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={{ rating: "fair", comment: "gardé", turn: null }} />));
+    expect(same).toContain("gardé");
+    expect(same).toContain("Modifier mon avis");
+  });
+});

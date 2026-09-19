@@ -12,7 +12,7 @@ import { baseExtraction } from "@/lib/fixtures/preview-states";
 const ID = "11111111-1111-4111-8111-111111111111";
 const OWNER_TOKEN = "jeton-du-proprietaire";
 
-const store = vi.hoisted(() => ({ saved: [] as Array<{ id: string; rating: string; comment: string | null; tier: string }> }));
+const store = vi.hoisted(() => ({ saved: [] as Array<{ id: string; rating: string; comment: string | null; tier: string; turn?: number; savedTurn?: number }> }));
 const browser = vi.hoisted(() => ({ cookies: new Map<string, string>() }));
 
 vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => null }));
@@ -23,8 +23,8 @@ vi.mock("@/lib/analysis/load", () => ({
 }));
 vi.mock("@/lib/analysis/feedback", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/analysis/feedback")>()),
-  saveFeedback: async (id: string, _shown: unknown, input: { rating: string; comment: string | null; tier: string }) => {
-    store.saved.push({ id, ...input });
+  saveFeedback: async (id: string, _shown: unknown, input: { rating: string; comment: string | null; tier: string }, turn: number) => {
+    store.saved.push({ id, ...input, savedTurn: turn });
     return "saved";
   },
 }));
@@ -65,7 +65,8 @@ describe("avis sur l'estimation sans JavaScript", () => {
   it("l'avis est réellement enregistré, et le serveur confirme", async () => {
     const state = await submit({ analysisId: ID, rating: "too_low", comment: "La marque paie 400 € d'habitude.", tier: "starter" });
     expect(state).toEqual({ status: "saved", tier: "starter", rating: "too_low", comment: "La marque paie 400 € d'habitude." });
-    expect(store.saved).toEqual([{ id: ID, rating: "too_low", comment: "La marque paie 400 € d'habitude.", tier: "starter" }]);
+    // Mission #086 : sans tour envoyé, l'offre d'origine.
+    expect(store.saved).toEqual([{ id: ID, rating: "too_low", comment: "La marque paie 400 € d'habitude.", tier: "starter", turn: 0, savedTurn: 0 }]);
   });
 
   it("sans réponse choisie : le serveur le dit, et le commentaire est gardé", async () => {

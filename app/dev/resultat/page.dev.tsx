@@ -63,6 +63,7 @@ export default async function ResultPreviewPage({ searchParams }: { searchParams
   const thread = typeof echange === "string" && echange in THREAD_PREVIEWS ? threadPreview(echange) : null;
   const analysis = thread ? thread.analysis : previewAnalysis(state).analysis;
   const relance = (await searchParams).relance;
+  const negotiated = thread ? currentState({ turns: thread.turns, conclusion: null }) : null;
 
   return (
     <>
@@ -80,13 +81,13 @@ export default async function ResultPreviewPage({ searchParams }: { searchParams
         unlockHref="/connexion"
         // Relance : état choisi par ?relance=available|used|expired|retry_still_incomplete.
         retry={<RetryPanel state={retryPreview(relance)} originId={null} />}
-        negotiated={thread ? currentState({ turns: thread.turns, conclusion: null }) : null}
+        negotiated={negotiated}
         afterMessage={
           thread ? <NegotiationThread key="echange" analysisId="apercu" turns={thread.turns} conclusion={null} access={thread.access} /> : null
         }
       >
         {shareCardAvailable(analysis) ? <ShareCardLink href={`/dev/carte?etat=${state}`} /> : null}
-        <EstimateFeedback action={null} initial={null} />
+        <EstimateFeedback action={null} initial={null} turn={negotiated?.turn ?? 0} />
       </AnalysisResult>
       <SiteFooter />
     </>

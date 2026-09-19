@@ -85,9 +85,16 @@ function offeredText(entry: FeedbackEntry): string {
   return entry.offered.kind === "money" ? formatEur(entry.offered.value) : `${formatEur(entry.offered.value)} en produits`;
 }
 
+// Mission #086, C et E — sur quoi porte l'avis, en tête de chaque retour.
+export function judgedText(turn: number | null): string {
+  if (turn === null) return "L'offre d'origine (supposé : avis donné avant l'enregistrement du tour)";
+  return turn === 0 ? "L'offre d'origine" : `Les termes après le tour ${turn} de négociation`;
+}
+
 export function EntryItem({ entry, link = true }: { entry: FeedbackEntry; link?: boolean }) {
   const range = formatEurRange(entry.rangeLow, entry.rangeHigh);
   const facts: Array<[string, string]> = [
+    ["Porte sur", judgedText(entry.turn)],
     ["Niveau", entry.tier ? TIER_GROUP_LABEL[entry.tier] : "Non enregistré"],
     ["Score", entry.score === null ? "Pas de score" : `${formatNumber(entry.score, 0)}/100`],
     ["Montant proposé", offeredText(entry)],
@@ -154,6 +161,15 @@ export function FeedbackReportView({ report }: { report: FeedbackReport }) {
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="text-h2">Par tour jugé</h2>
+        <p className="text-small">
+          Un avis sur l&apos;offre d&apos;origine et un avis après des tours de négociation ne jugent pas les mêmes termes.
+          Après un tour, les chiffres enregistrés et la forme du deal sont ceux des termes de ce tour.
+        </p>
+        <DistributionTable caption="Répartition des réponses par tour jugé" rows={report.byTurn} />
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="text-h2">Par montant proposé ÷ bas de la fourchette</h2>
         <p className="text-small">
           Sépare « la table est trop haute » de « les marques de ce segment paient mal ». Montant proposé : l&apos;argent,
@@ -165,7 +181,10 @@ export function FeedbackReportView({ report }: { report: FeedbackReport }) {
       <section className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <h2 className="text-h2">Par forme du deal</h2>
-          <p className="text-small">Lue dans l&apos;analyse de l&apos;offre. Chaque retour compte une fois par tableau.</p>
+          <p className="text-small">
+            La forme du deal jugé : celle de l&apos;offre d&apos;origine, ou, pour un avis donné après un tour de
+            négociation, celle des termes de ce tour. Chaque retour compte une fois par tableau.
+          </p>
         </div>
         {report.byShape.map((breakdown) => (
           <div key={breakdown.key} className="flex flex-col gap-2">

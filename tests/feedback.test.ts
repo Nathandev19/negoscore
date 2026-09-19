@@ -80,6 +80,8 @@ describe("enregistrement de l'avis", () => {
           comment: "La marque paie 400 € d'habitude.",
           rate_table_version: "demo-2026-09",
           profile_tier: "confirmed",
+          // Mission #086 : l'offre d'origine (aucun tour envoyé).
+          turn_number: 0,
           score: 32,
           total_low: 510,
           total_high: 1100,
@@ -102,7 +104,7 @@ describe("enregistrement de l'avis", () => {
     await post(ANON_ID, OWNER, { rating: "fair", tier: "confirmed" });
     const row = db.writes[0].row;
     expect(Object.keys(row).sort()).toEqual(
-      ["analysis_id", "comment", "profile_tier", "rate_table_version", "rating", "score", "total_high", "total_low", "updated_at"].sort(),
+      ["analysis_id", "comment", "profile_tier", "rate_table_version", "rating", "score", "total_high", "total_low", "turn_number", "updated_at"].sort(),
     );
     const serialized = JSON.stringify(row);
     for (const forbidden of ["Marque Exemple", "Camille", "Ortie", OWNER_TOKEN, "user-a"]) expect(serialized).not.toContain(forbidden);

@@ -7,6 +7,7 @@ import {
   FEEDBACK_COMMENT_MAX,
   FEEDBACK_LABEL,
   FEEDBACK_RATINGS,
+  turnLabel,
   type FeedbackRating,
   type StoredFeedback,
 } from "@/lib/analysis/feedback-options";
@@ -28,7 +29,24 @@ type Status = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; tier: Tie
 // réponse (« c'est enregistré », ou l'erreur), réponse et commentaire remis en
 // place. Avant, l'envoi rechargeait la page avec ?rating=… dans l'adresse et
 // l'avis était perdu, sans un mot.
-export function EstimateFeedback({ action, initial }: { action: string | null; initial: StoredFeedback | null }) {
+//
+// Mission #086 — turn : le tour dont la page affiche les chiffres (0 : l'offre
+// d'origine). Il part avec l'avis, et le serveur enregistre les chiffres de CE
+// tour. Un avis déjà donné sur un autre tour n'est pas pré-rempli : il jugeait
+// d'autres chiffres, et le formulaire le dit.
+export function EstimateFeedback({
+  action,
+  initial: stored,
+  turn = 0,
+}: {
+  action: string | null;
+  initial: StoredFeedback | null;
+  turn?: number;
+}) {
+  // Avis d'avant la mission #086 : supposé porter sur l'offre d'origine.
+  const storedTurn = stored ? (stored.turn ?? 0) : null;
+  const initial = stored && storedTurn === turn ? stored : null;
+  const previous = stored && storedTurn !== turn ? stored : null;
   // Identifiant de l'analyse, lu dans l'adresse d'enregistrement.
   const analysisId = action?.match(/^\/api\/analyses\/([^/]+)\/avis$/)?.[1] ?? null;
   const [server, serverAction] = useActionState(saveFeedbackWithoutJs, { status: "idle" } as FeedbackWithoutJsState);
@@ -60,7 +78,7 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
       const response = await fetch(action, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, comment, tier }),
+        body: JSON.stringify({ rating, comment, tier, turn }),
       });
       if (response.ok) {
         setStatus({ kind: "saved", tier });
@@ -82,10 +100,23 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
     >
       {analysisId ? <input type="hidden" name="analysisId" value={analysisId} /> : null}
       <input type="hidden" name="tier" value={tier} />
+      <input type="hidden" name="turn" value={turn} />
       <fieldset className="flex flex-col gap-3" aria-describedby={legendId}>
         <legend id={legendId} className="headline mb-3 text-h2 text-encre">
           Cette estimation te paraît juste ?
         </legend>
+        {turn > 0 ? (
+          <p className="text-small">
+            La fourchette affichée plus haut, calculée sur {turnLabel(turn)}.
+          </p>
+        ) : null}
+        {previous ? (
+          <p className="text-small text-attenue">
+            Ton avis précédent portait sur {turnLabel(previous.turn ?? 0)}
+            {previous.turn === null ? " (supposé : il date d'avant l'enregistrement du tour)" : ""}. Un nouvel avis le
+            remplace.
+          </p>
+        ) : null}
         <div className="grid grid-cols-3 gap-2">
           {FEEDBACK_RATINGS.map((value) => {
             const selected = rating === value;
@@ -151,7 +182,7 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
         <p role="status" aria-live="polite" className="text-small">
           {(status.kind === "saved" && status.tier === tier) ||
           (status.kind === "idle" && fromServer?.status === "saved" && fromServer.tier === tier)
-            ? `Merci, c'est enregistré pour le niveau « ${TIER_LABEL[tier].short} ». Tu peux changer ta réponse à tout moment.`
+            ? `Merci, c'est enregistré pour le niveau « ${TIER_LABEL[tier].short} »${turn > 0 ? `, sur ${turnLabel(turn)}` : ""}. Tu peux changer ta réponse à tout moment.`
             : null}
         </p>
       </div>
@@ -165,8 +196,8 @@ export function EstimateFeedback({ action, initial }: { action: string | null; i
         </p>
       ) : null}
       <p className="text-xs text-attenue">
-        Seuls ta réponse, ton commentaire, le niveau choisi et les chiffres affichés ici sont enregistrés, avec
-        l&apos;analyse.
+        Seuls ta réponse, ton commentaire, le niveau choisi, le tour de négociation et les chiffres affichés ici sont
+        enregistrés, avec l&apos;analyse.
       </p>
     </form>
   );

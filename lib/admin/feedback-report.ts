@@ -9,9 +9,11 @@ import { isMissingColumn, isMissingRelation, selectRows } from "@/lib/supabase/s
 
 // Mission #077 — lecture des retours « Cette estimation te paraît juste ? ».
 //
-// Ce qui est lu : la table analysis_feedback (réponse, commentaire, niveau et
-// chiffres AFFICHÉS au moment de l'avis) et, dans l'analyse, uniquement la
-// forme du deal (analyses.payload->deal). Jamais le compte, l'adresse email,
+// Ce qui est lu : la table analysis_feedback (réponse, commentaire, niveau,
+// tour et chiffres AFFICHÉS au moment de l'avis) et uniquement la forme du deal
+// JUGÉ : celle de l'analyse (analyses.payload->deal) pour un avis sur l'offre
+// d'origine, celle du tour (negotiation_turns.payload->deal_after) pour un avis
+// donné après un tour de négociation (mission #086). Jamais le compte, l'adresse email,
 // le jeton anonyme ni le texte de l'offre : rien de tout ça n'est demandé à la
 // base.
 
@@ -26,9 +28,16 @@ export type FeedbackRow = {
   total_low: number | null;
   total_high: number | null;
   rate_table_version: string;
+  // Mission #086 : tour jugé (0 : offre d'origine). null : avis d'avant la
+  // migration 20260920000024, traité comme un avis sur l'offre d'origine, et
+  // affiché comme supposé.
+  turn_number: number | null;
   created_at: string;
   updated_at: string;
   analysis: { deal: unknown } | null;
+  // Termes du tour jugé, lus dans negotiation_turns par loadFeedbackRows.
+  // Absent : tour introuvable (le regroupement le range à part).
+  turn_deal?: unknown;
 };
 
 export type Distribution = { total: number; counts: Record<FeedbackRating, number> };
@@ -51,12 +60,15 @@ export type FeedbackEntry = {
   // offered.value / rangeLow. null quand l'un des deux manque.
   ratioToLow: number | null;
   rateTableVersion: string;
+  // Tour jugé (0 : offre d'origine) ; null : non enregistré (avis ancien).
+  turn: number | null;
 };
 
 export type FeedbackReport = {
   overall: Distribution;
   byTier: Group[];
   byVersion: Group[];
+  byTurn: Group[];
   byRatio: Group[];
   byShape: Breakdown[];
   entries: FeedbackEntry[];
@@ -76,10 +88,13 @@ function distributionOf(rows: Array<{ rating: FeedbackRating }>): Distribution {
   return distribution;
 }
 
-// Forme du deal lue dans l'analyse enregistrée. null : illisible (schéma
-// inconnu). Mise en cohérence comme à l'affichage (mission #057).
-export function dealOf(row: Pick<FeedbackRow, "analysis">): Deal | null {
-  const parsed = analysisSchema.shape.deal.safeParse(row.analysis?.deal);
+// Forme du deal JUGÉ : celle du tour de négociation pour un avis donné après
+// un tour (mission #086), celle de l'analyse sinon (avis sur l'offre
+// d'origine, ou avis ancien, supposé l'être). null : illisible (schéma
+// inconnu, tour introuvable). Mise en cohérence comme à l'affichage (#057).
+export function dealOf(row: Pick<FeedbackRow, "analysis" | "turn_number" | "turn_deal">): Deal | null {
+  const judged = row.turn_number !== null && row.turn_number > 0 ? row.turn_deal : row.analysis?.deal;
+  const parsed = analysisSchema.shape.deal.safeParse(judged);
   return parsed.success ? normalizeDeal(parsed.data) : null;
 }
 
@@ -101,7 +116,15 @@ function withUnreadable(groups: Group[], rows: FeedbackRow[]): Group[] {
   const unreadable = rows.filter((row) => dealOf(row) === null);
   return unreadable.length === 0
     ? groups
-    : [...groups, { key: "illisible", label: "Analyse illisible", detail: "Forme du deal non lisible dans l'analyse enregistrée.", distribution: distributionOf(unreadable) }];
+    : [
+        ...groups,
+        {
+          key: "illisible",
+          label: "Forme du deal illisible",
+          detail: "Analyse illisible, ou tour de négociation jugé introuvable.",
+          distribution: distributionOf(unreadable),
+        },
+      ];
 }
 
 export const TIER_GROUP_LABEL: Record<Tier, string> = {
@@ -152,6 +175,30 @@ function byRatio(entries: FeedbackEntry[]): Group[] {
       distribution: distributionOf(entries.filter((entry) => entry.ratioToLow === null)),
     },
   ];
+}
+
+// Mission #086, C et E — sur quoi porte l'avis. Les avis d'avant
+// l'enregistrement du tour sont comptés à part, avec ce qu'on en suppose.
+function byTurn(rows: FeedbackRow[]): Group[] {
+  const groups: Group[] = [
+    { key: "origine", label: "Offre d'origine", distribution: distributionOf(rows.filter((row) => row.turn_number === 0)) },
+    {
+      key: "apres-tour",
+      label: "Après un tour de négociation",
+      detail: "Chiffres et forme du deal : ceux des termes du tour jugé.",
+      distribution: distributionOf(rows.filter((row) => row.turn_number !== null && row.turn_number > 0)),
+    },
+  ];
+  const unknown = rows.filter((row) => row.turn_number === null);
+  if (unknown.length > 0) {
+    groups.push({
+      key: "non-enregistre",
+      label: "Tour non enregistré",
+      detail: "Avis donnés avant l'enregistrement du tour : supposés porter sur l'offre d'origine, et comptés comme tels ailleurs.",
+      distribution: distributionOf(unknown),
+    });
+  }
+  return groups;
 }
 
 export function buildReport(rows: FeedbackRow[]): FeedbackReport {
@@ -235,16 +282,38 @@ export function buildReport(rows: FeedbackRow[]): FeedbackReport {
       rangeHigh: row.total_high,
       ratioToLow: offered && row.total_low ? offered.value / row.total_low : null,
       rateTableVersion: row.rate_table_version,
+      turn: row.turn_number,
     };
   });
   entries.sort((a, b) => b.answeredAt.localeCompare(a.answeredAt));
 
-  return { overall: distributionOf(rows), byTier, byVersion: byVersion(rows), byRatio: byRatio(entries), byShape, entries };
+  return { overall: distributionOf(rows), byTier, byVersion: byVersion(rows), byTurn: byTurn(rows), byRatio: byRatio(entries), byShape, entries };
 }
 
 const PAGE_SIZE = 1000;
 const COLUMNS =
-  "analysis_id,rating,comment,profile_tier,score,total_low,total_high,rate_table_version,created_at,updated_at,analysis:analyses(deal:payload->deal)";
+  "analysis_id,rating,comment,profile_tier,score,total_low,total_high,rate_table_version,turn_number,created_at,updated_at,analysis:analyses(deal:payload->deal)";
+
+// Mission #086 — termes des tours jugés, lus dans negotiation_turns : seulement
+// payload->deal_after, jamais la réponse collée. Par lots d'identifiants.
+const TURN_BATCH = 100;
+export async function attachTurnDeals(rows: FeedbackRow[]): Promise<FeedbackRow[]> {
+  const wanted = rows.filter((row) => row.turn_number !== null && row.turn_number > 0);
+  if (wanted.length === 0) return rows;
+  const ids = [...new Set(wanted.map((row) => row.analysis_id))].filter(isUuid);
+  const deals = new Map<string, unknown>();
+  for (let start = 0; start < ids.length; start += TURN_BATCH) {
+    const batch = ids.slice(start, start + TURN_BATCH);
+    const found = await selectRows<{ analysis_id: string; turn_number: number; deal: unknown }>(
+      "negotiation_turns",
+      `select=analysis_id,turn_number,deal:payload->deal_after&kind=eq.reply&analysis_id=in.(${batch.join(",")})`,
+    );
+    for (const turn of found) deals.set(`${turn.analysis_id}:${turn.turn_number}`, turn.deal);
+  }
+  return rows.map((row) =>
+    row.turn_number !== null && row.turn_number > 0 ? { ...row, turn_deal: deals.get(`${row.analysis_id}:${row.turn_number}`) } : row,
+  );
+}
 
 // Toutes les lignes, par pages (la base plafonne une réponse à 1 000 lignes).
 // "missing" : table ou colonne profile_tier absente (migrations 016 et 017).
@@ -257,7 +326,7 @@ export async function loadFeedbackRows(): Promise<FeedbackRow[] | "missing"> {
         `select=${COLUMNS}&order=updated_at.desc,analysis_id.asc&limit=${PAGE_SIZE}&offset=${offset}`,
       );
       rows.push(...page);
-      if (page.length < PAGE_SIZE) return rows;
+      if (page.length < PAGE_SIZE) return await attachTurnDeals(rows);
     }
   } catch (caught) {
     if (isMissingRelation(caught) || isMissingColumn(caught)) return "missing";
@@ -267,7 +336,9 @@ export async function loadFeedbackRows(): Promise<FeedbackRow[] | "missing"> {
 
 // ─── Une analyse commentée (page /dev/retours/[id]) ──────────────────────────
 
-export type FeedbackDetail = { feedback: FeedbackEntry; analysis: Analysis };
+// judgedDeal : forme du deal jugé (termes du tour pour un avis après un tour),
+// null si introuvable.
+export type FeedbackDetail = { feedback: FeedbackEntry; analysis: Analysis; judgedDeal: Deal | null };
 
 // L'analyse d'un retour, lue par son identifiant avec la clé de service : la
 // page de résultat publique n'est lisible que par la personne qui a analysé
@@ -283,7 +354,7 @@ export async function loadFeedbackDetail(id: string): Promise<FeedbackDetail | n
     if (isMissingRelation(caught) || isMissingColumn(caught)) return null;
     throw caught;
   }
-  const row = rows[0];
+  const [row] = rows.length > 0 ? await attachTurnDeals(rows.slice(0, 1)) : [];
   if (!row) return null;
   const [stored] = await selectRows<{ payload: unknown }>("analyses", `select=payload&id=eq.${id}&limit=1`);
   const parsed = analysisSchema.safeParse(stored?.payload);
@@ -291,5 +362,6 @@ export async function loadFeedbackDetail(id: string): Promise<FeedbackDetail | n
   return {
     feedback: buildReport([row]).entries[0],
     analysis: { ...parsed.data, deal: normalizeDeal(parsed.data.deal) },
+    judgedDeal: dealOf(row),
   };
 }

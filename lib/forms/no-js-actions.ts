@@ -28,6 +28,8 @@ export async function saveFeedbackWithoutJs(_previous: FeedbackWithoutJsState, f
   const rating = String(formData.get("rating") ?? "");
   const comment = String(formData.get("comment") ?? "");
   const tier = parseTier(formData.get("tier"));
+  // Mission #086 : tour dont la page affichait les chiffres (0 par défaut).
+  const turn = Number(formData.get("turn") ?? 0) || 0;
   if (!rating) {
     return { status: "error", message: "Choisis une réponse avant d'envoyer.", rating, comment };
   }
@@ -35,7 +37,7 @@ export async function saveFeedbackWithoutJs(_previous: FeedbackWithoutJsState, f
     return { status: "error", message: "Ton avis n'a pas pu être enregistré. Recharge la page et réessaie.", rating, comment };
   }
   try {
-    const request = await forwardedJsonRequest(`/api/analyses/${id}/avis`, { rating, comment, tier });
+    const request = await forwardedJsonRequest(`/api/analyses/${id}/avis`, { rating, comment, tier, turn });
     const response = await feedbackRoute(request, { params: Promise.resolve({ id }) });
     if (response.ok) return { status: "saved", tier, rating, comment };
     const body = (await response.json().catch(() => ({}))) as { error?: unknown };

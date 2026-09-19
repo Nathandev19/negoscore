@@ -34,8 +34,8 @@ export default async function FeedbackPage() {
         </div>
         {rows === "missing" ? (
           <p role="alert" className="alert-bad text-small">
-            La table des retours n&apos;est pas lisible : les migrations 20260917000016 et 20260917000017 ne sont pas
-            appliquées.
+            La table des retours n&apos;est pas lisible : les migrations 20260917000016, 20260917000017 et
+            20260920000024 ne sont pas toutes appliquées.
           </p>
         ) : rows.length === 0 ? (
           <p className="border-l-4 border-encre py-1 pl-3 font-semibold text-encre">

@@ -99,6 +99,9 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
         {cardAvailable ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}
         <EstimateFeedback
           action={`/api/analyses/${id}/avis`}
+          // Mission #086 : le tour dont la page affiche les chiffres. Table de
+          // l'analyse disparue : la page montre ceux d'origine, tour 0.
+          turn={negotiated && cardAnalysis !== null ? negotiated.turn : 0}
           initial={feedback === "missing" ? null : feedback}
         />
         {result.sourceRemoved ? (

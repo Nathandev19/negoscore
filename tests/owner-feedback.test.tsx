@@ -45,6 +45,7 @@ function row(overrides: Partial<FeedbackRow> & { deal?: Partial<ReturnType<typeo
     total_low: 400,
     total_high: 600,
     rate_table_version: "2026.09",
+    turn_number: 0,
     created_at: "2026-09-18T10:00:00.000Z",
     updated_at: "2026-09-18T10:00:00.000Z",
     analysis: { deal: { ...baseDeal(), ...deal } },
@@ -370,6 +371,6 @@ describe("B — répartitions et liste", () => {
   it("table absente (migration non appliquée) : on le dit, pas de page vide", async () => {
     session.email = OWNER;
     store.rows = "missing";
-    expect(await render()).toContain("les migrations 20260917000016 et 20260917000017 ne sont pas");
+    expect(await render()).toContain("les migrations 20260917000016, 20260917000017 et 20260920000024 ne sont pas toutes appliquées");
   });
 });

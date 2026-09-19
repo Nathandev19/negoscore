@@ -25,8 +25,24 @@ export const feedbackInputSchema = z.object({
   // Niveau affiché au moment de l'avis (mission #039). Obligatoire : un avis
   // « trop haute » sans le niveau ne dit rien de la table de tarifs.
   tier: z.enum(TIERS),
+  // Mission #086 — tour dont la page affiche les chiffres au moment de l'avis :
+  // 0 pour l'offre d'origine, 2 à 5 après un tour de négociation. Les chiffres
+  // eux-mêmes sont recalculés par le serveur pour ce tour, jamais repris du
+  // navigateur. Absent (page chargée avant cette version) : l'offre d'origine.
+  turn: z
+    .number()
+    .int()
+    .refine((turn) => turn === 0 || (turn >= 2 && turn <= 5))
+    .default(0),
 });
 
 export type FeedbackInput = z.infer<typeof feedbackInputSchema>;
-export type StoredFeedback = { rating: FeedbackRating; comment: string | null };
+// turn : tour sur lequel porte l'avis enregistré (null : avis d'avant la
+// mission #086, supposé porter sur l'offre d'origine).
+export type StoredFeedback = { rating: FeedbackRating; comment: string | null; turn: number | null };
+
+// Libellé du tour d'un avis, le même partout (formulaire, page des retours).
+export function turnLabel(turn: number): string {
+  return turn === 0 ? "l'offre d'origine" : `les termes après le tour ${turn}`;
+}
 
