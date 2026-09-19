@@ -45,11 +45,14 @@ export const TERM_GROUP_LABEL: Record<TermGroup, string> = {
 };
 
 // Ce que la marque a fait de chaque demande du dernier message.
-export const ASK_STATUSES = ["granted", "refused", "countered", "unanswered"] as const;
+// partial (mission #082) : la marque fait ce qui est demandé, mais pas
+// entièrement ; ce qui reste à préciser est dit (champ « remaining »).
+export const ASK_STATUSES = ["granted", "partial", "refused", "countered", "unanswered"] as const;
 export type AskStatus = (typeof ASK_STATUSES)[number];
 
 export const ASK_STATUS_LABEL: Record<AskStatus, string> = {
   granted: "Accordé",
+  partial: "Accordé en partie",
   refused: "Refusé",
   countered: "Contre-proposé",
   unanswered: "Toujours sans réponse",
@@ -95,6 +98,9 @@ export const turnReadingSchema = z.object({
       // qui dit CE point. null si « unanswered », ou si le point n'est accordé
       // que par l'accord global.
       quote: z.string().nullable(),
+      // « partial » seulement : ce que la marque n'a pas couvert, en quelques
+      // mots (« les supports de diffusion »). null sinon.
+      remaining: z.string().nullable(),
     }),
   ),
   // Groupes de termes que la marque change dans CETTE réponse, avec l'extrait
@@ -141,6 +147,8 @@ export const askSchema = z.object({
   // termes et le tour. null : rien de tel. Ce n'est PAS un accord.
   aligned_group: z.enum(TERM_GROUPS).nullable().default(null),
   aligned_turn: z.number().nullable().default(null),
+  // Accordé en partie (mission #082) : ce qui reste à préciser.
+  remaining: z.string().nullable().default(null),
 });
 export type Ask = z.infer<typeof askSchema>;
 

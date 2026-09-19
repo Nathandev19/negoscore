@@ -1,12 +1,12 @@
 import type { ResultView } from "@/lib/analysis/lock";
 import { normalizeDeal } from "@/lib/analysis/normalize";
-import { mergeAsks, openAsks, originalAsks, PRICE_ASK_ID } from "@/lib/negotiation/asks";
+import { mergeAsks, openAsks, originalAsks, PRICE_ASK_ID, REMAINING_FALLBACK } from "@/lib/negotiation/asks";
 import { buildConclusion } from "@/lib/negotiation/conclusion";
 import { fallbackMessage, finalMessage } from "@/lib/negotiation/message";
 import { originPricing, priceFor } from "@/lib/negotiation/pricing";
 import { checkQuote, quoteIsIn } from "@/lib/negotiation/quotes";
 import { applyGroups, groupLabel } from "@/lib/negotiation/terms";
-import { changeFollowsAsk, keepWritten, unwrittenDoubt } from "@/lib/negotiation/written";
+import { changeFollowsAsk, changeRestrictsAsk, keepWritten, unwrittenDoubt } from "@/lib/negotiation/written";
 import {
   TERM_GROUP_LABEL,
   TURN_SCHEMA_VERSION,
@@ -161,6 +161,19 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   // le dit tel quel, sans affirmer que la marque a accepté (et sans la
   // contradiction « sans réponse » à côté d'un terme qui a bougé).
   const asks = merged.asks.map((ask) => {
+    // Mission #082, C — une demande de limiter lue comme « contre-proposée »
+    // alors qu'un changement prouvé resserre justement ce terme : accordée en
+    // partie, pas une contre-proposition.
+    if (ask.turn === turnNumber && ask.status === "countered" && changes.some((change) => changeRestrictsAsk(change.group, before.deal, dealAfter, ask.label))) {
+      return { ...ask, status: "partial" as const, remaining: REMAINING_FALLBACK };
+    }
+    // Ce qui reste à préciser, écrit par le modèle : mêmes règles que les
+    // doutes (« tu », aucun jargon), sinon une formule neutre.
+    if (ask.turn === turnNumber && ask.status === "partial" && ask.remaining) {
+      const [cleaned] = cleanDoubts([ask.remaining]);
+      const text = cleaned && cleaned !== GENERIC_DOUBT ? cleaned.replace(/[.\s]+$/, "") : "";
+      return { ...ask, remaining: text || REMAINING_FALLBACK };
+    }
     if (ask.status !== "unanswered" || ask.aligned_group) return ask;
     const follows = changes.find((change) => changeFollowsAsk(change.group, dealAfter, ask.label));
     return follows ? { ...ask, aligned_group: follows.group, aligned_turn: turnNumber } : ask;

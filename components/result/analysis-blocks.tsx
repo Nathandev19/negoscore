@@ -118,7 +118,18 @@ export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
 }
 
 // children : le choix du niveau, posé au-dessus de la fourchette qu'il change.
-export function Estimate({ estimate, children }: { estimate: Analysis["estimate"]; children?: ReactNode }) {
+// counterSame (mission #082) : la contre-offre est exactement la fourchette
+// (offre sous le bas de la fourchette, lib/analysis/anchoring.ts). Une seule
+// ligne alors, qui le dit, plutôt que deux fois le même chiffre.
+export function Estimate({
+  estimate,
+  children,
+  counterSame = false,
+}: {
+  estimate: Analysis["estimate"];
+  children?: ReactNode;
+  counterSame?: boolean;
+}) {
   const base = formatEurRange(estimate.base_low, estimate.base_high);
   const total = formatEurRange(estimate.total_low, estimate.total_high);
   return (
@@ -127,7 +138,7 @@ export function Estimate({ estimate, children }: { estimate: Analysis["estimate"
         {children}
         {total ? (
           <div className="flex flex-col gap-1">
-            <p className="text-small text-attenue">Fourchette estimée</p>
+            <p className="text-small text-attenue">{counterSame ? "Fourchette estimée, et ta contre-offre" : "Fourchette estimée"}</p>
             <p className="figures text-5xl leading-none text-encre sm:text-6xl">{total}</p>
           </div>
         ) : null}

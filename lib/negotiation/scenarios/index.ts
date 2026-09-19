@@ -26,6 +26,10 @@ type DealPatch = Partial<Omit<Deal, "usage" | "exclusivity" | "payment">> & {
 };
 
 export type Scenario = {
+  // Mission #082 : demandes du premier message propres au scénario (sinon,
+  // celles de l'analyse de l'offre de départ), et correctif de l'offre.
+  demandes?: string[];
+  offre_modifs?: DealPatch;
   id: string;
   titre: string;
   // « inventé » : écrit à la main. « réel » : un vrai échange, anonymisé.
@@ -38,7 +42,11 @@ export type Scenario = {
   reponse_marque: string;
   // Sortie du modèle. « deal » peut n'être qu'un correctif de l'offre de
   // départ (scénario inventé) ; une sortie enregistrée le contient en entier.
-  sortie_modele: Omit<TurnReading, "deal" | "global_agreement"> & { deal?: DealPatch; global_agreement?: string | null };
+  sortie_modele: Omit<TurnReading, "deal" | "global_agreement" | "asks"> & {
+    deal?: DealPatch;
+    global_agreement?: string | null;
+    asks: Array<Omit<TurnReading["asks"][number], "remaining"> & { remaining?: string | null }>;
+  };
   attendu: {
     type: "tour" | "hors_sujet";
     issue?: TurnReading["outcome"];
@@ -69,8 +77,9 @@ export function loadScenarios(dir: string = SCENARIOS_DIR): Scenario[] {
     .map((name) => JSON.parse(readFileSync(path.join(dir, name), "utf8")) as Scenario);
 }
 
-export function baseAnalysis(offre: string, tier: Tier): Analysis {
+export function baseAnalysis(offre: string, tier: Tier, modifs?: DealPatch): Analysis {
   const extraction = JSON.parse(readFileSync(path.join(process.cwd(), "lib", "fixtures", `${offre}.json`), "utf8")) as Extraction;
+  if (modifs) extraction.deal = patchDeal(extraction.deal, modifs);
   return composeAnalysis(extraction, { tier });
 }
 
@@ -89,11 +98,14 @@ function patchDeal(base: Deal, patch: DealPatch = {}): Deal {
 export function readingOf(scenario: Scenario, original: Pick<Analysis, "deal">): TurnReading {
   const { deal, ...rest } = scenario.sortie_modele;
   // global_agreement absent (scénario écrit avant la mission #080 quater) : aucun.
-  return turnReadingSchema.parse({ global_agreement: null, ...rest, deal: patchDeal(original.deal, deal) });
+  // Champs ajoutés après l'écriture de certains scénarios : valeur neutre.
+  const asks = rest.asks.map((ask) => ({ remaining: null, ...ask }));
+  return turnReadingSchema.parse({ global_agreement: null, ...rest, asks, deal: patchDeal(original.deal, deal) });
 }
 
 export function scenarioContext(scenario: Scenario): TurnContext {
-  const original = baseAnalysis(scenario.offre, scenario.niveau);
+  const original = baseAnalysis(scenario.offre, scenario.niveau, scenario.offre_modifs);
+  if (scenario.demandes) original.counter_offer = { ...original.counter_offer, changes: scenario.demandes };
   return { original, previous: [], turnNumber: 2, tier: scenario.niveau, brandReply: scenario.reponse_marque };
 }
 

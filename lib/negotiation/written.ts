@@ -297,6 +297,44 @@ export function changeFollowsAsk(group: TermGroup, deal: Deal, label: string): b
   }
 }
 
+// Mission #082, C — demande de LIMITER un terme (« limiter l'utilisation
+// publicitaire… », « réduire l'exclusivité ») et changement prouvé qui le
+// resserre (durée plus courte, territoire désormais défini, droits retirés) :
+// la marque va dans le sens demandé. Le code ne laisse pas cela s'afficher en
+// « contre-proposé » ; il n'en fait jamais un accord entier pour autant.
+const LIMITING = /(limit|r[ée]dui|r[ée]duct|restrein|restrict|encadr|plafonn|born)/i;
+const RESTRICT_TOPIC: Partial<Record<TermGroup, RegExp>> = {
+  usage_duration: /droit|pub|usage|utilisation|diffusion/i,
+  territory: /droit|pub|usage|utilisation|diffusion|territoire|pays|zone/i,
+  usage_rights: /droit|pub|usage|utilisation|diffusion|support/i,
+  exclusivity: /exclusivit/i,
+};
+
+export function changeRestrictsAsk(group: TermGroup, before: Deal, after: Deal, label: string): boolean {
+  const topic = RESTRICT_TOPIC[group];
+  if (!topic || !topic.test(label) || !LIMITING.test(label)) return false;
+  switch (group) {
+    case "usage_duration": {
+      if (before.usage.perpetual && !after.usage.perpetual) return true;
+      const was = before.usage.duration_months;
+      const now = after.usage.duration_months;
+      return was !== null && now !== null && now < was;
+    }
+    case "territory":
+      return before.usage.territory === null && after.usage.territory !== null;
+    case "usage_rights":
+      return (["organic", "paid_ads", "whitelisting", "spark_ads"] as const).some((right) => before.usage[right] && !after.usage[right]);
+    case "exclusivity": {
+      if (before.exclusivity.present && !after.exclusivity.present) return true;
+      const was = before.exclusivity.duration_months;
+      const now = after.exclusivity.duration_months;
+      return was !== null && now !== null && now < was;
+    }
+    default:
+      return false;
+  }
+}
+
 // Ce que l'écran dit d'une valeur écartée : à la créatrice, en « tu ».
 export function unwrittenDoubt(item: Unwritten): string {
   const label = TERM_GROUP_LABEL[item.group];

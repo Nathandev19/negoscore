@@ -22,16 +22,29 @@ export function CounterOffer({
   offer,
   title = "Ta contre-offre chiffrée",
   justUnlocked = false,
+  sameAsEstimate = null,
 }: {
   offer: Analysis["counter_offer"];
   title?: string;
   justUnlocked?: boolean;
+  // Mission #082 : contre-offre identique à la fourchette estimée, déjà
+  // affichée plus haut sous « Fourchette estimée, et ta contre-offre ».
+  sameAsEstimate?: "below" | "no_amount" | null;
 }) {
   const amount = formatEurRange(offer.amount_low, offer.amount_high);
   return (
     <Section title={title} badge={justUnlocked ? <JustUnlockedBadge /> : undefined}>
       <div className="flex flex-col gap-3">
-        {amount ? <p className="figures text-5xl leading-none text-encre sm:text-6xl">{amount}</p> : null}
+        {amount && sameAsEstimate ? (
+          <p>
+            Toute la fourchette estimée, <span className="font-semibold text-encre tabular-nums">{amount}</span>
+            {sameAsEstimate === "below"
+              ? " : ce que la marque propose est en dessous de son bas."
+              : " : la marque n'a écrit aucun montant."}
+          </p>
+        ) : amount ? (
+          <p className="figures text-5xl leading-none text-encre sm:text-6xl">{amount}</p>
+        ) : null}
         <ul className="list-disc pl-5">
           {offer.changes.map((change) => (
             <li key={change}>{change}</li>

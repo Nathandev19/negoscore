@@ -79,7 +79,7 @@ describe("F8 — les scénarios couvrent les cas demandés", () => {
     // Chaque scénario dit s'il est inventé ou réel : le remplacement se voit.
     for (const scenario of scenarios) expect(["inventé", "réel", "garde"]).toContain(scenario.source);
     // Les deux fautes réelles du modèle (essai du 19/09/2026) ont leur scénario de garde.
-    for (const required of ["garde-notre-compte", "garde-embellissement", "garde-citation-recollee"]) {
+    for (const required of ["garde-notre-compte", "garde-embellissement", "garde-citation-recollee", "garde-negation-coupee", "garde-accord-partiel"]) {
       expect(scenarios.find((s) => s.id.endsWith(required))?.source, required).toBe("garde");
     }
   });

@@ -40,3 +40,16 @@ export const POSITION_LABEL: Record<RangePosition, string> = {
   top: "en haut de notre fourchette",
   above: "au-dessus de notre fourchette",
 };
+
+// Mission #082 — la contre-offre est-elle exactement la fourchette estimée ?
+// Oui quand la marque propose moins que le bas (« below ») ou n'écrit aucun
+// montant (« no_amount ») : l'écran ne montre alors le chiffre qu'une fois.
+export function counterSameAsEstimate(
+  amount: number | null,
+  counter: { amount_low: number | null; amount_high: number | null } | undefined,
+  estimate: { total_low: number | null; total_high: number | null },
+): "below" | "no_amount" | null {
+  if (!counter || counter.amount_low === null) return null;
+  if (counter.amount_low !== estimate.total_low || counter.amount_high !== estimate.total_high) return null;
+  return amount === null ? "no_amount" : "below";
+}

@@ -1,0 +1,71 @@
+{
+  "id": "16-garde-accord-partiel",
+  "titre": "Garde : une limitation accordée, lue par le modèle comme une contre-proposition (cas réel, mission #082)",
+  "source": "garde",
+  "offre": "sample-extraction",
+  "niveau": "confirmed",
+  "demandes": [
+    "Limiter l'utilisation publicitaire aux supports et au territoire définis"
+  ],
+  "offre_modifs": {
+    "usage": {
+      "duration_months": 12,
+      "territory": null
+    }
+  },
+  "reponse_marque": "Bonjour, on peut réduire les droits pub à 6 mois au lieu de 12, sur la France uniquement.",
+  "sortie_modele": {
+    "relevance": "reply",
+    "relevance_note": "",
+    "outcome": "partial",
+    "global_agreement": null,
+    "asks": [
+      {
+        "id": "prix",
+        "status": "unanswered",
+        "quote": null,
+        "remaining": null
+      },
+      {
+        "id": "c1",
+        "status": "countered",
+        "quote": "réduire les droits pub à 6 mois au lieu de 12, sur la France uniquement",
+        "remaining": null
+      }
+    ],
+    "changes": [
+      {
+        "group": "usage_duration",
+        "quote": "réduire les droits pub à 6 mois au lieu de 12"
+      },
+      {
+        "group": "territory",
+        "quote": "sur la France uniquement"
+      }
+    ],
+    "deal": {
+      "usage": {
+        "duration_months": 6,
+        "territory": "France"
+      }
+    },
+    "brand_questions": [],
+    "uncertainties": [],
+    "next_message": {
+      "text": "Bonjour,\n\nMerci pour votre retour et pour ces précisions sur la durée et le territoire.\n\nPouvez-vous aussi me préciser les supports sur lesquels les publicités seront diffusées ?\n\nBelle journée,",
+      "tone": "Poli et ferme"
+    }
+  },
+  "attendu": {
+    "type": "tour",
+    "issue": "partial",
+    "nouveau_chiffrage": true,
+    "termes_changes": [
+      "usage_duration",
+      "territory"
+    ],
+    "demandes": {
+      "c1": "partial"
+    }
+  }
+}

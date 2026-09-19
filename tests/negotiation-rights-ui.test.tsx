@@ -262,3 +262,35 @@ describe("#081 — à l'écran, la phrase entière de la marque, jamais un accor
     expect(html).toContain("L&#x27;outil avait coupé cette phrase avant ce qui la nie ou la conditionne");
   });
 });
+
+describe("#082 — « Accordé en partie » : ce qui est couvert, et ce qui reste à préciser", () => {
+  const render16 = (suffix: string) => {
+    const payload = turnFrom(suffix);
+    return { payload, html: renderToStaticMarkup(<TurnCard turnNumber={2} createdAt="2026-09-19T10:00:00.000Z" brandReply={null} payload={payload} />) };
+  };
+
+  it("scénario 17 : la limitation accordée sur la France, les supports restant à préciser", () => {
+    const { html } = render16("17-accord-partiel");
+    expect(html).toContain(">Accordé en partie<");
+    expect(html).toContain("Reste à préciser : les supports de diffusion.");
+    expect(html).not.toContain(">Contre-proposé<");
+    // Ce qui est couvert se lit dans les termes changés.
+    expect(html).toContain("France");
+    expect(html).toContain("6 mois");
+  });
+
+  it("scénario 16 : le modèle dit « contre-proposé », les termes prouvés resserrent ce que la demande voulait limiter : affiché « Accordé en partie », jamais « Accordé »", () => {
+    const { payload, html } = render16("16-garde-accord-partiel");
+    expect(payload.asks.find((a) => a.id === "c1")?.status).toBe("partial");
+    expect(html).toContain(">Accordé en partie<");
+    expect(html).not.toContain(">Contre-proposé<");
+    expect(html).not.toContain(">Accordé<");
+  });
+
+  it("dans la conclusion : ce qui reste à préciser figure parmi les points flous", () => {
+    const payload = turnFrom("17-accord-partiel");
+    expect(unclearPoints(payload.deal_after, payload.asks)).toContain(
+      "« Limiter l'utilisation publicitaire aux supports et au territoire définis » : accordé en partie. Reste à préciser : les supports de diffusion.",
+    );
+  });
+});

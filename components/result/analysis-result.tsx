@@ -16,7 +16,7 @@ import { rememberTier, TierContext, TierSelector } from "@/components/result/tie
 import { SentMessageContext } from "@/components/result/negotiation/sent-message";
 import { CounterOffer, MESSAGE_ANCHOR, ReadyMessage } from "@/components/result/unlocked-blocks";
 import { IncompleteCard, TermsUnknownCard, UnpricedCard } from "@/components/result/verdict-card";
-import { counterOfferRange } from "@/lib/analysis/anchoring";
+import { counterOfferRange, counterSameAsEstimate } from "@/lib/analysis/anchoring";
 import { missingInformation } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
 import { recomputeForTier, tierChangeAvailable } from "@/lib/analysis/recompute";
@@ -137,6 +137,9 @@ export function AnalysisResult({
   const { estimate, deal } = analysis;
   const priced = counterOfferRange(deal.payment.amount_eur, estimate.total_low, estimate.total_high).low !== null;
   const counterOfferTitle = incomplete || !priced ? "Ta contre-offre" : undefined;
+  // Mission #082 : contre-offre visible (débloquée) ET identique à la
+  // fourchette : les deux ne s'affichent qu'une fois, sur une seule ligne.
+  const counterSame = counterSameAsEstimate(deal.payment.amount_eur, analysis.counter_offer, estimate);
   return (
     <TierContext value={analysis.profile_tier}>
     <SentMessageContext value={{ analysisId, firstMessage: analysis.ready_to_send_message?.text ?? null }}>
@@ -171,14 +174,14 @@ export function AnalysisResult({
           <UnpricedCard confidence={analysis.confidence} />
         ) : null}
         {incomplete ? null : (
-          <Estimate estimate={analysis.estimate}>
+          <Estimate estimate={analysis.estimate} counterSame={counterSame !== null}>
             <TierSelector tier={analysis.profile_tier} changeable={tierChangeAvailable(stored)} onChange={chooseTier} />
           </Estimate>
         )}
         <NegotiateList items={analysis.negotiate} />
         <DealRecap deal={analysis.deal} />
         {analysis.counter_offer ? (
-          <CounterOffer offer={analysis.counter_offer} title={counterOfferTitle} justUnlocked={justUnlocked} />
+          <CounterOffer offer={analysis.counter_offer} title={counterOfferTitle} justUnlocked={justUnlocked} sameAsEstimate={counterSame} />
         ) : (
           <LockedCounterOfferPlaceholder title={counterOfferTitle} />
         )}

@@ -47,6 +47,13 @@ function PricingCompare({ before, after }: { before: Pricing; after: Pricing }) 
       delta: `${gap(after.counter_low, before.counter_low)} en bas, ${gap(after.counter_high, before.counter_high)} en haut`,
     },
   ];
+  // Mission #082 : fourchette et contre-offre identiques avant ET après (offre
+  // sous le bas de la fourchette) : une seule ligne, pas deux fois le même
+  // chiffre.
+  const same = (p: Pricing) => p.counter_low === p.total_low && p.counter_high === p.total_high;
+  if (same(before) && same(after)) {
+    rows.splice(0, 2, { ...rows[0], label: "Fourchette estimée, et ta contre-offre" });
+  }
   // Empilé plutôt qu'en tableau : sur un téléphone, « maintenant » et l'écart
   // restent visibles sans défilement horizontal.
   return (
@@ -76,6 +83,10 @@ function AskGroup({ status, asks }: { status: AskStatus; asks: Ask[] }) {
             <span>{ask.label}</span>
             {/* Accord global : la phrase est citée une seule fois, au-dessus. */}
             {ask.quote && !ask.global ? <q className="text-attenue">{ask.quote}</q> : null}
+            {/* Accordé en partie (mission #082) : ce qui reste à préciser. */}
+            {ask.status === "partial" ? (
+              <span className="font-semibold text-encre">Reste à préciser : {ask.remaining ?? "ce que la marque n'a pas repris de ta demande"}.</span>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -133,6 +144,7 @@ export function TurnCard({
             </p>
           ) : null}
           <AskGroup status="granted" asks={decidedNow.filter((a) => a.status === "granted")} />
+          <AskGroup status="partial" asks={decidedNow.filter((a) => a.status === "partial")} />
           <AskGroup status="refused" asks={decidedNow.filter((a) => a.status === "refused")} />
           <AskGroup status="countered" asks={decidedNow.filter((a) => a.status === "countered")} />
           {aligned.length > 0 ? (

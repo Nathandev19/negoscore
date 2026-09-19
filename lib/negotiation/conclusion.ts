@@ -58,6 +58,9 @@ export function unclearPoints(deal: Deal, asks: readonly Ask[], uncertainties: r
       ? ["La marque a donné un accord global sans reprendre chaque point : fais-les-lui confirmer un par un, par écrit."]
       : []),
     ...asks
+      .filter((ask) => ask.status === "partial")
+      .map((ask) => `« ${ask.label} » : accordé en partie. Reste à préciser : ${ask.remaining ?? "ce que la marque n'a pas repris de ta demande"}.`),
+    ...asks
       .filter((ask) => ask.status === "unanswered")
       .map((ask) =>
         ask.aligned_group

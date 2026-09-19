@@ -10,16 +10,23 @@ import type { Ask, TurnReading } from "@/lib/negotiation/types";
 
 export const PRICE_ASK_ID = "prix";
 
+// Une demande encore sans réponse.
+export function newAsk(id: string, label: string): Ask {
+  return { id, label, status: "unanswered", quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null, remaining: null };
+}
+
 export function originalAsks(analysis: ResultView): Ask[] {
   const offer = analysis.counter_offer;
   if (!offer) return [];
   return [
-    ...(offer.amount_low !== null
-      ? [{ id: PRICE_ASK_ID, label: "La rémunération demandée (ta contre-offre)", status: "unanswered" as const, quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null }]
-      : []),
-    ...offer.changes.map((change, index) => ({ id: `c${index + 1}`, label: change, status: "unanswered" as const, quote: null, turn: null, global: false, aligned_group: null, aligned_turn: null })),
+    ...(offer.amount_low !== null ? [newAsk(PRICE_ASK_ID, "La rémunération demandée (ta contre-offre)")] : []),
+    ...offer.changes.map((change, index) => newAsk(`c${index + 1}`, change)),
   ];
 }
+
+// Ce qui reste à préciser d'une demande accordée en partie, quand le modèle ne
+// l'a pas dit : jamais une case vide à l'écran.
+export const REMAINING_FALLBACK = "ce que la marque n'a pas repris de ta demande";
 
 // Demande dont la lecture n'a pas été retenue. clause : la phrase entière de la
 // marque quand la citation l'avait coupée de sa négation ou de sa condition.
@@ -36,7 +43,7 @@ export type Unverified = { label: string; clause: string | null };
 // global, pas une réponse point par point, et l'écran le dit.
 export function mergeAsks(
   previous: readonly Ask[],
-  reading: Pick<TurnReading, "asks" | "global_agreement">,
+  reading: { global_agreement: TurnReading["global_agreement"]; asks: ReadonlyArray<Omit<TurnReading["asks"][number], "remaining"> & { remaining?: string | null }> },
   brandReply: string,
   turn: number,
 ): { asks: Ask[]; unverified: Unverified[]; globalAgreement: string | null } {
@@ -67,7 +74,14 @@ export function mergeAsks(
       unverified.push(check.reason === "cut" ? { label: ask.label, clause: check.clause } : { label: ask.label, clause: null });
       return ask;
     }
-    return { ...ask, status: read.status, quote: read.quote, turn, global: false };
+    return {
+      ...ask,
+      status: read.status,
+      quote: read.quote,
+      turn,
+      global: false,
+      remaining: read.status === "partial" ? read.remaining?.trim() || REMAINING_FALLBACK : null,
+    };
   });
   return { asks, unverified, globalAgreement };
 }
