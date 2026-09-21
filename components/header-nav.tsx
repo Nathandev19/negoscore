@@ -30,6 +30,10 @@ export function navItems(signedIn: boolean, owner = false): { main: NavItem[]; a
 
 export type HeaderTone = "creme" | "marque";
 
+export function shouldCloseMenuOnBlur<T>(menu: { contains(target: T): boolean }, next: T | null): boolean {
+  return next !== null && !menu.contains(next);
+}
+
 // Deux tons : crème partout, bleu marque (avec grain) en tête des pages de
 // résultat, où l'en-tête se prolonge dans le bandeau de verdict.
 // « Analyser un deal » est un lien souligné, pas un bouton : l'action principale
@@ -123,13 +127,14 @@ export function HeaderNav({
     }
   }
 
-  // Le focus a quitté le bouton et le panneau : le menu se referme, sans
-  // ramener le focus en arrière (on suit l'endroit où l'utilisateur va).
+  // Le focus a quitté le bouton et le panneau vers une cible connue : le menu
+  // se referme sans ramener le focus en arrière. Sur WebKit tactile,
+  // relatedTarget peut être null entre le début d'un tap et son click : fermer
+  // ici retirerait le lien du DOM avant que sa navigation puisse partir.
   function onMenuBlur(event: FocusEvent<HTMLElement>) {
     if (!open) return;
     const next = event.relatedTarget as Node | null;
-    if (next !== null && event.currentTarget.contains(next)) return;
-    setOpen(false);
+    if (shouldCloseMenuOnBlur(event.currentTarget, next)) setOpen(false);
   }
 
   return (
