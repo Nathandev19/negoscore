@@ -80,6 +80,11 @@ describe("page /droits-utilisation", () => {
     // Format ICO : en-tête 0x00 0x00 0x01 0x00, puis une image PNG à l'offset 22.
     const ico = readFileSync(path.join(app, "favicon.ico"));
     expect([...ico.subarray(0, 4)]).toEqual([0, 0, 1, 0]);
+    const width = ico[6] === 0 ? 256 : ico[6];
+    const height = ico[7] === 0 ? 256 : ico[7];
+    expect(width).toBe(height);
+    // Google accepte 8 px, mais recommande plus de 48 px pour ses surfaces.
+    expect(width).toBeGreaterThan(48);
     expect(ico.subarray(22, 26).toString("hex")).toBe("89504e47");
   });
 });
