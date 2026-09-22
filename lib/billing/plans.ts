@@ -56,3 +56,10 @@ export const PLANS = [
 // Formule mise en avant sur l'accueil et sur /tarifs : une seule. Le Pack est
 // l'achat sans engagement qui suit l'analyse gratuite.
 export const FEATURED_PLAN: (typeof PLANS)[number]["id"] = "pack";
+
+// Nom affiché d'une formule payante (mission #090 : la page « Merci » nomme
+// le produit acheté).
+export const PLAN_LABEL: Record<"pack" | "pro", string> = {
+  pack: "Pack Deal",
+  pro: "abonnement Pro",
+};

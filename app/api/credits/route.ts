@@ -1,4 +1,5 @@
 import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
+import { recentPurchases } from "@/lib/billing/purchases";
 import { selectRows } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -20,6 +21,10 @@ export async function GET(request: Request) {
   if (!user) {
     return Response.json({ error: "non connecté" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   }
+  // Mission #090 : ce qui vient d'être acheté, pour la page « Merci ». Lu ici
+  // parce que la page interroge cette route toutes les deux secondes en
+  // attendant le webhook.
+  const purchases = await recentPurchases(user.id).catch(() => "unavailable" as const);
   const [credits] = await selectRows<{ plan: string; balance: number; period_end: string | null; cancelled_at: string | null }>(
     "credits",
     `select=plan,balance,period_end,cancelled_at&user_id=eq.${user.id}&limit=1`,
@@ -29,6 +34,8 @@ export async function GET(request: Request) {
       plan: credits?.plan ?? "free",
       balance: credits?.balance ?? 0,
       period_end: credits?.period_end ?? null,
+      // null : aucun achat récent. undefined (champ absent) : on ne sait pas.
+      ...(purchases === "unavailable" ? {} : { purchase: purchases.last, duplicates: purchases.duplicates, analyses_added: purchases.analysesAdded }),
       cancelled_at: credits?.cancelled_at ?? null,
     },
     { headers: { "Cache-Control": "no-store" } },

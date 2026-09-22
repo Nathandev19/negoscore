@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
-import { isCredited } from "@/components/merci/credits-waiter";
 
 // posthog-js est remplacé : on vérifie ce qui lui est réellement passé.
 const posthog = vi.hoisted(() => ({ init: vi.fn(), capture: vi.fn(), get_distinct_id: vi.fn(() => "01924f3a-anon-id") }));
@@ -134,19 +133,6 @@ describe("identifiant anonyme transmis au paiement", () => {
     const { initAnalytics, analyticsDistinctId } = await freshModule();
     initAnalytics();
     expect(analyticsDistinctId()).toBeNull();
-  });
-});
-
-describe("page Merci : compte déjà crédité", () => {
-  it("considère le compte crédité dès que le solde ou le plan le montrent", () => {
-    expect(isCredited({ plan: "pack", balance: 3, period_end: null })).toBe(true);
-    expect(isCredited({ plan: "pro", balance: 0, period_end: "2026-10-16T00:00:00.000Z" })).toBe(true);
-    expect(isCredited({ plan: "free", balance: 2, period_end: null })).toBe(true);
-  });
-
-  it("reste en attente tant que le compte est à zéro", () => {
-    expect(isCredited({ plan: "free", balance: 0, period_end: null })).toBe(false);
-    expect(isCredited(null)).toBe(false);
   });
 });
 

@@ -1,4 +1,4 @@
-import { CreditsWaiter } from "@/components/merci/credits-waiter";
+import { CreditsWaiter, type Bought } from "@/components/merci/credits-waiter";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { BoneLine, LoadingAnnouncement } from "@/components/ui/skeleton";
@@ -8,7 +8,9 @@ type Credits = { plan: "free" | "pack" | "pro"; balance: number; period_end: str
 // Page Merci. credits undefined : squelette (app/merci/loading.tsx), à la place
 // de la phrase d'attente du paiement (deux lignes de texte large), sans rien
 // laisser deviner du solde.
-export function ThanksView({ credits }: { credits?: Credits | null }) {
+// bought : l'achat qui vient d'être payé, lu par le serveur (table purchases).
+// « unknown » : pas lisible, la page n'affirme alors aucun achat.
+export function ThanksView({ credits, bought = { purchase: null, duplicates: 0, analysesAdded: 0 } }: { credits?: Credits | null; bought?: Bought }) {
   const loading = credits === undefined;
   return (
     <>
@@ -22,7 +24,7 @@ export function ThanksView({ credits }: { credits?: Credits | null }) {
             <BoneLine width="w-3/5" />
           </span>
         ) : (
-          <CreditsWaiter initial={credits} />
+          <CreditsWaiter initial={credits} bought={bought} />
         )}
       </main>
       <SiteFooter />

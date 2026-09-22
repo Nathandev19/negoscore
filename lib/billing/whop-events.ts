@@ -1,6 +1,7 @@
 import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
 import { isProActive } from "@/lib/billing/plan-access";
 import { PACK_ANALYSES } from "@/lib/billing/plans";
+import { recordPurchase } from "@/lib/billing/purchases";
 import { planKeyFromId, type PlanKey } from "@/lib/whop/api";
 import { adjustInteger, insertIfAbsent, isMissingRelation, rpc, selectRows, updateRows } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/security/request";
@@ -139,6 +140,15 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
         updated_at: new Date().toISOString(),
       });
     }
+    // Mission #090 : ce qui vient d'être acheté, pour la page « Merci ».
+    await recordPurchase({
+      event_id: event.id,
+      user_id: user.id,
+      plan: "pack",
+      analyses_added: PACK_ANALYSES,
+      period_end: null,
+      paid_at: new Date().toISOString(),
+    });
     const total = typeof source.total === "number" ? source.total : null;
     return {
       handled: true,
@@ -175,6 +185,16 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       // Un réabonnement efface une résiliation antérieure.
       cancelled_at: null,
       updated_at: new Date().toISOString(),
+    });
+    // Mission #090 : l'abonnement activé est l'achat à confirmer (le paiement
+    // Pro, lui, ne donne l'accès qu'une fois la souscription activée).
+    await recordPurchase({
+      event_id: event.id,
+      user_id: user.id,
+      plan: "pro",
+      analyses_added: 0,
+      period_end: periodEnd,
+      paid_at: new Date().toISOString(),
     });
     return { handled: true, reason: `Pro actif jusqu'au ${periodEnd}`, userId: user.id, plan };
   }
