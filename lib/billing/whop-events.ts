@@ -4,6 +4,7 @@ import { PACK_ANALYSES } from "@/lib/billing/plans";
 import { recordPurchase } from "@/lib/billing/purchases";
 import {
   attachActivation,
+  claimPending,
   closeAwaitingActivation,
   honoredProAwaitingActivation,
   recordPending,
@@ -162,6 +163,62 @@ export function periodAfterActivation(
   return { periodEnd: new Date(end + added).toISOString(), kind: "extended" };
 }
 
+// Mission #094 — un remboursement doit révoquer ce que le paiement avait
+// accordé. Encore faut-il retrouver CE paiement : la charge d'un
+// « refund.created » peut porter le paiement en objet imbriqué
+// (data.payment), en identifiant (data.payment_id), ou seulement en
+// référence. On accepte les trois, puis, à défaut, on retrouve le paiement
+// dans NOS propres événements : il y est enregistré en entier.
+function refundedPaymentId(data: Record<string, unknown>): string | null {
+  const nested = record(data.payment);
+  return text(nested.id) ?? text(data.payment_id) ?? (typeof data.payment === "string" ? data.payment : null);
+}
+
+// Le paiement d'origine, tel que nous l'avons reçu et enregistré. null : nous
+// ne l'avons jamais vu (paiement antérieur au webhook, ou charge sans
+// identifiant), et le remboursement se contentera alors de ce qu'il porte.
+async function storedPayment(paymentId: string | null): Promise<{ eventId: string; data: Record<string, unknown> } | null> {
+  if (!paymentId) return null;
+  try {
+    const rows = await selectRows<{ event_id: string; payload: unknown }>(
+      "whop_events",
+      `select=event_id,payload&type=eq.payment.succeeded&payload->data->>id=eq.${encodeURIComponent(paymentId)}&limit=1`,
+    );
+    const row = rows[0];
+    if (!row) return null;
+    const payload = record(row.payload);
+    return { eventId: row.event_id, data: record(payload.data) };
+  } catch (caught) {
+    console.warn(
+      JSON.stringify({ event: "whop_paiement_rembourse_introuvable", detail: caught instanceof Error ? caught.message.slice(0, 200) : "inconnu" }),
+    );
+    return null;
+  }
+}
+
+// RÈGLE COMMUNE (mission #092, tenue par la base) : l'effet d'un événement
+// n'est appliqué qu'une fois. Le crédit passe par whop_event_credit, qui marque
+// whop_events.credited_at ; une révocation marque la MÊME colonne, sur la ligne
+// du remboursement, par une mise à jour filtrée « credited_at is null ». Deux
+// passes concurrentes ne peuvent pas la réussir toutes les deux.
+async function claimEventEffect(eventId: string): Promise<boolean> {
+  const rows = await updateRows<{ event_id: string }>(
+    "whop_events",
+    `event_id=eq.${encodeURIComponent(eventId)}&credited_at=is.null`,
+    { credited_at: new Date().toISOString() },
+  );
+  return rows.length > 0;
+}
+
+// Mission #094, étape 2 — symétrie exacte de la prolongation (#090 bis) : le
+// remboursement d'un paiement retire la durée que CE paiement avait accordée,
+// avec un plancher à maintenant. Jamais de période négative, jamais de date
+// antérieure à l'instant présent : ce qui a déjà été consommé l'a été.
+export function periodAfterRefund(currentEnd: string | null, grantedMs: number, now: Date = new Date()): string {
+  const end = currentEnd ? new Date(currentEnd).getTime() : 0;
+  return new Date(Math.max(now.getTime(), end - grantedMs)).toISOString();
+}
+
 function planOf(data: Record<string, unknown>): PlanKey | null {
   return planKeyFromId(text(record(data.plan).id));
 }
@@ -173,9 +230,11 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
     return { handled: true, reason: "paiement échoué : aucun crédit" };
   }
 
-  const isRefund = type === "refund.created";
-  // Pour un remboursement, le paiement remboursé porte le plan et le rattachement.
-  const source = isRefund ? record(data.payment) : data;
+  // Mission #094 — le remboursement suit son propre chemin : il doit retrouver
+  // le paiement remboursé avant de savoir ce qu'il révoque.
+  if (type === "refund.created") return applyRefund(event);
+
+  const source = data;
   const plan = planOf(source);
   if (!plan) return { handled: false, reason: "plan hors formules Negoscore" };
 
@@ -387,27 +446,124 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
     };
   }
 
-  if (isRefund) {
-    if (plan === "pack") {
-      const removed = Math.min(PACK_ANALYSES, current.balance);
-      if (removed > 0) await addBalance(user.id, -removed);
-      const balance = current.balance - removed;
-      if (current.plan === "pack" && balance === 0) {
-        await updateRows("credits", `user_id=eq.${user.id}&plan=eq.pack`, { plan: "free" });
-      }
-      return { handled: true, reason: `remboursement : -${removed} analyses`, userId: user.id, plan };
+  return { handled: false, reason: `événement ignoré (${type})` };
+}
+
+// Mission #094 — un remboursement révoque ce que CE paiement avait accordé.
+// Symétrie exacte de la prolongation de #090 bis : un mois ajouté par un
+// paiement, un mois retiré par son remboursement. Ce qui a déjà été produit —
+// analyses, négociations, tours — n'est jamais supprimé : le remboursement
+// retire un droit d'usage à venir, pas un travail déjà livré.
+async function applyRefund(event: WhopEvent): Promise<EventOutcome> {
+  const data = event.data;
+  const now = new Date();
+  const paymentId = refundedPaymentId(data);
+
+  // 1. Le paiement remboursé. La charge de Whop l'imbrique (data.payment) ;
+  //    quand elle ne le fait pas, on le relit dans NOS propres événements, où
+  //    il est enregistré en entier. C'est lui qui porte le plan et le compte.
+  const nested = record(data.payment);
+  const origin = planOf(nested) ? null : await storedPayment(paymentId);
+  const payment = origin ? origin.data : nested;
+  const plan = planOf(payment);
+
+  if (!plan) {
+    // Paiement d'un autre produit du même compte Whop : il n'a jamais rien
+    // accordé ici, son remboursement n'a rien à révoquer.
+    if (text(record(payment.plan).id)) {
+      console.log(JSON.stringify({ event: "whop_remboursement_sans_effet", event_id: event.id, raison: "plan hors formules Negoscore", paiement: paymentId }));
+      return { handled: true, reason: "remboursement d'un paiement hors formules Negoscore : rien à révoquer" };
     }
-    // L'argent est rendu : l'accès s'arrête tout de suite, ce n'est pas une
-    // résiliation en fin de période.
-    const nextPlan = current.balance > 0 ? "pack" : "free";
-    await updateRows("credits", `user_id=eq.${user.id}`, {
-      plan: nextPlan,
-      period_end: null,
-      cancelled_at: null,
-      updated_at: new Date().toISOString(),
-    });
-    return { handled: true, reason: `remboursement Pro : retour au plan ${nextPlan}`, userId: user.id, plan };
+    // Paiement introuvable : on ne devine pas ce qu'il faut retirer, et on ne
+    // condamne pas l'événement — il reste à reprendre.
+    console.warn(JSON.stringify({ event: "whop_remboursement_non_rattache", event_id: event.id, raison: "paiement remboursé introuvable", paiement: paymentId }));
+    return { handled: false, pending: true, reason: "remboursement : paiement remboursé introuvable" };
   }
 
-  return { handled: false, reason: `événement ignoré (${type})` };
+  // 2. Le compte se retrouve par le MÊME chemin que le crédit initial :
+  //    métadonnées du paiement, puis email de l'acheteur.
+  const user = await resolveUser(payment);
+  if (!user) {
+    console.warn(
+      JSON.stringify({
+        event: "whop_remboursement_non_rattache",
+        event_id: event.id,
+        paiement: paymentId,
+        email: text(record(payment.user).email),
+        plan,
+      }),
+    );
+    return { handled: false, pending: true, reason: "remboursement : aucun compte rattaché à ce paiement" };
+  }
+
+  // 3. Remboursement partiel : le montant rendu est inférieur au total payé.
+  //    On ne révoque RIEN — retirer un mois entier pour un geste commercial
+  //    serait faux — et on le journalise pour trancher sur pièces.
+  const total = typeof payment.total === "number" ? payment.total : null;
+  const amount = typeof data.amount === "number" ? data.amount : null;
+  const cents = (value: number) => Math.round(value * 100);
+  if (total !== null && amount !== null && cents(amount) < cents(total)) {
+    console.warn(JSON.stringify({ event: "whop_remboursement_partiel", event_id: event.id, montant: amount, total, plan }));
+    return { handled: true, reason: `remboursement partiel (${amount} sur ${total}) : aucune révocation`, userId: user.id, plan };
+  }
+  if (total === null || amount === null) {
+    // Faute de montants comparables, on traite le remboursement comme intégral
+    // — l'argent est rendu — mais on dit qu'on n'a pas pu le vérifier.
+    console.warn(JSON.stringify({ event: "whop_remboursement_montant_inconnu", event_id: event.id, montant: amount, total }));
+  }
+
+  // 4. Une révocation par remboursement, jamais deux : la ligne de l'événement
+  //    est marquée (credited_at) par une mise à jour filtrée, comme le crédit.
+  if (!(await claimEventEffect(event.id))) {
+    console.log(JSON.stringify({ event: "whop_remboursement_deja_applique", event_id: event.id }));
+    return { handled: true, reason: "remboursement déjà révoqué", userId: user.id, plan };
+  }
+
+  const current = await credits(user.id);
+
+  // Le paiement rendu ne financera plus l'activation qu'il attendait : sans
+  // cela, le rattrapage de #092 ouvrirait un mois pour un paiement remboursé.
+  if (origin) await claimPending(origin.eventId, "abandonne");
+
+  if (plan === "pack") {
+    const removed = Math.min(PACK_ANALYSES, current.balance);
+    if (removed === 0) {
+      console.log(JSON.stringify({ event: "whop_remboursement_sans_effet", event_id: event.id, plan, raison: "solde déjà nul" }));
+      return { handled: true, reason: "remboursement : aucune analyse à retirer", userId: user.id, plan };
+    }
+    // Le solde ne descend jamais sous zéro : on ne retire que ce qui reste.
+    const remaining = current.balance - removed;
+    await addBalance(user.id, -removed);
+    if (current.plan === "pack" && remaining === 0) {
+      await updateRows("credits", `user_id=eq.${user.id}&plan=eq.pack`, { plan: "free", updated_at: now.toISOString() });
+    }
+    return { handled: true, reason: `remboursement : -${removed} analyses`, userId: user.id, plan };
+  }
+
+  // Ce paiement n'a jamais ouvert de période : rien à révoquer, et on le dit.
+  if (!current.period_end && current.plan !== "pro") {
+    console.log(JSON.stringify({ event: "whop_remboursement_sans_effet", event_id: event.id, plan, raison: "aucune période en cours" }));
+    return { handled: true, reason: "remboursement Pro : aucune période à révoquer", userId: user.id, plan };
+  }
+
+  // La durée accordée par un paiement Pro est celle d'une période : la même
+  // que celle ajoutée par l'activation ou par le rattrapage.
+  const periodEnd = periodAfterRefund(current.period_end, PRO_PERIOD_MS, now);
+  const stillPro = new Date(periodEnd).getTime() > now.getTime();
+  const nextPlan = stillPro ? "pro" : current.balance > 0 ? "pack" : "free";
+  await updateRows("credits", `user_id=eq.${user.id}`, {
+    plan: nextPlan,
+    period_end: periodEnd,
+    // L'accès est clos maintenant : une résiliation en attente n'a plus d'objet.
+    ...(stillPro ? {} : { cancelled_at: null }),
+    updated_at: now.toISOString(),
+  });
+  return {
+    handled: true,
+    reason: stillPro
+      ? `remboursement Pro : période ramenée au ${periodEnd}`
+      : `remboursement Pro : accès clos, retour au plan ${nextPlan}`,
+    userId: user.id,
+    plan,
+  };
 }
