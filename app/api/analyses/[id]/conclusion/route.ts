@@ -1,5 +1,5 @@
 import { loadResultForViewer } from "@/lib/analysis/load";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { loadThread, threadConcluded, TURNS_TABLE } from "@/lib/negotiation/store";
 import { concludeNow } from "@/lib/negotiation/turn";
 import { TURN_SCHEMA_VERSION, type ConclusionPayload } from "@/lib/negotiation/types";
@@ -22,7 +22,14 @@ function json(status: number, body: Record<string, unknown>) {
 
 export async function POST(request: Request, { params }: RouteContext<"/api/analyses/[id]/conclusion">) {
   const { id } = await params;
-  const user = await getRequestUser(request);
+  // Mission #089 : authentification injoignable n'est pas « pas de session ».
+  // On ne sait rien de la personne : on le dit, sans rien affirmer d'autre.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("conclusion");
+    return json(503, { error: UNAVAILABLE, reason: "unavailable" });
+  }
+  const user = session.kind === "valid" ? session.user : null;
   if (!user) return json(401, { error: "Connecte-toi pour conclure l'échange.", reason: "signed_out" });
   const body = (await request.json().catch(() => null)) as { tier?: unknown } | null;
   const tier = parseTier(body?.tier);

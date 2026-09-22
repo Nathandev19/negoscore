@@ -2,7 +2,7 @@ import { readIdempotencyKey } from "@/lib/analysis/idempotency";
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { analysisPaused, ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
 import { recomputeForTier } from "@/lib/analysis/recompute";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { classifyModelError } from "@/lib/llm/errors";
 import { readBrandReply } from "@/lib/llm/turn";
 import { TURN_PROMPT_VERSION } from "@/lib/llm/turn-prompt";
@@ -35,7 +35,14 @@ function json(status: number, body: Record<string, unknown>) {
 
 export async function POST(request: Request, { params }: RouteContext<"/api/analyses/[id]/tours">) {
   const { id } = await params;
-  const user = await getRequestUser(request);
+  // Mission #089 : authentification injoignable n'est pas « pas de session ».
+  // On ne sait rien de la personne : on le dit, sans rien affirmer d'autre.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("tours");
+    return json(503, { error: UNAVAILABLE, reason: "unavailable" });
+  }
+  const user = session.kind === "valid" ? session.user : null;
   if (!user) return json(401, { error: "Connecte-toi pour suivre l'échange avec la marque.", reason: "signed_out" });
 
   const body = (await request.json().catch(() => null)) as {

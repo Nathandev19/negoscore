@@ -1,7 +1,7 @@
 import { feedbackInputSchema, saveFeedback } from "@/lib/analysis/feedback";
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { judgedFigures } from "@/lib/analysis/judged";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { loadThread } from "@/lib/negotiation/store";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
 
@@ -18,7 +18,14 @@ function json(status: number, body: Record<string, unknown>) {
 // par tour jugé (mission #086), remplacée à chaque envoi sur ce même tour.
 export async function POST(request: Request, { params }: RouteContext<"/api/analyses/[id]/avis">) {
   const { id } = await params;
-  const user = await getRequestUser(request);
+  // Mission #089 : authentification injoignable n'est pas « pas de session ».
+  // On ne sait rien de la personne : on le dit, sans rien affirmer d'autre.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("avis");
+    return json(503, { error: UNAVAILABLE });
+  }
+  const user = session.kind === "valid" ? session.user : null;
   const anonToken = readCookie(request, ANON_COOKIE);
 
   const body = await request.json().catch(() => null);

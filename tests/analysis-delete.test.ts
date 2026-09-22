@@ -37,7 +37,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => ({
     db.deletedDeals.push(filter.replace("id=eq.", ""));
   },
 }));
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => user.current }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => user.current));
 
 const { deleteAnalysisForViewer } = await import("@/lib/analysis/delete");
 const { loadResultForViewer } = await import("@/lib/analysis/load");

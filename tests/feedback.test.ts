@@ -30,7 +30,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
     },
   };
 });
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => user.current }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => user.current));
 
 const { POST } = await import("@/app/api/analyses/[id]/avis/route");
 

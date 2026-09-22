@@ -15,7 +15,7 @@ const OWNER_TOKEN = "jeton-du-proprietaire";
 const store = vi.hoisted(() => ({ saved: [] as Array<{ id: string; rating: string; comment: string | null; tier: string; turn?: number; savedTurn?: number }> }));
 const browser = vi.hoisted(() => ({ cookies: new Map<string, string>() }));
 
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => null }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => null));
 vi.mock("@/lib/analysis/load", () => ({
   // Même règle que la vraie : l'analyse n'est lisible que par son propriétaire.
   loadResultForViewer: async (id: string, viewer: { anonToken: string | null }) =>

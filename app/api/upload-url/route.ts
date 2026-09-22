@@ -1,5 +1,5 @@
 import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { DOCUMENT_TTL_DAYS, newStoragePath, validateAnnouncedFile } from "@/lib/storage/documents";
 import { ANON_COOKIE, anonCookieHeader, clientIp, hashIp, newAnonToken, readCookie } from "@/lib/security/request";
 import { UPLOAD_URLS_PER_HOUR, UPLOAD_URLS_PER_SUBJECT_PER_HOUR } from "@/lib/security/limits";
@@ -31,7 +31,14 @@ export async function POST(request: Request) {
   const file = validateAnnouncedFile(body);
   if ("error" in file) return error(400, file.error);
 
-  const user = await getRequestUser(request);
+  // Mission #089 : authentification injoignable n'est pas « pas de session ».
+  // On ne sait rien de la personne : on le dit, sans rien affirmer d'autre.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("upload_url");
+    return error(503, "Le dépôt de fichier n'est pas disponible pour le moment. Colle le texte du message en attendant.");
+  }
+  const user = session.kind === "valid" ? session.user : null;
   const existingToken = readCookie(request, ANON_COOKIE);
   const anonToken = user ? null : (existingToken ?? newAnonToken());
   const storagePath = newStoragePath(file.mime);

@@ -1,5 +1,5 @@
 import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/billing/consent";
 import { isProActive, type PlanState } from "@/lib/billing/plan-access";
 import { insertRow, selectRows } from "@/lib/supabase/server";
@@ -27,7 +27,14 @@ export async function POST(request: Request) {
   const consent = form?.get("consent");
   if (plan !== "pack" && plan !== "pro") return redirect("/tarifs?erreur=formule");
 
-  const user = await getRequestUser(request);
+  // Mission #089 : authentification injoignable n'est pas « pas de session ».
+  // On ne sait rien de la personne : on le dit, sans rien affirmer d'autre.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("checkout");
+    return redirect("/tarifs?erreur=indisponible");
+  }
+  const user = session.kind === "valid" ? session.user : null;
   if (!user) return redirect(`/connexion?next=${encodeURIComponent("/tarifs")}`);
   if (consent !== "on") return redirect(`/tarifs?erreur=consentement&formule=${plan}`);
 

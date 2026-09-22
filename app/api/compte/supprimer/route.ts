@@ -1,5 +1,5 @@
 import { deleteAccount, isDeletionConfirmed } from "@/lib/account/deletion";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { ACCESS_COOKIE, expiredCookieHeader, REFRESH_COOKIE } from "@/lib/auth/session";
 import { expiredSessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { expiredOwnerHintCookieHeader } from "@/lib/auth/owner-hint";
@@ -23,7 +23,14 @@ function redirect(location: string, clearSession = false) {
 
 // Suppression définitive du compte connecté, après saisie du mot de confirmation.
 export async function POST(request: Request) {
-  const user = await getRequestUser(request);
+  // Mission #089 : authentification injoignable n'est pas « pas de session ».
+  // On ne sait rien de la personne : on le dit, sans rien affirmer d'autre.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("compte_supprimer");
+    return redirect("/compte/supprimer?erreur=indisponible");
+  }
+  const user = session.kind === "valid" ? session.user : null;
   if (!user) return redirect(`/connexion?next=${encodeURIComponent("/compte/supprimer")}`);
 
   const form = await request.formData().catch(() => null);

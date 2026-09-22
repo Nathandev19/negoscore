@@ -18,7 +18,7 @@ vi.mock("@/lib/llm/extract", async (importOriginal) => ({
     throw new Error("le modèle ne doit pas être appelé");
   },
 }));
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => null }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => null));
 vi.mock("@/lib/security/usage-guard", () => ({
   hitUsageGuard: async () => {
     calls.guard += 1;

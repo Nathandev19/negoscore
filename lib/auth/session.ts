@@ -163,13 +163,41 @@ export async function checkAccessToken(accessToken: string): Promise<AccessCheck
   return authUnavailable(response.status) ? { kind: "unavailable", status: response.status } : { kind: "rejected", status: response.status };
 }
 
-export async function userFromAccessToken(accessToken: string | null | undefined): Promise<SessionUser | null> {
-  if (!accessToken) return null;
+// Mission #089 — la session d'une requête, dans le vocabulaire de la mission
+// #070 (checkAccessToken, refreshSessionOutcome), plus le cas sans cookie :
+//   - « valid » : session vérifiée par Supabase ;
+//   - « absent » : aucun jeton d'accès ;
+//   - « rejected » : Supabase a répondu que ce jeton ne vaut rien ;
+//   - « unavailable » : Supabase n'a pas pu répondre. On ne sait RIEN de la
+//     session : ce n'est pas une absence de session, et aucune route ne doit
+//     la traiter comme telle (ni visiteuse anonyme, ni « connecte-toi »).
+// « absent » et « rejected » se comportent comme avant : pas de session.
+export type SessionCheck = AccessCheck | { kind: "absent" };
+
+export async function sessionFromAccessToken(accessToken: string | null | undefined): Promise<SessionCheck> {
+  if (!accessToken) return { kind: "absent" };
   try {
-    const check = await checkAccessToken(accessToken);
-    return check.kind === "valid" ? check.user : null;
+    return await checkAccessToken(accessToken);
   } catch {
-    return null;
+    return { kind: "unavailable", status: null };
+  }
+}
+
+// Utilisateur connecté, ou null. null couvre aussi une PANNE de Supabase : à
+// n'employer que là où une panne ne peut rien produire de faux (sinon :
+// sessionFromAccessToken).
+export async function userFromAccessToken(accessToken: string | null | undefined): Promise<SessionUser | null> {
+  const check = await sessionFromAccessToken(accessToken);
+  return check.kind === "valid" ? check.user : null;
+}
+
+// Levée par une page serveur quand l'authentification est injoignable : la
+// page d'erreur (app/error.tsx) dit alors « réessaie dans un instant », au lieu
+// d'un « connecte-toi » ou d'un « introuvable » faux.
+export class AuthUnavailableError extends Error {
+  constructor() {
+    super("Authentification Supabase injoignable");
+    this.name = "AuthUnavailableError";
   }
 }
 

@@ -1,7 +1,7 @@
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { MAX_TEXT_LENGTH, TEXT_TRUNCATED_NOTE } from "@/lib/analysis/text";
 import type { SessionUser } from "@/lib/auth/session";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { claimRetry, RETRY_MESSAGES, sameOffer, type RetryClaim } from "@/lib/analysis/retry";
 import { readIdempotencyKey, replayableAnalysis } from "@/lib/analysis/idempotency";
 import { reserveAnalysis, type Denial, type Grant } from "@/lib/billing/entitlement";
@@ -94,7 +94,16 @@ async function readDocument(storagePath: string, row: DocumentRow): Promise<Uint
 
 export async function POST(request: Request) {
   const existingToken = readCookie(request, ANON_COOKIE);
-  const user = await getRequestUser(request);
+  // Mission #089 — authentification injoignable : on ne sait pas si c'est une
+  // abonnée ou une visiteuse. On s'arrête avant tout : aucun jeton anonyme
+  // tiré ni posé (rien n'est rattaché au navigateur), rien de réservé ni de
+  // compté, même message que toute autre panne de la route.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("analyse");
+    return json(503, { error: modelFailureMessage("unavailable", null), reason: "service_unavailable" });
+  }
+  const user = session.kind === "valid" ? session.user : null;
   // Un compte connecté n'a pas besoin de jeton anonyme.
   const anonToken = user ? null : (existingToken ?? newAnonToken());
   const cookie = !user && !existingToken && anonToken ? anonCookieHeader(anonToken) : null;

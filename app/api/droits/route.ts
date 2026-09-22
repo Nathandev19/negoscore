@@ -1,4 +1,4 @@
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { analysisRightStatus } from "@/lib/billing/entitlement";
 import { ANON_COOKIE, clientIp, hashIp, readCookie } from "@/lib/security/request";
 import { hitUsageGuard } from "@/lib/security/usage-guard";
@@ -12,7 +12,14 @@ export const runtime = "nodejs";
 // Appelé seulement quand l'indicateur de session est présent : un visiteur sans
 // compte n'appelle pas le serveur (voir lib/billing/right-hint.ts).
 export async function GET(request: Request) {
-  const user = await getRequestUser(request);
+  // Mission #089 : authentification injoignable n'est pas « pas de session ».
+  // On ne sait rien de la personne : on le dit, sans rien affirmer d'autre.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("droits");
+    return Response.json({ allowed: true, unknown: true }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  }
+  const user = session.kind === "valid" ? session.user : null;
   // Limite horaire par IP hachée (mission #062, B2), avec le compteur qui sert
   // déjà aux analyses et aux liens de connexion. Elle ne change rien pour un
   // usage normal : le formulaire n'appelle cette route qu'à son ouverture.

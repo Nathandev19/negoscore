@@ -27,7 +27,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
   };
 });
 vi.mock("@/lib/analysis/load", () => ({ loadResultForViewer: async () => loaded.current }));
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => ({ id: "u1", email: "u@exemple.fr" }) }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => ({ id: "u1", email: "u@exemple.fr" })));
 vi.mock("@/lib/negotiation/store", () => ({ loadThread: async () => thread.current }));
 
 const { POST } = await import("@/app/api/analyses/[id]/avis/route");

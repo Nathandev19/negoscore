@@ -53,7 +53,7 @@ vi.mock("@/lib/llm/extract", async (importOriginal) => {
     },
   };
 });
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => user.current }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => user.current));
 vi.mock("@/lib/security/usage-guard", () => ({
   hitUsageGuard: async () => ({ allowed: true, count: 1, retryInMinutes: 0 }),
   releaseUsageGuard: async () => undefined,

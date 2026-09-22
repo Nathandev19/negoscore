@@ -28,7 +28,7 @@ const state = vi.hoisted(() => ({
   lastMessages: [] as string[],
 }));
 
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => state.user }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => state.user));
 vi.mock("@/lib/analysis/load", async () => {
   const { scenarioContext: context, loadScenarios: load } = await import("@/lib/negotiation/scenarios");
   const original = context(load()[0]).original;

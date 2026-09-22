@@ -67,6 +67,8 @@ import { expiredOwnerHintCookieHeader, OWNER_HINT_COOKIE, ownerHintCookieHeaderF
 // Adresse qui ne correspond à aucune route (le préfixe _ exclut un dossier du
 // routage) : sa réponse est celle d'une page inexistante.
 const NOWHERE = "/_introuvable";
+// Mission #089 — page de compte pendant une panne de Supabase Auth.
+const AUTH_UNAVAILABLE_PAGE = "/session-indisponible";
 
 export async function proxy(request: NextRequest) {
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
@@ -95,8 +97,12 @@ export async function proxy(request: NextRequest) {
   let signedIn = false;
   let owner = false;
   let sessionEmail: string | null = null;
+  // Mission #089 — Supabase n'a pas pu répondre, au rafraîchissement ou à la
+  // vérification : on ne sait pas si la personne est connectée.
+  let checkUnavailable = false;
   if (token && (requiresAccount(pathname) || onLoginPage || ownerOnly)) {
     const check = await checkAccessToken(token);
+    if (check.kind === "unavailable") checkUnavailable = true;
     if (check.kind === "valid") {
       signedIn = true;
       sessionEmail = check.user.email;
@@ -120,6 +126,11 @@ export async function proxy(request: NextRequest) {
     // les journaux (mission #079). Sans cookie (visiteur, robot), rien.
     if (token) console.warn(ownerRefusalLog(ownerRefusal(sessionEmail)));
     response = NextResponse.rewrite(new URL(NOWHERE, request.url));
+  } else if (requiresAccount(pathname) && !signedIn && !rejected && (unavailable || checkUnavailable)) {
+    // Mission #089 — une session existe peut-être, mais Supabase ne répond pas :
+    // pas de « connecte-toi ». La page dit que c'est momentané ; l'adresse reste
+    // la même, la recharger réessaie. Aucun cookie touché.
+    response = NextResponse.rewrite(new URL(AUTH_UNAVAILABLE_PAGE, request.url));
   } else if (requiresAccount(pathname) && !signedIn) {
     const target = `/connexion?next=${encodeURIComponent(`${pathname}${search}`)}`;
     response = NextResponse.redirect(new URL(target, request.url), 307);

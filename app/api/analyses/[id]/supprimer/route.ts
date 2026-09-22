@@ -1,5 +1,5 @@
 import { deleteAnalysisForViewer } from "@/lib/analysis/delete";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
 
 export const runtime = "nodejs";
@@ -14,7 +14,14 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
   const form = await request.formData().catch(() => null);
   if (form?.get("confirmation") !== "oui") return redirect(`/analyse/resultat/${encodeURIComponent(id)}/supprimer`);
 
-  const user = await getRequestUser(request);
+  // Mission #089 : authentification injoignable n'est pas « pas de session ».
+  // On ne sait rien de la personne : on le dit, sans rien affirmer d'autre.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("analyse_supprimer");
+    return redirect(`/analyse/resultat/${encodeURIComponent(id)}/supprimer?erreur=indisponible`);
+  }
+  const user = session.kind === "valid" ? session.user : null;
   // Même lecture que la page de résultat : session pour une analyse rattachée à
   // un compte, cookie anonyme pour une analyse qui ne l'est pas.
   const anonToken = readCookie(request, ANON_COOKIE);

@@ -13,7 +13,7 @@ const db = vi.hoisted(() => ({
 const whop = vi.hoisted(() => ({ created: 0 }));
 const user = vi.hoisted(() => ({ current: { id: "u1", email: "nina@exemple.test" } as { id: string; email: string } | null }));
 
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => user.current }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => user.current));
 vi.mock("@/lib/supabase/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/supabase/server")>()),
   selectRows: async (table: string, query: string) => {
