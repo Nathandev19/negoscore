@@ -3,7 +3,7 @@ import { isProActive } from "@/lib/billing/plan-access";
 import { PACK_ANALYSES } from "@/lib/billing/plans";
 import { recordPurchase } from "@/lib/billing/purchases";
 import { planKeyFromId, type PlanKey } from "@/lib/whop/api";
-import { adjustInteger, insertIfAbsent, isMissingRelation, rpc, selectRows, updateRows } from "@/lib/supabase/server";
+import { adjustInteger, insertIfAbsent, isMissingColumn, isMissingRelation, rpc, selectRows, updateRows } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/security/request";
 
 // Effets d'un événement Whop sur les crédits. Tout passe par la clé
@@ -27,6 +27,8 @@ type Credits = {
   balance: number;
   period_end: string | null;
   cancelled_at: string | null;
+  // Abonnement Whop en cours sur ce compte (migration 026). null : inconnu.
+  membership_id?: string | null;
 };
 type Profile = { id: string; email: string | null };
 
@@ -69,8 +71,14 @@ async function credits(userId: string): Promise<Credits> {
   await insertIfAbsent("credits", { user_id: userId, balance: 0, plan: "free" });
   const [row] = await selectRows<Credits>(
     "credits",
-    `select=user_id,plan,balance,period_end,cancelled_at&user_id=eq.${userId}&limit=1`,
-  );
+    `select=user_id,plan,balance,period_end,cancelled_at,membership_id&user_id=eq.${userId}&limit=1`,
+  ).catch(async (caught: unknown) => {
+    // Colonne membership_id absente (migration 026 pas encore appliquée) :
+    // on lit sans elle, et l'abonnement reste « inconnu » (aucune prolongation
+    // à l'aveugle, voir periodAfterActivation).
+    if (!isMissingColumn(caught)) throw caught;
+    return selectRows<Credits>("credits", `select=user_id,plan,balance,period_end,cancelled_at&user_id=eq.${userId}&limit=1`);
+  });
   return row;
 }
 
@@ -99,6 +107,36 @@ async function creditOnce(eventId: string, userId: string, amount: number): Prom
     console.warn(JSON.stringify({ event: "whop_credit_fonction_absente" }));
   }
   await addBalance(userId, amount);
+}
+
+// Mission #090 bis — un abonnement activé PROLONGE la période en place quand
+// il s'agit d'un abonnement DISTINCT : deux mois payés donnent deux mois
+// d'accès. Le renouvellement mensuel du même abonnement, lui, pose simplement
+// la date annoncée par Whop : la prolonger reviendrait à offrir un mois.
+//
+// Ce qui distingue les deux, dans la charge de Whop : l'identifiant de
+// l'abonnement (data.id), comparé à celui enregistré sur le compte.
+// Identifiant inconnu des deux côtés (abonnement activé avant la migration
+// 026, ou charge sans id) : on ne peut pas trancher. On garde alors la date la
+// plus lointaine — jamais moins que ce qui est déjà dû — et on le journalise.
+export function periodAfterActivation(
+  current: { period_end: string | null; membership_id?: string | null },
+  membershipId: string | null,
+  renewalEnd: string,
+  now: Date = new Date(),
+): { periodEnd: string; kind: "renewal" | "extended" | "new" | "indistinct" } {
+  const end = current.period_end ? new Date(current.period_end).getTime() : 0;
+  const active = end > now.getTime();
+  const renewal = new Date(renewalEnd).getTime();
+  if (!active) return { periodEnd: renewalEnd, kind: "new" };
+  const known = membershipId !== null && (current.membership_id ?? null) !== null;
+  if (known && membershipId === current.membership_id) return { periodEnd: renewalEnd, kind: "renewal" };
+  if (!known) {
+    return { periodEnd: new Date(Math.max(end, renewal)).toISOString(), kind: "indistinct" };
+  }
+  // Abonnement distinct : sa durée s'ajoute à la période en cours.
+  const added = Math.max(0, renewal - now.getTime());
+  return { periodEnd: new Date(end + added).toISOString(), kind: "extended" };
 }
 
 function planOf(data: Record<string, unknown>): PlanKey | null {
@@ -178,13 +216,29 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   }
 
   if (type === "membership.activated" && plan === "pro") {
-    const periodEnd = text(data.renewal_period_end) ?? new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    const announced = text(data.renewal_period_end) ?? new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    const membershipId = text(data.id);
+    const { periodEnd, kind } = periodAfterActivation(current, membershipId, announced);
+    if (kind === "indistinct") {
+      console.warn(JSON.stringify({ event: "whop_abonnement_indistinct", has_membership_id: membershipId !== null }));
+    }
     await updateRows("credits", `user_id=eq.${user.id}`, {
       plan: "pro",
       period_end: periodEnd,
       // Un réabonnement efface une résiliation antérieure.
       cancelled_at: null,
+      ...(membershipId ? { membership_id: membershipId } : {}),
       updated_at: new Date().toISOString(),
+    }).catch(async (caught: unknown) => {
+      // Colonne membership_id absente : la période reste juste, l'abonnement
+      // n'est simplement pas mémorisé.
+      if (!isMissingColumn(caught)) throw caught;
+      return updateRows("credits", `user_id=eq.${user.id}`, {
+        plan: "pro",
+        period_end: periodEnd,
+        cancelled_at: null,
+        updated_at: new Date().toISOString(),
+      });
     });
     // Mission #090 : l'abonnement activé est l'achat à confirmer (le paiement
     // Pro, lui, ne donne l'accès qu'une fois la souscription activée).
@@ -196,7 +250,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       period_end: periodEnd,
       paid_at: new Date().toISOString(),
     });
-    return { handled: true, reason: `Pro actif jusqu'au ${periodEnd}`, userId: user.id, plan };
+    return { handled: true, reason: `Pro actif jusqu'au ${periodEnd} (${kind})`, userId: user.id, plan };
   }
 
   if (type === "membership.deactivated" && plan === "pro") {
@@ -209,16 +263,24 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
     const stillPaidFor = renewalEnd !== null && new Date(renewalEnd).getTime() > Date.now();
 
     if (status === "canceled" && stillPaidFor) {
+      // Mission #090 bis — la résiliation d'UN abonnement ne raccourcit jamais
+      // une période déjà payée : quand un second abonnement l'avait prolongée,
+      // la date en place est plus lointaine que celle de l'abonnement résilié.
+      // On garde la plus lointaine des deux.
+      const keptEnd =
+        current.period_end && new Date(current.period_end).getTime() > new Date(renewalEnd).getTime()
+          ? current.period_end
+          : renewalEnd;
       await updateRows("credits", `user_id=eq.${user.id}`, {
         plan: "pro",
-        period_end: renewalEnd,
+        period_end: keptEnd,
         // La date de demande n'est jamais écrasée : c'est la première qui compte.
         ...(current.cancelled_at ? {} : { cancelled_at: new Date().toISOString() }),
         updated_at: new Date().toISOString(),
       });
       return {
         handled: true,
-        reason: `résiliation enregistrée, accès Pro conservé jusqu'au ${renewalEnd}`,
+        reason: `résiliation enregistrée, accès Pro conservé jusqu'au ${keptEnd}`,
         userId: user.id,
         plan,
       };

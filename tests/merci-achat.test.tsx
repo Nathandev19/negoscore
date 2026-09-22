@@ -37,7 +37,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
 });
 
 const { CreditsWaiter, accountText, boughtFromCredits, purchaseText, whatToShow } = await import("@/components/merci/credits-waiter");
-const { applyWhopEvent } = await import("@/lib/billing/whop-events");
+const { applyWhopEvent, periodAfterActivation } = await import("@/lib/billing/whop-events");
 const { recentPurchases } = await import("@/lib/billing/purchases");
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/[\s  ]+/g, " ").trim();
@@ -166,5 +166,82 @@ describe("B1, B2 — deux Pack Deal réellement payés : les deux créditent", (
     await applyWhopEvent(packPayment("evt_a"));
     await applyWhopEvent(packPayment("evt_a"));
     expect(db.writes.filter((w) => w.table === "purchases")).toHaveLength(1);
+  });
+});
+
+describe("A — la période Pro se prolonge, elle ne s'écrase plus", () => {
+  const NOW = new Date("2026-09-22T12:00:00.000Z");
+  const membership = (id: string, renewalEnd: string) => ({
+    id: "evt_" + id,
+    type: "membership.activated",
+    data: { id, plan: { id: "plan_pro_test" }, metadata: { user_id: USER }, renewal_period_end: renewalEnd },
+  });
+  const creditsRow = (over: Record<string, unknown>) => [{ user_id: USER, plan: "pro", balance: 0, period_end: null, cancelled_at: null, membership_id: null, ...over }];
+  const written = () => db.writes.filter((w) => w.table === "credits").at(-1)?.row as Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.stubEnv("WHOP_PLAN_PRO", "plan_pro_test");
+    db.rows.set("profiles", [{ id: USER, email: "nina@exemple.test" }]);
+  });
+
+  it("A3 — aucun abonnement actif : la date annoncée par Whop", async () => {
+    db.rows.set("credits", creditsRow({ plan: "free" }));
+    await applyWhopEvent(membership("mem_1", "2026-10-22T12:00:00.000Z"));
+    expect(written()).toMatchObject({ plan: "pro", period_end: "2026-10-22T12:00:00.000Z", membership_id: "mem_1" });
+  });
+
+  it("A3 — renouvellement mensuel du MÊME abonnement : la date de Whop, sans rien ajouter", async () => {
+    db.rows.set("credits", creditsRow({ period_end: "2026-10-16T12:00:00.000Z", membership_id: "mem_1" }));
+    await applyWhopEvent(membership("mem_1", "2026-11-16T12:00:00.000Z"));
+    expect(written()).toMatchObject({ period_end: "2026-11-16T12:00:00.000Z" });
+  });
+
+  it("A3, A1 — second abonnement DISTINCT pendant qu'un autre court : les deux mois s'ajoutent", async () => {
+    // Période en cours jusqu'au 16/10 ; un mois payé aujourd'hui (fin annoncée
+    // au 22/10) ajoute 30 jours : accès jusqu'au 15/11, pas jusqu'au 22/10.
+    db.rows.set("credits", creditsRow({ period_end: "2026-10-16T12:00:00.000Z", membership_id: "mem_1" }));
+    const { periodEnd, kind } = periodAfterActivation(
+      { period_end: "2026-10-16T12:00:00.000Z", membership_id: "mem_1" },
+      "mem_2",
+      "2026-10-22T12:00:00.000Z",
+      NOW,
+    );
+    expect(kind).toBe("extended");
+    expect(periodEnd).toBe("2026-11-15T12:00:00.000Z");
+    await applyWhopEvent(membership("mem_2", "2026-10-22T12:00:00.000Z"));
+    const stored = String(written().period_end);
+    expect(new Date(stored).getTime()).toBeGreaterThan(Date.parse("2026-11-10T00:00:00.000Z"));
+    expect(written()).toMatchObject({ membership_id: "mem_2" });
+  });
+
+  it("A2 — abonnement en place inconnu (activé avant la migration) : la date la plus lointaine, et c'est journalisé", () => {
+    const older = periodAfterActivation({ period_end: "2026-11-16T12:00:00.000Z", membership_id: null }, "mem_2", "2026-10-22T12:00:00.000Z", NOW);
+    expect(older).toEqual({ periodEnd: "2026-11-16T12:00:00.000Z", kind: "indistinct" });
+    const newer = periodAfterActivation({ period_end: "2026-10-01T12:00:00.000Z", membership_id: null }, null, "2026-10-22T12:00:00.000Z", NOW);
+    expect(newer).toEqual({ periodEnd: "2026-10-22T12:00:00.000Z", kind: "indistinct" });
+  });
+
+  it("l'achat enregistré porte la période réellement accordée", async () => {
+    db.rows.set("credits", creditsRow({ period_end: "2026-10-16T12:00:00.000Z", membership_id: "mem_1" }));
+    await applyWhopEvent(membership("mem_2", "2026-10-22T12:00:00.000Z"));
+    const purchase = db.writes.find((w) => w.table === "purchases")?.row as Record<string, unknown>;
+    expect(purchase.plan).toBe("pro");
+    expect(purchase.period_end).toBe(written().period_end);
+  });
+});
+
+describe("A4 — une résiliation ne raccourcit pas une période déjà payée", () => {
+  it("un abonnement résilié alors qu'un second avait prolongé : la période la plus lointaine reste", async () => {
+    vi.stubEnv("WHOP_PLAN_PRO", "plan_pro_test");
+    db.rows.set("profiles", [{ id: USER, email: "nina@exemple.test" }]);
+    db.rows.set("credits", [{ user_id: USER, plan: "pro", balance: 0, period_end: "2026-11-15T12:00:00.000Z", cancelled_at: null, membership_id: "mem_2" }]);
+    await applyWhopEvent({
+      id: "evt_cancel",
+      type: "membership.deactivated",
+      data: { id: "mem_1", plan: { id: "plan_pro_test" }, metadata: { user_id: USER }, status: "canceled", renewal_period_end: "2026-10-22T12:00:00.000Z" },
+    });
+    const row = db.writes.filter((w) => w.table === "credits").at(-1)?.row as Record<string, unknown>;
+    expect(row.period_end).toBe("2026-11-15T12:00:00.000Z");
+    expect(row.cancelled_at).toEqual(expect.any(String));
   });
 });
