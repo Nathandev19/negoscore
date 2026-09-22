@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TurnCard } from "@/components/result/negotiation/turn-card";
 import { pricePhrase } from "@/lib/analysis/engine-parts";
 import { WRITTEN_CONTRACT_THRESHOLD_EUR } from "@/lib/legal/fr";
+import { turnSituation } from "@/lib/negotiation/gap";
 import { messageProblems, pricePhraseForms } from "@/lib/negotiation/message";
 import { originPricing } from "@/lib/negotiation/pricing";
 import { loadScenarios, runScenario, type Scenario } from "@/lib/negotiation/scenarios";
@@ -35,7 +36,11 @@ export function displayedAmounts(html: string): number[] {
 export function allowedAmounts(payload: TurnPayload): Set<number> {
   const pricing = [payload.pricing_before, ...(payload.pricing_after ? [payload.pricing_after] : [])];
   const engine = pricing.flatMap((p: Pricing) => [p.total_low, p.total_high, p.counter_low, p.counter_high]);
+  // Mission #095 : le montant que la marque met sur la table (montant retenu
+  // ou plafond annoncé) est lu dans son texte, et son écart est calculé.
+  const situation = payload.situation;
   const read = [payload.deal_before, payload.deal_after].flatMap((deal) => [deal.payment.amount_eur, deal.in_kind_value_eur]);
+  if (situation) read.push(situation.amount, situation.gap);
   const values = [...engine, ...read].filter((v): v is number => v !== null);
   const allowed = new Set(values);
   const current = payload.pricing_after ?? payload.pricing_before;
@@ -47,7 +52,10 @@ export function allowedAmounts(payload: TurnPayload): Set<number> {
     }
   }
   for (const value of read.filter((v): v is number => v !== null)) {
+    // Écart avec les deux bornes de la fourchette (mission #095 : un montant
+    // proposé se situe par rapport au bas ET au haut).
     if (current.total_low !== null) allowed.add(Math.abs(value - current.total_low));
+    if (current.total_high !== null) allowed.add(Math.abs(value - current.total_high));
   }
   allowed.add(0);
   // Seuil légal du contrat écrit (C4) : constante de lib/legal/fr.ts.
@@ -189,7 +197,21 @@ describe.each(scenarios.map((s) => [s.id, s] as const))("scénario %s", (_id, sc
     const current = payload.pricing_after ?? payload.pricing_before;
     // Toutes les formes de la contre-offre du moteur, « de X à Y € » comprise.
     const forms = [pricePhrase(context.original.language, { low: current.counter_low, high: current.counter_high }), ...pricePhraseForms(context.original.language, { low: current.counter_low, high: current.counter_high })];
-    const text = forms.reduce((acc, form) => acc.replaceAll(form, " "), payload.message.text);
+    // Mission #095 — la phrase qui situe le montant proposé dans la fourchette
+    // est écrite par le code, à partir des sorties du moteur et du montant lu.
+    // Ses chiffres sont vérifiés ici, puis la phrase est retirée du texte : le
+    // reste du message ne doit toujours porter aucun montant.
+    const situation = turnSituation(
+      { changes: payload.changes, deal_after: payload.deal_after, pricing: current, pricing_unavailable: payload.pricing_unavailable, brandReply: scenario.reponse_marque },
+      context.original.language,
+    ).sentence;
+    if (situation !== null) {
+      expect(payload.message.text).toContain(situation);
+      for (const amount of displayedAmounts(situation)) expect(allowedAmounts(payload).has(amount), String(amount)).toBe(true);
+    }
+    // La phrase d'écart d'abord : elle contient elle-même une forme de la
+    // fourchette, qu'il ne faut pas retirer avant elle.
+    const text = [...(situation === null ? [] : [situation]), ...forms].reduce((acc, form) => acc.replaceAll(form, " "), payload.message.text);
     if (payload.conclusion) {
       // Conclusion : les seuls montants sont ceux des termes lus ou du moteur.
       for (const amount of displayedAmounts(text)) expect(allowedAmounts(payload).has(amount), String(amount)).toBe(true);

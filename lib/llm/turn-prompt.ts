@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { PRICE_PLACEHOLDER, strictJsonSchema } from "@/lib/llm/prompt";
-import { turnReadingSchema, type Ask, type Deal } from "@/lib/negotiation/types";
+import { SITUATION_PLACEHOLDER } from "@/lib/negotiation/gap";
+import { POINT_LABEL } from "@/lib/negotiation/points";
+import { POINT_STATUS_LABEL, type PointState, turnReadingSchema, type Ask, type Deal } from "@/lib/negotiation/types";
 
 // Mission #080 — lecture d'une réponse de marque, un appel par tour.
 //
@@ -10,7 +12,7 @@ import { turnReadingSchema, type Ask, type Deal } from "@/lib/negotiation/types"
 // 2025). L'état de référence est le deal structuré, pas l'historique.
 
 // À changer à chaque modification de TURN_SYSTEM_PROMPT ou du schéma de lecture.
-export const TURN_PROMPT_VERSION = "2026-09-19.7";
+export const TURN_PROMPT_VERSION = "2026-09-22.8";
 
 export function turnReadingJsonSchema(): { [key: string]: unknown } {
   return strictJsonSchema(z.toJSONSchema(turnReadingSchema) as { [key: string]: unknown });
@@ -52,6 +54,8 @@ LECTURE
 
 MESSAGE SUIVANT (next_message)
 - Un message que la personne peut envoyer tel quel, dans la langue de la réponse de la marque, en reprenant son tutoiement ou son vouvoiement.
+- NE REDEMANDE JAMAIS un point marqué « Répondu » ou « Refusé » dans <points_deja_traites> : la marque y a déjà répondu, et sa phrase est citée. Tu peux t'appuyer dessus, tu ne peux pas le redemander. Ne pose de question que sur les points marqués « Inconnu ». Une question sur un point déjà traité est supprimée du message avant qu'elle le voie.
+- Si la marque énonce un montant dans cette réponse, écris exactement ${SITUATION_PLACEHOLDER}, une seule fois, sur sa propre ligne, à l'endroit où ce montant doit être situé par rapport au tarif. N'écris ni l'écart, ni le sens de l'écart, ni aucun chiffre : la phrase entière est calculée et insérée par l'outil. Si tu ne l'écris pas, elle est ajoutée avant la formule de politesse.
 - Il commence par une salutation sur sa propre ligne (« Bonjour, »), puis des paragraphes courts séparés par une ligne vide, et se termine par une formule de politesse sur sa propre ligne (« Belle journée, »).
 - Formulations neutres en genre : tu ne sais pas qui écrit. Jamais « ravie », « ravi », « ouverte », « prête », « contente », « intéressée »… Écris par exemple « avec plaisir », « je reste disponible », « au plaisir d'échanger ».
 - Poli et ferme, chaleureux, jamais sec, même si la négociation dure. Remercie la marque pour sa réponse.
@@ -66,15 +70,28 @@ MESSAGE SUIVANT (next_message)
 export function buildTurnUserMessage({
   deal,
   asks,
+  points = [],
   lastMessage,
   brandReply,
 }: {
   deal: Deal;
   asks: readonly Ask[];
+  // Mission #095 — la mémoire du fil : ce que la marque a déjà renseigné, avec
+  // sa phrase. C'est ce qui manquait au modèle pour ne pas se répéter.
+  points?: readonly PointState[];
   lastMessage: string;
   brandReply: string;
 }): string {
   const demandes = asks.length === 0 ? "(aucune demande chiffrée ni condition)" : asks.map((ask) => `- ${ask.id} : ${ask.label}`).join("\n");
+  const traites =
+    points.length === 0
+      ? "(aucun point encore traité)"
+      : points
+          .map((point) => {
+            const quote = point.quote ? ` — la marque a écrit : ${point.quote}` : "";
+            return `- ${POINT_LABEL[point.key]} : ${POINT_STATUS_LABEL[point.status]}${quote}`;
+          })
+          .join("\n");
   return `<etat_du_deal>
 ${JSON.stringify(deal)}
 </etat_du_deal>
@@ -82,6 +99,10 @@ ${JSON.stringify(deal)}
 <demandes>
 ${demandes}
 </demandes>
+
+<points_deja_traites>
+${traites}
+</points_deja_traites>
 
 <dernier_message_de_la_creatrice>
 ${lastMessage}

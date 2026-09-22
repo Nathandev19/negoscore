@@ -2,8 +2,11 @@ import { TONES, toneLabel } from "@/lib/tone";
 import type { ResultView } from "@/lib/analysis/lock";
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { mergeAsks, openAsks, originalAsks, outcomeFromAsks, PRICE_ASK_ID, REMAINING_FALLBACK } from "@/lib/negotiation/asks";
+import { buildClosing } from "@/lib/negotiation/closing";
 import { buildConclusion } from "@/lib/negotiation/conclusion";
-import { fallbackMessage, finalMessage } from "@/lib/negotiation/message";
+import { turnSituation } from "@/lib/negotiation/gap";
+import { fallbackMessage, finalMessage, stripRedundantQuestions } from "@/lib/negotiation/message";
+import { closedPoints, emptyPoints, everythingSettled, readPoints } from "@/lib/negotiation/points";
 import { tableOf } from "@/lib/analysis/recompute";
 import { originPricing, priceFor, unavailablePricing } from "@/lib/negotiation/pricing";
 import { checkQuote, quoteIsIn } from "@/lib/negotiation/quotes";
@@ -15,6 +18,7 @@ import {
   TURN_SCHEMA_VERSION,
   type Ask,
   type Deal,
+  type PointState,
   type TermChange,
   type TermGroup,
   type TurnPayload,
@@ -104,10 +108,18 @@ export function stateBefore(original: ResultView, previous: readonly TurnPayload
   deal: Deal;
   asks: Ask[];
   changedSinceOrigin: boolean;
+  // Mission #095 — la mémoire des points, reprise du tour précédent.
+  points: PointState[];
 } {
   const last = previous.at(-1);
-  if (!last) return { deal: normalizeDeal(original.deal), asks: originalAsks(original), changedSinceOrigin: false };
-  return { deal: last.deal_after, asks: last.asks, changedSinceOrigin: last.changed_since_origin };
+  if (!last) {
+    const deal = normalizeDeal(original.deal);
+    return { deal, asks: originalAsks(original), changedSinceOrigin: false, points: emptyPoints(deal) };
+  }
+  // Tour enregistré avant cette mission : aucun point mémorisé, on repart de
+  // l'état vide plutôt que d'inventer ce que la marque aurait répondu.
+  const points = last.points.length > 0 ? last.points : emptyPoints(last.deal_after);
+  return { deal: last.deal_after, asks: last.asks, changedSinceOrigin: last.changed_since_origin, points };
 }
 
 export function processTurn(context: TurnContext, reading: TurnReading): TurnResult {
@@ -246,6 +258,28 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
 
   const counter = pricingUnavailable ? { low: null, high: null } : { low: current.counter_low, high: current.counter_high };
 
+  // ─── Mission #095 ──────────────────────────────────────────────────────────
+  // 1. La mémoire : chaque point renseigné par la marque garde sa citation,
+  //    tour après tour. C'est elle qui empêche de le redemander.
+  const points = readPoints({ previous: before.points, brandReply, changes, turn: turnNumber, deal: dealAfter });
+  // Ce qu'on savait DÉJÀ en entrant dans ce tour : c'est cela qu'une question
+  // ne peut plus redemander. Un point que la marque vient de renseigner dans
+  // CETTE réponse ne rend pas redondante une question du même message : elle
+  // peut porter sur ce qu'elle n'a pas couvert (« et la durée des stories ? »).
+  const closed = closedPoints(before.points);
+
+  // 2. L'écart : le montant que la marque énonce dans CE tour, situé dans la
+  //    fourchette du moteur. Calculé ici, en TypeScript, jamais par le modèle.
+  const { position, sentence: situation } = turnSituation(
+    { changes, deal_after: dealAfter, pricing: current, pricing_unavailable: pricingUnavailable, brandReply },
+    original.language,
+  );
+  if (position !== null && situation === null) {
+    // Un nombre hors des valeurs autorisées : aucune phrase plutôt qu'un
+    // chiffre dont on ne sait pas d'où il vient.
+    console.warn(JSON.stringify({ event: "negociation_ecart_non_chiffrable", tour: turnNumber }));
+  }
+
   // Mission #083, D — le titre du tour vient des statuts affichés.
   const outcome = outcomeFromAsks(asks, turnNumber, { model: reading.outcome, changed: changes.length > 0, questions: questions.length });
 
@@ -267,27 +301,57 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
     : null;
 
   const priceOpen = asks.some((ask) => ask.id === PRICE_ASK_ID && ask.status !== "granted");
-  const message = conclusion
+
+  // 3. La fin : tous les points refermés et un montant sur la table. L'agent
+  //    n'ouvre plus de question ; il présente l'état final et les deux
+  //    messages, sans choisir à sa place.
+  const closing =
+    conclusion === null && everythingSettled(points, dealAfter)
+      ? buildClosing({ deal: dealAfter, asks, points, language: original.language, counter, pricing: current, position, situation })
+      : null;
+
+  const simple = () =>
+    fallbackMessage({
+      language: original.language,
+      open: openAsks(asks),
+      counter,
+      priceOpen,
+      questions: questions.length,
+      refused: outcome === "refused",
+      situation,
+    });
+  const drafted = conclusion
     ? { text: conclusion.message, tone: TONES.clear, fallback: false, fallback_reasons: [] }
     : finalMessage({
-        draft: reading.next_message.text,
-        tone: toneLabel(reading.next_message.tone),
-        deal: dealAfter,
-        brandReply,
-        language: original.language,
-        counter,
-        askLabels: asks.map((ask) => ask.label),
-        unverifiedLabels: asks.filter((ask) => ask.unverified_turn === turnNumber).map((ask) => ask.label),
-        fallback: () =>
-          fallbackMessage({
-            language: original.language,
-            open: openAsks(asks),
-            counter,
-            priceOpen,
-            questions: questions.length,
-            refused: outcome === "refused",
-          }),
-      });
+          draft: reading.next_message.text,
+          tone: toneLabel(reading.next_message.tone),
+          deal: dealAfter,
+          brandReply,
+          language: original.language,
+          counter,
+          askLabels: asks.map((ask) => ask.label),
+          unverifiedLabels: asks.filter((ask) => ask.unverified_turn === turnNumber).map((ask) => ask.label),
+          situation,
+          fallback: simple,
+        });
+
+  // 4. Aucune question sur un point déjà refermé : si le modèle en produit une,
+  //    elle est retirée du message AVANT affichage, et dite dans les journaux —
+  //    y compris quand la négociation est prête à conclure, où le message du
+  //    modèle laisse la place aux deux messages écrits par le code. Un message
+  //    qui n'aurait plus de corps retombe sur le message simple.
+  const cleaned = stripRedundantQuestions(drafted.text, closed, dealAfter);
+  for (const dropped of cleaned.dropped) {
+    console.warn(JSON.stringify({ event: "negociation_question_redondante", point: dropped.point, tour: turnNumber }));
+  }
+  const emptied = cleaned.text.split(/\n{2,}/).filter((part) => part.trim() !== "").length < 3;
+  const message = closing
+    ? { text: closing.hold.text, tone: TONES.clear, fallback: false, fallback_reasons: [] }
+    : cleaned.dropped.length === 0
+      ? drafted
+      : emptied && conclusion === null
+        ? { text: stripRedundantQuestions(simple(), closed, dealAfter).text, tone: TONES.firm, fallback: drafted.fallback, fallback_reasons: drafted.fallback_reasons }
+        : { ...drafted, text: cleaned.text };
 
   return {
     kind: "turn",
@@ -307,6 +371,10 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
       brand_questions: questions,
       uncertainties,
       message,
+      points,
+      situation: position === null || situation === null ? null : { ...position, sentence: situation },
+      dropped_questions: cleaned.dropped,
+      closing,
       conclusion,
     },
   };

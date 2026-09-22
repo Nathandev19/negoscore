@@ -59,6 +59,7 @@ async function main() {
     const { reading, usage } = await readBrandReply({
       deal: state.deal,
       asks: state.asks,
+      points: state.points,
       lastMessage: context.original.ready_to_send_message?.text ?? "",
       brandReply: scenario.reponse_marque,
     });

@@ -182,6 +182,68 @@ export const conclusionSchema = z.object({
 });
 export type Conclusion = z.infer<typeof conclusionSchema>;
 
+// Mission #095 — les points que la négociation doit refermer, avec leur statut
+// et la CITATION EXACTE du message de la marque qui les renseigne. C'est la
+// mémoire du fil : un point « répondu » ne peut plus être redemandé.
+export const POINT_KEYS = [
+  "territory",
+  "formats",
+  "content_duration",
+  "revisions",
+  "payment",
+  "usage_duration",
+  "exclusivity",
+  "validation",
+  "amount",
+] as const;
+export type PointKey = (typeof POINT_KEYS)[number];
+
+// unknown : la marque n'en a rien dit. answered : elle l'a renseigné.
+// refused : elle l'a renseigné en disant qu'elle ne bougerait pas.
+export const POINT_STATUSES = ["unknown", "answered", "refused"] as const;
+export type PointStatus = (typeof POINT_STATUSES)[number];
+
+export const POINT_STATUS_LABEL: Record<PointStatus, string> = {
+  unknown: "Inconnu",
+  answered: "Répondu",
+  refused: "Refusé",
+};
+
+export const pointSchema = z.object({
+  key: z.enum(POINT_KEYS),
+  status: z.enum(POINT_STATUSES),
+  // Extrait du texte collé, découpé par le code : exact par construction.
+  quote: z.string().nullable(),
+  turn: z.number().nullable(),
+});
+export type PointState = z.infer<typeof pointSchema>;
+
+// Mission #095, défaut 1 — où tombe le montant que la marque met sur la table,
+// par rapport à la fourchette du moteur. Tout y est calculé par le code.
+export const situationSchema = z.object({
+  kind: z.enum(["below", "inside", "above"]),
+  // « ceiling » : la marque annonce un plafond (« jusqu'à 900 € »), pas un
+  // montant retenu dans les termes.
+  source: z.enum(["firm", "ceiling"]),
+  amount: z.number(),
+  low: z.number(),
+  high: z.number(),
+  gap: z.number(),
+  // La phrase telle qu'elle est écrite dans le message.
+  sentence: z.string(),
+});
+export type Situation = z.infer<typeof situationSchema>;
+
+// Mission #095, défaut 3 — l'état final proposé à la créatrice : le deal tel
+// qu'il est, et les deux messages prêts à envoyer, avec ce que chacun implique.
+export const closingSchema = z.object({
+  recap: z.array(z.object({ label: z.string(), value: z.string() })),
+  settled: z.array(z.object({ label: z.string(), value: z.string() })),
+  accept: z.object({ implies: z.string(), text: z.string() }),
+  hold: z.object({ implies: z.string(), text: z.string() }),
+});
+export type Closing = z.infer<typeof closingSchema>;
+
 export const messageSchema = z.object({
   text: z.string(),
   tone: z.string(),
@@ -219,6 +281,16 @@ export const turnPayloadSchema = z.object({
   brand_questions: z.array(z.object({ question: z.string(), quote: z.string() })),
   uncertainties: z.array(z.string()),
   message: messageSchema,
+  // Mission #095 — mémoire des points, accumulée tour après tour. Défaut vide :
+  // les tours enregistrés avant cette mission restent lisibles.
+  points: z.array(pointSchema).default([]),
+  // Le montant mis sur la table par la marque, situé dans la fourchette.
+  situation: situationSchema.nullable().default(null),
+  // Questions du modèle supprimées parce qu'un point y était déjà répondu.
+  dropped_questions: z.array(z.object({ point: z.enum(POINT_KEYS), sentence: z.string() })).default([]),
+  // Tout est refermé et un montant est sur la table : plus de question, l'état
+  // final et les deux messages. null : la négociation continue.
+  closing: closingSchema.nullable().default(null),
   conclusion: conclusionSchema.nullable(),
 });
 export type TurnPayload = z.infer<typeof turnPayloadSchema>;

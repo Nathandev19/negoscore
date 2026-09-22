@@ -1,9 +1,11 @@
 import { ConclusionView } from "@/components/result/negotiation/conclusion-view";
 import { EditableMessage } from "@/components/result/negotiation/editable-message";
 import { dealRecapRows, formatEur, formatEurRange } from "@/lib/display";
+import { POINT_LABEL } from "@/lib/negotiation/points";
 import {
   ASK_STATUS_LABEL,
   OUTCOME_LABEL,
+  POINT_STATUS_LABEL,
   TERM_GROUP_LABEL,
   UNVERIFIED_HINT,
   UNVERIFIED_LABEL,
@@ -136,6 +138,9 @@ export function TurnCard({
   const currentRange = unpriced ? null : formatEurRange(current.total_low, current.total_high);
   const offered = offeredOf(payload.deal_after);
   const reading = dealRecapRows(payload.deal_after);
+  // Mission #095 — points refermés par la marque, et points encore ouverts.
+  const settled = payload.points.filter((point) => point.status !== "unknown");
+  const open = payload.points.filter((point) => point.status === "unknown");
 
   return (
     <article aria-labelledby={`tour-${turnNumber}`} className="flex flex-col gap-6 border-t-2 border-encre pt-6">
@@ -316,8 +321,65 @@ export function TurnCard({
         </section>
       ) : null}
 
+      {/* Mission #095 — la mémoire du fil, à l'écran : ce que la marque a déjà
+          renseigné, et la phrase qui le dit. C'est ce qui interdit de le
+          redemander ; ça doit donc être vérifiable. */}
+      {settled.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h4 className="font-bold text-encre">Ce que la marque a déjà renseigné</h4>
+          <ul className="flex flex-col gap-2 text-small">
+            {settled.map((point) => (
+              <li key={point.key} className="flex flex-col gap-0.5">
+                <span className="font-semibold text-encre">
+                  {POINT_LABEL[point.key]} — {POINT_STATUS_LABEL[point.status].toLowerCase()} au tour {point.turn}
+                </span>
+                {point.quote ? <q className="text-attenue">{point.quote}</q> : null}
+              </li>
+            ))}
+          </ul>
+          {open.length > 0 ? (
+            <p className="text-small text-attenue">Reste à obtenir : {open.map((point) => POINT_LABEL[point.key].toLowerCase()).join(", ")}.</p>
+          ) : null}
+          {payload.dropped_questions.length > 0 ? (
+            <p className="text-small">
+              Le message proposé reposait une question sur{" "}
+              {[...new Set(payload.dropped_questions.map((dropped) => POINT_LABEL[dropped.point].toLowerCase()))].join(", ")} : elle a été
+              retirée, la marque y a déjà répondu.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
       {payload.conclusion ? (
         <ConclusionView conclusion={payload.conclusion} turn={turnNumber} />
+      ) : payload.closing ? (
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h4 className="font-bold text-encre">Tout est sur la table</h4>
+            <p className="text-small">
+              La marque a répondu sur chaque point et un montant est écrit. À toi de décider : accepter ces termes, ou tenir ton tarif.
+              L&apos;outil ne tranche pas à ta place — les deux messages sont prêts, tu envoies celui que tu choisis.
+            </p>
+            <dl className="flex flex-col divide-y divide-filet border-y border-filet text-small">
+              {payload.closing.recap.map((row) => (
+                <div key={row.label} className="flex justify-between gap-4 py-2">
+                  <dt className="text-attenue">{row.label}</dt>
+                  <dd className="text-right font-semibold text-encre">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          <div className="flex flex-col gap-2 border-l-4 border-encre py-1 pl-4">
+            <h5 className="font-semibold text-encre">Si tu acceptes</h5>
+            <p className="text-small">{payload.closing.accept.implies}</p>
+            <EditableMessage text={payload.closing.accept.text} label="Message qui accepte" turn={turnNumber} />
+          </div>
+          <div className="flex flex-col gap-2 border-l-4 border-encre py-1 pl-4">
+            <h5 className="font-semibold text-encre">Si tu tiens ton prix</h5>
+            <p className="text-small">{payload.closing.hold.implies}</p>
+            <EditableMessage text={payload.closing.hold.text} label="Message qui tient le prix" turn={turnNumber} />
+          </div>
+        </section>
       ) : (
         <section className="flex flex-col gap-2">
           <h4 className="font-bold text-encre">Ton message suivant</h4>

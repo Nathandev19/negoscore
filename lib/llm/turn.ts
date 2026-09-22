@@ -1,6 +1,6 @@
 import { callStructured, type StructuredUsage } from "@/lib/llm/extract";
 import { buildTurnUserMessage, TURN_SYSTEM_PROMPT, turnReadingJsonSchema } from "@/lib/llm/turn-prompt";
-import { turnReadingSchema, type Ask, type Deal, type TurnReading } from "@/lib/negotiation/types";
+import { turnReadingSchema, type Ask, type Deal, type PointState, type TurnReading } from "@/lib/negotiation/types";
 
 // Mission #080 — lecture d'une réponse de marque par le modèle. La sortie est
 // validée par le schéma ; tout ce qu'elle affirme est ensuite vérifié par le
@@ -25,6 +25,8 @@ function parseReading(outputText: string): TurnReading | { problem: string } {
 export async function readBrandReply(input: {
   deal: Deal;
   asks: readonly Ask[];
+  // Mission #095 — ce que la marque a déjà renseigné, pour ne pas le redemander.
+  points: readonly PointState[];
   lastMessage: string;
   brandReply: string;
 }): Promise<TurnReadResult> {

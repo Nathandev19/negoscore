@@ -121,7 +121,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
 
     let read: Awaited<ReturnType<typeof readBrandReply>>;
     try {
-      read = await readBrandReply({ deal: state.deal, asks: state.asks, lastMessage, brandReply: reply });
+      read = await readBrandReply({ deal: state.deal, asks: state.asks, points: state.points, lastMessage, brandReply: reply });
     } catch (caught) {
       const failure = classifyModelError(caught);
       if (!failure) throw caught;

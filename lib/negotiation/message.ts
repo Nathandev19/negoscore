@@ -3,9 +3,11 @@ import type { CounterRange } from "@/lib/analysis/anchoring";
 import { pricePhrase } from "@/lib/analysis/engine-parts";
 import { formatEur } from "@/lib/money";
 import { PRICE_PLACEHOLDER } from "@/lib/llm/prompt";
+import { insertSituation, SITUATION_PLACEHOLDER } from "@/lib/negotiation/gap";
+import { pointsOfSentence } from "@/lib/negotiation/points";
 import { normalizeForQuote, quoteIsIn } from "@/lib/negotiation/quotes";
 import { topicsOf } from "@/lib/negotiation/topics";
-import type { Ask, Deal, TurnMessage } from "@/lib/negotiation/types";
+import type { Ask, Deal, PointKey, PointState, TurnMessage } from "@/lib/negotiation/types";
 
 // Mission #080, F3 à F5 — le message suivant, contrôlé par le code avant d'être
 // montré. Le brouillon du modèle est écarté, et remplacé par un message simple
@@ -161,6 +163,87 @@ export function claimsAgreementOn(draft: string, labels: readonly string[]): boo
   );
 }
 
+// ─── Mission #095 : ne jamais redemander ce qui a déjà été répondu ──────────
+//
+// Une question qui demande une INFORMATION (« pourriez-vous me préciser le
+// territoire ? ») sur un point déjà refermé est retirée du message. Une
+// demande de CHANGEMENT (« pourriez-vous revoir le budget ? ») reste : tenir
+// sa position n'est pas redemander une information.
+const INFORMATION =
+  /(?<![\p{L}])(?:préciser|précisez|confirmer|confirmez|indiquer|indiquez|me dire|savoir|quel(?:le)?s?(?![\p{L}])|combien|comment|est-ce que|specify|confirm|let me know|which|how many)(?![\p{L}])/iu;
+const CHANGE_REQUEST =
+  /(?<![\p{L}])(?:revoir|réviser|augmenter|monter|passer à|ramener|réduire|rallonger|raccourcir|étendre|limiter|ajouter|retirer|revaloriser|marge|effort|increase|raise|lower|extend|reduce)(?![\p{L}])/iu;
+const ASKS_SOMETHING = /\?\s*$|(?<![\p{L}])(?:pourriez-vous|pourrais-tu|pouvez-vous|peux-tu|merci de|j'aimerais|could you|can you|would you|please)(?![\p{L}])/iu;
+
+export type DroppedQuestion = { point: PointKey; sentence: string };
+
+// Une unité de texte (phrase ou puce) est-elle une question redondante ?
+function redundantPoints(unit: string, closed: readonly PointState[], deal: Deal): PointKey[] {
+  if (!ASKS_SOMETHING.test(unit.trim())) return [];
+  if (!INFORMATION.test(unit)) return [];
+  if (CHANGE_REQUEST.test(unit)) return [];
+  const mentioned = pointsOfSentence(unit, deal).map((point) => point.key);
+  if (mentioned.length === 0) return [];
+  const closedKeys = new Set(closed.map((point) => point.key));
+  // Une seule question peut porter plusieurs points : elle n'est retirée que
+  // si TOUS sont déjà refermés, sinon la question encore utile disparaîtrait.
+  return mentioned.every((key) => closedKeys.has(key)) ? mentioned : [];
+}
+
+function sentencesIn(line: string): string[] {
+  return line.match(/[^.!?\n]+[.!?]*/g) ?? [line];
+}
+
+// Retire du message les questions portant sur des points déjà refermés, et dit
+// lesquelles. Le message garde sa forme : un paragraphe vidé disparaît, une
+// liste vidée emporte la phrase qui l'introduit.
+export function stripRedundantQuestions(
+  text: string,
+  closed: readonly PointState[],
+  deal: Deal,
+): { text: string; dropped: DroppedQuestion[] } {
+  if (closed.length === 0) return { text, dropped: [] };
+  const dropped: DroppedQuestion[] = [];
+  const record = (keys: PointKey[], unit: string) => {
+    for (const key of keys) dropped.push({ point: key, sentence: unit.trim() });
+  };
+  const paragraphs: string[] = [];
+  for (const paragraph of text.split(/\n{2,}/)) {
+    const lines = paragraph.split("\n");
+    const bullet = /^\s*[-•*]\s+/;
+    const bullets = lines.filter((line) => bullet.test(line));
+    if (bullets.length > 0) {
+      const kept = lines.filter((line) => {
+        if (!bullet.test(line)) return true;
+        const keys = redundantPoints(line, closed, deal);
+        if (keys.length === 0) return true;
+        record(keys, line);
+        return false;
+      });
+      // Plus aucune puce : la phrase d'introduction (« … les points suivants : »)
+      // n'introduit plus rien.
+      if (!kept.some((line) => bullet.test(line))) continue;
+      paragraphs.push(kept.join("\n"));
+      continue;
+    }
+    const kept = lines
+      .map((line) => {
+        const sentences = sentencesIn(line);
+        const rest = sentences.filter((sentence) => {
+          const keys = redundantPoints(sentence, closed, deal);
+          if (keys.length === 0) return true;
+          record(keys, sentence);
+          return false;
+        });
+        return rest.length === sentences.length ? line : rest.join(" ").trim();
+      })
+      .filter((line) => line.trim() !== "");
+    if (kept.length === 0) continue;
+    paragraphs.push(kept.join("\n"));
+  }
+  return { text: paragraphs.join("\n\n"), dropped };
+}
+
 export function messageProblems(
   draft: string,
   deal: Deal,
@@ -169,7 +252,7 @@ export function messageProblems(
   unverifiedLabels: readonly string[] = [],
 ): FallbackReason[] {
   const problems = new Set<FallbackReason>();
-  const text = draft.replaceAll(PRICE_PLACEHOLDER, " ");
+  const text = draft.replaceAll(PRICE_PLACEHOLDER, " ").replaceAll(SITUATION_PLACEHOLDER, " ");
   if (normalizeForQuote(text) === "") problems.add("empty");
   if (MONEY.test(text)) problems.add("money");
   const allowed = allowedNumbers(deal, [brandReply, ...askLabels]);
@@ -194,6 +277,7 @@ export function fallbackMessage({
   priceOpen,
   questions,
   refused,
+  situation = null,
 }: {
   language: Language;
   open: readonly Ask[];
@@ -201,6 +285,9 @@ export function fallbackMessage({
   priceOpen: boolean;
   questions: number;
   refused: boolean;
+  // Mission #095 — la phrase qui situe le montant proposé dans la fourchette,
+  // écrite par le code. Le message de repli la porte lui aussi.
+  situation?: string | null;
 }): string {
   const priced = priceOpen && counter.low !== null && counter.high !== null;
   const conditions = open.filter((ask) => ask.id !== "prix");
@@ -209,6 +296,7 @@ export function fallbackMessage({
       "Hello,",
       "",
       "Thank you for your reply.",
+      ...(situation ? ["", situation] : []),
       ...(questions > 0 ? ["", "To answer your question: [to complete]"] : []),
       ...(refused
         ? ["", "I understand. If the budget or the terms can change, feel free to come back to me."]
@@ -226,6 +314,7 @@ export function fallbackMessage({
     "Bonjour,",
     "",
     "Merci pour votre retour.",
+    ...(situation ? ["", situation] : []),
     ...(questions > 0 ? ["", "Pour répondre à votre question : [à compléter]"] : []),
     ...(refused
       ? ["", "Je comprends. Si le budget ou les conditions peuvent évoluer, n'hésitez pas à revenir vers moi."]
@@ -296,6 +385,7 @@ export function finalMessage({
   counter,
   askLabels = [],
   unverifiedLabels = [],
+  situation = null,
   fallback,
 }: {
   draft: string;
@@ -307,11 +397,16 @@ export function finalMessage({
   askLabels?: readonly string[];
   // Demandes dont la lecture a été écartée dans ce tour (mission #083, A2).
   unverifiedLabels?: readonly string[];
+  // Mission #095 — phrase qui situe le montant proposé, écrite par le code et
+  // insérée APRÈS les contrôles : c'est le seul endroit d'où ses chiffres
+  // peuvent venir. Le brouillon du modèle, lui, n'a le droit à aucun montant.
+  situation?: string | null;
   fallback: () => string;
 }): TurnMessage {
   const problems = messageProblems(draft, deal, brandReply, askLabels, unverifiedLabels);
   if (problems.length > 0) {
     return { text: fallback(), tone: TONES.firm, fallback: true, fallback_reasons: problems.map((p) => FALLBACK_REASON[p]) };
   }
-  return { text: withGreeting(insertPrice(draft, language, counter).text.trim(), language), tone, fallback: false, fallback_reasons: [] };
+  const priced = insertPrice(draft, language, counter).text;
+  return { text: withGreeting(insertSituation(priced, situation).trim(), language), tone, fallback: false, fallback_reasons: [] };
 }
