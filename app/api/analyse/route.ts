@@ -138,7 +138,9 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIp(request);
-  const hourlyKey = hashIp(ip);
+  // Haché DANS le filet (mission #088) : sans sel serveur, hashIp lève une
+  // erreur qui, ici, donnait une réponse vide.
+  let hourlyKey: string | null = null;
   // Clé écrite sur le deal à l'enregistrement, sauf si elle appartient déjà à
   // quelqu'un d'autre (voir le rejeu ci-dessous).
   let keyToWrite: string | null = key;
@@ -165,7 +167,10 @@ export async function POST(request: Request) {
       const release = grant.release;
       steps.push(() => release());
     }
-    if (hourlyCounted) steps.push(() => releaseUsageGuard(hourlyKey));
+    if (hourlyCounted && hourlyKey) {
+      const guardKey = hourlyKey;
+      steps.push(() => releaseUsageGuard(guardKey));
+    }
     for (const step of steps) {
       await step().catch((error: unknown) =>
         console.error(
@@ -175,23 +180,32 @@ export async function POST(request: Request) {
     }
   }
 
-  // Rejeu (mission #060) : cette demande a déjà été traitée, on rend le même
-  // résultat. Avant le filet horaire, avant le droit, avant le modèle : une
-  // reprise après coupure réseau ne coûte rien de plus.
-  if (key) {
-    const replay = await replayableAnalysis(key, { user, anonToken: existingToken });
-    if (replay.kind === "analysis") {
-      console.log(JSON.stringify({ event: "analyse_rejouee", signed_in: user !== null }));
-      return json(200, { analysisId: replay.analysisId, meta: { replayed: true } }, cookie);
-    }
-    if (replay.kind === "taken") {
-      // Clé déjà employée ailleurs : on ne dit pas par qui, et on ne la réécrit
-      // pas. Le navigateur en tirera une neuve à la prochaine tentative.
-      keyToWrite = null;
-    }
-  }
-
   try {
+    // Rejeu (mission #060) : cette demande a déjà été traitée, on rend le même
+    // résultat. Avant le filet horaire, avant le droit, avant le modèle : une
+    // reprise après coupure réseau ne coûte rien de plus.
+    //
+    // Mission #088 — DANS le filet : une panne de la base pendant cette
+    // vérification (Supabase en 522, le 19/09) donnait une réponse vide. Elle
+    // donne maintenant le message lisible du reste de la route (503, « rien
+    // n'a été décompté »). Et la route S'ARRÊTE : sans cette vérification, on
+    // ne sait pas si la demande a déjà été traitée, et continuer pourrait
+    // décompter deux fois la même analyse. Rien n'est réservé ni compté à ce
+    // stade : abandon() n'a rien à défaire.
+    if (key) {
+      const replay = await replayableAnalysis(key, { user, anonToken: existingToken });
+      if (replay.kind === "analysis") {
+        console.log(JSON.stringify({ event: "analyse_rejouee", signed_in: user !== null }));
+        return json(200, { analysisId: replay.analysisId, meta: { replayed: true } }, cookie);
+      }
+      if (replay.kind === "taken") {
+        // Clé déjà employée ailleurs : on ne dit pas par qui, et on ne la réécrit
+        // pas. Le navigateur en tirera une neuve à la prochaine tentative.
+        keyToWrite = null;
+      }
+    }
+
+    hourlyKey = hashIp(ip);
     const guard = await hitUsageGuard(hourlyKey);
     if (!guard.allowed) {
       return fail(429, `Tu as lancé 5 analyses en une heure. Réessaie dans ${guard.retryInMinutes} min.`);
