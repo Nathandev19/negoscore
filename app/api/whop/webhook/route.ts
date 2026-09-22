@@ -68,9 +68,15 @@ export async function POST(request: Request) {
 
   try {
     const outcome = await applyWhopEvent(parsed);
-    await updateRows("whop_events", `event_id=eq.${encodeURIComponent(parsed.id)}`, {
-      processed_at: new Date().toISOString(),
-    });
+    // Mission #092, B — paiement encaissé qu'on n'a pas su rattacher à un
+    // compte : l'événement N'EST PAS marqué traité, pour que le rattrapage
+    // quotidien réessaie pendant 30 jours. On répond quand même 200 : Whop
+    // n'a rien à rejouer, c'est notre base qui manque d'un compte.
+    if (!outcome.pending) {
+      await updateRows("whop_events", `event_id=eq.${encodeURIComponent(parsed.id)}`, {
+        processed_at: new Date().toISOString(),
+      });
+    }
     console.log(
       JSON.stringify({ event: "whop_webhook", type: parsed.type, handled: outcome.handled, reason: outcome.reason }),
     );

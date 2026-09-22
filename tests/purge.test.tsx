@@ -7,8 +7,13 @@ import { purgeCutoffs } from "@/lib/privacy/purge";
 
 const purge = vi.hoisted(() => ({ run: vi.fn() }));
 // Rattrapage des paiements branché sur le même cron (mission #060).
-const recovery = vi.hoisted(() => ({ run: vi.fn() }));
-vi.mock("@/lib/billing/webhook-recovery", () => ({ recoverPendingWhopEvents: recovery.run }));
+const recovery = vi.hoisted(() => ({ run: vi.fn(), settle: vi.fn() }));
+// Mission #092 : la même purge règle aussi les paiements encaissés sans
+// contrepartie (Pro sans activation, paiement sans compte).
+vi.mock("@/lib/billing/webhook-recovery", () => ({
+  recoverPendingWhopEvents: recovery.run,
+  settleUnpaidCounterparts: recovery.settle,
+}));
 vi.mock("@/lib/privacy/purge", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/privacy/purge")>()),
   runPurge: purge.run,
@@ -24,7 +29,9 @@ function call(authorization?: string) {
 beforeEach(() => {
   purge.run.mockReset();
   recovery.run.mockReset();
-  recovery.run.mockResolvedValue({ repris: 0, traites: 0, echecs: 0 });
+  recovery.settle.mockReset();
+  recovery.run.mockResolvedValue({ repris: 0, traites: 0, echecs: 0, en_attente: 0 });
+  recovery.settle.mockResolvedValue({ pro_ouverts: 0, abandons: 0 });
   purge.run.mockResolvedValue({ documents: 0, files_removed: 0, source_texts: 0, usage_guard: 0, whop_events: 0, checkout_consents: 0 });
   vi.stubEnv("CRON_SECRET", "secret-de-test");
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -63,7 +70,8 @@ describe("/api/purge", () => {
       usage_guard: 5,
       whop_events: 0,
       checkout_consents: 0,
-      paiements: { repris: 0, traites: 0, echecs: 0 },
+      paiements: { repris: 0, traites: 0, echecs: 0, en_attente: 0 },
+      contreparties: { pro_ouverts: 0, abandons: 0 },
     });
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('"event":"purge"'));
   });

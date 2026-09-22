@@ -2,6 +2,12 @@ import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
 import { isProActive } from "@/lib/billing/plan-access";
 import { PACK_ANALYSES } from "@/lib/billing/plans";
 import { recordPurchase } from "@/lib/billing/purchases";
+import {
+  attachActivation,
+  closeAwaitingActivation,
+  honoredProAwaitingActivation,
+  recordPending,
+} from "@/lib/billing/pending-payments";
 import { planKeyFromId, type PlanKey } from "@/lib/whop/api";
 import { adjustInteger, insertIfAbsent, isMissingColumn, isMissingRelation, rpc, selectRows, updateRows } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/security/request";
@@ -13,6 +19,9 @@ export type WhopEvent = { id: string; type: string; data: Record<string, unknown
 export type EventOutcome = {
   handled: boolean;
   reason: string;
+  // Mission #092, B — paiement encaissé qu'on n'a pas su rattacher à un compte.
+  // L'événement N'EST PAS marqué traité : le rattrapage quotidien réessaiera.
+  pending?: boolean;
   userId?: string;
   userEmail?: string | null;
   analyticsId?: string | null;
@@ -109,6 +118,20 @@ async function creditOnce(eventId: string, userId: string, amount: number): Prom
   await addBalance(userId, amount);
 }
 
+// Durée d'une période Pro, quand Whop n'annonce pas de date de fin et pour le
+// rattrapage d'un paiement resté sans activation (mission #092, A).
+export const PRO_PERIOD_MS = 30 * 24 * 3600 * 1000;
+
+// Mission #092, A — période ouverte par le rattrapage d'un paiement Pro resté
+// sans activation. Même règle que le chemin membership.activated du cas
+// « aucun abonnement actif » : un mois à partir de maintenant. Quand une
+// période court déjà, ce mois s'AJOUTE (il a été payé) : jamais d'écrasement.
+export function proPeriodAfterRecovery(currentEnd: string | null, now: Date = new Date()): string {
+  const end = currentEnd ? new Date(currentEnd).getTime() : 0;
+  const base = Math.max(end, now.getTime());
+  return new Date(base + PRO_PERIOD_MS).toISOString();
+}
+
 // Mission #090 bis — un abonnement activé PROLONGE la période en place quand
 // il s'agit d'un abonnement DISTINCT : deux mois payés donnent deux mois
 // d'accès. Le renouvellement mensuel du même abonnement, lui, pose simplement
@@ -157,7 +180,26 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   if (!plan) return { handled: false, reason: "plan hors formules Negoscore" };
 
   const user = await resolveUser(source);
-  if (!user) return { handled: false, reason: "aucun compte rattaché à ce paiement" };
+  if (!user) {
+    // Mission #092, B — de l'argent est encaissé et personne n'est crédité :
+    // le paiement est mis en attente de rattachement, avec l'email de
+    // l'acheteur, et l'événement reste à reprendre. Un événement qui n'est pas
+    // un paiement (activation, résiliation) n'a rien à accorder : inchangé.
+    if (type !== "payment.succeeded") return { handled: false, reason: "aucun compte rattaché à cet événement" };
+    const email = text(record(source.user).email);
+    console.warn(JSON.stringify({ event: "whop_paiement_non_rattache", event_id: event.id, email, plan }));
+    await recordPending({
+      event_id: event.id,
+      user_id: null,
+      email,
+      plan,
+      amount: typeof source.total === "number" ? source.total : null,
+      currency: text(source.currency),
+      paid_at: new Date().toISOString(),
+      reason: "compte_introuvable",
+    });
+    return { handled: false, pending: true, reason: "aucun compte rattaché à ce paiement : en attente de rattachement" };
+  }
   const current = await credits(user.id);
   // Identifiant anonyme posé au checkout : il relie l'achat au parcours mesuré.
   const analyticsId = sanitizeDistinctId(record(source.metadata).ph_distinct_id);
@@ -201,8 +243,25 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   }
 
   if (type === "payment.succeeded" && plan === "pro") {
-    // L'abonnement est activé par membership.activated : ici on note seulement le revenu.
+    // L'abonnement est activé par membership.activated : ici on note seulement
+    // le revenu. Mission #092, A — et on note qu'une activation est ATTENDUE :
+    // si elle n'arrive pas, le rattrapage ouvrira le mois payé.
     const total = typeof source.total === "number" ? source.total : null;
+    // Abonnement déjà actif ET connu : ce paiement est un renouvellement, ou
+    // l'activation est arrivée avant lui. Rien à ouvrir — la ligne est gardée
+    // pour la trace, déjà réglée, et le rattrapage ne la reprendra pas.
+    const alreadyActive = isProActive(current) && (current.membership_id ?? null) !== null;
+    await recordPending({
+      event_id: event.id,
+      user_id: user.id,
+      email: user.email,
+      plan,
+      amount: total,
+      currency: text(source.currency),
+      paid_at: new Date().toISOString(),
+      reason: "activation_attendue",
+      ...(alreadyActive ? { resolution: "active" as const, resolved_at: new Date().toISOString() } : {}),
+    });
     return {
       handled: true,
       reason: `paiement Pro enregistré (rattachement par ${user.how})`,
@@ -216,8 +275,34 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   }
 
   if (type === "membership.activated" && plan === "pro") {
-    const announced = text(data.renewal_period_end) ?? new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    const announced = text(data.renewal_period_end) ?? new Date(Date.now() + PRO_PERIOD_MS).toISOString();
     const membershipId = text(data.id);
+
+    // Mission #092, A — ce paiement a déjà été honoré par le rattrapage, faute
+    // d'activation à temps : l'activation qui arrive après coup n'accorde RIEN
+    // de plus. Elle ne fait que confirmer l'abonnement et le mémoriser.
+    const honored = await honoredProAwaitingActivation(user.id, new Date());
+    if (honored && (await attachActivation(honored.event_id, event.id))) {
+      if (membershipId) {
+        await updateRows("credits", `user_id=eq.${user.id}`, {
+          membership_id: membershipId,
+          updated_at: new Date().toISOString(),
+        }).catch((caught: unknown) => {
+          if (!isMissingColumn(caught)) throw caught;
+          return [];
+        });
+      }
+      console.log(JSON.stringify({ event: "whop_activation_deja_rattrapee", event_id: event.id, paiement: honored.event_id }));
+      return {
+        handled: true,
+        reason: `abonnement déjà ouvert par le rattrapage du paiement ${honored.event_id}`,
+        userId: user.id,
+        plan,
+      };
+    }
+    // Activation normale : les paiements Pro qui l'attendaient sont réglés, le
+    // rattrapage n'a plus rien à ouvrir pour eux.
+    await closeAwaitingActivation(user.id);
     const { periodEnd, kind } = periodAfterActivation(current, membershipId, announced);
     if (kind === "indistinct") {
       console.warn(JSON.stringify({ event: "whop_abonnement_indistinct", has_membership_id: membershipId !== null }));

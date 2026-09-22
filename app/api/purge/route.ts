@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { recoverPendingWhopEvents } from "@/lib/billing/webhook-recovery";
+import { recoverPendingWhopEvents, settleUnpaidCounterparts } from "@/lib/billing/webhook-recovery";
 import { runPurge } from "@/lib/privacy/purge";
 
 export const runtime = "nodejs";
@@ -37,7 +37,18 @@ export async function GET(request: Request) {
       );
       return null;
     });
-    const report = { ...(await runPurge()), paiements };
+    // Mission #092 : paiements Pro restés sans activation, et paiements sans
+    // compte correspondant depuis plus de 30 jours.
+    const contreparties = await settleUnpaidCounterparts().catch((caught: unknown) => {
+      console.error(
+        JSON.stringify({
+          event: "whop_contreparties_error",
+          detail: caught instanceof Error ? caught.message.slice(0, 200) : "inconnu",
+        }),
+      );
+      return null;
+    });
+    const report = { ...(await runPurge()), paiements, contreparties };
     console.log(JSON.stringify({ event: "purge", ...report }));
     return Response.json(report);
   } catch (caught) {
