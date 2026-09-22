@@ -239,7 +239,14 @@ export type Situation = z.infer<typeof situationSchema>;
 export const closingSchema = z.object({
   recap: z.array(z.object({ label: z.string(), value: z.string() })),
   settled: z.array(z.object({ label: z.string(), value: z.string() })),
-  accept: z.object({ implies: z.string(), text: z.string() }),
+  accept: z.object({
+    implies: z.string(),
+    text: z.string(),
+    // Mission #096 — le montant que porte l'acceptation quand il vient du
+    // plafond annoncé par la marque, et non des termes retenus. null : c'est
+    // le montant des termes.
+    offered: z.number().nullable().default(null),
+  }),
   hold: z.object({ implies: z.string(), text: z.string() }),
 });
 export type Closing = z.infer<typeof closingSchema>;
@@ -286,6 +293,11 @@ export const turnPayloadSchema = z.object({
   points: z.array(pointSchema).default([]),
   // Le montant mis sur la table par la marque, situé dans la fourchette.
   situation: situationSchema.nullable().default(null),
+  // Mission #096 — le plafond que la marque a annoncé, celui qui fait foi au
+  // moment de ce tour : le plus RÉCENT, jamais le plus élevé. Il n'est pas un
+  // terme convenu (règle #081) ; il sert à ne pas accepter moins que ce qui a
+  // été proposé. null : aucun plafond en cours.
+  stated_ceiling: z.number().nullable().default(null),
   // Questions du modèle supprimées parce qu'un point y était déjà répondu.
   dropped_questions: z.array(z.object({ point: z.enum(POINT_KEYS), sentence: z.string() })).default([]),
   // Tout est refermé et un montant est sur la table : plus de question, l'état

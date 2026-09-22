@@ -327,7 +327,11 @@ describe("défaut 3 — la négociation conclut", () => {
     // ÉCRIT : « jusqu'à 900 € » est un plafond, pas un engagement (mission
     // #081), il ne remplace donc pas les 600 € du tour précédent — et le doute
     // le dit. Le plafond, lui, est situé dans la fourchette (défaut 1).
-    expect(closing.recap.some((row) => row.label === "Rémunération" && row.value.includes("600"))).toBe(true);
+    // Mission #096 : le récapitulatif de l'acceptation porte le plafond annoncé
+    // (900 €), dit comme une proposition de la marque ; les TERMES, eux, gardent
+    // les 600 € écrits.
+    expect(closing.recap.some((row) => row.label === "Rémunération" && row.value.includes("900"))).toBe(true);
+    expect(third.deal_after.payment.amount_eur).toBe(600);
     expect(third.uncertainties.join(" ")).toContain("jusqu'à 900 €");
     expect(third.situation).toMatchObject({ kind: "below", source: "ceiling", amount: 900 });
     expect(third.message.text).toContain(`Le plafond que vous indiquez, ${formatEur(900)}`);
@@ -338,9 +342,11 @@ describe("défaut 3 — la négociation conclut", () => {
     expect(closing.hold.implies).toContain("tu maintiens ton tarif");
     // La marque a dit que c'était son maximum : c'est dit, sans trancher.
     expect(closing.hold.implies).toContain("son maximum");
-    // L'écart annoncé porte sur le montant RETENU (600 €), pas sur le plafond.
-    expect(closing.accept.implies).toContain(formatEur(600));
-    expect(closing.accept.implies).toContain(`${formatEur((third.pricing_before.total_low as number) - 600)} sous le bas`);
+    // Mission #096 : l'écart annoncé porte sur le montant que l'acceptation
+    // PORTE — ici le plafond de 900 €, repris parce qu'il est supérieur aux
+    // 600 € retenus.
+    expect(closing.accept.implies).toContain(formatEur(900));
+    expect(closing.accept.implies).toContain(`${formatEur((third.pricing_before.total_low as number) - 900)} sous le bas`);
     // Aucune nouvelle question dans l'un ou l'autre : le message qui accepte ne
     // demande qu'une confirmation écrite de l'ensemble, jamais un point resté
     // en suspens (il n'y en a plus).

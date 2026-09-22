@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ConclusionView } from "@/components/result/negotiation/conclusion-view";
 import { useSentRecorder } from "@/components/result/negotiation/sent-message";
+import { ThreadError, ThreadPending } from "@/components/result/negotiation/thread-status";
 import { TurnCard } from "@/components/result/negotiation/turn-card";
 import { useTier } from "@/components/result/tier-selector";
 import { Button } from "@/components/ui/button";
 import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, type Conclusion, type ThreadAccess, type TurnPayload } from "@/lib/negotiation/types";
 import { DEFAULT_TIER } from "@/lib/rates/tier";
+import { nextReveal, prefersReducedMotion, reveal, THREAD_PENDING_ID, type ThreadSnapshot } from "@/lib/ui/reveal";
 
 // Mission #080 — « La marque t'a répondu ? » : le fil de l'échange, sous le
 // message à envoyer. Chaque réponse collée s'ajoute à CETTE analyse (B1), les
@@ -75,6 +77,24 @@ export function NegotiationThread({
   const nextTurn = FIRST_TURN + turns.length;
   const turnsLeft = nextTurn <= LAST_TURN;
   const canConclude = !concluded && access === "open";
+
+  // Mission #096, défaut 3 — ce qui vient d'arriver est amené en vue par le
+  // HAUT, et prend le focus pour être annoncé. L'état d'avant sert de repère :
+  // on ne défile que sur ce qui est NOUVEAU, jamais au premier affichage.
+  const seen = useRef<ThreadSnapshot>({ turnNumbers: turns.map((turn) => turn.turnNumber), concluded, error: error !== null });
+  useEffect(() => {
+    const after: ThreadSnapshot = { turnNumbers: turns.map((turn) => turn.turnNumber), concluded, error: error !== null };
+    const id = nextReveal(seen.current, after);
+    seen.current = after;
+    if (id === null) return;
+    reveal(document.getElementById(id), prefersReducedMotion());
+  }, [turns, concluded, error]);
+
+  // L'attente s'affiche là où la réponse apparaîtra, et la page y amène.
+  useEffect(() => {
+    if (sending !== "turn") return;
+    reveal(document.getElementById(THREAD_PENDING_ID), prefersReducedMotion());
+  }, [sending]);
 
   async function sendTurn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -144,6 +164,12 @@ export function NegotiationThread({
         <TurnCard key={turn.turnNumber} {...turn} />
       ))}
       {conclusion ? <ConclusionView conclusion={conclusion} /> : null}
+
+      {/* L'attente est ici, à la place qu'occupera le tour : pas seulement sur
+          le bouton, tout en bas. */}
+      {sending === "turn" ? <ThreadPending turnNumber={nextTurn} /> : null}
+      {/* L'échec s'affiche au même endroit que l'attente : là où on regardait. */}
+      {error ? <ThreadError message={error} /> : null}
 
       {concluded ? null : !turnsLeft ? (
         <p className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
@@ -239,11 +265,7 @@ export function NegotiationThread({
         </div>
       ) : null}
 
-      {error ? (
-        <div role="alert" className="flex flex-col gap-1 alert-bad py-1 text-small">
-          <p>{error}</p>
-        </div>
-      ) : null}
+      {error ? <ThreadError message={error} /> : null}
     </section>
   );
 }

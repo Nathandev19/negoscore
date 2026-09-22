@@ -2,12 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { TurnCard } from "@/components/result/negotiation/turn-card";
 import { pricePhrase } from "@/lib/analysis/engine-parts";
-import { WRITTEN_CONTRACT_THRESHOLD_EUR } from "@/lib/legal/fr";
 import { turnSituation } from "@/lib/negotiation/gap";
+import { allowedAmounts, displayedAmounts } from "@/tests/helpers/amounts";
 import { messageProblems, pricePhraseForms } from "@/lib/negotiation/message";
 import { originPricing } from "@/lib/negotiation/pricing";
 import { loadScenarios, runScenario, type Scenario } from "@/lib/negotiation/scenarios";
-import { OFF_TOPIC_MESSAGE, type Pricing, type TurnPayload } from "@/lib/negotiation/types";
+import { OFF_TOPIC_MESSAGE, type TurnPayload } from "@/lib/negotiation/types";
 
 // Mission #080, F8 — chaque scénario de réponse de marque produit une sortie
 // sensée. Le CODE tourne sur la sortie du modèle enregistrée dans le scénario
@@ -15,53 +15,6 @@ import { OFF_TOPIC_MESSAGE, type Pricing, type TurnPayload } from "@/lib/negotia
 // un fichier dans lib/negotiation/scenarios/ ; il est pris automatiquement.
 
 const scenarios = loadScenarios();
-
-// Montants affichés en euros dans un rendu HTML, HORS citations de la marque
-// (<q>, <blockquote>) : ce que la marque a écrit est montré tel quel, ce n'est
-// pas un chiffre du produit.
-export function displayedAmounts(html: string): number[] {
-  const text = html
-    .replace(/<q\b[\s\S]*?<\/q>/g, " ")
-    .replace(/<blockquote\b[\s\S]*?<\/blockquote>/g, " ")
-    .replace(/<textarea\b[\s\S]*?<\/textarea>/g, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&[a-z#0-9]+;/gi, " ");
-  return [...text.matchAll(/(\d{1,3}(?:[\s  ]\d{3})+|\d+)(?:,\d+)?\s?€/g)].map((m) => Number(m[1].replace(/[\s  ]/g, "")));
-}
-
-// Tout montant que le produit a le droit d'afficher pour ce tour : sorties du
-// moteur (fourchettes, contre-offres, écarts entre elles), montants LUS dans
-// les termes (proposé par la marque, valeur des produits) avec leurs écarts,
-// et le seuil légal du contrat écrit. Rien d'autre.
-export function allowedAmounts(payload: TurnPayload): Set<number> {
-  const pricing = [payload.pricing_before, ...(payload.pricing_after ? [payload.pricing_after] : [])];
-  const engine = pricing.flatMap((p: Pricing) => [p.total_low, p.total_high, p.counter_low, p.counter_high]);
-  // Mission #095 : le montant que la marque met sur la table (montant retenu
-  // ou plafond annoncé) est lu dans son texte, et son écart est calculé.
-  const situation = payload.situation;
-  const read = [payload.deal_before, payload.deal_after].flatMap((deal) => [deal.payment.amount_eur, deal.in_kind_value_eur]);
-  if (situation) read.push(situation.amount, situation.gap);
-  const values = [...engine, ...read].filter((v): v is number => v !== null);
-  const allowed = new Set(values);
-  const current = payload.pricing_after ?? payload.pricing_before;
-  if (payload.pricing_after) {
-    const b = payload.pricing_before;
-    const a = payload.pricing_after;
-    for (const [x, y] of [[a.total_low, b.total_low], [a.total_high, b.total_high], [a.counter_low, b.counter_low], [a.counter_high, b.counter_high]]) {
-      if (x !== null && y !== null) allowed.add(Math.abs(x - y));
-    }
-  }
-  for (const value of read.filter((v): v is number => v !== null)) {
-    // Écart avec les deux bornes de la fourchette (mission #095 : un montant
-    // proposé se situe par rapport au bas ET au haut).
-    if (current.total_low !== null) allowed.add(Math.abs(value - current.total_low));
-    if (current.total_high !== null) allowed.add(Math.abs(value - current.total_high));
-  }
-  allowed.add(0);
-  // Seuil légal du contrat écrit (C4) : constante de lib/legal/fr.ts.
-  allowed.add(WRITTEN_CONTRACT_THRESHOLD_EUR);
-  return allowed;
-}
 
 function turnOf(scenario: Scenario) {
   const { context, result } = runScenario(scenario);

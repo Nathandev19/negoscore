@@ -2,6 +2,7 @@ import { ConclusionView } from "@/components/result/negotiation/conclusion-view"
 import { EditableMessage } from "@/components/result/negotiation/editable-message";
 import { dealRecapRows, formatEur, formatEurRange } from "@/lib/display";
 import { POINT_LABEL } from "@/lib/negotiation/points";
+import { turnAnchorId } from "@/lib/ui/reveal";
 import {
   ASK_STATUS_LABEL,
   OUTCOME_LABEL,
@@ -145,7 +146,9 @@ export function TurnCard({
   return (
     <article aria-labelledby={`tour-${turnNumber}`} className="flex flex-col gap-6 border-t-2 border-encre pt-6">
       <header className="flex flex-col gap-1">
-        <h3 id={`tour-${turnNumber}`} className="text-h3">
+        {/* Mission #096 : c'est ce titre qu'on amène en vue et qui prend le
+            focus à l'arrivée du tour (lib/ui/reveal.ts). */}
+        <h3 id={turnAnchorId(turnNumber)} tabIndex={-1} className="scroll-mt-24 text-h3">
           Tour {turnNumber} — {OUTCOME_LABEL[payload.outcome]}
         </h3>
         <p className="text-small text-attenue">Réponse collée le {DATE.format(new Date(createdAt))}</p>

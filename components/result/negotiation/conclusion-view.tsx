@@ -1,5 +1,6 @@
 import { EditableMessage } from "@/components/result/negotiation/editable-message";
 import type { Conclusion } from "@/lib/negotiation/types";
+import { CONCLUSION_ANCHOR } from "@/lib/ui/reveal";
 
 // Mission #080, C — la conclusion de l'échange. Récapitulatif (C1), points
 // flous (C2), message de confirmation écrite (C3), rappel de la loi française
@@ -7,9 +8,10 @@ import type { Conclusion } from "@/lib/negotiation/types";
 // par la marque qui accepte (C5).
 export function ConclusionView({ conclusion, turn }: { conclusion: Conclusion; turn?: number }) {
   return (
-    <section aria-labelledby="conclusion-echange" className="flex flex-col gap-5 border-2 border-encre p-4 sm:p-6">
+    <section aria-labelledby={CONCLUSION_ANCHOR} className="flex flex-col gap-5 border-2 border-encre p-4 sm:p-6">
       <div className="flex flex-col gap-1">
-        <h3 id="conclusion-echange" className="text-h3">
+        {/* Mission #096 : amené en vue et annoncé quand la conclusion arrive. */}
+        <h3 id={CONCLUSION_ANCHOR} tabIndex={-1} className="scroll-mt-24 text-h3">
           Conclusion de l&apos;échange
         </h3>
         <p className="text-small">

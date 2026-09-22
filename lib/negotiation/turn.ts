@@ -4,7 +4,7 @@ import { normalizeDeal } from "@/lib/analysis/normalize";
 import { mergeAsks, openAsks, originalAsks, outcomeFromAsks, PRICE_ASK_ID, REMAINING_FALLBACK } from "@/lib/negotiation/asks";
 import { buildClosing } from "@/lib/negotiation/closing";
 import { buildConclusion } from "@/lib/negotiation/conclusion";
-import { turnSituation } from "@/lib/negotiation/gap";
+import { statedCeiling, turnSituation } from "@/lib/negotiation/gap";
 import { fallbackMessage, finalMessage, stripRedundantQuestions } from "@/lib/negotiation/message";
 import { closedPoints, emptyPoints, everythingSettled, readPoints } from "@/lib/negotiation/points";
 import { tableOf } from "@/lib/analysis/recompute";
@@ -268,6 +268,12 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   // peut porter sur ce qu'elle n'a pas couvert (« et la durée des stories ? »).
   const closed = closedPoints(before.points);
 
+  // Mission #096 — le plafond annoncé par la marque court d'un tour à l'autre,
+  // et c'est le plus RÉCENT qui fait foi, jamais le plus élevé. Un montant
+  // ferme écrit dans CE tour le périme : la marque vient de dire autre chose.
+  const announced = statedCeiling(brandReply);
+  const ceiling = announced ?? (changes.some((change) => change.group === "amount") ? null : (previous.at(-1)?.stated_ceiling ?? null));
+
   // 2. L'écart : le montant que la marque énonce dans CE tour, situé dans la
   //    fourchette du moteur. Calculé ici, en TypeScript, jamais par le modèle.
   const { position, sentence: situation } = turnSituation(
@@ -307,7 +313,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   //    messages, sans choisir à sa place.
   const closing =
     conclusion === null && everythingSettled(points, dealAfter)
-      ? buildClosing({ deal: dealAfter, asks, points, language: original.language, counter, pricing: current, position, situation })
+      ? buildClosing({ deal: dealAfter, asks, points, language: original.language, counter, pricing: current, ceiling, position, situation })
       : null;
 
   const simple = () =>
@@ -373,6 +379,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
       message,
       points,
       situation: position === null || situation === null ? null : { ...position, sentence: situation },
+      stated_ceiling: ceiling,
       dropped_questions: cleaned.dropped,
       closing,
       conclusion,

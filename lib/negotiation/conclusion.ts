@@ -9,8 +9,9 @@ import {
   usageDurationLabel,
   usageRightsLabel,
 } from "@/lib/negotiation/terms";
+import { pointsOfSentence } from "@/lib/negotiation/points";
 import { topicsOf } from "@/lib/negotiation/topics";
-import type { Ask, Conclusion, Deal } from "@/lib/negotiation/types";
+import type { Ask, Conclusion, Deal, PointState } from "@/lib/negotiation/types";
 
 // Mission #080, C — la conclusion, écrite ENTIÈREMENT par le code à partir des
 // termes lus et vérifiés : aucun appel au modèle, donc rien d'inventé, et
@@ -209,11 +210,57 @@ function knownTermsForBrand(deal: Deal, language: Language): Array<{ label: stri
   return rows.filter((row): row is { label: string; value: string } => row !== null);
 }
 
+// Mission #096, défaut 2 — une demande écrite pour l'écran (« Limiter les
+// droits publicitaires à 6 mois », « ton compte ») n'est pas une phrase de
+// message : elle tutoie et elle commande. Reformulée à la troisième personne,
+// sans impératif, pour un message vouvoyé adressé à une marque.
+const AGREED_VERB =
+  /^(?:limiter|préciser|fixer|confirmer|facturer|proposer|ramener|ajouter|obtenir|demander|négocier|réduire|encadrer|supprimer|inclure|prévoir|garantir|exiger|vérifier|définir|clarifier|plafonner|retirer|étendre|raccourcir|rallonger|payer|régler|livrer|publier|faire|mettre|passer|conserver|maintenir|borner|indiquer|lister|nommer|chiffrer|valider|facturer)(?![\p{L}])/iu;
+
+const TO_FIRST_PERSON: ReadonlyArray<readonly [RegExp, string]> = [
+  [/(?<![\p{L}])ton(?![\p{L}])/giu, "mon"],
+  [/(?<![\p{L}])ta(?![\p{L}])/giu, "ma"],
+  [/(?<![\p{L}])tes(?![\p{L}])/giu, "mes"],
+  [/(?<![\p{L}])tienne?s?(?![\p{L}])/giu, "mienne"],
+  [/(?<![\p{L}])toi(?![\p{L}])/giu, "moi"],
+];
+
+export function agreedItem(label: string, language: Language): string {
+  const cleaned = TO_FIRST_PERSON.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), label.trim()).replace(
+    /[.\s]+$/,
+    "",
+  );
+  const lowered = cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+  // Sans verbe d'action en tête, la phrase n'est pas une action : elle est
+  // retenue telle quelle, derrière un verbe qui la rattache à la liste.
+  if (AGREED_VERB.test(lowered)) return lowered;
+  return language === "en" ? `keep ${lowered}` : `retenir ${lowered}`;
+}
+
+// Ce qui reste vraiment à dire : une demande dont la marque a déjà réglé le
+// sujet figure au-dessus, dans le récapitulatif. La répéter en « convenu en
+// plus » n'apprend rien.
+export function remainingAgreed(rest: readonly string[], points: readonly PointState[], deal: Deal): string[] {
+  const closed = new Set(points.filter((point) => point.status !== "unknown").map((point) => point.key));
+  if (closed.size === 0) return [...rest];
+  return rest.filter((label) => {
+    const mentioned = pointsOfSentence(label, deal).map((point) => point.key);
+    // Une demande qui parle de plusieurs sujets n'est retirée que si ils sont
+    // TOUS réglés : sinon ce qui reste à dire disparaîtrait avec elle.
+    return mentioned.length === 0 || !mentioned.every((key) => closed.has(key));
+  });
+}
+
 export function conclusionMessage(
   deal: Deal,
   language: Language,
   granted: readonly string[] = [],
   counterAccepted: CounterRange | null = null,
+  // Mission #096 : le montant que la marque propose sans qu'il soit encore un
+  // terme convenu, et la mémoire des points (#095) pour ne pas répéter ce qui
+  // figure déjà dans le récapitulatif. dealRead : les termes tels qu'ils sont
+  // lus, pour rattacher une demande à son sujet.
+  extra: { offered?: number | null; points?: readonly PointState[]; dealRead?: Deal } = {},
 ): string {
   const known = knownTermsForBrand(deal, language);
   // Contre-offre acceptée sans montant écrit : la fourchette proposée est
@@ -231,16 +278,26 @@ export function conclusionMessage(
   // Les libellés anglais ne sont pas ceux des sujets : rien n'y est replié.
   const folded = language === "fr" ? foldGranted(known, granted, false) : { rows: known, rest: [...granted] };
   known.splice(0, known.length, ...folded.rows);
-  if (folded.rest.length > 0) known.push({ label: language === "en" ? "Also agreed" : "Convenu en plus", value: folded.rest.join(" ; ") });
+  // Mission #096, défaut 2 — ce qui n'apparaît nulle part ailleurs, et rien
+  // d'autre ; reformulé, en puces. Rien ne reste : pas de ligne du tout.
+  const also = remainingAgreed(folded.rest, extra.points ?? [], extra.dealRead ?? deal).map((label) => agreedItem(label, language));
   const questions = questionsForBrand(deal).map((q) =>
     counterAccepted && q === "le montant de la rémunération" ? "le montant exact retenu dans cette fourchette" : q,
   );
+  const offered = extra.offered ?? null;
   if (language === "en") {
     return [
       "Hello,",
       "",
-      "Thank you for your reply. To make sure we are aligned, here is what I have noted:",
+      ...(offered === null
+        ? ["Thank you for your reply. To make sure we are aligned, here is what I have noted:"]
+        : [
+            `Thank you for your reply. I am happy to move forward on the basis of ${formatEur(offered, "en")}, the amount you offer.`,
+            "",
+            "To make sure we are aligned, here is what I have noted:",
+          ]),
       ...known.map((row) => `- ${row.label}: ${row.value}`),
+      ...(also.length > 0 ? ["", "We also agree to:", ...also.map((item) => `- ${item}`)] : []),
       ...(questions.length > 0 ? ["", "Could you also specify:", ...questions.map((q) => `- ${QUESTIONS_EN[q] ?? q}`)] : []),
       "",
       "Could you confirm these points in writing in reply to this message? Thank you!",
@@ -251,8 +308,17 @@ export function conclusionMessage(
   return [
     "Bonjour,",
     "",
-    "Merci pour votre retour. Pour être sûrs d'être d'accord, voici ce que je retiens :",
+    // Le plafond annoncé est accepté comme une proposition de la marque, et
+    // confirmé plus bas : jamais présenté comme déjà acquis.
+    ...(offered === null
+      ? ["Merci pour votre retour. Pour être sûrs d'être d'accord, voici ce que je retiens :"]
+      : [
+          `Merci pour votre retour. C'est d'accord pour avancer sur la base de ${formatEur(offered)}, le montant que vous proposez.`,
+          "",
+          "Pour être sûrs d'être d'accord, voici ce que je retiens :",
+        ]),
     ...known.map((row) => `- ${row.label} : ${row.value}`),
+    ...(also.length > 0 ? ["", "Il est également convenu de :", ...also.map((item) => `- ${item}`)] : []),
     ...(questions.length > 0 ? ["", "Pourriez-vous aussi me préciser :", ...questions.map((q) => `- ${q}`)] : []),
     "",
     "Pourriez-vous me confirmer ces points par écrit, en réponse à ce message ? Merci beaucoup.",
