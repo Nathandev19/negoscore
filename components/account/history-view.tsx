@@ -68,7 +68,7 @@ export function HistoryView({ rows, negotiationUnavailable = false }: { rows: Hi
       <SiteHeader />
       <main id="contenu" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         {rows ? null : <LoadingAnnouncement />}
-        <h1 className="text-h1 font-extrabold">Tes analyses</h1>
+        <h1 className="text-h1 font-extrabold">Tes négociations</h1>
         {rows && rows.length > 0 && negotiationUnavailable ? (
           <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small">
             L&apos;état de tes négociations n&apos;a pas pu être lu : chaque ligne montre l&apos;offre d&apos;origine. Ouvre une

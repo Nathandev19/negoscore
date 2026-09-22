@@ -222,7 +222,7 @@ describe("D — « offre » réservé à ce que la marque propose", () => {
 describe("E1 — la FAQ mentionne la relance gratuite", () => {
   it("« Combien ça coûte ? » dit la gratuité et la relance d'une analyse incomplète", () => {
     const price = FAQ.find((entry) => entry.question === "Combien ça coûte ?");
-    expect(price?.answer).toContain("Ta première analyse est gratuite.");
+    expect(price?.answer).toContain("Ta première négociation est gratuite.");
     expect(price?.answer).toContain("relancer gratuitement une fois, dans les 14 jours");
   });
 });

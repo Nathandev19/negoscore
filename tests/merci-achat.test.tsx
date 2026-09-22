@@ -58,8 +58,8 @@ beforeEach(() => {
 describe("A1, A4 — les trois cas d'achat", () => {
   it("Pack Deal seul : le produit, les analyses ajoutées et ce qu'il reste", () => {
     const html = render({ plan: "pack", balance: 3, period_end: null }, { purchase: PACK, duplicates: 1, analysesAdded: 3 });
-    expect(html).toContain("C'est bon, ton achat est enregistré : Pack Deal. 3 analyses ajoutées, il t'en reste 3.");
-    expect(html).toContain("Ton compte : 3 analyses disponibles.");
+    expect(html).toContain("C'est bon, ton achat est enregistré : Pack Deal. 3 négociations ajoutées, il t'en reste 3.");
+    expect(html).toContain("Ton compte : 3 négociations disponibles.");
   });
 
   it("Pro seul : la date de fin de période", () => {
@@ -69,10 +69,10 @@ describe("A1, A4 — les trois cas d'achat", () => {
 
   it("le défaut constaté : un Pack acheté par une abonnée Pro confirme le PACK, l'abonnement n'arrive qu'après", () => {
     const html = render({ plan: "pro", balance: 5, period_end: "2026-10-16T00:00:00.000Z" }, { purchase: PACK, duplicates: 1, analysesAdded: 3 });
-    expect(html).toContain("C'est bon, ton achat est enregistré : Pack Deal. 3 analyses ajoutées, il t'en reste 5.");
+    expect(html).toContain("C'est bon, ton achat est enregistré : Pack Deal. 3 négociations ajoutées, il t'en reste 5.");
     // L'état du compte reste, mais après la confirmation et séparé d'elle.
     const confirmation = html.indexOf("ton achat est enregistré");
-    const account = html.indexOf("Ton compte : abonnement Pro actif jusqu'au 16/10/2026 · 5 analyses disponibles.");
+    const account = html.indexOf("Ton compte : abonnement Pro actif jusqu'au 16/10/2026 · 5 négociations disponibles.");
     expect(account).toBeGreaterThan(confirmation);
     // Ce que disait la page avant : l'abonnement présenté comme la confirmation.
     expect(html).not.toContain("ton compte est crédité");
@@ -90,8 +90,8 @@ describe("A2, A3 — ce que la page dit quand elle ne sait pas encore", () => {
   it("achat illisible : rien n'est affirmé sur le produit, l'état du compte est dit comme tel", () => {
     const html = render({ plan: "pack", balance: 5, period_end: null }, "unknown");
     expect(html).toContain("Le détail de cet achat n'est pas lisible pour le moment.");
-    expect(html).toContain("Ton compte : 5 analyses disponibles.");
-    expect(html).not.toContain("analyses ajoutées");
+    expect(html).toContain("Ton compte : 5 négociations disponibles.");
+    expect(html).not.toContain("négociations ajoutées");
     expect(whatToShow("unknown", false)).toBe("unknown");
   });
 
@@ -101,8 +101,8 @@ describe("A2, A3 — ce que la page dit quand elle ne sait pas encore", () => {
     expect(boughtFromCredits({})).toBe("unknown");
     expect(boughtFromCredits({ purchase: null })).toEqual({ purchase: null, duplicates: 0, analysesAdded: 0 });
     expect(boughtFromCredits({ purchase: PACK, duplicates: 2, analyses_added: 6 })).toEqual({ purchase: PACK, duplicates: 2, analysesAdded: 6 });
-    expect(purchaseText(PACK, { plan: "pack", balance: 5, period_end: null })).toBe("3 analyses ajoutées, il t'en reste 5.");
-    expect(accountText({ plan: "free", balance: 1, period_end: null })).toBe("Ton compte : 1 analyse disponible.");
+    expect(purchaseText(PACK, { plan: "pack", balance: 5, period_end: null })).toBe("3 négociations ajoutées, il t'en reste 5.");
+    expect(accountText({ plan: "free", balance: 1, period_end: null })).toBe("Ton compte : 1 négociation disponible.");
   });
 });
 
@@ -110,7 +110,7 @@ describe("B3 — deux paiements du même produit à quelques minutes d'intervall
   it("la page le dit, dit ce qui a été honoré, et comment se faire rembourser", () => {
     const html = render({ plan: "pack", balance: 8, period_end: null }, { purchase: PACK, duplicates: 2, analysesAdded: 6 });
     expect(html).toContain("2 paiements de Pack Deal sont arrivés à quelques minutes d'intervalle.");
-    expect(html).toContain("Chacun a été honoré : 6 analyses ont été ajoutées en tout.");
+    expect(html).toContain("Chacun a été honoré : 6 négociations ont été ajoutées en tout.");
     expect(html).toContain("on te rembourse le paiement en trop");
     expect(html).toContain("contact@negoscore.fr");
   });

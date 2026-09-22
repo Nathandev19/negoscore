@@ -7,10 +7,11 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
-import { FEATURED_PLAN, FREE_ANALYSES, PLANS } from "@/lib/billing/plans";
+import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
+import { COPILOT_PROMISE, negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
 import { FAQ, STEPS, TRUST } from "@/lib/content/home";
 import { JsonLd } from "@/components/seo/json-ld";
-import { publicPageMetadata, softwareApplicationJsonLd } from "@/lib/seo";
+import { faqJsonLd, publicPageMetadata, softwareApplicationJsonLd } from "@/lib/seo";
 import { formatEur, formatEurRange } from "@/lib/display";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,8 @@ export default function HomePage() {
           sa promesse et ses formules, prix repris de la source unique.
           L'organisation et le site sont déclarés par la mise en page. */}
       <JsonLd data={softwareApplicationJsonLd()} />
+      {/* La FAQ affichée plus bas, balisée mot pour mot : même source (FAQ). */}
+      <JsonLd data={faqJsonLd()} />
       <SiteHeader />
       <TrackView event={ANALYTICS_EVENTS.landingView} />
       <main id="contenu" className="flex-1">
@@ -44,12 +47,14 @@ export default function HomePage() {
           <div className="flex flex-col gap-3">
             <h1 className="text-display font-extrabold text-balance">Cette marque te propose combien&nbsp;?</h1>
             <p className="measure text-body text-encre-douce sm:text-lg">
-              Colle son message. On te dit ce que ça vaut vraiment, ce que tu cèdes, et quoi répondre.
+              Colle son message. On te dit ce que ça vaut vraiment, ce que tu cèdes, et quoi répondre — jusqu&apos;à la
+              conclusion du deal.
             </p>
+            <p className="measure text-small text-attenue">{COPILOT_PROMISE}</p>
           </div>
           <div className="flex flex-col gap-2">
             {/* La phrase est masquée quand il ne reste aucun droit : elle serait fausse à ce moment-là. */}
-            <DealInput note="Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et le message." />
+            <DealInput note="Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et les messages." />
           </div>
         </section>
 
@@ -91,7 +96,7 @@ export default function HomePage() {
                 <span className="figures text-encre">{formatEur(deal.payment.amount_eur ?? 0)}</span> pour{" "}
                 {deal.deliverables.map((d) => (d.quantity === null ? "des vidéos" : `${d.quantity} vidéo${d.quantity > 1 ? "s" : ""}`)).join(", ")}, avec droits pub
                 et exclusivité. L&apos;offre est inventée, le chiffrage est celui du moteur actuel : ce n&apos;est pas une vraie
-                analyse en cours.
+                négociation en cours.
               </p>
               <Link href="/analyse/demo" className="link w-fit">
                 Voir l&apos;exemple complet
@@ -125,8 +130,8 @@ export default function HomePage() {
             <div className="flex flex-col gap-2">
               <h2 className="text-h1 font-extrabold">Ce que ça coûte</h2>
               <p className="measure">
-                Ta première analyse est gratuite{FREE_ANALYSES > 1 ? ` (${FREE_ANALYSES} analyses)` : ""}, sans carte
-                bancaire. Prix TTC.
+                Ta première négociation est gratuite{NEGOTIATIONS.free > 1 ? ` (${negotiations(NEGOTIATIONS.free)})` : ""}, sans
+                carte bancaire. Une négociation couvre un deal en entier, de l&apos;analyse à la conclusion. Prix TTC.
               </p>
             </div>
             <ul className="flex flex-col">

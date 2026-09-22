@@ -7,6 +7,7 @@ import { displayedPlan, periodEndsAt, type PlanState } from "@/lib/billing/plan-
 import { clearCreditWait, creditWaitingSince, CREDIT_STUCK_MS } from "@/lib/billing/credit-wait";
 import type { Purchase } from "@/lib/billing/purchases";
 import { PLAN_LABEL } from "@/lib/billing/plans";
+import { negotiations } from "@/lib/content/vocabulaire";
 import { SELLER } from "@/lib/legal/identity";
 
 // Le paiement est confirmé par le webhook, pas par ce retour de navigateur :
@@ -31,7 +32,7 @@ export function purchaseText(purchase: Purchase, account: Account | null): strin
     const until = purchase.period_end ? new Date(purchase.period_end).toLocaleDateString("fr-FR") : null;
     return until ? `Ton abonnement Pro est actif jusqu'au ${until}.` : "Ton abonnement Pro est actif.";
   }
-  const added = `${purchase.analyses_added} analyse${purchase.analyses_added > 1 ? "s" : ""} ajoutée${purchase.analyses_added > 1 ? "s" : ""}`;
+  const added = `${negotiations(purchase.analyses_added)} ajoutée${purchase.analyses_added > 1 ? "s" : ""}`;
   const balance = account ? `, il t'en reste ${account.balance}` : "";
   return `${added}${balance}.`;
 }
@@ -43,7 +44,7 @@ export function accountText(account: Account): string {
     const until = periodEndsAt(account)?.toLocaleDateString("fr-FR") ?? null;
     parts.push(until ? `abonnement Pro actif jusqu'au ${until}` : "abonnement Pro actif");
   }
-  parts.push(`${account.balance} analyse${account.balance > 1 ? "s" : ""} disponible${account.balance > 1 ? "s" : ""}`);
+  parts.push(`${negotiations(account.balance)} disponible${account.balance > 1 ? "s" : ""}`);
   return `Ton compte : ${parts.join(" · ")}.`;
 }
 
@@ -120,7 +121,7 @@ export function CreditsWaiter({ initial, bought }: { initial: Account | null; bo
             </span>
             <span>
               {purchase.plan === "pack"
-                ? `Chacun a été honoré : ${analysesAdded} analyses ont été ajoutées en tout.`
+                ? `Chacun a été honoré : ${negotiations(analysesAdded)} ont été ajoutées en tout.`
                 : "Chacun a été honoré."}{" "}
               Si tu n&apos;as pas voulu payer deux fois, écris-nous à{" "}
               <a href={`mailto:${SELLER.email}`} className="link">

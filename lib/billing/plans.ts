@@ -18,43 +18,54 @@ export const PRICE = {
 // Périodicité de l'abonnement, écrite une seule fois elle aussi.
 export const PRO_PERIOD = "par mois";
 
-// Ce que contient une analyse est le MÊME dans les trois formules (mission
-// #062, C2) : score, points à négocier, fourchette, contre-offre et message à
-// envoyer. La seule différence est le nombre d'analyses, qui est déjà dans
-// « summary ». Les anciennes formulations — « analyse complète à chaque
-// crédit » en face de « score, points à négocier et fourchette » — laissaient
-// croire que l'analyse gratuite était amputée. Elle ne l'est pas : elle
-// demande seulement un email pour afficher la contre-offre, ce que la ligne
-// de la formule gratuite dit maintenant explicitement.
+// Ce que contient une négociation est le MÊME dans les trois formules (mission
+// #062, C2) : score, points à négocier, fourchette, contre-offre, messages et
+// conclusion. La seule différence est le NOMBRE de négociations, déjà dans
+// « summary ». Mission #093 : l'unité vendue s'appelle une négociation, ici
+// comme dans toute la copie publique — c'est l'unité réellement facturée, du
+// premier message jusqu'à la conclusion. La formule gratuite n'est pas
+// amputée : elle demande seulement un email pour afficher la contre-offre.
 export const PLANS = [
   {
     id: "free",
     name: "Gratuit",
     price: PRICE.free,
     period: null,
-    summary: `${FREE_ANALYSES} analyse`,
-    features: ["Analyse complète : score, points à négocier, fourchette en euros", "Contre-offre et message à envoyer, après ton email"],
+    summary: `${FREE_ANALYSES} négociation`,
+    features: [
+      "Le deal en entier : analyse de l'offre, réponses à la marque, conclusion",
+      "Score, points à négocier et fourchette en euros",
+      "Contre-offre et messages à envoyer, après ton email",
+    ],
   },
   {
     id: "pack",
     name: "Pack Deal",
     price: PRICE.pack,
     period: null,
-    summary: `${PACK_ANALYSES} analyses`,
-    features: ["Analyse complète : score, points à négocier, fourchette en euros", "Contre-offre et message à envoyer, sans autre étape"],
+    summary: `${PACK_ANALYSES} négociations complètes`,
+    features: [
+      "Le deal en entier : analyse de l'offre, réponses à la marque, conclusion",
+      "Score, points à négocier et fourchette en euros",
+      "Contre-offre et messages à envoyer, sans autre étape",
+    ],
   },
   {
     id: "pro",
     name: "Pro",
     price: PRICE.pro,
     period: PRO_PERIOD,
-    summary: `Jusqu'à ${PRO_ANALYSES_PER_PERIOD} analyses par mois`,
-    features: ["Analyse complète : score, points à négocier, fourchette en euros", "Contre-offre et message à envoyer, sans autre étape"],
+    summary: `Jusqu'à ${PRO_ANALYSES_PER_PERIOD} négociations par mois`,
+    features: [
+      "Le deal en entier : analyse de l'offre, réponses à la marque, conclusion",
+      "Score, points à négocier et fourchette en euros",
+      "Contre-offre et messages à envoyer, sans autre étape",
+    ],
   },
 ] as const;
 
 // Formule mise en avant sur l'accueil et sur /tarifs : une seule. Le Pack est
-// l'achat sans engagement qui suit l'analyse gratuite.
+// l'achat sans engagement qui suit la négociation gratuite.
 export const FEATURED_PLAN: (typeof PLANS)[number]["id"] = "pack";
 
 // Nom affiché d'une formule payante (mission #090 : la page « Merci » nomme

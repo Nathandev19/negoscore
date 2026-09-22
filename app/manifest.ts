@@ -9,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${BRAND.name} — ${BRAND.tagline}`,
     short_name: BRAND.shortName,
-    description: "Colle le message d'une marque : ce que le deal vaut en euros, ce qui cloche et quoi répondre.",
+    description: "Colle le message d'une marque : ce que le deal vaut en euros, ce que tu cèdes, et quoi répondre jusqu'à la conclusion.",
     lang: "fr-FR",
     start_url: "/",
     display: "browser",

@@ -110,12 +110,12 @@ describe("D — /compte dit où en est l'analyse gratuite", () => {
 
   it("encore disponible", () => {
     const html = text(renderToStaticMarkup(<AccountView data={{ email: "n@e.test", summary: free, freeAnalysis: "available" }} />));
-    expect(html).toContain("Analyse gratuite Encore disponible");
+    expect(html).toContain("Négociation gratuite Encore disponible");
   });
 
   it("déjà utilisée", () => {
     const html = text(renderToStaticMarkup(<AccountView data={{ email: "n@e.test", summary: free, freeAnalysis: "used" }} />));
-    expect(html).toContain("Analyse gratuite Déjà utilisée");
+    expect(html).toContain("Négociation gratuite Déjà utilisée");
   });
 
   it("formule payante ou lecture impossible : la ligne n'apparaît pas", () => {

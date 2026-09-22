@@ -46,7 +46,7 @@ describe("en-tête", () => {
     expect(links).toContain("/historique");
     expect(links).toContain("/compte");
     expect(links).not.toContain("/connexion");
-    expect(html).toContain("Mes analyses");
+    expect(html).toContain("Mes négociations");
     expect(html).toContain(">Mon compte<");
   });
 
@@ -133,7 +133,7 @@ describe("suppression de compte : règles", () => {
   it("l'email dit ce qui est supprimé et ce qui est conservé", () => {
     const email = accountDeletionEmail({ to: "nina@example.com", siteUrl: "https://www.negoscore.fr" });
     expect(email.subject).toBe("Suppression de ton compte Negoscore");
-    expect(email.text).toContain("ne sont pas remboursés");
+    expect(email.text).toContain("ne sont pas remboursées");
     expect(email.text).toContain("preuves de consentement au paiement");
   });
 });

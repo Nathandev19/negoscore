@@ -18,7 +18,8 @@ export const RIGHT_HINT_COOKIE = "ns_gratuit";
 export const RIGHT_HINT_VALUE = "utilise";
 export const RIGHT_HINT_MAX_AGE = 60 * 60 * 24 * 30;
 
-export const NO_FREE_LEFT_MESSAGE = "Tu as utilisé ton analyse gratuite. Choisis une formule pour analyser d'autres deals.";
+export const NO_FREE_LEFT_MESSAGE =
+  "Tu as utilisé ta négociation gratuite. Choisis une formule pour négocier d'autres deals.";
 
 export function rightHintCookieHeader(secure: boolean): string {
   return `${RIGHT_HINT_COOKIE}=${RIGHT_HINT_VALUE}; Path=/; Max-Age=${RIGHT_HINT_MAX_AGE}; SameSite=Lax${secure ? "; Secure" : ""}`;

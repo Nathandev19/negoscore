@@ -20,7 +20,7 @@ export function navItems(signedIn: boolean, owner = false): { main: NavItem[]; a
     main: [
       { href: "/#methode", label: "Comment ça marche" },
       { href: "/tarifs", label: "Tarifs" },
-      ...(signedIn ? [{ href: "/historique", label: "Mes analyses" }] : []),
+      ...(signedIn ? [{ href: "/historique", label: "Mes négociations" }] : []),
       ...(signedIn && owner ? [OWNER_NAV_ITEM] : []),
     ],
     account: signedIn ? { href: "/compte", label: "Mon compte" } : { href: "/connexion", label: "Se connecter" },

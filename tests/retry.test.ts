@@ -382,7 +382,7 @@ describe("mission #046 : droit épuisé connu avant la saisie", () => {
     const second = await analyse({ text: OFFER_TEXT });
     expect(second.status).toBe(402);
     expect(hint(second.cookies)).toBe(true);
-    expect(second.body.error).toBe("Tu as utilisé ton analyse gratuite. Choisis une formule pour analyser d'autres deals.");
+    expect(second.body.error).toBe("Tu as utilisé ta négociation gratuite. Choisis une formule pour négocier d'autres deals.");
     expect(model.calls).toBe(1);
   });
 

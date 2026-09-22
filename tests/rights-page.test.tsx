@@ -62,7 +62,7 @@ describe("page /droits-utilisation", () => {
     const meta = publicPageMetadata("/droits-utilisation");
     expect(meta.title).toBe("Droits d'utilisation UGC : ce que tu vends vraiment");
     expect(meta.description).toBe(
-      "Une marque veut diffuser ta vidéo en pub ? Ce n'est plus de la création, c'est une licence. Durée, supports, exclusivité : ce que ça vaut et comment le facturer.",
+      "Une marque veut diffuser ta vidéo en pub ? Ce n'est plus de la création, c'est une licence. Durée, supports, exclusivité : ce que ça vaut en négociation.",
     );
   });
 

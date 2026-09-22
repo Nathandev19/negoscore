@@ -53,7 +53,7 @@ describe("pages légales", () => {
     expect(page).toContain("il a reconnu qu'il perdra son droit de rétractation");
     expect(page).toContain("le vendeur lui a fourni une confirmation de son accord sur support durable");
     expect(page).toContain("Résilier votre contrat");
-    expect(page).toContain("Les crédits achetés séparément restent acquis.");
+    expect(page).toContain("Les négociations achetées séparément restent acquises.");
   });
 
   it("plus aucun marqueur d'inachèvement : la section Médiation est écrite", () => {
@@ -113,7 +113,7 @@ describe("email de confirmation d'achat", () => {
       "Formule : Pack Deal",
       "Montant : 4,99 €",
       "Date : 16 septembre 2026",
-      "Ce que tu as obtenu : 3 analyses ajoutées à ton compte",
+      "Ce que tu as obtenu : 3 négociations ajoutées à ton compte",
       "Tu as accepté, au moment du paiement, que l'exécution du service commence immédiatement, avant la fin du délai de rétractation de 14 jours, et tu as reconnu perdre ton droit de rétractation une fois le service fourni. Cet email constitue la confirmation de cet accord.",
       "Tes conditions générales de vente : https://www.negoscore.fr/cgv",
       "Une question : contact@negoscore.fr",
@@ -136,6 +136,6 @@ describe("email de confirmation d'achat", () => {
     });
     expect(pro.text).toContain("Formule : Pro");
     expect(pro.text).toContain("Montant : 12,99 €");
-    expect(pro.text).toContain("Ce que tu as obtenu : accès Pro, 30 analyses par mois");
+    expect(pro.text).toContain("Ce que tu as obtenu : accès Pro, jusqu'à 30 négociations par mois");
   });
 });

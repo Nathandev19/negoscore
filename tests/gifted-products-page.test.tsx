@@ -82,7 +82,7 @@ describe("page /produits-offerts", () => {
     const meta = publicPageMetadata("/produits-offerts");
     expect(meta.title).toBe("Collab contre produits offerts : ça vaut quoi ?");
     expect(meta.description).toBe(
-      "Une marque te paie en produits. Ce que ça vaut vraiment, quand c'est acceptable, quand ça ne l'est jamais, et pourquoi il faut quand même le déclarer.",
+      "Une marque te paie en produits. Ce que ça vaut vraiment, quand c'est acceptable, quand ça ne l'est jamais, et comment ouvrir la négociation sans te brader.",
     );
     expect(sitemap().map((entry) => entry.url)).toContain(`${CANONICAL_ORIGIN}/produits-offerts`);
     const guides = FOOTER_COLUMNS.find((colonne) => colonne.title === "Guides");
@@ -101,7 +101,7 @@ describe("page /produits-offerts", () => {
 
   it("l'accueil vise une autre intention que le guide des tarifs", () => {
     const accueil = PUBLIC_PAGES.find((page) => page.path === "/");
-    expect(accueil?.title).toBe("Cette collab vaut combien ? Analyse ton offre — Negoscore");
+    expect(accueil?.title).toBe("Cette collab vaut combien ? Négocie ton deal — Negoscore");
     expect(accueil?.title).not.toContain("Combien facturer");
   });
 });

@@ -42,7 +42,7 @@ export default async function ResultNotFound() {
             </div>
             <div className="flex flex-col gap-2">
               <Button asChild size="lg" className="h-12 text-base">
-                <Link href="/historique">Mes analyses</Link>
+                <Link href="/historique">Mes négociations</Link>
               </Button>
               <Link href="/analyse" className="link flex min-h-11 w-fit items-center font-semibold">
                 Analyser un deal

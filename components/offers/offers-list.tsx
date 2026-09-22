@@ -9,6 +9,7 @@ import { CONSENT_TEXT } from "@/lib/billing/consent";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 import { isCancelled, isProActive, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
+import { negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
 import { WITH_JS_ONLY, WITHOUT_JS } from "@/lib/no-js";
 import { cn } from "@/lib/utils";
 
@@ -96,7 +97,7 @@ export function OffersList() {
         const isCurrentPro = proActive && plan.id === "pro";
         const featured = plan.id === FEATURED_PLAN;
         const name = asRecharge ? "Recharge" : plan.name;
-        const summary = asRecharge ? "3 analyses supplémentaires" : plan.summary;
+        const summary = asRecharge ? `${negotiations(NEGOTIATIONS.pack)} supplémentaires` : plan.summary;
         const features = asRecharge
           ? ["Utilisables quand ton quota mensuel est atteint", "Sans date d'expiration", "Conservées si tu résilies ton abonnement"]
           : plan.features;

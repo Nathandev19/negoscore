@@ -42,9 +42,9 @@ export type Grant = {
 };
 
 const NO_CREDIT_MESSAGE = NO_FREE_LEFT_MESSAGE;
-const NO_PACK_CREDIT_MESSAGE = "Tu n'as plus de crédit. Choisis une formule pour continuer.";
+const NO_PACK_CREDIT_MESSAGE = "Tu n'as plus de négociation disponible. Choisis une formule pour continuer.";
 const RATE_LIMITED_MESSAGE =
-  "Trop d'analyses ont été lancées depuis ton réseau ces dernières heures. Réessaie plus tard, ou connecte-toi pour continuer.";
+  "Trop de négociations ont été lancées depuis ton réseau ces dernières heures. Réessaie plus tard, ou connecte-toi pour continuer.";
 
 const nothingToRelease = async () => undefined;
 

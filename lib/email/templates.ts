@@ -1,4 +1,5 @@
 import { BRAND } from "@/lib/brand";
+import { negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
 import { PLANS } from "@/lib/billing/plans";
 import type { PlanKey } from "@/lib/whop/api";
 import { SELLER } from "@/lib/legal/identity";
@@ -18,8 +19,8 @@ const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", y
 
 const PLAN_NAME: Record<PlanKey, string> = { pack: "Pack Deal", pro: "Pro" };
 const PLAN_OBTAINED: Record<PlanKey, string> = {
-  pack: "3 analyses ajoutées à ton compte",
-  pro: "accès Pro, 30 analyses par mois",
+  pack: `${negotiations(NEGOTIATIONS.pack)} ajoutées à ton compte`,
+  pro: `accès Pro, jusqu'à ${negotiations(NEGOTIATIONS.proPerPeriod)} par mois`,
 };
 
 const CONSENT =
@@ -173,7 +174,7 @@ export function accountDeletionEmail(options: { to: string; siteUrl: string }): 
   const { to, siteUrl } = options;
   const subject = `Suppression de ton compte ${BRAND.name}`;
   const deleted =
-    "Ce qui a été supprimé : ton adresse email de connexion, tes offres déposées et leurs fichiers, tes analyses, et tes crédits d'analyse restants, qui ne sont pas remboursés.";
+    "Ce qui a été supprimé : ton adresse email de connexion, tes offres déposées et leurs fichiers, tes négociations, et les négociations achetées qu'il te restait, qui ne sont pas remboursées.";
   const kept =
     "Ce qui est conservé : l'historique de tes paiements et tes preuves de consentement au paiement, que la loi nous oblige à garder.";
   const alert = "Si tu n'es pas à l'origine de cette suppression, écris-nous vite.";
@@ -200,7 +201,7 @@ export function accountDeletionEmail(options: { to: string; siteUrl: string }): 
     text,
     html: renderEmail({
       subject,
-      preheader: "Tes offres, tes analyses et tes crédits restants sont supprimés.",
+      preheader: "Tes offres, tes négociations et celles qu'il te restait sont supprimées.",
       title: "Ton compte est supprimé",
       blocks: [
         { kind: "paragraph", text: "Bonjour," },

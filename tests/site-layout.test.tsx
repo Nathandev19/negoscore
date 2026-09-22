@@ -39,7 +39,7 @@ describe("en-tête", () => {
     const hrefs = all.map((l) => l.href);
     for (const href of ["/#methode", "/tarifs", "/historique", "/compte", "/analyse"]) expect(hrefs).toContain(href);
     expect(hrefs).not.toContain("/connexion");
-    expect(html).toContain("Mes analyses");
+    expect(html).toContain("Mes négociations");
     expect(html).toContain("Mon compte");
     // Page courante signalée, dans la navigation principale comme dans le menu mobile.
     expect(all.filter((l) => l.href === "/tarifs").every((l) => l.current)).toBe(true);
@@ -82,18 +82,21 @@ describe("pied de page", () => {
 });
 
 describe("page d'accueil", () => {
-  it("FAQ : six questions en <details>/<summary>, réponses non vides, rien d'inventé à compléter", async () => {
+  it("FAQ : chaque question en <details>/<summary>, réponses non vides, rien d'inventé à compléter", async () => {
     const { default: HomePage } = await import("@/app/page");
     const html = renderToStaticMarkup(<HomePage />);
-    expect(FAQ).toHaveLength(6);
-    expect(html.match(/<details/g)).toHaveLength(6);
-    expect(html.match(/<summary/g)).toHaveLength(6);
+    // Mission #093 : une question de plus (« Qu'est-ce qu'une négociation ? »).
+    expect(FAQ.length).toBeGreaterThanOrEqual(6);
+    expect(html.match(/<details/g)).toHaveLength(FAQ.length);
+    expect(html.match(/<summary/g)).toHaveLength(FAQ.length);
     expect(FAQ.map((f) => f.question)).toEqual([
       "D'où viennent les prix ?",
       "Ça marche pour quel type d'offre ?",
       "Et si l'offre ne donne pas de montant ?",
       "Qu'est-ce que vous faites de mes documents ?",
       "C'est un conseil juridique ?",
+      // Mission #093 : l'unité vendue est expliquée dans la FAQ.
+      "Qu'est-ce qu'une négociation ?",
       "Combien ça coûte ?",
     ]);
     for (const item of FAQ) expect(item.answer.length).toBeGreaterThan(40);
@@ -109,13 +112,15 @@ describe("page d'accueil", () => {
     const levels = [...html.matchAll(/<h([1-6])/g)].map((m) => Number(m[1]));
     for (let i = 1; i < levels.length; i++) expect(levels[i] - levels[i - 1], `h${levels[i - 1]} → h${levels[i]}`).toBeLessThanOrEqual(1);
     for (const plan of PLANS) expect(html).toContain(plan.price);
-    expect(html).toContain("Ta première analyse est gratuite");
+    expect(html).toContain("Ta première négociation est gratuite");
     expect(html).toContain("On ne lit que ce qui est écrit dans l&#x27;offre.");
-    expect(html).toContain("Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et le message.");
+    expect(html).toContain("Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et les messages.");
     expect(html).not.toContain("Gratuit · sans compte");
     expect(html).not.toContain("et un message à envoyer.");
     // B4 (#030) : plus aucune promesse de gratuité ni de durée dans le sous-titre.
-    expect(html).toContain("On te dit ce que ça vaut vraiment, ce que tu cèdes, et quoi répondre.</p>");
+    // Mission #093 : le sous-titre va maintenant jusqu'à la conclusion du deal.
+    expect(html).toContain("On te dit ce que ça vaut vraiment, ce que tu cèdes, et quoi répondre — jusqu&#x27;à la");
+    expect(html).toContain("conclusion du deal.</p>");
     expect(html).not.toMatch(/Gratuit, 30|30&nbsp;secondes|30 secondes/);
     // Aucun témoignage, avis ou compteur inventé.
     expect(html).not.toMatch(/témoign|avis client|★|créateurs nous font|\d[\d\s]* créateurs/i);

@@ -39,7 +39,8 @@ describe("JSON-LD de la page d'accueil", () => {
     expect(page.length).toBeGreaterThan(0);
     expect(layout).toContain("<JsonLd data={organizationJsonLd()} />");
     expect(layout).toContain("<JsonLd data={webSiteJsonLd()} />");
-    expect(all.map((b) => b["@type"]).sort()).toEqual(["Organization", "WebApplication", "WebSite"]);
+    // Mission #093 : la FAQ affichée sur l'accueil est balisée, elle aussi.
+    expect(all.map((b) => b["@type"]).sort()).toEqual(["FAQPage", "Organization", "WebApplication", "WebSite"]);
     for (const bloc of all) expect(bloc["@context"]).toBe("https://schema.org");
   });
 

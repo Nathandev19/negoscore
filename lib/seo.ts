@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BRAND } from "@/lib/brand";
 import { PLANS } from "@/lib/billing/plans";
+import { FAQ } from "@/lib/content/home";
 import { SELLER } from "@/lib/legal/identity";
 import { SITE_PREVIEW_ALT, SITE_PREVIEW_SIZE } from "@/lib/share-card/site-preview";
 
@@ -27,62 +28,65 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
     // L'accueil vise « mon offre vaut combien », le guide vise « combien je
     // dois facturer » (mission #055) : deux intentions, deux titres.
     path: "/",
-    title: `Cette collab vaut combien ? Analyse ton offre — ${BRAND.name}`,
+    title: `Cette collab vaut combien ? Négocie ton deal — ${BRAND.name}`,
     description:
-      "Colle le message d'une marque : on te dit en euros ce que le deal vaut vraiment, ce qui cloche (droits pub, exclusivité) et quoi répondre. Gratuit, sans compte.",
+      "Copilote de négociation pour créateurs UGC : ce que le deal vaut en euros, ce que tu cèdes, quoi répondre. Première négociation gratuite, sans compte.",
   },
   {
     path: "/analyse",
     title: "Analyser un deal",
-    description: "Colle le DM, le mail ou le brief d'une marque, ou envoie une capture ou le PDF : fourchette en euros, points à négocier et, si l'offre est assez précise, un score sur 100.",
+    description:
+      "Colle le DM, le mail ou le brief d'une marque, ou dépose une capture ou le PDF : fourchette en euros, points à négocier, et la négociation tour par tour.",
   },
   {
     path: "/analyse/demo",
-    title: "Exemple d'analyse d'une offre de marque",
+    title: "Exemple : une offre de marque analysée",
     // « offre fictive » : la page affiche elle-même que l'offre est inventée
     // (mission #052). La description ne peut pas promettre autre chose.
     description:
-      "Exemple d'analyse, sur une offre fictive : ce que valent les vidéos, les droits publicitaires et l'exclusivité, et ce que la marque aurait dû proposer.",
+      "Exemple sur une offre fictive : ce que valent les vidéos, les droits publicitaires et l'exclusivité, et par quoi commencer la négociation avec la marque.",
   },
   {
     path: "/combien-facturer",
     title: "Tarifs UGC : combien facturer une vidéo, une story, une photo",
     description:
-      "Les fourchettes par vidéo selon ton niveau, ce que valent les droits publicitaires et l'exclusivité, et pourquoi trois vidéos ne coûtent pas trois fois une vidéo.",
+      "Les fourchettes par vidéo selon ton niveau, ce que valent les droits pub et l'exclusivité, et les chiffres sur lesquels ouvrir la négociation avec une marque.",
   },
   {
     path: "/produits-offerts",
     title: "Collab contre produits offerts : ça vaut quoi ?",
     description:
-      "Une marque te paie en produits. Ce que ça vaut vraiment, quand c'est acceptable, quand ça ne l'est jamais, et pourquoi il faut quand même le déclarer.",
+      "Une marque te paie en produits. Ce que ça vaut vraiment, quand c'est acceptable, quand ça ne l'est jamais, et comment ouvrir la négociation sans te brader.",
   },
   {
     path: "/droits-utilisation",
     title: "Droits d'utilisation UGC : ce que tu vends vraiment",
     description:
-      "Une marque veut diffuser ta vidéo en pub ? Ce n'est plus de la création, c'est une licence. Durée, supports, exclusivité : ce que ça vaut et comment le facturer.",
+      "Une marque veut diffuser ta vidéo en pub ? Ce n'est plus de la création, c'est une licence. Durée, supports, exclusivité : ce que ça vaut en négociation.",
   },
   {
     path: "/tarifs",
     title: "Tarifs",
-    description: `Première analyse gratuite. ${PLANS.filter((plan) => plan.id !== "free")
+    // Longueur tenue par tests/seo.test.tsx : les résumés de PLANS y entrent,
+    // donc la phrase d'introduction reste courte.
+    description: `Une négociation = un deal entier. ${PLANS.filter((plan) => plan.id !== "free")
       .map((plan) => `${plan.name} : ${plan.price}${plan.period ? ` ${plan.period}` : ""}, ${plan.summary.toLowerCase()}`)
       .join(". ")}. Prix TTC.`,
   },
   {
     path: "/cgv",
     title: "Conditions générales de vente",
-    description: `Conditions de vente des analyses ${BRAND.name} : formules et prix, paiement, rétractation, résiliation de l'abonnement.`,
+    description: `Conditions de vente de ${BRAND.name} : ce que couvre une négociation, les formules et leurs prix, le paiement, la rétractation et la résiliation.`,
   },
   {
     path: "/confidentialite",
     title: "Politique de confidentialité",
-    description: `Données traitées par ${BRAND.name}, durées de conservation, cookies, sous-traitants et exercice de tes droits.`,
+    description: `Les données traitées par ${BRAND.name} pour une négociation, leurs durées de conservation, les cookies, les sous-traitants et l'exercice de tes droits.`,
   },
   {
     path: "/mentions-legales",
     title: "Mentions légales",
-    description: `Éditeur, hébergeur et contact de ${BRAND.name}.`,
+    description: `L'éditeur, l'hébergeur et le contact de ${BRAND.name}, le copilote de négociation pour créateurs UGC. Identité de l'entreprise et moyen de nous écrire.`,
   },
 ];
 
@@ -190,6 +194,8 @@ function schemaPrice(displayed: string): string {
 // Ce qu'est Negoscore, déclaré sur l'accueil et sur /tarifs (mission #069).
 // La description est celle de l'accueil (PUBLIC_PAGES) : la promesse réelle du
 // site, écrite une seule fois. Le résumé de chaque offre vient aussi de PLANS.
+// Mission #093 : ce qui est déclaré ici décrit l'unité réellement vendue, la
+// négociation, avec les mêmes mots et les mêmes nombres que la page.
 export function softwareApplicationJsonLd() {
   const home = PUBLIC_PAGES.find((page) => page.path === "/");
   return {
@@ -227,6 +233,25 @@ export function softwareApplicationJsonLd() {
           : {}),
       };
     }),
+  };
+}
+
+// FAQ de l'accueil (mission #093, étape 7). Balisée UNIQUEMENT parce qu'elle
+// est réellement affichée, et à partir du MÊME tableau que la page
+// (lib/content/home.ts) : les questions et réponses balisées ne peuvent donc
+// pas diverger de celles qui sont lues à l'écran.
+export function faqJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${CANONICAL_ORIGIN}/#faq`,
+    inLanguage: "fr-FR",
+    isPartOf: { "@id": WEBSITE_ID },
+    mainEntity: FAQ.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
   };
 }
 

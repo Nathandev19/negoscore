@@ -4,6 +4,7 @@ import { Facts, LegalPage, LegalSection } from "@/components/legal/legal-page";
 import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
 import { PRICE, PRO_PERIOD } from "@/lib/billing/plans";
 import { BRAND } from "@/lib/brand";
+import { COPILOT_PROMISE, ESTIMATE_DISCLAIMER, negotiations, NEGOTIATIONS, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
 import { SELLER } from "@/lib/legal/identity";
 
 export const metadata: Metadata = publicPageMetadata("/cgv");
@@ -26,24 +27,25 @@ export default function TermsPage() {
 
       <LegalSection title="Objet">
         <p>
-          Les présentes conditions régissent la vente des services d&apos;analyse proposés sur {BRAND.domain} à des
+          Les présentes conditions régissent la vente des négociations proposées sur {BRAND.domain} à des
           consommateurs.
         </p>
+        <p>{WHAT_IS_A_NEGOTIATION} {COPILOT_PROMISE} {ESTIMATE_DISCLAIMER}</p>
       </LegalSection>
 
       <LegalSection title="Formules et prix">
         <Facts
           items={[
-            "Gratuit : une analyse, sans paiement.",
+            `Gratuit : ${negotiations(NEGOTIATIONS.free)}, sans paiement.`,
             // Périmètre exact de lib/analysis/retry.ts : seule une analyse
             // « incomplete » ouvre la relance, et la fenêtre vient de
             // RETRY_WINDOW_DAYS (mission #061).
-            `Relance gratuite : une analyse qui n'a pas pu être chiffrée, parce que l'offre de la marque ne dit pas assez quels contenus elle demande ni ce qu'elle en fera, peut être relancée une fois, sur la même offre complétée, dans les ${RETRY_WINDOW_DAYS} jours suivant l'analyse, sans frais et sans décompter d'analyse, quelle que soit la formule. Une offre sans montant ou sans conditions écrites, elle, est bien chiffrée : elle n'ouvre pas de relance.`,
+            `Relance gratuite : une analyse qui n'a pas pu être chiffrée, parce que l'offre de la marque ne dit pas assez quels contenus elle demande ni ce qu'elle en fera, peut être relancée une fois, sur la même offre complétée, dans les ${RETRY_WINDOW_DAYS} jours suivant l'analyse, sans frais et sans décompter de négociation, quelle que soit la formule. Une offre sans montant ou sans conditions écrites, elle, est bien chiffrée : elle n'ouvre pas de relance.`,
             // Prix pris dans la source unique (lib/billing/plans.ts) : le texte des
             // CGV ne peut pas diverger de ce qui est vendu.
-            `Pack Deal : ${PRICE.pack} — trois analyses, sans date d'expiration.`,
-            `Pro : ${PRICE.pro} ${PRO_PERIOD} — trente analyses par mois, résiliable à tout moment.`,
-            "L'historique des analyses est ouvert à tout compte, quelle que soit la formule : il n'est pas réservé à une formule payante.",
+            `Pack Deal : ${PRICE.pack} — ${negotiations(NEGOTIATIONS.pack)}, sans date d'expiration.`,
+            `Pro : ${PRICE.pro} ${PRO_PERIOD} — jusqu'à ${negotiations(NEGOTIATIONS.proPerPeriod)} par mois, résiliable à tout moment.`,
+            "L'historique des négociations est ouvert à tout compte, quelle que soit la formule : il n'est pas réservé à une formule payante.",
           ]}
         />
         <p>
@@ -61,8 +63,8 @@ export default function TermsPage() {
 
       <LegalSection title="Fourniture du service">
         <p>
-          Le service est fourni immédiatement après la validation du paiement. Les crédits d&apos;analyse sont ajoutés au
-          compte dès la confirmation du paiement.
+          Le service est fourni immédiatement après la validation du paiement. Les négociations achetées sont ajoutées
+          au compte dès la confirmation du paiement.
         </p>
       </LegalSection>
 
@@ -93,7 +95,7 @@ export default function TermsPage() {
         <p>
           L&apos;abonnement Pro est résiliable à tout moment, directement en ligne, gratuitement, depuis la page
           «&nbsp;Résilier votre contrat&nbsp;» accessible depuis l&apos;espace du compte. La résiliation prend effet à la
-          fin de la période en cours. Les crédits achetés séparément restent acquis.
+          fin de la période en cours. Les négociations achetées séparément restent acquises.
         </p>
       </LegalSection>
 

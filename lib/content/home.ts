@@ -1,4 +1,5 @@
 import { PLANS } from "@/lib/billing/plans";
+import { COPILOT_PROMISE, ESTIMATE_DISCLAIMER, NEGOTIATION_TURNS, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
 import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
 import rates from "@/lib/rates/fr-2026.3.json";
 import { MAX_PDF_PAGES } from "@/lib/upload";
@@ -13,12 +14,16 @@ export const STEPS = [
     title: "Tu obtiens le chiffre",
     text: "Une fourchette en euros et, si l'offre est assez précise, un score sur 100. Avec ton email : la contre-offre et le message à envoyer.",
   },
+  {
+    title: "Tu réponds, elle répond",
+    text: `Colle sa réponse : on te dit ce qu'elle accorde, ce qu'elle refuse, et on écrit le message suivant. Jusqu'à ${NEGOTIATION_TURNS} tours, puis la conclusion, dans la même négociation.`,
+  },
 ] as const;
 
 export const TRUST = [
   {
     title: "Une table de tarifs versionnée",
-    text: `Les prix viennent d'une table française versionnée (${rates.version} aujourd'hui). La version utilisée est affichée sur chaque analyse.`,
+    text: `Les prix viennent d'une table française versionnée (${rates.version} aujourd'hui). La version utilisée est affichée sur chaque négociation.`,
   },
   {
     title: "Ce que le score lit, et ce qu'il ne peut pas savoir",
@@ -33,6 +38,10 @@ export const TRUST = [
     text: "Le texte collé, les captures et les PDF sont effacés au bout de 30 jours au plus ; l'analyse reste. La purge tourne tous les jours, et tu peux supprimer une analyse depuis sa page tant que tu y as accès : avec ton compte, sans limite de temps ; sans compte, pendant 30 jours, après quoi elle est effacée d'elle-même.",
   },
   {
+    title: "Un copilote, pas un décideur",
+    text: `${COPILOT_PROMISE} ${ESTIMATE_DISCLAIMER}`,
+  },
+  {
     title: "Pas un conseil juridique",
     text: "C'est une analyse éducative fondée sur des benchmarks de marché. On te le dit ici, avant que tu paies.",
   },
@@ -43,7 +52,7 @@ const PLANS_TEXT = PLANS.map((plan) => `${plan.name} : ${plan.price}${plan.perio
 export const FAQ = [
   {
     question: "D'où viennent les prix ?",
-    answer: `D'une table de tarifs française, versionnée (${rates.version}) : des benchmarks observés sur des offres UGC en France, complétés par des valeurs interpolées là où les observations manquent. Le tarif de base part du niveau « Je débute » ; sur la page de résultat, tu choisis ton niveau et tout est recalculé. Chaque analyse affiche la version de la table utilisée.`,
+    answer: `D'une table de tarifs française, versionnée (${rates.version}) : des benchmarks observés sur des offres UGC en France, complétés par des valeurs interpolées là où les observations manquent. Le tarif de base part du niveau « Je débute » ; sur la page de résultat, tu choisis ton niveau et tout est recalculé. Chaque négociation affiche la version de la table utilisée.`,
   },
   {
     question: "Ça marche pour quel type d'offre ?",
@@ -66,9 +75,13 @@ export const FAQ = [
       "Non. C'est une analyse éducative fondée sur des benchmarks de marché. Les repères sur la loi française qu'on affiche sont une information générale, pas un avis sur ton cas.",
   },
   {
+    question: "Qu'est-ce qu'une négociation ?",
+    answer: `${WHAT_IS_A_NEGOTIATION} C'est l'unité facturée : une négociation vaut pour un deal, quel que soit le nombre de messages échangés avec la marque.`,
+  },
+  {
     question: "Combien ça coûte ?",
     // Relance gratuite d'une analyse incomplète : mission #043, FAQ corrigée en #046.
-    answer: `Ta première analyse est gratuite. Si une analyse ressort incomplète parce que le message de la marque ne dit pas assez ce qu'elle demande, tu peux la relancer gratuitement une fois, dans les ${RETRY_WINDOW_DAYS} jours, avec les précisions obtenues. Ensuite : ${PLANS_TEXT}. Prix TTC.`,
+    answer: `Ta première négociation est gratuite. Si l'analyse ressort incomplète parce que le message de la marque ne dit pas assez ce qu'elle demande, tu peux la relancer gratuitement une fois, dans les ${RETRY_WINDOW_DAYS} jours, avec les précisions obtenues, sans que ça compte comme une négociation de plus. Ensuite : ${PLANS_TEXT}. Prix TTC.`,
   },
 ] as const;
 

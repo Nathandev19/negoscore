@@ -42,14 +42,14 @@ export function AccountView({
           </div>
           {data?.freeAnalysis ? (
             <div className="flex justify-between gap-4 py-3">
-              <dt className="text-sm text-attenue">Analyse gratuite</dt>
+              <dt className="text-sm text-attenue">Négociation gratuite</dt>
               <dd data-free-analysis={data.freeAnalysis} className="text-right text-sm font-medium text-encre">
                 {FREE_ANALYSIS_LABEL[data.freeAnalysis]}
               </dd>
             </div>
           ) : null}
           <div className="flex justify-between gap-4 py-3">
-            <dt className="text-sm text-attenue">Crédits d&apos;analyse</dt>
+            <dt className="text-sm text-attenue">Négociations restantes</dt>
             <dd className="text-right text-sm font-medium text-encre">
               {summary ? summary.balance : <BoneLine width="w-8" className="justify-end" />}
             </dd>
@@ -69,7 +69,7 @@ export function AccountView({
 
         <div className="flex flex-col gap-2">
           <Button asChild size="lg" className="h-12 text-base">
-            <Link href="/historique">Mes analyses</Link>
+            <Link href="/historique">Mes négociations</Link>
           </Button>
           <Link href="/tarifs" className="link flex min-h-11 w-fit items-center font-semibold">
             Voir les tarifs

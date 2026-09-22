@@ -94,11 +94,13 @@ describe("B3 — le refus de /api/credits n'est pas mis en cache", () => {
   });
 });
 
-describe("C2 — les formules ne se distinguent que par le nombre d'analyses", () => {
-  it("les trois annoncent la même analyse complète", () => {
+describe("C2 — les formules ne se distinguent que par le nombre de négociations", () => {
+  it("les trois annoncent la même négociation complète", () => {
     const premieres = PLANS.map((plan) => plan.features[0]);
     expect(new Set(premieres).size).toBe(1);
-    expect(premieres[0]).toContain("Analyse complète");
+    // Mission #093 : l'unité vendue est la négociation, et les trois formules
+    // en donnent exactement le même contenu.
+    expect(premieres[0]).toContain("Le deal en entier");
   });
 
   it("aucune formule payante ne laisse croire que la gratuite est amputée", () => {
