@@ -282,3 +282,23 @@ html:not([data-js]) [data-avec-js] {
     scroll-behavior: auto !important;
   }
 }
+
+/* Mission #097 — les blocs qui se replient (<details> natif). La flèche est
+   dessinée par nous : le marqueur par défaut diffère d'un navigateur à
+   l'autre, et il est masqué par list-none sur le summary. */
+.details-chevron {
+  display: inline-block;
+  transition: transform 150ms ease;
+}
+details[open] > summary .details-chevron {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .details-chevron {
+    transition: none;
+  }
+}
+/* Safari : sans ceci, le marqueur natif reste affiché malgré list-none. */
+summary::-webkit-details-marker {
+  display: none;
+}

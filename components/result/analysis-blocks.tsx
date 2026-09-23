@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Section } from "@/components/result/section";
+import { CollapsibleSection, Section } from "@/components/result/section";
 import {
   dealRecapRows,
   formatEurRange,
@@ -41,7 +41,12 @@ export function DealRecap({ deal, updatedAtTurn = null }: { deal: Analysis["deal
   const rows = dealRecapRows(deal);
   if (rows.length === 0) return null;
   return (
-    <Section title="Le deal proposé">
+    // Mission #097 : replié. C'est la vérification de ce que l'outil a lu, on
+    // la consulte une fois ; rien n'en est retiré.
+    <CollapsibleSection
+      title="Le deal proposé"
+      hint={`Vérifie ce que l'outil a lu de l'offre : ${rows.length} points relevés.`}
+    >
       {updatedAtTurn !== null ? <p className="text-small text-attenue">À jour des termes du tour {updatedAtTurn}.</p> : null}
       <dl className="flex flex-col divide-y divide-filet border-y border-filet">
         {rows.map((row) => (
@@ -51,20 +56,29 @@ export function DealRecap({ deal, updatedAtTurn = null }: { deal: Analysis["deal
           </div>
         ))}
       </dl>
-    </Section>
+    </CollapsibleSection>
   );
 }
 
+// Mission #097 — condensé, pas replié : une ligne par point, l'explication à
+// un clic. Le titre de chaque point reste visible, rien n'est retiré.
 export function GoodPoints({ items, origin }: { items: Analysis["good_points"]; origin?: OriginOnly }) {
   if (items.length === 0 && !origin?.withdrawn.length) return null;
   return (
     <Section title="Ce qui est bon">
       {origin ? <OriginNote /> : null}
-      <ul className="flex flex-col gap-4">
+      <ul className="flex flex-col divide-y divide-filet border-y border-filet">
         {items.map((item) => (
-          <li key={item.label} className="flex flex-col gap-0.5">
-            <p className="font-semibold text-encre">{item.label}</p>
-            <p className="text-small">{item.why}</p>
+          <li key={item.label}>
+            <details className="py-2.5">
+              <summary className="flex cursor-pointer list-none items-baseline gap-2 font-semibold text-encre focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marque">
+                <span aria-hidden className="details-chevron font-normal text-attenue">
+                  ›
+                </span>
+                {item.label}
+              </summary>
+              <p className="mt-1 pl-5 text-small">{item.why}</p>
+            </details>
           </li>
         ))}
       </ul>
@@ -107,10 +121,16 @@ export function RedFlags({ items, origin }: { items: Analysis["red_flags"]; orig
     <Section title="Red flags">
       {origin ? <OriginNote /> : null}
       <ul className="flex flex-col divide-y divide-filet">
-        {items.map((item) => (
-          <li key={item.label} className="flex flex-col gap-1.5 py-3 first:pt-0">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="headline text-h3 text-encre">{item.label}</p>
+        {items.map((item) => {
+          // Mission #097 — le titre et la gravité restent visibles dans tous les
+          // cas. Seule l'explication d'un point non grave se replie : un
+          // « Grave » se lit en entier, sans geste.
+          const serious = item.severity === "high";
+          // <span> et non <p> : ce titre se retrouve dans un <summary>, dont le
+          // contenu doit rester du contenu de phrase.
+          const head = (
+            <>
+              <span className="headline text-h3 text-encre">{item.label}</span>
               <span
                 className={cn(
                   "inline-flex w-fit shrink-0 rounded-pill px-2.5 py-0.5 text-xs font-bold whitespace-nowrap",
@@ -119,20 +139,50 @@ export function RedFlags({ items, origin }: { items: Analysis["red_flags"]; orig
               >
                 {SEVERITY_LABEL[item.severity]}
               </span>
-            </div>
-            <p className="text-small">{item.why}</p>
-          </li>
-        ))}
+            </>
+          );
+          return (
+            <li key={item.label} className="flex flex-col gap-1.5 py-3 first:pt-0">
+              {serious ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2">{head}</div>
+                  <p className="text-small">{item.why}</p>
+                </>
+              ) : (
+                <details>
+                  <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marque">
+                    <span className="flex items-baseline gap-2">
+                      <span aria-hidden className="details-chevron text-attenue">
+                        ›
+                      </span>
+                      {head}
+                    </span>
+                  </summary>
+                  <p className="mt-1.5 pl-5 text-small">{item.why}</p>
+                </details>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {origin ? <Withdrawn origin={origin} /> : null}
     </Section>
   );
 }
 
+// Mission #097 — replié, avec un résumé visible : ce qui décide d'ouvrir, ce
+// sont les mentions qui manquent. Le texte de loi, lui, se lit une fois.
 export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
   if (!legal.applicable) return null;
+  const missing = legal.missing_mandatory_clauses.length;
+  const hint =
+    missing === 0
+      ? "Aucune mention obligatoire ne manque à l'offre."
+      : missing === 1
+        ? "1 mention obligatoire absente de l'offre."
+        : `${missing} mentions obligatoires absentes de l'offre.`;
   return (
-    <Section title="Bon à savoir côté loi française">
+    <CollapsibleSection title="Bon à savoir côté loi française" hint={hint}>
       <div className="flex flex-col gap-2 text-small">
         <p>{legal.note}</p>
         {legal.missing_mandatory_clauses.length > 0 ? (
@@ -147,7 +197,7 @@ export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
         ) : null}
         <p className="text-xs text-attenue">Information générale, pas un conseil juridique.</p>
       </div>
-    </Section>
+    </CollapsibleSection>
   );
 }
 

@@ -40,10 +40,15 @@ export function EstimateFeedback({
   action,
   initial: stored,
   turn = 0,
+  ranges = null,
 }: {
   action: string | null;
   initial: StoredFeedback | null;
   turn?: number;
+  // Mission #097 — la fourchette jugée, par niveau : la question répète le
+  // chiffre au lieu de renvoyer à « la fourchette affichée plus haut ». Par
+  // niveau, parce que changer de niveau recalcule la page sans la recharger.
+  ranges?: Partial<Record<Tier, string | null>> | null;
 }) {
   const storedTurn = stored ? (stored.turn ?? 0) : null;
   const initial = stored && storedTurn === turn ? stored : null;
@@ -57,6 +62,9 @@ export function EstimateFeedback({
   const [comment, setComment] = useState(fromServer?.comment ?? initial?.comment ?? "");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const tier = useTier() ?? DEFAULT_TIER;
+  // La fourchette du niveau affiché à l'instant : après un changement de
+  // niveau, la question porte sur les chiffres qui sont à l'écran.
+  const judged = ranges?.[tier] ?? null;
   const legendId = useId();
   const commentId = useId();
 
@@ -103,13 +111,9 @@ export function EstimateFeedback({
       <input type="hidden" name="turn" value={turn} />
       <fieldset className="flex flex-col gap-3" aria-describedby={legendId}>
         <legend id={legendId} className="headline mb-3 text-h2 text-encre">
-          Cette estimation te paraît juste ?
+          {judged ? `${judged} te paraît juste ?` : "Cette estimation te paraît juste ?"}
         </legend>
-        {turn > 0 ? (
-          <p className="text-small">
-            La fourchette affichée plus haut, calculée sur {turnLabel(turn)}.
-          </p>
-        ) : null}
+        {turn > 0 ? <p className="text-small">Calculée sur {turnLabel(turn)}.</p> : null}
         {initial && initial.turn === null ? (
           <p className="text-small text-attenue">
             Ton avis enregistré date d&apos;avant l&apos;enregistrement du tour : il est compté sur l&apos;offre

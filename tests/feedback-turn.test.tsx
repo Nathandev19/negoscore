@@ -181,7 +181,10 @@ describe("le formulaire d'avis", () => {
   it("il envoie le tour affiché, et dit sur quoi porte l'avis", () => {
     const html = renderToStaticMarkup(<EstimateFeedback action={`/api/analyses/${ID}/avis`} initial={null} turn={3} />);
     expect(html).toContain('name="turn" value="3"');
-    expect(text(html)).toContain("La fourchette affichée plus haut, calculée sur les termes après le tour 3.");
+    // Mission #097 : la question répète le chiffre jugé au lieu de renvoyer à
+    // « la fourchette affichée plus haut ».
+    expect(text(html)).toContain("Calculée sur les termes après le tour 3.");
+    expect(text(html)).not.toContain("affichée plus haut");
   });
 
   it("B — l'avis de CE tour est pré-rempli ; celui d'un autre tour, jamais", () => {

@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 // verrouillé et la façon de le lever sont du texte, entendu comme il est vu
 // (mission #062, A2). Avant, tout le bloc était aria-hidden et la section
 // n'annonçait rien après son titre.
-function Placeholder({ lines }: { lines: number }) {
+// Mission #097, étape 5 — le renvoi ne ment plus : le bouton est juste sous le
+// message, pas « plus bas sur cette page ». Le bloc de contre-offre, lui, en
+// est séparé par le message : il le dit tel quel.
+function Placeholder({ lines, where }: { lines: number; where: string }) {
   return (
     <div className="flex flex-col gap-3 border-y border-filet py-4">
       <div aria-hidden className="flex flex-col gap-3">
@@ -17,7 +20,7 @@ function Placeholder({ lines }: { lines: number }) {
         ))}
       </div>
       <p className="text-small font-semibold text-encre">
-        Verrouillé. <span className="font-normal">Ton email suffit pour le débloquer, plus bas sur cette page.</span>
+        Verrouillé. <span className="font-normal">Ton email suffit pour le débloquer, {where}.</span>
       </p>
     </div>
   );
@@ -26,7 +29,7 @@ function Placeholder({ lines }: { lines: number }) {
 export function LockedCounterOfferPlaceholder({ title = "Ta contre-offre chiffrée" }: { title?: string }) {
   return (
     <Section title={title}>
-      <Placeholder lines={4} />
+      <Placeholder lines={4} where="avec le bouton qui suit ton message" />
     </Section>
   );
 }
@@ -34,7 +37,7 @@ export function LockedCounterOfferPlaceholder({ title = "Ta contre-offre chiffr�
 export function LockedMessagePlaceholder() {
   return (
     <Section title="Ton message prêt à envoyer">
-      <Placeholder lines={5} />
+      <Placeholder lines={5} where="avec le bouton juste en dessous" />
     </Section>
   );
 }

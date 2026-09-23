@@ -68,8 +68,21 @@ export function TierSelector({
       </p>
     );
   }
+  // Mission #097 — une seule commande de niveau sur la page. La ligne du
+  // bandeau (« Calculé pour le niveau X. Changer ») pointe ici ; le bloc de
+  // choix, lui, est replié par défaut. Repli NATIF : il marche sans
+  // JavaScript, et un navigateur récent l'ouvre tout seul quand on arrive sur
+  // l'ancre #niveau qu'il contient.
   return (
-    <fieldset id="niveau" className="flex scroll-mt-24 flex-col gap-3" aria-describedby={`${legendId}-aide ${legendId}-portee`}>
+    <details className="flex flex-col">
+      <summary className="flex cursor-pointer list-none items-baseline gap-2 py-1 font-semibold text-encre focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marque">
+        <span aria-hidden className="details-chevron font-normal text-attenue">
+          ›
+        </span>
+        Changer de niveau
+        <span className="font-normal text-attenue">— « {TIER_LABEL[tier].short} » aujourd&apos;hui</span>
+      </summary>
+      <fieldset id="niveau" className="mt-3 flex scroll-mt-24 flex-col gap-3" aria-describedby={`${legendId}-aide ${legendId}-portee`}>
       <legend id={legendId} className="mb-1 font-semibold text-encre">
         Ton niveau
       </legend>
@@ -108,6 +121,7 @@ export function TierSelector({
       <p id={`${legendId}-portee`} data-tier-scope className="text-small text-attenue">
         Change de niveau pour voir ce que ça donne. Ton choix s&apos;appliquera à tes prochaines analyses.
       </p>
-    </fieldset>
+      </fieldset>
+    </details>
   );
 }

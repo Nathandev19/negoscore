@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { EstimateFeedback } from "@/components/result/estimate-feedback";
+import { judgedRanges } from "@/lib/analysis/judged-ranges";
 import { NegotiationThread, type ThreadTurnView } from "@/components/result/negotiation/negotiation-thread";
 import { currentState } from "@/lib/negotiation/current";
 import { loadScenarios, readingOf, scenarioContext } from "@/lib/negotiation/scenarios/index";
@@ -87,7 +88,7 @@ export default async function ResultPreviewPage({ searchParams }: { searchParams
         }
       >
         {shareCardAvailable(analysis) ? <ShareCardLink href={`/dev/carte?etat=${state}`} /> : null}
-        <EstimateFeedback action={null} initial={null} turn={negotiated?.turn ?? 0} />
+        <EstimateFeedback action={null} initial={null} turn={negotiated?.turn ?? 0} ranges={judgedRanges(analysis)} />
       </AnalysisResult>
       <SiteFooter />
     </>

@@ -223,8 +223,9 @@ export function AnalysisResult({
             <TierSelector tier={analysis.profile_tier} changeable={tierChangeAvailable(stored)} onChange={chooseTier} />
           </Estimate>
         )}
-        <NegotiateList items={negotiate.items} origin={negotiate.origin} />
-        <DealRecap deal={currentDeal} updatedAtTurn={negotiated?.turn ?? null} />
+        {/* Mission #097 — ce sur quoi elle doit agir vient avant ce qui le
+            commente : contre-offre et message d'abord, avec la suite de
+            l'échange ; les conseils et le commentaire ensuite. */}
         {origin.counter_offer ? (
           <CounterOffer offer={origin.counter_offer} title={counterOfferTitle} justUnlocked={justUnlocked} sameAsEstimate={counterSame} />
         ) : (
@@ -237,6 +238,8 @@ export function AnalysisResult({
         )}
         {locked ? <UnlockCta href={unlockHref} /> : null}
         {afterMessage}
+        <NegotiateList items={negotiate.items} origin={negotiate.origin} />
+        <DealRecap deal={currentDeal} updatedAtTurn={negotiated?.turn ?? null} />
         <RedFlags items={redFlags.items} origin={redFlags.origin} />
         <GoodPoints items={goodPoints.items} origin={goodPoints.origin} />
         <LegalNotice legal={legal} />

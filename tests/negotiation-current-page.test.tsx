@@ -53,7 +53,10 @@ describe("A2 — ce que le code déduit des termes est recalculé sur les termes
 
   it("le deal affiché est l'état actuel, et le titre le dit", () => {
     const html = page();
-    expect(html).toContain("Le deal proposé À jour des termes du tour 2.");
+    // Mission #097 : le bloc est replié, son intitulé dit à quoi il sert ; le
+    // tour dont il est à jour se lit à l'ouverture.
+    expect(html).toContain("Le deal proposé");
+    expect(html).toContain("À jour des termes du tour 2.");
     for (const row of dealRecapRows(payload.deal_after)) expect(html).toContain(text(row.value).trim());
     expect(html).toContain("12 mois");
     expect(html).toContain("Score, fourchette et deal sont à jour des termes du tour 2");

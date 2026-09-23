@@ -11,7 +11,8 @@ import { ShareCardLink } from "@/components/result/share-card-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
-import { readFeedback } from "@/lib/analysis/feedback";
+import { lastJudgedRange, readFeedback, shouldAskFeedback } from "@/lib/analysis/feedback";
+import { judgedRanges } from "@/lib/analysis/judged-ranges";
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { recomputeForDeal } from "@/lib/analysis/recompute";
 import { retryStateFor, type RetryPageState } from "@/lib/analysis/retry";
@@ -68,6 +69,15 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   // Table ou colonnes absentes (migrations non appliquées) : le formulaire
   // s'affiche vide et l'envoi répondra que c'est indisponible.
   const feedback = await readFeedback(id, judgedTurn).catch(() => null);
+  // Mission #097 — la question n'est reposée que si la fourchette a changé
+  // depuis la dernière réponse donnée sur cette analyse.
+  const judgedAnalysis = cardAnalysis ?? result.analysis;
+  const lastJudged = await lastJudgedRange(id).catch(() => null);
+  const askFeedback = shouldAskFeedback({
+    current: { low: judgedAnalysis.estimate.total_low, high: judgedAnalysis.estimate.total_high },
+    lastJudged,
+    answeredThisTurn: feedback !== null && feedback !== "missing",
+  });
   const sent: SentMessage | undefined = owner ? (await loadSentMessages(id).catch(() => new Map<number, SentMessage>())).get(answeredTurn) : undefined;
 
   return (
@@ -101,11 +111,14 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
         }
       >
         {cardAvailable ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}
-        <EstimateFeedback
-          action={`/api/analyses/${id}/avis`}
-          turn={judgedTurn}
-          initial={feedback === "missing" ? null : feedback}
-        />
+        {askFeedback ? (
+          <EstimateFeedback
+            action={`/api/analyses/${id}/avis`}
+            turn={judgedTurn}
+            initial={feedback === "missing" ? null : feedback}
+            ranges={judgedRanges(judgedAnalysis)}
+          />
+        ) : null}
         {result.sourceRemoved ? (
           <p role="note" className="border-y border-filet py-3 text-small">
             {result.sourceType === "text"

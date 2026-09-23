@@ -41,6 +41,42 @@ export async function readFeedback(analysisId: string, turn: number): Promise<St
   }
 }
 
+// Mission #097 — la fourchette sur laquelle porte le DERNIER avis donné sur
+// cette analyse, tous tours confondus. Sert à ne pas reposer la question quand
+// rien n'a changé depuis. null : aucun avis, ou table absente.
+export type JudgedRange = { low: number | null; high: number | null };
+
+export async function lastJudgedRange(analysisId: string): Promise<JudgedRange | null> {
+  try {
+    const [row] = await selectRows<{ total_low: number | null; total_high: number | null }>(
+      "analysis_feedback",
+      `select=total_low,total_high,updated_at&analysis_id=eq.${analysisId}&order=updated_at.desc&limit=1`,
+    );
+    return row ? { low: row.total_low, high: row.total_high } : null;
+  } catch (caught) {
+    if (!isMissingRelation(caught) && !isMissingColumn(caught)) throw caught;
+    warnMissing("read range");
+    return null;
+  }
+}
+
+// La question n'est reposée à un tour suivant que si la fourchette a changé
+// depuis la dernière réponse. Elle reste affichée tant que personne n'a
+// répondu, et quand la réponse de CE tour existe déjà : la modifier n'est pas
+// une nouvelle demande.
+export function shouldAskFeedback({
+  current,
+  lastJudged,
+  answeredThisTurn,
+}: {
+  current: JudgedRange;
+  lastJudged: JudgedRange | null;
+  answeredThisTurn: boolean;
+}): boolean {
+  if (answeredThisTurn || lastJudged === null) return true;
+  return current.low !== lastJudged.low || current.high !== lastJudged.high;
+}
+
 // Ligne enregistrée : uniquement la réponse et ce que l'analyse affichait.
 // analysis : l'analyse DÉJÀ recalculée au niveau de l'avis (voir la route) ; son
 // niveau est celui des chiffres enregistrés, même si le recalcul était impossible.
