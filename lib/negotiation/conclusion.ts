@@ -349,6 +349,8 @@ export function buildConclusion({
   language,
   source,
   counterAccepted = null,
+  offered = null,
+  points = [],
 }: {
   deal: Deal;
   asks: readonly Ask[];
@@ -356,13 +358,21 @@ export function buildConclusion({
   language: Language;
   source: Conclusion["source"];
   counterAccepted?: CounterRange | null;
+  // Mission #098 — le plafond annoncé par la marque, quand il dépasse le
+  // montant retenu dans les termes. Les TERMES ne bougent pas : seul le
+  // message porte ce montant, et il en demande confirmation.
+  offered?: number | null;
+  points?: readonly PointState[];
 }): Conclusion {
   const counterRange = counterAccepted ? formatEurRange(counterAccepted.low, counterAccepted.high) : null;
   const deal: Deal = counterRange ? { ...read, payment: { ...read.payment, amount_eur: null } } : read;
-  const rows = recapRows(deal).map((row) =>
+  const shown = offered === null ? deal : { ...deal, payment: { ...deal.payment, amount_eur: offered } };
+  const rows = recapRows(shown).map((row) =>
     counterRange && row.label === "Rémunération"
       ? { ...row, value: `Ta contre-offre, ${counterRange} : la marque l'a acceptée sans écrire le montant exact` }
-      : row,
+      : offered !== null && row.label === "Rémunération"
+        ? { ...row, value: `${row.value} — le montant que la marque propose, encore à confirmer par écrit` }
+        : row,
   );
   // Demandes accordées par la marque (hors prix, déjà dans « Rémunération ») :
   // révisions, rushs, modalités… Tout ce qu'elle a accepté figure dans le
@@ -381,7 +391,11 @@ export function buildConclusion({
     source,
     recap,
     unclear,
-    message: conclusionMessage(deal, language, granted, counterRange ? counterAccepted : null),
+    message: conclusionMessage(deal, language, granted, counterRange ? counterAccepted : null, {
+      offered,
+      points,
+      dealRead: deal,
+    }),
     // C4 — même règle et même texte que l'analyse : lib/legal/fr.ts, seul
     // endroit du projet où un énoncé juridique est écrit.
     legal_note: computeFrLegal(legalDeal(deal, counterRange ? counterAccepted : null)).note,

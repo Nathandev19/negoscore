@@ -50,8 +50,13 @@ describe("A — une citation écartée : ni « sans réponse », ni accord affir
     expect(claimsAgreementOn("Je prends bonne note de l'accord concernant le paiement.", [])).toBe(false);
   });
 
-  it("A3 — un seul doute pour le paiement", () => {
-    expect(payload.uncertainties.filter((doubt) => doubt.includes("Paiement"))).toHaveLength(1);
+  it("A3 — un seul doute pour le paiement, et aucun quand la marque a répondu dessus", () => {
+    // Mission #098, défaut 1 — la marque écrit « ok pour le paiement à 30
+    // jours avec 50 % à la signature » : la mémoire l'affiche « répondu »,
+    // citation à l'appui. Un doute « aucun passage trouvé » sur le même point
+    // serait une contradiction ; l'avertissement reste dans « Non vérifiable ».
+    expect(payload.uncertainties.filter((doubt) => doubt.includes("Paiement"))).toHaveLength(0);
+    expect(payload.points.find((point) => point.key === "payment")).toMatchObject({ status: "answered" });
   });
 
   it("A1 — la conclusion ne dit pas « pas de réponse » sur un point non vérifiable", () => {

@@ -302,3 +302,35 @@ details[open] > summary .details-chevron {
 summary::-webkit-details-marker {
   display: none;
 }
+
+/* Mission #098 — le repère d'arrivée : le bloc qui vient d'apparaître reçoit
+   un contour, qui s'efface en une seconde. Le défilement, lui, est instantané
+   dans tous les cas : sur plusieurs milliers de pixels, une animation
+   désoriente plus qu'elle n'aide. */
+.arrivee {
+  animation: arrivee 1s ease-out both;
+}
+@keyframes arrivee {
+  from {
+    outline: 3px solid var(--color-marque);
+    outline-offset: 6px;
+  }
+  to {
+    outline: 3px solid transparent;
+    outline-offset: 6px;
+  }
+}
+/* Mouvement réduit demandé : le repère s'affiche puis disparaît, sans
+   transition. Il est retiré au même moment (lib/ui/reveal.ts, FLASH_MS). */
+.arrivee-sans-animation {
+  animation: none;
+  outline: 3px solid var(--color-marque);
+  outline-offset: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arrivee {
+    animation: none;
+    outline: 3px solid var(--color-marque);
+    outline-offset: 6px;
+  }
+}

@@ -260,8 +260,10 @@ describe("défaut 2 — ce qui est répondu n'est plus redemandé", () => {
     expect(point(payload, "revisions")?.status).toBe("answered");
     expect(point(payload, "payment")?.status).toBe("answered");
     expect(point(payload, "validation")?.status).toBe("answered");
-    // La marque a dit qu'elle ne bougerait pas : refusé, pas « répondu ».
-    expect(point(payload, "usage_duration")?.status).toBe("refused");
+    // Mission #098 : elle donne la valeur (« 6 mois ») et dit qu'elle n'en
+    // bougera pas. C'est une réponse, fermée à la discussion — pas un refus
+    // de répondre.
+    expect(point(payload, "usage_duration")).toMatchObject({ status: "answered", firm: true });
     // Aucune exclusivité dans cette offre : le point n'est pas suivi.
     expect(point(payload, "exclusivity")).toBeUndefined();
   });
@@ -310,7 +312,7 @@ describe("défaut 2 — ce qui est répondu n'est plus redemandé", () => {
     expect(message).not.toContain("validation");
     // La mémoire a bien traversé les tours : le point du tour 2 est toujours là.
     expect(point(third, "territory")).toMatchObject({ status: "answered", turn: 2 });
-    expect(point(third, "usage_duration")).toMatchObject({ status: "refused", turn: 2 });
+    expect(point(third, "usage_duration")).toMatchObject({ status: "answered", firm: true, turn: 2 });
   });
 });
 

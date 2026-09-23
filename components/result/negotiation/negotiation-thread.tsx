@@ -87,13 +87,17 @@ export function NegotiationThread({
     const id = nextReveal(seen.current, after);
     seen.current = after;
     if (id === null) return;
-    reveal(document.getElementById(id), prefersReducedMotion());
+    // Mission #098 — le repère d'arrivée porte sur le BLOC, pas sur son titre :
+    // c'est la carte qu'on doit reconnaître en arrivant dessus.
+    const target = document.getElementById(id);
+    reveal(target, { flash: target?.closest("article, section") ?? target, reducedMotion: prefersReducedMotion() });
   }, [turns, concluded, error]);
 
   // L'attente s'affiche là où la réponse apparaîtra, et la page y amène.
   useEffect(() => {
     if (sending !== "turn") return;
-    reveal(document.getElementById(THREAD_PENDING_ID), prefersReducedMotion());
+    const pending = document.getElementById(THREAD_PENDING_ID);
+    reveal(pending, { flash: pending, reducedMotion: prefersReducedMotion() });
   }, [sending]);
 
   async function sendTurn(event: React.FormEvent<HTMLFormElement>) {

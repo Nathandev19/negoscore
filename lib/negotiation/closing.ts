@@ -65,7 +65,10 @@ export function buildClosing({
   situation: string | null;
 }): Closing {
   const granted = asks.filter((ask) => ask.status === "granted" && ask.id !== "prix").map((ask) => ask.label);
-  const refusedAmount = points.some((point) => point.key === "amount" && point.status === "refused");
+  // Mission #098 — la marque a répondu sur la rémunération ET dit qu'elle n'ira
+  // pas plus loin : « répondu » avec le drapeau « ferme », ou « refusé » quand
+  // elle n'a rien donné du tout. Les deux ferment la discussion sur le prix.
+  const refusedAmount = points.some((point) => point.key === "amount" && (point.status === "refused" || point.firm));
   const offered = offeredAmount(deal, ceiling, pricing);
   // Les termes ne bougent pas : seul ce que l'acceptation PORTE change.
   const accepted = offered === null ? deal : { ...deal, payment: { ...deal.payment, amount_eur: offered } };

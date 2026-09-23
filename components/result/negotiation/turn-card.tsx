@@ -1,7 +1,7 @@
 import { ConclusionView } from "@/components/result/negotiation/conclusion-view";
 import { EditableMessage } from "@/components/result/negotiation/editable-message";
 import { dealRecapRows, formatEur, formatEurRange } from "@/lib/display";
-import { POINT_LABEL } from "@/lib/negotiation/points";
+import { openPoints, POINT_LABEL } from "@/lib/negotiation/points";
 import { turnAnchorId } from "@/lib/ui/reveal";
 import {
   ASK_STATUS_LABEL,
@@ -141,7 +141,7 @@ export function TurnCard({
   const reading = dealRecapRows(payload.deal_after);
   // Mission #095 — points refermés par la marque, et points encore ouverts.
   const settled = payload.points.filter((point) => point.status !== "unknown");
-  const open = payload.points.filter((point) => point.status === "unknown");
+  const open = openPoints(payload.points);
 
   return (
     <article aria-labelledby={`tour-${turnNumber}`} className="flex flex-col gap-6 border-t-2 border-encre pt-6">

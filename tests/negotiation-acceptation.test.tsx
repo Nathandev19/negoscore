@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ConclusionView } from "@/components/result/negotiation/conclusion-view";
 import { ThreadError, ThreadPending } from "@/components/result/negotiation/thread-status";
 import { TurnCard } from "@/components/result/negotiation/turn-card";
@@ -12,11 +12,15 @@ import { processTurn, type TurnContext } from "@/lib/negotiation/turn";
 import { turnReadingSchema, type Deal, type PointState, type Pricing, type TurnPayload, type TurnReading } from "@/lib/negotiation/types";
 import {
   CONCLUSION_ANCHOR,
+  FLASH_CLASS,
+  FLASH_INSTANT_CLASS,
+  FLASH_MS,
   nextReveal,
   reveal,
   THREAD_ERROR_ID,
   THREAD_PENDING_ID,
   turnAnchorId,
+  type Flashable,
   type Revealable,
   type Revealed,
 } from "@/lib/ui/reveal";
@@ -248,11 +252,19 @@ describe("défaut 1 — l'acceptation porte le montant le plus élevé", () => {
 });
 
 describe("défaut 2 — « Convenu en plus » n'est plus du copier-coller", () => {
+  const point = (key: PointState["key"], status: PointState["status"], quote: string): PointState => ({
+    key,
+    status,
+    quote,
+    turn: 2,
+    firm: false,
+    asked: true,
+  });
   const points: PointState[] = [
-    { key: "usage_duration", status: "refused", quote: "les 6 mois de droits pub, on ne peut pas bouger dessus", turn: 2 },
-    { key: "territory", status: "answered", quote: "Territoire : France uniquement", turn: 2 },
-    { key: "payment", status: "answered", quote: "Paiement à 30 jours", turn: 2 },
-    { key: "formats", status: "answered", quote: "2 TikTok et 3 stories", turn: 2 },
+    point("usage_duration", "refused", "les 6 mois de droits pub, on ne peut pas bouger dessus"),
+    point("territory", "answered", "Territoire : France uniquement"),
+    point("payment", "answered", "Paiement à 30 jours"),
+    point("formats", "answered", "2 TikTok et 3 stories"),
   ];
 
   it("8. un point déjà répondu par la marque n'apparaît plus dans la liste", () => {
@@ -293,10 +305,20 @@ describe("défaut 2 — « Convenu en plus » n'est plus du copier-coller", () =
 
 describe("défaut 3 — on voit la réponse arriver", () => {
   const stub = () => {
-    const calls: { scroll: Revealed[]; focus: Array<{ preventScroll: boolean }> } = { scroll: [], focus: [] };
-    const element: Revealable = {
-      scrollIntoView: (options) => calls.scroll.push(options),
+    const calls: { scroll: Revealed[]; focus: Array<{ preventScroll: boolean }>; classes: string[] } = {
+      scroll: [],
+      focus: [],
+      classes: [],
+    };
+    const element: Revealable & Flashable = {
+      scrollIntoView: (options) => calls.scroll.push({ ...options, flash: null }),
       focus: (options) => calls.focus.push(options),
+      classList: {
+        add: (...names: string[]) => calls.classes.push(...names),
+        remove: (...names: string[]) => {
+          for (const name of names) calls.classes.splice(calls.classes.indexOf(name), 1);
+        },
+      },
     };
     return { element, calls };
   };
@@ -306,9 +328,9 @@ describe("défaut 3 — on voit la réponse arriver", () => {
     expect(target).toBe(turnAnchorId(3));
 
     const { element, calls } = stub();
-    expect(reveal(element, false)).toEqual({ behavior: "smooth", block: "start" });
+    expect(reveal(element, { flash: element })).toEqual({ behavior: "auto", block: "start", flash: "fade" });
     // Le HAUT de la carte, pas le bas de la page.
-    expect(calls.scroll).toEqual([{ behavior: "smooth", block: "start" }]);
+    expect(calls.scroll).toEqual([{ behavior: "auto", block: "start", flash: null }]);
     expect(calls.focus).toEqual([{ preventScroll: true }]);
 
     // Le titre porte bien cet identifiant, et peut recevoir le focus.
@@ -332,12 +354,14 @@ describe("défaut 3 — on voit la réponse arriver", () => {
     expect(html).toContain('tabindex="-1"');
   });
 
-  it("12. avec prefers-reduced-motion, la mise en vue est instantanée", () => {
-    const { element, calls } = stub();
-    expect(reveal(element, true)).toEqual({ behavior: "auto", block: "start" });
-    expect(calls.scroll).toEqual([{ behavior: "auto", block: "start" }]);
+  it("12. la mise en vue est instantanée, quel que soit prefers-reduced-motion", () => {
+    for (const reducedMotion of [true, false]) {
+      const { element, calls } = stub();
+      reveal(element, { reducedMotion });
+      expect(calls.scroll, String(reducedMotion)).toEqual([{ behavior: "auto", block: "start", flash: null }]);
+    }
     // Élément absent (rendu pas encore fait) : rien, et aucune erreur.
-    expect(reveal(null, true)).toBeNull();
+    expect(reveal(null, {})).toBeNull();
   });
 
   it("13. en cas d'échec, c'est le message d'erreur qui est amené en vue", () => {
@@ -354,6 +378,63 @@ describe("défaut 3 — on voit la réponse arriver", () => {
     expect(pending).toContain(`id="${THREAD_PENDING_ID}"`);
     expect(pending).toContain('role="status"');
     expect(pending).toContain("Lecture de la réponse de la marque");
+  });
+});
+
+describe("mission #098, défaut 4 — on doit savoir qu'on est arrivé", () => {
+  const flashStub = () => {
+    const classes: string[] = [];
+    const element: Revealable & Flashable = {
+      scrollIntoView: () => undefined,
+      focus: () => undefined,
+      classList: {
+        add: (...names: string[]) => classes.push(...names),
+        remove: (...names: string[]) => {
+          for (const name of names) classes.splice(classes.indexOf(name), 1);
+        },
+      },
+    };
+    return { element, classes };
+  };
+
+  it("14. à l'arrivée d'un nouveau tour, le repère est appliqué au bloc visé", () => {
+    vi.useFakeTimers();
+    const { element, classes } = flashStub();
+    const done = reveal(element, { flash: element });
+    expect(done?.flash).toBe("fade");
+    expect(classes).toEqual([FLASH_CLASS]);
+    // Bref : il dit « c'est ici », il ne reste pas.
+    vi.advanceTimersByTime(FLASH_MS);
+    expect(classes).toEqual([]);
+    vi.useRealTimers();
+  });
+
+  it("15. au premier affichage de la page, aucun repère n'est appliqué", () => {
+    // Rien de neuf entre les deux états : rien à amener en vue, donc aucun
+    // repère — c'est nextReveal qui décide, et il ne décide rien ici.
+    expect(nextReveal({ turnNumbers: [2], concluded: false, error: false }, { turnNumbers: [2], concluded: false, error: false })).toBeNull();
+    const { classes } = flashStub();
+    expect(classes).toEqual([]);
+  });
+
+  it("16. le défilement est instantané, quel que soit prefers-reduced-motion", () => {
+    vi.useFakeTimers();
+    for (const reducedMotion of [true, false]) {
+      const { element } = flashStub();
+      expect(reveal(element, { flash: element, reducedMotion })?.behavior, String(reducedMotion)).toBe("auto");
+    }
+    vi.useRealTimers();
+  });
+
+  it("17. avec prefers-reduced-motion, le repère apparaît et disparaît sans transition", () => {
+    vi.useFakeTimers();
+    const { element, classes } = flashStub();
+    const done = reveal(element, { flash: element, reducedMotion: true });
+    expect(done?.flash).toBe("instant");
+    expect(classes).toEqual([FLASH_CLASS, FLASH_INSTANT_CLASS]);
+    vi.advanceTimersByTime(FLASH_MS);
+    expect(classes).toEqual([]);
+    vi.useRealTimers();
   });
 });
 

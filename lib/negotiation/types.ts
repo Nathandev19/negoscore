@@ -215,6 +215,13 @@ export const pointSchema = z.object({
   // Extrait du texte collé, découpé par le code : exact par construction.
   quote: z.string().nullable(),
   turn: z.number().nullable(),
+  // Mission #098 — la marque a dit qu'elle ne bougerait plus sur ce point.
+  // Ce n'est pas un refus de répondre : le point peut être « répondu » ET
+  // fermé à la discussion (« jusqu'à 900 €, je ne reviendrai pas dessus »).
+  firm: z.boolean().default(false),
+  // Ce point a-t-il été demandé à la marque ? Un point jamais posé ne figure
+  // pas dans ce qui reste à obtenir.
+  asked: z.boolean().default(false),
 });
 export type PointState = z.infer<typeof pointSchema>;
 
