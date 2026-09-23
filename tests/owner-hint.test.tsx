@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HeaderNav, navItems, OWNER_NAV_ITEM } from "@/components/header-nav";
+import { HeaderNav, navItems } from "@/components/header-nav";
 import { hasOwnerHint, OWNER_HINT_COOKIE } from "@/lib/auth/owner-hint";
 
 // Mission #080, A — le lien vers /dev/retours dans l'en-tête, pour le seul
@@ -118,14 +118,29 @@ describe("A1 — posé à la connexion pour le propriétaire, effacé avec la se
 });
 
 describe("A1 — le lien dans l'en-tête", () => {
-  it("seulement connecté ET propriétaire", () => {
-    expect(navItems(true, true).main).toContainEqual(OWNER_NAV_ITEM);
-    expect(navItems(true, false).main).not.toContainEqual(OWNER_NAV_ITEM);
-    expect(navItems(false, true).main).not.toContainEqual(OWNER_NAV_ITEM);
-    expect(renderToStaticMarkup(<HeaderNav signedIn owner />)).toContain('href="/admin"');
-    expect(renderToStaticMarkup(<HeaderNav signedIn owner={false} />)).not.toContain('href="/admin"');
+  const ownerLinks = [
+    { href: "/admin", label: "Admin" },
+    { href: "/dev/retours", label: "Retours" },
+  ];
+
+  it("affiche Admin et Retours ensemble, seulement pour une session propriétaire", () => {
+    expect(navItems(true, true).main).toEqual(expect.arrayContaining(ownerLinks));
+    for (const state of [navItems(true, false), navItems(false, true), navItems(false, false)]) {
+      for (const item of ownerLinks) expect(state.main).not.toContainEqual(item);
+    }
+
+    const ownerHtml = renderToStaticMarkup(<HeaderNav signedIn owner />);
+    for (const item of ownerLinks) {
+      // Le même modèle alimente la navigation desktop et le panneau mobile.
+      expect(ownerHtml.match(new RegExp(`href="${item.href}"`, "g")), item.label).toHaveLength(2);
+      expect(ownerHtml.match(new RegExp(`>${item.label}<`, "g")), item.label).toHaveLength(2);
+    }
+
+    const userHtml = renderToStaticMarkup(<HeaderNav signedIn owner={false} />);
+    for (const item of ownerLinks) expect(userHtml).not.toContain(`href="${item.href}"`);
     // Rendu serveur (état inconnu) : jamais le lien.
-    expect(renderToStaticMarkup(<HeaderNav signedIn={null} />)).not.toContain('href="/admin"');
+    const anonymousHtml = renderToStaticMarkup(<HeaderNav signedIn={null} />);
+    for (const item of ownerLinks) expect(anonymousHtml).not.toContain(`href="${item.href}"`);
   });
 
   it("lecture de l'indicateur dans document.cookie", () => {
@@ -137,7 +152,9 @@ describe("A1 — le lien dans l'en-tête", () => {
 
 describe("A2 — indicateur posé à la main : un lien qui ne mène qu'à une 404", () => {
   it("le lien s'affiche (l'en-tête ne sait rien de plus que le cookie)…", () => {
-    expect(renderToStaticMarkup(<HeaderNav signedIn owner />)).toContain('href="/admin"');
+    const html = renderToStaticMarkup(<HeaderNav signedIn owner />);
+    expect(html).toContain('href="/admin"');
+    expect(html).toContain('href="/dev/retours"');
   });
 
   it("…mais sans session, /dev/retours répond comme une adresse inexistante", async () => {

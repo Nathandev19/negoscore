@@ -11,9 +11,12 @@ type NavItem = { href: string; label: string };
 
 // Entrées de navigation selon l'état affiché. signedIn et owner viennent des
 // cookies indicateurs : ils ne choisissent que des liens, jamais un accès.
-// owner (mission #080) : lien vers les retours sur l'estimation, que le proxy
-// et la page ne servent qu'à l'adresse OWNER_EMAIL.
-export const OWNER_NAV_ITEM: NavItem = { href: "/admin", label: "Cockpit" };
+// owner : accès au cockpit et aux retours sur l'estimation, que le proxy et
+// les pages ne servent qu'à l'adresse OWNER_EMAIL.
+export const OWNER_NAV_ITEMS: NavItem[] = [
+  { href: "/admin", label: "Admin" },
+  { href: "/dev/retours", label: "Retours" },
+];
 
 export function navItems(signedIn: boolean, owner = false): { main: NavItem[]; account: NavItem; cta: NavItem } {
   return {
@@ -21,7 +24,7 @@ export function navItems(signedIn: boolean, owner = false): { main: NavItem[]; a
       { href: "/#methode", label: "Comment ça marche" },
       { href: "/tarifs", label: "Tarifs" },
       ...(signedIn ? [{ href: "/historique", label: "Mes négociations" }] : []),
-      ...(signedIn && owner ? [OWNER_NAV_ITEM] : []),
+      ...(signedIn && owner ? OWNER_NAV_ITEMS : []),
     ],
     account: signedIn ? { href: "/compte", label: "Mon compte" } : { href: "/connexion", label: "Se connecter" },
     cta: { href: "/analyse", label: "Analyser un deal" },

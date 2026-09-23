@@ -25,8 +25,7 @@ function consentWithLink() {
 
 // Case à cocher obligatoire, jamais pré-cochée. Son état est enregistré côté
 // serveur, avec la date, par /api/checkout.
-// primary : bouton plein pour la formule mise en avant, lien souligné pour les autres.
-export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro"; label: string; primary: boolean }) {
+export function PlanCheckoutForm({ plan, label }: { plan: "pack" | "pro"; label: string; primary: boolean }) {
   const [accepted, setAccepted] = useState(false);
   // Un seul envoi (mission #071) : un double clic ne part pas deux fois vers
   // le paiement. Le serveur a sa propre garde ; celle-ci évite l'aller-retour.
@@ -95,9 +94,9 @@ export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro
         // du navigateur, qui dit quoi cocher, au lieu d'un bouton muet.
         aria-disabled={!accepted || sending}
         aria-busy={sending}
-        variant={primary ? "default" : "link"}
+        variant="default"
         size="lg"
-        className={primary ? "h-12 w-full text-base" : "w-fit text-base"}
+        className="h-12 w-full text-base"
       >
         {label}
       </Button>
