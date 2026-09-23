@@ -42,6 +42,11 @@ export type Point = {
   // Le point est-il déjà réglé par l'offre elle-même ? Mission #098 : l'offre
   // initiale est une source, au même titre que les réponses de la marque.
   inOffer: (deal: Deal) => boolean;
+  // Mission #101, défaut 1 — la valeur de ce point dans une phrase, ramenée à
+  // l'unité du deal. Absent : point QUALITATIF (formats, territoire,
+  // validation, durée des contenus) — deux formulations différentes y restent
+  // deux positions différentes, et l'écran le dit.
+  normalized?: (sentence: string) => string | null;
   // Mission #100, point 2 — le sujet du point tel qu'une OFFRE l'écrit, quand
   // il ne s'écrit pas comme dans une réponse de marque. Sert uniquement à
   // retrouver la phrase à citer dans le texte d'origine ; la valeur reste
@@ -50,6 +55,54 @@ export type Point = {
 };
 
 const word = (body: string) => new RegExp(`(?<![\\p{L}])(?:${body})`, "iu");
+
+// Mission #101, défaut 1 — la valeur NORMALISÉE que porte une phrase, pour les
+// points qui en ont une. Même unité que le deal enregistré : des jours pour le
+// paiement, des mois pour les droits et l'exclusivité, des euros pour la
+// rémunération, un nombre pour les révisions. Deux phrases qui donnent la même
+// valeur disent la même chose, même écrites autrement. null : la phrase ne
+// porte pas de valeur lisible — on ne conclut rien.
+
+const NUMBER = String.raw`\d[\d\s\u00a0\u202f.]*`;
+
+function toNumber(raw: string): number | null {
+  const plain = raw.replace(/[\s\u00a0\u202f.]/gu, "").replace(",", ".");
+  const value = Number(plain);
+  return Number.isFinite(value) ? value : null;
+}
+
+// Durée ramenée en mois : « 1 an » et « 12 mois » sont la même durée.
+function months(sentence: string): string | null {
+  if (/illimit|perpétu|sans limite de durée|à vie/iu.test(sentence)) return "illimite";
+  const match = new RegExp(`(${NUMBER})\\s*(mois|ans?(?![\\p{L}])|semaines?)`, "iu").exec(sentence);
+  if (!match) return null;
+  const value = toNumber(match[1]);
+  if (value === null) return null;
+  const unit = match[2].toLowerCase();
+  if (unit.startsWith("an")) return `${value * 12}m`;
+  if (unit.startsWith("semaine")) return `${value}sem`;
+  return `${value}m`;
+}
+
+function days(sentence: string): string | null {
+  const match = new RegExp(`(${NUMBER})\\s*jours?(?![\\p{L}])`, "iu").exec(sentence);
+  const value = match ? toNumber(match[1]) : null;
+  return value === null ? null : `${value}j`;
+}
+
+function euros(sentence: string): string | null {
+  const match = new RegExp(`(${NUMBER})\\s?(?:€|eur\\b|euros?\\b)`, "iu").exec(sentence);
+  const value = match ? toNumber(match[1]) : null;
+  return value === null ? null : `${value}€`;
+}
+
+function count(sentence: string): string | null {
+  if (/illimit|autant que/iu.test(sentence)) return "illimite";
+  const match = new RegExp(`(${NUMBER})`, "u").exec(sentence);
+  const value = match ? toNumber(match[1]) : null;
+  return value === null ? null : String(value);
+}
+
 
 const MONEY = /\d[\d\s  .,]*\s?(?:€|eur\b|euros?\b)/iu;
 const MONTHS = /\d+\s*(?:mois|ans?(?![\p{L}])|semaines?)|illimit|perpétu|sans limite de durée/iu;
@@ -61,6 +114,7 @@ export const POINTS: readonly Point[] = [
     group: "amount",
     pattern: /(?<![\p{L}])(?:budget|rémunér|tarif|cachet|enveloppe|montant|prix|euros?(?![\p{L}]))|€/iu,
     value: MONEY,
+    normalized: euros,
     applies: () => true,
     inOffer: (deal) => deal.payment.amount_eur !== null || deal.in_kind_value_eur !== null,
   },
@@ -90,6 +144,7 @@ export const POINTS: readonly Point[] = [
     group: null,
     pattern: word("révisions?|retouches?|allers?[- ]retours?|corrections?"),
     value: /\d+|illimit|autant que/iu,
+    normalized: count,
     applies: () => true,
     inOffer: (deal) => deal.revisions.count !== null || deal.revisions.unlimited,
   },
@@ -99,6 +154,7 @@ export const POINTS: readonly Point[] = [
     group: "payment_terms",
     pattern: word("paiement|règlement|acompte|factur|virement|pay(?:é|er|able|ons)(?![\\p{L}])"),
     value: /\d+\s*jours|virement|acompte|signature|réception|comptant|à ?réception/iu,
+    normalized: days,
     applies: () => true,
     inOffer: (deal) => deal.payment.terms_days !== null || deal.payment.schedule !== null,
   },
@@ -114,6 +170,7 @@ export const POINTS: readonly Point[] = [
     // sur nos réseaux et en pub pendant 6 mois ». La durée reste exigée, c'est
     // elle qui fait de la phrase une réponse sur ce point.
     offerSubject: word("droits?|licence|réutilis|diffus|publicit|whitelisting|spark"),
+    normalized: months,
     applies: hasUsageRights,
     inOffer: (deal) => deal.usage.duration_months !== null || deal.usage.perpetual,
   },
@@ -134,6 +191,7 @@ export const POINTS: readonly Point[] = [
     group: "exclusivity",
     pattern: word("exclusivit"),
     value: /\d+\s*(?:mois|ans?|semaines?)|aucune|sans exclusivité/iu,
+    normalized: months,
     applies: (deal) => deal.exclusivity.present,
     inOffer: (deal) => deal.exclusivity.present && deal.exclusivity.duration_months !== null,
   },
@@ -185,7 +243,7 @@ export function citation(raw: string, source: string, max: number = CITATION_MAX
 
 // La phrase entière du texte source qui contient cet extrait. null : l'extrait
 // n'y figure pas tel quel (le modèle l'a reformulé), on n'invente pas.
-function sentenceAround(raw: string, source: string): string | null {
+export function sentenceAround(raw: string, source: string): string | null {
   const needle = normalizeForQuote(raw).replace(/^[\s"'«».,;:…-]+|[\s"'«».,;:…-]+$/gu, "");
   if (needle.length === 0) return null;
   for (const sentence of sentencesOf(source)) {
@@ -239,20 +297,69 @@ export function emptyPoints(deal: Deal, askLabels: readonly string[] = [], offer
   }));
 }
 
-// Deux phrases disent-elles la MÊME valeur pour ce point ? Comparaison de ce
-// que la valeur du point relève dans chacune (« 6 mois » et « 6 mois »), pas
-// des phrases entières. false dès qu'une des deux n'en porte aucune.
+// Deux phrases disent-elles la MÊME valeur pour ce point ? Sur un point à
+// valeur normalisée, la comparaison porte sur cette valeur : « paiement à 30
+// jours » et « en une fois, à 30 jours après réception » disent 30 jours, la
+// marque n'a pas changé de position, elle a reformulé. Sur un point qualitatif,
+// jamais : une formulation différente peut cacher un vrai changement, et c'est
+// à la créatrice de le voir. false aussi dès qu'une des deux phrases ne porte
+// aucune valeur lisible.
 function sameValue(key: PointKey, before: string | null, after: string): boolean {
   const point = POINTS.find((entry) => entry.key === key);
-  if (!point || before === null) return false;
-  const first = point.value.exec(before)?.[0];
-  const second = point.value.exec(after)?.[0];
-  return first !== undefined && second !== undefined && normalizeForQuote(first) === normalizeForQuote(second);
+  if (!point?.normalized || before === null) return false;
+  const first = point.normalized(before);
+  const second = point.normalized(after);
+  return first !== null && second !== null && first === second;
 }
 
 // Points que CETTE phrase de la marque renseigne.
 export function pointsOfSentence(sentence: string, deal: Deal): Point[] {
   return trackedPoints(deal).filter((point) => point.pattern.test(sentence));
+}
+
+
+// Mission #101, défaut 2 — « Paiement en une fois, à 30 jours après réception
+// et validation des contenus » refermait le point VALIDATION, parce que le mot
+// y figure. La phrase ne dit rien de la procédure de validation : elle dit
+// quand la marque paie. Le point passait en « répondu », l'agent ne le
+// redemandait plus (#095), et la négociation pouvait se conclure sur une clause
+// jamais discutée.
+//
+// Désormais, une phrase ne referme un point que si elle en DIT quelque chose —
+// son sujet ET une valeur, ou un refus assumé — et, quand plusieurs points
+// pourraient la réclamer, c'est l'attribution STRUCTURÉE du modèle qui tranche :
+// le groupe de termes qu'il a cité, ou la demande à laquelle il a répondu, tous
+// deux déjà vérifiés mot pour mot contre le texte collé. Sans elle, les
+// mots-clés ne tranchent que s'ils ne désignent qu'un seul point — c'est le
+// repli, et il est journalisé. Dans le doute, le point reste OUVERT : un point
+// ouvert de trop coûte une question, un point refermé à tort coûte une clause.
+
+// Ce que le modèle a attribué, et que le code a déjà vérifié : un groupe de
+// termes cité (TermChange), ou une demande de la créatrice à laquelle cette
+// phrase répond (Ask). Le libellé de la demande vient d'elle, pas de la marque.
+export type Attribution = { quote: string; group?: TermGroup | null; ask?: string | null };
+
+// La phrase dit-elle quelque chose de ce point ? Son sujet doit y être nommé,
+// et elle doit porter une valeur — ou fermer la porte (« on ne peut pas bouger
+// dessus »), ce qui est aussi une réponse. Le passage qui fait valeur est
+// rendu : c'est lui qui départage deux points dont le mot apparaît.
+const NO_VALUE = "sans-valeur";
+
+function treats(point: Point, sentence: string, firm: boolean): string | null {
+  if (!point.pattern.test(sentence)) return null;
+  const value = point.value.exec(sentence);
+  if (value) return `${value.index}:${value[0].length}`;
+  return firm ? NO_VALUE : null;
+}
+
+// Le point que désigne une attribution. null : le modèle a visé un groupe qui
+// ne porte aucun point suivi, ou un libellé de demande qui en désigne
+// plusieurs — on ne devine pas à sa place.
+function pointOfAttribution(attribution: Attribution, tracked: readonly Point[], deal: Deal): Point | null {
+  if (attribution.group) return tracked.find((point) => point.group === attribution.group) ?? null;
+  if (!attribution.ask) return null;
+  const named = pointsOfSentence(attribution.ask, deal);
+  return named.length === 1 ? named[0] : null;
 }
 
 // Mission #095 — l'état des points après ce tour. Deux sources, toutes deux
@@ -265,6 +372,7 @@ export function readPoints({
   turn,
   deal,
   askLabels = [],
+  attributed = [],
 }: {
   previous: readonly PointState[];
   brandReply: string;
@@ -272,6 +380,8 @@ export function readPoints({
   turn: number;
   deal: Deal;
   askLabels?: readonly string[];
+  // Mission #101 — ce que le modèle a attribué et que le code a vérifié.
+  attributed?: readonly Attribution[];
 }): PointState[] {
   const tracked = trackedPoints(deal);
   const asked = askedPoints(deal, askLabels);
@@ -298,18 +408,18 @@ export function readPoints({
     // Mission #099 — elle revient sur un point réglé à un tour PRÉCÉDENT, et
     // dit autre chose : on garde ce qu'elle disait avant. Les deux citations
     // et les deux tours s'affichent ; rien n'est écrasé en silence.
-    // Mission #100, point 2 — depuis que le point réglé par l'OFFRE porte la
-    // phrase de l'offre, deux citations différentes ne suffisent plus : la
-    // marque qui confirme « les 6 mois de droits pub » ne change pas de
-    // position, elle redit la même valeur dans ses mots. On ne l'annonce que
-    // si la VALEUR change.
-    const confirmsOffer = current.turn === 1 && current.status === status && sameValue(key, current.quote, next);
+    // Mission #100, point 2, étendu par #101 — deux citations différentes ne
+    // suffisent pas à annoncer un changement de position : la marque qui
+    // confirme « les 6 mois de droits pub », ou qui redit ses 30 jours
+    // autrement, ne change rien. Sur les points à valeur normalisée, c'est la
+    // VALEUR qui décide, à tous les tours ; sur les autres, rien ne change.
+    const saysTheSame = current.status === status && sameValue(key, current.quote, next);
     const changedMind =
       !sameTurn &&
       current.status !== "unknown" &&
       current.quote !== null &&
       (current.status !== status || current.quote !== next) &&
-      !confirmsOffer;
+      !saysTheSame;
     state.set(key, {
       key,
       status,
@@ -324,13 +434,45 @@ export function readPoints({
     });
   };
 
+  // Ce que le modèle a attribué à un point, phrase par phrase. La citation a
+  // déjà été confrontée au texte collé par l'appelant : on retrouve ici la
+  // phrase entière qui la porte, et on ne retient l'attribution que si cette
+  // phrase dit vraiment quelque chose du point visé.
+  const decided = new Map<string, Set<PointKey>>();
+  for (const attribution of attributed) {
+    const sentence = sentenceAround(attribution.quote, brandReply);
+    if (sentence === null) continue;
+    const point = pointOfAttribution(attribution, tracked, deal);
+    if (!point || treats(point, sentence, FIRM.test(sentence)) === null) continue;
+    const already = decided.get(sentence) ?? new Set<PointKey>();
+    already.add(point.key);
+    decided.set(sentence, already);
+  }
+
   for (const sentence of sentencesOf(brandReply)) {
     const firm = FIRM.test(sentence);
-    for (const point of pointsOfSentence(sentence, deal)) {
-      // Elle donne une valeur : le point est répondu, même si elle ajoute
-      // qu'elle n'ira pas plus loin. Sans valeur, un refus reste un refus.
-      const answered = point.value.test(sentence);
-      settle(point.key, answered || !firm ? "answered" : "refused", sentence, firm);
+    const candidates = tracked
+      .map((point) => ({ point, value: treats(point, sentence, firm) }))
+      .filter((entry): entry is { point: Point; value: string } => entry.value !== null);
+    if (candidates.length === 0) continue;
+    const chosen = decided.get(sentence);
+    // Elle donne une valeur : le point est répondu, même si elle ajoute qu'elle
+    // n'ira pas plus loin. Sans valeur, un refus reste un refus.
+    const close = (point: Point) => settle(point.key, point.value.test(sentence) || !firm ? "answered" : "refused", sentence, firm);
+    for (const { point, value } of candidates) {
+      // Le modèle a visé ce point : il est refermé, sur sa phrase.
+      if (chosen?.has(point.key)) {
+        close(point);
+        continue;
+      }
+      // Repli par mots-clés. Deux points qui se disputent le MÊME passage :
+      // aucun des deux n'est refermé — « 30 jours », dans « paiement à 30 jours
+      // après réception et validation », parle du paiement, pas de la
+      // validation. Cela vaut aussi quand le modèle a donné ce passage à l'un
+      // d'eux : l'autre reste à négocier. Chacun le sien : chacun est refermé.
+      if (candidates.some((other) => other.point.key !== point.key && other.value === value)) continue;
+      close(point);
+      console.warn(JSON.stringify({ event: "point_referme_par_repli", point: point.key, tour: turn }));
     }
   }
 

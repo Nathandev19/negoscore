@@ -7,6 +7,7 @@ import { buildClosing, offeredAmount } from "@/lib/negotiation/closing";
 import { buildConclusion } from "@/lib/negotiation/conclusion";
 import { readAmounts, statedCeiling, turnSituation } from "@/lib/negotiation/gap";
 import { fallbackMessage, finalMessage, stripRedundantQuestions } from "@/lib/negotiation/message";
+import type { Attribution } from "@/lib/negotiation/points";
 import { brandSettled, emptyPoints, everythingSettled, pointsOfSentence, readPoints, settledForDoubts, splitReserves } from "@/lib/negotiation/points";
 import { tableOf } from "@/lib/analysis/recompute";
 import { originPricing, priceFor, unavailablePricing } from "@/lib/negotiation/pricing";
@@ -257,6 +258,20 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   // ─── Mission #095 ──────────────────────────────────────────────────────────
   // 1. La mémoire : chaque point renseigné par la marque garde sa citation,
   //    tour après tour. C'est elle qui empêche de le redemander.
+  // Mission #101, défaut 2 — ce que le MODÈLE a attribué, et que le code a
+  // déjà vérifié mot pour mot contre le texte collé : les groupes de termes
+  // qu'il a cités (verified, y compris ceux dont la valeur n'a pas bougé), et
+  // les demandes de la créatrice auxquelles il a rattaché une phrase. C'est
+  // cela qui tranche quand une phrase pourrait refermer plusieurs points ; les
+  // mots-clés ne sont plus que le repli.
+  const attributed: Attribution[] = [
+    ...verified.map((group) => ({ quote: quotes[group] ?? "", group })),
+    // Un accord GLOBAL ne détaille aucun point : il ne referme rien.
+    ...merged.asks
+      .filter((ask) => ask.turn === turnNumber && ask.quote !== null && ask.unverified_turn === null && !ask.global)
+      .map((ask) => ({ quote: ask.quote ?? "", ask: ask.label })),
+  ].filter((attribution) => attribution.quote !== "");
+
   const points = readPoints({
     previous: before.points,
     brandReply,
@@ -264,6 +279,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
     turn: turnNumber,
     deal: dealAfter,
     askLabels: merged.asks.map((ask) => ask.label),
+    attributed,
   });
   // Ce qu'on savait DÉJÀ en entrant dans ce tour : c'est cela qu'une question
   // ne peut plus redemander. Un point que la marque vient de renseigner dans
