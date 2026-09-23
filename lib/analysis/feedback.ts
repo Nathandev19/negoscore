@@ -73,6 +73,13 @@ export function shouldAskFeedback({
   lastJudged: JudgedRange | null;
   answeredThisTurn: boolean;
 }): boolean {
+  // Mission #099, point 8 (audit B2) — « Cette estimation te paraît juste ? »
+  // sous une page qui dit « Pas d'estimation » ne veut rien dire, et l'avis
+  // enregistré porterait sur des chiffres absents (mission #086). Sans
+  // fourchette, on ne demande rien. Une offre sans montant de la marque
+  // (« unpriced »), elle, EN a une : c'est même le seul chiffre de la page, et
+  // le plus utile à faire juger.
+  if (current.low === null && current.high === null) return false;
   if (answeredThisTurn || lastJudged === null) return true;
   return current.low !== lastJudged.low || current.high !== lastJudged.high;
 }

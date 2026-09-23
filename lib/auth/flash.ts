@@ -51,7 +51,7 @@ export function flashMessage(kind: FlashKind, pathname: string): FlashMessage {
   // « Débloqué à l'instant » sur les blocs ouverts, ou explication sur la 404.
   if (pathname.startsWith("/analyse/resultat/")) return { title, text: null, link: null };
   if (pathname === "/historique") return { title, text: "Voici toutes tes analyses.", link: null };
-  if (pathname === "/compte") return { title, text: "Voici ton compte et tes crédits.", link: null };
+  if (pathname === "/compte") return { title, text: "Voici ton compte et tes négociations.", link: null };
   if (pathname === "/tarifs") return { title, text: "Tu peux maintenant choisir une formule.", link: null };
   if (pathname === "/analyse") return { title, text: "Colle l'offre d'une marque pour l'analyser.", link: null };
   return { title, text: "Tu peux analyser un deal et retrouver tes analyses.", link: { href: "/historique", label: "Mes analyses" } };

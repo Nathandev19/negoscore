@@ -4,6 +4,7 @@ import type { SessionUser } from "@/lib/auth/session";
 import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { claimRetry, RETRY_MESSAGES, sameOffer, type RetryClaim } from "@/lib/analysis/retry";
 import { readIdempotencyKey, replayableAnalysis } from "@/lib/analysis/idempotency";
+import { recordPendingDebit } from "@/lib/analysis/pending-debit";
 import { reserveAnalysis, type Denial, type Grant } from "@/lib/billing/entitlement";
 import { NO_FREE_LEFT_MESSAGE, rightHintCookieHeader } from "@/lib/billing/right-hint";
 import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
@@ -160,7 +161,9 @@ export async function POST(request: Request) {
 
   // Abandon sans résultat : l'utilisateur retrouve exactement l'état d'avant.
   // Le fichier déposé est supprimé, rien de ce qui a été compté ne reste.
-  async function abandon() {
+  // Mission #099 — renvoie false si une étape a échoué : l'appelant sait alors
+  // que quelque chose est resté en base, et peut le reprendre.
+  async function abandon(): Promise<boolean> {
     const steps: Array<() => Promise<unknown>> = [];
     if (document) {
       const dealId = document.deal.id;
@@ -180,13 +183,16 @@ export async function POST(request: Request) {
       const guardKey = hourlyKey;
       steps.push(() => releaseUsageGuard(guardKey));
     }
+    let ok = true;
     for (const step of steps) {
-      await step().catch((error: unknown) =>
+      await step().catch((error: unknown) => {
+        ok = false;
         console.error(
           JSON.stringify({ event: "analyse_abandon_error", detail: error instanceof Error ? error.message.slice(0, 200) : "inconnu" }),
-        ),
-      );
+        );
+      });
     }
+    return ok;
   }
 
   try {
@@ -383,12 +389,41 @@ export async function POST(request: Request) {
     if (!(await grant.commit())) {
       // Le dernier droit a été pris entre-temps par une autre analyse : celle-ci
       // est retirée, et l'utilisateur est prévenu comme s'il n'avait plus de droit.
-      await abandon();
+      const undone = await abandon();
       console.warn(JSON.stringify({ event: "analyse_commit_refused", plan: entitlement.plan }));
+      // Mission #099 (audit A1) — la suppression a échoué : l'analyse est
+      // restée, visible, sans avoir été décomptée. On le dit, et on la confie
+      // au rattrapage quotidien plutôt que de la laisser derrière nous.
+      if (!undone) {
+        console.error(
+          JSON.stringify({
+            event: "analyse_non_decomptee",
+            analysis_id: saved.id,
+            deal_id: dealId,
+            user_id: user?.id ?? null,
+            plan: entitlement.plan,
+          }),
+        );
+        await recordPendingDebit({
+          analysis_id: saved.id,
+          deal_id: dealId,
+          user_id: user?.id ?? null,
+          anon_token: user ? null : anonToken,
+          plan: entitlement.plan,
+        }).catch((error: unknown) =>
+          console.error(
+            JSON.stringify({
+              event: "analyse_non_decomptee_non_enregistree",
+              analysis_id: saved.id,
+              detail: error instanceof Error ? error.message.slice(0, 200) : "inconnu",
+            }),
+          ),
+        );
+      }
       return json(
         402,
         {
-          error: user ? "Tu n'as plus de crédit. Choisis une formule pour continuer." : NO_FREE_LEFT_MESSAGE,
+          error: user ? "Tu n'as plus de négociation disponible. Choisis une formule pour continuer." : NO_FREE_LEFT_MESSAGE,
           paywall: true,
           reason: user ? "no_credit" : "free_used",
         },

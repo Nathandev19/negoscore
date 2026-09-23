@@ -33,6 +33,22 @@ export type AmountPosition = {
 const CEILING =
   /(?:jusqu'à|jusqu'a|au maximum(?: de)?|maximum de|au plus|pas plus de|up to|at most)\s+(\d[\d\s  .,]*)\s?(?:€|eur\b|euros?\b)/giu;
 
+// Mission #099, point 5 (audit B16) — TOUS les montants que la marque écrit,
+// tels qu'ils sont écrits. La règle de rétention ne change pas (le plus récent
+// plafond fait foi) : ceux qui ne sont pas retenus sont montrés, pour qu'un
+// « entre 500 € et 700 €, disons jusqu'à 900 € » ne se lise pas comme un seul
+// chiffre.
+const ANY_AMOUNT = /\d[\d\s\u00a0\u202f.,]*\s?(?:€|eur\b|euros?\b)/giu;
+
+export function readAmounts(brandReply: string): Array<{ value: number; text: string }> {
+  return [...brandReply.matchAll(ANY_AMOUNT)]
+    .map((match) => ({
+      value: Number(match[0].replace(/[^\d.,]/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", ".")),
+      text: match[0].trim(),
+    }))
+    .filter((amount) => Number.isFinite(amount.value) && amount.value > 0);
+}
+
 export function statedCeiling(brandReply: string): number | null {
   const matches = [...brandReply.matchAll(CEILING)];
   const last = matches.at(-1);

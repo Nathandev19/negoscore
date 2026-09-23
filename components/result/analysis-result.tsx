@@ -166,7 +166,9 @@ export function AnalysisResult({
   // Contre-offre du premier message : calculée sur l'offre d'origine.
   const { estimate, deal } = origin;
   const priced = counterOfferRange(deal.payment.amount_eur, estimate.total_low, estimate.total_high).low !== null;
-  const counterOfferTitle = incomplete || !priced ? "Ta contre-offre" : undefined;
+  // Mission #099 (audit C1) : sur une offre incomplète, le titre dit ce que le
+  // bloc contient vraiment — des points à demander, pas un chiffrage.
+  const counterOfferTitle = incomplete ? "Ce que tu peux demander" : !priced ? "Ta contre-offre" : undefined;
   // Mission #082 : contre-offre visible (débloquée) ET identique à la
   // fourchette : les deux ne s'affichent qu'une fois, sur une seule ligne.
   // Après un tour, la fourchette affichée est celle des termes actuels : la
@@ -227,7 +229,13 @@ export function AnalysisResult({
             commente : contre-offre et message d'abord, avec la suite de
             l'échange ; les conseils et le commentaire ensuite. */}
         {origin.counter_offer ? (
-          <CounterOffer offer={origin.counter_offer} title={counterOfferTitle} justUnlocked={justUnlocked} sameAsEstimate={counterSame} />
+          <CounterOffer
+            offer={origin.counter_offer}
+            title={counterOfferTitle}
+            justUnlocked={justUnlocked}
+            sameAsEstimate={counterSame}
+            missing={incomplete ? missingInformation(analysis) : []}
+          />
         ) : (
           <LockedCounterOfferPlaceholder title={counterOfferTitle} />
         )}

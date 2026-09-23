@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { ConclusionView } from "@/components/result/negotiation/conclusion-view";
 import { useSentRecorder } from "@/components/result/negotiation/sent-message";
 import { ThreadError, ThreadPending } from "@/components/result/negotiation/thread-status";
 import { TurnCard } from "@/components/result/negotiation/turn-card";
 import { useTier } from "@/components/result/tier-selector";
 import { Button } from "@/components/ui/button";
-import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, type Conclusion, type ThreadAccess, type TurnPayload } from "@/lib/negotiation/types";
+import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, TOO_SHORT_REPLY_MESSAGE, type Conclusion, type ThreadAccess, type TurnPayload } from "@/lib/negotiation/types";
+import { exchanges, NEGOTIATION_EXCHANGES } from "@/lib/content/vocabulaire";
+import { saveTurnWithoutJs, type TurnWithoutJsState } from "@/lib/forms/no-js-actions";
+import { clearThreadDraft, readThreadKey, readThreadReply, saveThreadDraft, subscribeThreadDraft } from "@/lib/negotiation/draft";
 import { DEFAULT_TIER } from "@/lib/rates/tier";
 import { nextReveal, prefersReducedMotion, reveal, THREAD_PENDING_ID, type ThreadSnapshot } from "@/lib/ui/reveal";
 
@@ -55,12 +58,25 @@ export function NegotiationThread({
 }) {
   const router = useRouter();
   const tier = useTier() ?? DEFAULT_TIER;
-  const [reply, setReply] = useState("");
+  // Mission #099 (audits B15 et C3) — sans JavaScript, c'est l'action serveur
+  // qui répond, et ce qu'elle renvoie contient le texte soumis. Avec
+  // JavaScript, le brouillon du navigateur prend le relais : ni le texte ni la
+  // clé d'idempotence ne se perdent au rechargement.
+  const [server, serverAction] = useActionState(saveTurnWithoutJs, { status: "idle" } as TurnWithoutJsState);
+  const draft = useSyncExternalStore(subscribeThreadDraft, () => readThreadReply(analysisId), () => "");
+  const [edited, setEdited] = useState<string | null>(null);
+  const reply = edited ?? (server.status === "error" ? server.reply : draft);
+  function setReply(value: string) {
+    setEdited(value);
+    saveThreadDraft(analysisId, { reply: value, key: keyRef.current });
+  }
   const [sending, setSending] = useState<"turn" | "conclusion" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Clé d'idempotence gardée tant que le tour n'a pas abouti (D4) : un second
-  // clic ou une reprise après coupure retombe sur le même tour.
+  // clic ou une reprise après coupure retombe sur le même tour. Mission #099 :
+  // elle est gardée AVEC le brouillon, donc elle survit au rechargement.
   const keyRef = useRef<string | null>(null);
+
   // B2, B3 — le message auquel la marque répond, selon l'outil : celui retenu
   // à la copie (ou corrigé), sinon le message proposé, gardé comme hypothèse.
   const { firstMessage } = useSentRecorder();
@@ -103,11 +119,14 @@ export function NegotiationThread({
   async function sendTurn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (sending) return;
-    if (reply.trim().length < 2) {
-      setError("Colle la réponse de la marque.");
+    if (reply.trim().length < MIN_REPLY_LENGTH) {
+      setError(TOO_SHORT_REPLY_MESSAGE);
       return;
     }
-    keyRef.current ??= newKey();
+    keyRef.current ??= readThreadKey(analysisId) ?? newKey();
+    // Gardée avec le brouillon : un rechargement en plein traitement la
+    // retrouve, et le second envoi est reconnu comme le même tour.
+    saveThreadDraft(analysisId, { reply, key: keyRef.current });
     setSending("turn");
     setError(null);
     try {
@@ -119,14 +138,20 @@ export function NegotiationThread({
       const body = (await response.json().catch(() => ({}))) as { error?: string };
       if (response.ok) {
         keyRef.current = null;
-        setReply("");
+        setEdited("");
         setSentDraft(null);
+        // Tour accepté : le brouillon n'a plus de raison d'être.
+        clearThreadDraft(analysisId);
         router.refresh();
         return;
       }
       // Refus définitif (hors sujet, pas de droit, fin des tours) : la clé est
       // abandonnée, le texte reste dans la zone.
-      if (response.status < 500) keyRef.current = null;
+      if (response.status < 500) {
+        keyRef.current = null;
+        // Refus définitif : la clé est abandonnée, le TEXTE reste (audit B15).
+        saveThreadDraft(analysisId, { reply, key: null });
+      }
       setError(body.error ?? "La réponse n'a pas pu être analysée. Réessaie dans quelques minutes.");
     } catch {
       setError("La réponse n'a pas pu être envoyée. Vérifie ta connexion et réessaie.");
@@ -173,15 +198,19 @@ export function NegotiationThread({
           le bouton, tout en bas. */}
       {sending === "turn" ? <ThreadPending turnNumber={nextTurn} /> : null}
       {/* L'échec s'affiche au même endroit que l'attente : là où on regardait. */}
-      {error ? <ThreadError message={error} /> : null}
+      {error ?? (server.status === "error" ? server.message : null) ? (
+        <ThreadError message={error ?? (server.status === "error" ? server.message : "")} />
+      ) : null}
 
       {concluded ? null : !turnsLeft ? (
         <p className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
-          Les {LAST_TURN - 1} tours de suivi de cette analyse sont utilisés. Tu peux conclure l&apos;échange avec les termes
-          actuels.
+          Les {exchanges(NEGOTIATION_EXCHANGES)} de cette négociation sont utilisés. Tu peux conclure l&apos;échange avec les
+          termes actuels.
         </p>
       ) : access === "open" ? (
-        <form onSubmit={sendTurn} className="flex flex-col gap-3">
+        <form action={serverAction} onSubmit={sendTurn} className="flex flex-col gap-3">
+          <input type="hidden" name="analysisId" value={analysisId} />
+          <input type="hidden" name="tier" value={tier} />
           <label htmlFor={fieldId} className="text-h3 text-encre">
             La marque t&apos;a répondu ?
           </label>
@@ -222,6 +251,7 @@ export function NegotiationThread({
           ) : null}
           <textarea
             id={fieldId}
+            name="reply"
             value={reply}
             onChange={(event) => setReply(event.target.value)}
             maxLength={MAX_REPLY_LENGTH}

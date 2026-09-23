@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { PLANS, PRICE } from "@/lib/billing/plans";
 import { FAQ, STEPS, TRUST } from "@/lib/content/home";
-import { NEGOTIATION_TURNS, NEGOTIATIONS, negotiations } from "@/lib/content/vocabulaire";
+import { NEGOTIATION_EXCHANGES, NEGOTIATION_TURNS, NEGOTIATIONS, negotiations, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
 import { LAST_TURN } from "@/lib/negotiation/types";
 import {
   CANONICAL_ORIGIN,
@@ -69,10 +69,16 @@ describe("1 et 8 — les nombres viennent du code", () => {
     }
   });
 
-  it("le nombre de tours annoncé est celui du code", () => {
+  it("le nombre d'échanges annoncé est celui du code", () => {
+    // Mission #099 (audit B13) — le tour 1 est l'analyse : côté client on
+    // compte des ÉCHANGES avec la marque, jamais des tours.
     expect(NEGOTIATION_TURNS).toBe(LAST_TURN);
-    const step = STEPS.find((entry) => entry.text.includes("tours"));
-    expect(step?.text).toContain(`${LAST_TURN} tours`);
+    expect(NEGOTIATION_EXCHANGES).toBe(LAST_TURN - 1);
+    const step = STEPS.find((entry) => entry.text.includes("échanges"));
+    expect(step?.text).toContain(`${NEGOTIATION_EXCHANGES} échanges`);
+    expect(WHAT_IS_A_NEGOTIATION).toContain(`${NEGOTIATION_EXCHANGES} échanges avec la marque`);
+    // Plus aucun texte public ne compte des « tours ».
+    for (const file of PUBLIC_COPY_FILES) expect(/\d+\s+tours/.test(read(file)), file).toBe(false);
   });
 });
 

@@ -21,7 +21,7 @@ export default async function HistoryPage() {
   const rows = await selectRowsAsUser<HistoryRow>(
     token,
     "analyses",
-    "select=id,created_at,score,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability,tier:payload->>profile_tier&order=created_at.desc&limit=100",
+    "select=id,created_at,score,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability,tier:payload->>profile_tier,rateTable:rate_table_version&order=created_at.desc&limit=100",
   );
 
   // Mission #087 : état des échanges et chiffres actuels, pour les analyses

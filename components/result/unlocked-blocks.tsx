@@ -24,6 +24,7 @@ export function CounterOffer({
   title = "Ta contre-offre chiffrée",
   justUnlocked = false,
   sameAsEstimate = null,
+  missing = [],
 }: {
   offer: Analysis["counter_offer"];
   title?: string;
@@ -31,11 +32,22 @@ export function CounterOffer({
   // Mission #082 : contre-offre identique à la fourchette estimée, déjà
   // affichée plus haut sous « Fourchette estimée, et ta contre-offre ».
   sameAsEstimate?: "below" | "no_amount" | null;
+  // Mission #099, point 9 (audit C1) — offre incomplète : il n'y a pas de
+  // montant à afficher, et le bloc doit dire pourquoi plutôt que de lister des
+  // demandes sous un titre qui promet un chiffre.
+  missing?: readonly string[];
 }) {
   const amount = formatEurRange(offer.amount_low, offer.amount_high);
   return (
     <Section title={title} badge={justUnlocked ? <JustUnlockedBadge /> : undefined}>
       <div className="flex flex-col gap-3">
+        {missing.length > 0 ? (
+          <p className="text-small">
+            Cette contre-offre n&apos;a pas de montant : l&apos;offre ne dit pas assez ce qui est demandé pour être
+            chiffrée. Il y manque {missing.map((item) => item.toLowerCase()).join(", ")}. Les points ci-dessous, eux, se
+            demandent dès maintenant.
+          </p>
+        ) : null}
         {amount && sameAsEstimate ? (
           <p>
             Toute la fourchette estimée, <span className="font-semibold text-encre tabular-nums">{amount}</span>

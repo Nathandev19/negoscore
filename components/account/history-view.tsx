@@ -6,6 +6,7 @@ import { BoneLine, LoadingAnnouncement } from "@/components/ui/skeleton";
 import { BAND_STYLE, formatEur } from "@/lib/display";
 import type { NegotiationSummary } from "@/lib/negotiation/history";
 import { bandFor } from "@/lib/rates/score";
+import { rateTable } from "@/lib/rates/tables";
 import { parseTier, TIER_LABEL } from "@/lib/rates/tier";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +20,17 @@ export type HistoryRow = {
   tier: string | null;
   // Mission #087 : l'échange avec la marque, s'il y a eu des tours.
   negotiation?: NegotiationSummary | null;
+  // Mission #099, point 15 (audit B12) — table de tarifs de cette analyse.
+  // Absente des lignes d'avant, et de certaines lectures : null, rien n'est dit.
+  rateTable?: string | null;
 };
+
+// Mission #099 — une analyse calculée avec une table de tarifs qui n'est plus
+// la courante ne peut pas être recalculée (mission #085) : la page de résultat
+// le dit, la liste le taisait. Même vocabulaire des deux côtés.
+export function oldRateTable(version: string | null | undefined): boolean {
+  return typeof version === "string" && version !== "" && rateTable(version) === null;
+}
 
 // Mission #087, B — où en est l'échange : c'est là qu'elle reprend.
 export function negotiationState(summary: NegotiationSummary): string {
@@ -114,6 +125,14 @@ export function HistoryView({ rows, negotiationUnavailable = false }: { rows: Hi
                     )}
                     {/* Niveau avec lequel le score ci-contre a été calculé (mission #039). */}
                     <span className="text-sm text-attenue">Niveau : {TIER_LABEL[parseTier(row.tier) ?? "confirmed"].short}</span>
+                    {/* Mission #099 (audit B12) : dit ici ce que la page de
+                        résultat dit déjà — ces chiffres ne bougent plus. */}
+                    {oldRateTable(row.rateTable) ? (
+                      <span className="text-sm text-attenue">
+                        Table de tarifs {row.rateTable}, qui n&apos;existe plus dans l&apos;outil : ces chiffres ne sont plus
+                        recalculés.
+                      </span>
+                    ) : null}
                   </span>
                   {row.negotiation?.now ? (
                     <span className="flex flex-col items-end gap-0.5">

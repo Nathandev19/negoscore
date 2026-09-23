@@ -8,6 +8,16 @@ import { purgeCutoffs } from "@/lib/privacy/purge";
 const purge = vi.hoisted(() => ({ run: vi.fn() }));
 // Rattrapage des paiements branché sur le même cron (mission #060).
 const recovery = vi.hoisted(() => ({ run: vi.fn(), settle: vi.fn() }));
+// Mission #099 : le même cron reprend les analyses non décomptées (audit A1)
+// et dit depuis combien de temps il ne passait plus (audit A5).
+const debits = vi.hoisted(() => ({ run: vi.fn() }));
+const runs = vi.hoisted(() => ({ late: vi.fn(), mark: vi.fn() }));
+vi.mock("@/lib/analysis/debit-recovery", () => ({ recoverPendingDebits: debits.run }));
+vi.mock("@/lib/privacy/job-runs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/privacy/job-runs")>()),
+  reportLateness: runs.late,
+  markSuccess: runs.mark,
+}));
 // Mission #092 : la même purge règle aussi les paiements encaissés sans
 // contrepartie (Pro sans activation, paiement sans compte).
 vi.mock("@/lib/billing/webhook-recovery", () => ({
@@ -33,6 +43,12 @@ beforeEach(() => {
   recovery.run.mockResolvedValue({ repris: 0, traites: 0, echecs: 0, en_attente: 0 });
   recovery.settle.mockResolvedValue({ pro_ouverts: 0, abandons: 0 });
   purge.run.mockResolvedValue({ documents: 0, files_removed: 0, source_texts: 0, usage_guard: 0, whop_events: 0, checkout_consents: 0 });
+  debits.run.mockReset();
+  runs.late.mockReset();
+  runs.mark.mockReset();
+  debits.run.mockResolvedValue({ decomptes: 0, supprimees: 0, echecs: 0 });
+  runs.late.mockResolvedValue(null);
+  runs.mark.mockResolvedValue(undefined);
   vi.stubEnv("CRON_SECRET", "secret-de-test");
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   vi.spyOn(console, "log").mockImplementation(() => undefined);
@@ -72,8 +88,13 @@ describe("/api/purge", () => {
       checkout_consents: 0,
       paiements: { repris: 0, traites: 0, echecs: 0, en_attente: 0 },
       contreparties: { pro_ouverts: 0, abandons: 0 },
+      decomptes: { decomptes: 0, supprimees: 0, echecs: 0 },
+      retard_heures: null,
     });
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('"event":"purge"'));
+    // Mission #099 : le passage réussi est enregistré, pour que le suivant
+    // sache depuis combien de temps le cron ne passait plus.
+    expect(runs.mark).toHaveBeenCalled();
   });
 });
 
@@ -136,7 +157,8 @@ describe("politique de confidentialité", () => {
       "Adresses IP hachées : 30 jours au maximum.",
       "Données de facturation détenues par Whop : selon ses propres durées.",
       "Suppression de ton compte",
-      "Tu peux supprimer ton compte depuis la page Mon compte, sans justification. Si tu as un abonnement Pro en cours, il faut d'abord le résilier : la suppression devient possible à la fin de la période déjà payée. Sont supprimés immédiatement : ton identifiant de connexion, ton adresse email, les offres que tu as déposées, les documents téléversés et les analyses produites. Sont conservés : le journal des paiements et les preuves de consentement liées à tes achats, pendant 5 ans, afin de pouvoir justifier d'une transaction en cas de litige. Les crédits d'analyse non utilisés sont perdus et ne sont pas remboursés.",
+      // Mission #099 (audit B7) : la réserve du Pro actif est écrite, et elle dit vrai — la suppression est possible dès la résiliation.
+      "Tu peux supprimer ton compte depuis la page Mon compte, sans justification. Une seule réserve : un abonnement Pro encore actif et non résilié doit d'abord être résilié, parce que supprimer le compte ne l'arrêterait pas et qu'il continuerait à être prélevé. La résiliation est gratuite et en ligne ; dès qu'elle est enregistrée, la suppression est possible, sans attendre la fin de la période déjà payée. Sont supprimés immédiatement : ton identifiant de connexion, ton adresse email, les offres que tu as déposées, les documents téléversés et les analyses produites. Sont conservés : le journal des paiements et les preuves de consentement liées à tes achats, pendant 5 ans, afin de pouvoir justifier d'une transaction en cas de litige. Les négociations non utilisées sont perdues et ne sont pas remboursées.",
       "Avec ou sans compte, tu peux aussi supprimer une analyse depuis sa page de résultat, avec le navigateur ou le compte qui l'a lancée : l'analyse, le texte de l'offre et le fichier déposé sont supprimés immédiatement.",
       "17 septembre 2026",
       // Mission #047 : cookies et brouillon local.

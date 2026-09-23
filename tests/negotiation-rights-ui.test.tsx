@@ -108,7 +108,7 @@ describe("la zone « La marque t'a répondu ? »", () => {
     expect(render({ turns: three })).toContain("C&#x27;est le dernier tour de suivi possible pour cette analyse.");
     const four = [2, 3, 4, 5].map((n) => view(turnFrom("reponse-vague"), n));
     const html = render({ turns: four });
-    expect(html).toContain("Les 4 tours de suivi de cette analyse sont utilisés");
+    expect(html).toContain("Les 4 échanges de cette négociation sont utilisés");
     expect(html).not.toContain('placeholder="Colle ici la réponse de la marque…"');
     // Les tours s'affichent dans l'ordre.
     expect(html.indexOf("Tour 2")).toBeLessThan(html.indexOf("Tour 3"));

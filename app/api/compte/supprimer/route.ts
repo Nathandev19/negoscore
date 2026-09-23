@@ -39,9 +39,23 @@ export async function POST(request: Request) {
   try {
     const result = await deleteAccount(user, readCookie(request, ACCESS_COOKIE));
     if (!result.deleted) {
-      return result.blocker === "pro_active"
-        ? redirect("/resilier?motif=suppression")
-        : redirect("/compte/supprimer?erreur=indisponible");
+      // Mission #099, point 7 — deux refus, deux messages. « pro_active » est
+      // un refus MÉTIER : la page l'explique et propose de résilier.
+      // « consents_unprotected » est un refus TECHNIQUE de notre côté (la
+      // migration qui protège les preuves de consentement n'est pas appliquée
+      // en base) : la personne n'y peut rien, et « réessaie plus tard » serait
+      // faux — rien ne changera sans nous.
+      if (result.blocker === "consents_unprotected") {
+        console.error(
+          JSON.stringify({
+            event: "suppression_bloquee_migration",
+            user_id: user.id,
+            detail: "checkout_consents_survive_account_deletion absente : appliquer la migration qui retire la cascade vers auth.users",
+          }),
+        );
+        return redirect("/compte/supprimer?erreur=migration");
+      }
+      return redirect("/compte/supprimer");
     }
 
     // Confirmation écrite. Un échec d'email ne remet pas la suppression en cause.

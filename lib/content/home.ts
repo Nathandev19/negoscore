@@ -1,5 +1,5 @@
 import { PLANS } from "@/lib/billing/plans";
-import { COPILOT_PROMISE, ESTIMATE_DISCLAIMER, NEGOTIATION_TURNS, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
+import { COPILOT_PROMISE, ESTIMATE_DISCLAIMER, exchanges, NEGOTIATION_EXCHANGES, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
 import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
 import rates from "@/lib/rates/fr-2026.3.json";
 import { MAX_PDF_PAGES } from "@/lib/upload";
@@ -16,7 +16,7 @@ export const STEPS = [
   },
   {
     title: "Tu réponds, elle répond",
-    text: `Colle sa réponse : on te dit ce qu'elle accorde, ce qu'elle refuse, et on écrit le message suivant. Jusqu'à ${NEGOTIATION_TURNS} tours, puis la conclusion, dans la même négociation.`,
+    text: `Colle sa réponse : on te dit ce qu'elle accorde, ce qu'elle refuse, et on écrit le message suivant. Jusqu'à ${exchanges(NEGOTIATION_EXCHANGES)} avec la marque, puis la conclusion, dans la même négociation.`,
   },
 ] as const;
 

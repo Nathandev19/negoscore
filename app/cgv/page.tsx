@@ -99,6 +99,17 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
+      <LegalSection title="Suppression du compte">
+        <p>
+          Le compte est supprimable à tout moment, en ligne, depuis l&apos;espace du compte. Un abonnement Pro encore
+          actif et non résilié doit être résilié d&apos;abord : la suppression du compte n&apos;arrête pas l&apos;abonnement,
+          qui continuerait à être prélevé. Dès la résiliation enregistrée, la suppression est possible, sans attendre la
+          fin de la période déjà payée. Les négociations non utilisées sont perdues et ne sont pas remboursées ; le
+          journal des paiements et les preuves de consentement sont conservés cinq ans, comme l&apos;indique la politique
+          de confidentialité.
+        </p>
+      </LegalSection>
+
       <LegalSection title="Réclamations">
         <p>
           Toute réclamation peut être adressée à {SELLER.email}. Une réponse est apportée sous quinze jours ouvrés.

@@ -211,6 +211,7 @@ export function emptyPoints(deal: Deal, askLabels: readonly string[] = []): Poin
     turn: point.inOffer(deal) ? 1 : null,
     firm: false,
     asked: asked.has(point.key),
+    previous: null,
   }));
 }
 
@@ -242,7 +243,7 @@ export function readPoints({
   const state = new Map<PointKey, PointState>();
   for (const point of tracked) {
     const kept = previous.find((entry) => entry.key === point.key);
-    state.set(point.key, kept ?? { key: point.key, status: "unknown", quote: null, turn: null, firm: false, asked: false });
+    state.set(point.key, kept ?? { key: point.key, status: "unknown", quote: null, turn: null, firm: false, asked: false, previous: null });
   }
 
   const settle = (key: PointKey, status: PointStatus, quote: string, firm: boolean) => {
@@ -258,13 +259,20 @@ export function readPoints({
     }
     // Une réponse de CE tour remplace ce qu'on savait : la marque a le droit de
     // revenir sur un point. Un point refermé ne redevient jamais « inconnu ».
+    const next = citation(quote, brandReply);
+    // Mission #099 — elle revient sur un point réglé à un tour PRÉCÉDENT, et
+    // dit autre chose : on garde ce qu'elle disait avant. Les deux citations
+    // et les deux tours s'affichent ; rien n'est écrasé en silence.
+    const changedMind =
+      !sameTurn && current.status !== "unknown" && current.quote !== null && (current.status !== status || current.quote !== next);
     state.set(key, {
       key,
       status,
-      quote: citation(quote, brandReply),
+      quote: next,
       turn,
       firm: firm || (sameTurn && current.firm),
       asked: current.asked,
+      previous: changedMind ? { status: current.status, quote: current.quote, turn: current.turn } : (sameTurn ? current.previous : null),
     });
   };
 

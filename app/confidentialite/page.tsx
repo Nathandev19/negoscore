@@ -54,13 +54,14 @@ export default function PrivacyPage() {
 
       <LegalSection title="Suppression de ton compte">
         <p>
-          Tu peux supprimer ton compte depuis la page Mon compte, sans justification. Si tu as un abonnement Pro en
-          cours, il faut d&apos;abord le résilier : la suppression devient possible à la fin de la période déjà payée.
-          Sont supprimés
+          Tu peux supprimer ton compte depuis la page Mon compte, sans justification. Une seule réserve : un abonnement
+          Pro encore actif et non résilié doit d&apos;abord être résilié, parce que supprimer le compte ne l&apos;arrêterait
+          pas et qu&apos;il continuerait à être prélevé. La résiliation est gratuite et en ligne ; dès qu&apos;elle est
+          enregistrée, la suppression est possible, sans attendre la fin de la période déjà payée. Sont supprimés
           immédiatement : ton identifiant de connexion, ton adresse email, les offres que tu as déposées, les documents
           téléversés et les analyses produites. Sont conservés : le journal des paiements et les preuves de consentement
-          liées à tes achats, pendant 5 ans, afin de pouvoir justifier d&apos;une transaction en cas de litige. Les crédits
-          d&apos;analyse non utilisés sont perdus et ne sont pas remboursés.
+          liées à tes achats, pendant 5 ans, afin de pouvoir justifier d&apos;une transaction en cas de litige. Les
+          négociations non utilisées sont perdues et ne sont pas remboursées.
         </p>
         <p>
           Avec ou sans compte, tu peux aussi supprimer une analyse depuis sa page de résultat, avec le navigateur ou le

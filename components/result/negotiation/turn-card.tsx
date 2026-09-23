@@ -334,9 +334,19 @@ export function TurnCard({
             {settled.map((point) => (
               <li key={point.key} className="flex flex-col gap-0.5">
                 <span className="font-semibold text-encre">
-                  {POINT_LABEL[point.key]} — {POINT_STATUS_LABEL[point.status].toLowerCase()} au tour {point.turn}
+                  {POINT_LABEL[point.key]} — {POINT_STATUS_LABEL[point.status].toLowerCase()}{" "}
+                  {point.turn === 1 ? "dans l'offre de départ" : `au tour ${point.turn}`}
                 </span>
                 {point.quote ? <q className="text-attenue">{point.quote}</q> : null}
+                {/* Mission #099 (audit B17) : elle est revenue sur ce point. Les
+                    deux versions, avec leur tour : rien n'est écrasé en silence. */}
+                {point.previous ? (
+                  <span className="text-small">
+                    La marque a changé de position : au tour {point.previous.turn}, elle disait{" "}
+                    {point.previous.quote ? <q>{point.previous.quote}</q> : <span>autre chose</span>} (
+                    {POINT_STATUS_LABEL[point.previous.status].toLowerCase()}).
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>

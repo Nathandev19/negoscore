@@ -92,7 +92,7 @@ describe("E — /api/analyse : les trois issues", () => {
 });
 
 describe("E — /api/analyses/[id]/tours : les trois issues", () => {
-  const tour = async () => (await import("@/app/api/analyses/[id]/tours/route")).POST(post(`/api/analyses/${ID}/tours`, { reply: "ok pour nous", tier: "starter" }), { params });
+  const tour = async () => (await import("@/app/api/analyses/[id]/tours/route")).POST(post(`/api/analyses/${ID}/tours`, { reply: "C'est ok pour nous, on part sur cette base.", tier: "starter" }), { params });
 
   it("session valide : la route continue (analyse lue)", async () => {
     state.session = USER;

@@ -1,10 +1,11 @@
+import { formatEur } from "@/lib/money";
 import { TONES, toneLabel } from "@/lib/tone";
 import type { ResultView } from "@/lib/analysis/lock";
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { mergeAsks, openAsks, originalAsks, outcomeFromAsks, PRICE_ASK_ID, REMAINING_FALLBACK } from "@/lib/negotiation/asks";
 import { buildClosing, offeredAmount } from "@/lib/negotiation/closing";
 import { buildConclusion } from "@/lib/negotiation/conclusion";
-import { statedCeiling, turnSituation } from "@/lib/negotiation/gap";
+import { readAmounts, statedCeiling, turnSituation } from "@/lib/negotiation/gap";
 import { fallbackMessage, finalMessage, stripRedundantQuestions } from "@/lib/negotiation/message";
 import { brandSettled, emptyPoints, everythingSettled, pointsOfSentence, readPoints, settledForDoubts } from "@/lib/negotiation/points";
 import { tableOf } from "@/lib/analysis/recompute";
@@ -318,6 +319,21 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
     console.warn(JSON.stringify({ event: "negociation_ecart_non_chiffrable", tour: turnNumber }));
   }
 
+  // Mission #099, point 5 (audit B16) — la marque écrit plusieurs montants
+  // (« entre 500 € et 700 €, disons jusqu'à 900 € »). La règle de rétention ne
+  // change pas : le plus récent plafond fait foi. Mais les autres sont cités
+  // tels qu'ils sont écrits, avec la raison du choix : un seul chiffre affiché
+  // laisserait croire qu'elle n'en a dit qu'un.
+  const retained = position?.amount ?? null;
+  const others = readAmounts(brandReply).filter((amount) => amount.value !== retained);
+  if (retained !== null && others.length > 0) {
+    uncertainties.push(
+      `La marque écrit plusieurs montants dans ce message : ${others.map((amount) => `« ${amount.text} »`).join(", ")}. ` +
+        `L'outil a retenu ${formatEur(retained)}${position?.source === "ceiling" ? ", le dernier qu'elle annonce comme plafond" : ", le montant qu'elle écrit comme proposition"} : relis sa réponse pour vérifier.`,
+    );
+  }
+
+
   // Mission #083, D — le titre du tour vient des statuts affichés.
   const outcome = outcomeFromAsks(asks, turnNumber, { model: reading.outcome, changed: changes.length > 0, questions: questions.length });
 
@@ -388,6 +404,13 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
     console.warn(JSON.stringify({ event: "negociation_question_redondante", point: dropped.point, tour: turnNumber }));
   }
   const emptied = cleaned.text.split(/\n{2,}/).filter((part) => part.trim() !== "").length < 3;
+  // Mission #099, point 12 (audit B14) — DÉCISION PRODUIT, volontaire : le
+  // message sortant est rédigé dans la langue de l'OFFRE D'ORIGINE
+  // (original.language), jamais dans celle de la réponse de la marque. Une
+  // marque qui répond en anglais à une offre française reçoit une réponse en
+  // français : c'est la langue dans laquelle la créatrice négocie, et changer
+  // de langue en cours d'échange ferait passer le message pour automatique.
+  // Ce n'est pas un oubli : un test le verrouille.
   const message = closing
     ? { text: closing.hold.text, tone: TONES.clear, fallback: false, fallback_reasons: [] }
     : cleaned.dropped.length === 0
@@ -451,6 +474,10 @@ export function concludeNow(original: ResultView, previous: readonly TurnPayload
       counterAccepted: counterAcceptedWithoutAmount(state.asks, original, state.deal)
         ? { low: pricing.counter_low, high: pricing.counter_high }
         : null,
+      // Mission #099 (audit B1) — la mémoire des points vaut ici aussi : rien
+      // n'est dit « sans réponse » quand elle affiche la phrase de la marque.
+      points: state.points,
+      offered: offeredAmount(state.deal, last?.stated_ceiling ?? null, pricing),
     }),
   };
 }

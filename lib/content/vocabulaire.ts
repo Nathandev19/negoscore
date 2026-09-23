@@ -15,6 +15,21 @@ import { LAST_TURN } from "@/lib/negotiation/types";
 // Nombre de tours d'un échange, l'analyse comprise (lib/negotiation/types.ts).
 export const NEGOTIATION_TURNS = LAST_TURN;
 
+// Mission #099, point 11 (audit B13) — le produit annonçait « jusqu'à 5 tours »
+// et l'écran disait « les 4 tours sont utilisés » : le tour 1 est l'analyse
+// elle-même. Côté client, on ne compte plus des « tours » mais des ÉCHANGES
+// avec la marque, et l'analyse est nommée à part. Le nombre vient de la
+// constante : il ne peut pas diverger de ce que la route autorise.
+export const NEGOTIATION_EXCHANGES = LAST_TURN - 1;
+
+// « l'analyse, puis jusqu'à 4 échanges avec la marque » : la formule, partout.
+export const EXCHANGES_PHRASE = `l'analyse, puis jusqu'à ${NEGOTIATION_EXCHANGES} échanges avec la marque`;
+
+// « 4 échanges », « 1 échange ».
+export function exchanges(count: number): string {
+  return `${count} échange${count > 1 ? "s" : ""}`;
+}
+
 export const NEGOTIATIONS = {
   free: FREE_ANALYSES,
   pack: PACK_ANALYSES,
@@ -27,7 +42,7 @@ export function negotiations(count: number): string {
 }
 
 // Ce qu'une négociation contient, dit d'une seule façon partout.
-export const WHAT_IS_A_NEGOTIATION = `Une négociation couvre un deal en entier : l'analyse du message de la marque, les échanges jusqu'à ${NEGOTIATION_TURNS} tours, et la conclusion. Répondre à la marque ne coûte rien de plus.`;
+export const WHAT_IS_A_NEGOTIATION = `Une négociation couvre un deal en entier : ${EXCHANGES_PHRASE}, et la conclusion. Répondre à la marque ne coûte rien de plus.`;
 
 // Ce que le produit est, et ce qu'il n'est pas. Repris tel quel sur l'accueil.
 export const COPILOT_PROMISE =

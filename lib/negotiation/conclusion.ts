@@ -9,7 +9,7 @@ import {
   usageDurationLabel,
   usageRightsLabel,
 } from "@/lib/negotiation/terms";
-import { pointsOfSentence } from "@/lib/negotiation/points";
+import { pointsOfSentence, settledForDoubts } from "@/lib/negotiation/points";
 import { topicsOf } from "@/lib/negotiation/topics";
 import type { Ask, Conclusion, Deal, PointState } from "@/lib/negotiation/types";
 
@@ -43,8 +43,23 @@ export function recapRows(deal: Deal): Array<{ label: string; value: string }> {
 }
 
 // C2 — ce qui reste flou ou non dit, sans fard.
-export function unclearPoints(deal: Deal, asks: readonly Ask[], uncertainties: readonly string[] = []): string[] {
+//
+// Mission #099, point 4 (audit B1 et B11) — la règle de #098 vaut ici aussi :
+// un point que la mémoire affiche « répondu » ou « refusé », citation à
+// l'appui, ne peut pas être dit « sans réponse » deux lignes plus bas. Le
+// filtre ne porte que sur ce qui NIE la mémoire ; ce qui cite la marque reste.
+export function unclearPoints(
+  deal: Deal,
+  asks: readonly Ask[],
+  uncertainties: readonly string[] = [],
+  points: readonly PointState[] = [],
+): string[] {
   const rights = hasUsageRights(deal);
+  const settled = new Set(settledForDoubts(points).map((point) => point.key));
+  const contradicts = (text: string): boolean => {
+    const mentioned = pointsOfSentence(text, deal).map((point) => point.key);
+    return mentioned.length > 0 && mentioned.every((key) => settled.has(key));
+  };
   return [
     deal.payment.amount_eur === null && deal.in_kind_value_eur === null ? "Le montant de la rémunération n'est écrit nulle part." : null,
     deal.deliverables.length === 0 ? "Les contenus attendus ne sont pas décrits." : null,
@@ -63,7 +78,7 @@ export function unclearPoints(deal: Deal, asks: readonly Ask[], uncertainties: r
       .filter((ask) => ask.status === "partial")
       .map((ask) => `« ${ask.label} » : accordé en partie. Reste à préciser : ${ask.remaining ?? "ce que la marque n'a pas repris de ta demande"}.`),
     ...asks
-      .filter((ask) => ask.status === "unanswered")
+      .filter((ask) => ask.status === "unanswered" && !contradicts(ask.label))
       .map((ask) =>
         ask.aligned_group
           ? `« ${ask.label} » : le terme a changé dans ce sens, sans phrase explicite de la marque. Fais-le-lui confirmer par écrit.`
@@ -71,7 +86,7 @@ export function unclearPoints(deal: Deal, asks: readonly Ask[], uncertainties: r
             ? `« ${ask.label} » : la réponse de la marque sur ce point n'a pas pu être vérifiée. Relis-la, et fais-le-lui confirmer par écrit.`
             : `Pas de réponse de la marque sur : ${ask.label}`,
       ),
-    ...uncertainties.map(unclearDoubt),
+    ...uncertainties.filter((doubt) => !contradicts(doubt)).map(unclearDoubt),
   ].filter((point): point is string => point !== null);
 }
 
@@ -382,7 +397,7 @@ export function buildConclusion({
   const folded = foldGranted(rows, granted, true);
   const recap = folded.rows;
   if (folded.rest.length > 0) recap.push({ label: "Accordé par la marque", value: folded.rest.join(" ; ") });
-  const unclear = unclearPoints(deal, asks, uncertainties).map((point) =>
+  const unclear = unclearPoints(deal, asks, uncertainties, points).map((point) =>
     counterRange && point.startsWith("Le montant de la rémunération")
       ? "Le montant exact convenu : la marque a accepté ta contre-offre sans l'écrire."
       : point,

@@ -222,6 +222,13 @@ export const pointSchema = z.object({
   // Ce point a-t-il été demandé à la marque ? Un point jamais posé ne figure
   // pas dans ce qui reste à obtenir.
   asked: z.boolean().default(false),
+  // Mission #099, point 6 (audit B17) — la marque est revenue sur ce point.
+  // Ce qu'elle en disait AVANT, avec son tour : écrasé en silence, un
+  // changement de position ne se voyait pas. null : elle n'a rien changé.
+  previous: z
+    .object({ status: z.enum(POINT_STATUSES), quote: z.string().nullable(), turn: z.number().nullable() })
+    .nullable()
+    .default(null),
 });
 export type PointState = z.infer<typeof pointSchema>;
 
@@ -325,7 +332,13 @@ export type ConclusionPayload = z.infer<typeof conclusionPayloadSchema>;
 // Tours suivants : 2 à 5. L'analyse d'origine est le tour 1.
 export const FIRST_TURN = 2;
 export const LAST_TURN = 5;
-export const MIN_REPLY_LENGTH = 2;
+// Mission #099, point 3 (audit C2) — « ok » déclenchait un appel au modèle
+// complet pour deux caractères. Une vraie réponse de marque, même brève, en
+// fait plus de vingt : en dessous, c'est un accusé de réception, et la lecture
+// est refusée AVANT tout appel.
+export const MIN_REPLY_LENGTH = 20;
+export const TOO_SHORT_REPLY_MESSAGE =
+  "Colle le dernier message de la marque, en entier : l'outil a besoin de ses mots pour lire ce qu'elle accorde. Un « ok » ou un accusé de réception ne suffit pas.";
 export const MAX_REPLY_LENGTH = 8000;
 
 // B3 — texte qui n'est pas une réponse à cette offre : dit tel quel, rien

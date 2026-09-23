@@ -171,7 +171,7 @@ describe("classement des échecs du modèle", () => {
 
   it("messages : jamais de code, jamais la faute de l'utilisateur, le droit est rassuré", () => {
     expect(modelFailureMessage("unavailable", "pack")).toBe(
-      "L'analyse est momentanément indisponible. Ton crédit n'a pas été utilisé, réessaie dans quelques minutes.",
+      "L'analyse est momentanément indisponible. Ta négociation n'a pas été décomptée, réessaie dans quelques minutes.",
     );
     expect(modelFailureMessage("timeout", "free")).toContain("Ton analyse gratuite n'a pas été utilisée");
     expect(modelFailureMessage("unavailable", "pro")).toContain("n'a pas été décomptée de ton abonnement");

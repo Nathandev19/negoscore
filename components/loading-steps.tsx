@@ -38,7 +38,7 @@ export const VERY_SLOW_AFTER_MS = 60_000;
 
 export const SLOW_MESSAGE = "Cette offre est longue, l'analyse prend un peu plus de temps.";
 export const VERY_SLOW_MESSAGE =
-  "C'est plus long que d'habitude. Rien n'est décompté tant que l'analyse n'a pas abouti : si elle échoue, ton crédit reste intact.";
+  "C'est plus long que d'habitude. Rien n'est décompté tant que l'analyse n'a pas abouti : si elle échoue, ta négociation reste entière.";
 
 // Nombre d'étapes cochées (lecture comprise), selon le temps écoulé depuis la
 // réponse du modèle. null : pas encore de réponse, rien n'est coché.

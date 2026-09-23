@@ -1,4 +1,5 @@
 import { readIdempotencyKey } from "@/lib/analysis/idempotency";
+import { exchanges, NEGOTIATION_EXCHANGES } from "@/lib/content/vocabulaire";
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { analysisPaused, ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
 import { recomputeForTier } from "@/lib/analysis/recompute";
@@ -9,7 +10,7 @@ import { TURN_PROMPT_VERSION } from "@/lib/llm/turn-prompt";
 import { cleanSentText, loadSentMessages, messageForNextTurn, saveSentMessage } from "@/lib/negotiation/sent";
 import { loadThread, threadConcluded, turnForKey, TURNS_TABLE } from "@/lib/negotiation/store";
 import { processTurn, stateBefore } from "@/lib/negotiation/turn";
-import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, OFF_TOPIC_MESSAGE, TURN_FAILURE_MESSAGE } from "@/lib/negotiation/types";
+import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, OFF_TOPIC_MESSAGE, TOO_SHORT_REPLY_MESSAGE, TURN_FAILURE_MESSAGE } from "@/lib/negotiation/types";
 import { parseTier } from "@/lib/rates/tier";
 import { clientIp, hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
@@ -55,7 +56,8 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
   const reply = typeof body?.reply === "string" ? body.reply.trim() : "";
   const tier = parseTier(body?.tier);
   const key = readIdempotencyKey(body?.idempotencyKey);
-  if (reply.length < MIN_REPLY_LENGTH) return json(400, { error: "Colle la réponse de la marque." });
+  // Mission #099 : refusé ICI, avant le moindre appel au modèle.
+  if (reply.length < MIN_REPLY_LENGTH) return json(400, { error: TOO_SHORT_REPLY_MESSAGE, reason: "too_short" });
   if (reply.length > MAX_REPLY_LENGTH) {
     return json(400, { error: "Cette réponse est trop longue : colle seulement le dernier message de la marque." });
   }
@@ -94,7 +96,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     if (threadConcluded(thread)) return json(409, { error: "Cet échange est conclu : il n'y a plus de tour à ajouter.", reason: "concluded" });
     const turnNumber = FIRST_TURN + thread.turns.length;
     if (turnNumber > LAST_TURN) {
-      return json(409, { error: `Les ${LAST_TURN - 1} tours de cette analyse sont utilisés. Tu peux conclure l'échange.`, reason: "max_turns" });
+      return json(409, { error: `Les ${exchanges(NEGOTIATION_EXCHANGES)} de cette négociation sont utilisés. Tu peux conclure l'échange.`, reason: "max_turns" });
     }
 
     const guardKey = hashIp(clientIp(request));

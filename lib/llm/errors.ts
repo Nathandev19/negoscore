@@ -67,7 +67,7 @@ export function rightNotUsed(plan: "free" | "pack" | "pro" | "retry" | null): st
     ? "Ton analyse gratuite n'a pas été utilisée"
     : plan === "pro"
       ? "Cette analyse n'a pas été décomptée de ton abonnement"
-      : "Ton crédit n'a pas été utilisé";
+      : "Ta négociation n'a pas été décomptée";
 }
 
 // Messages affichés : jamais de code d'erreur, jamais la faute de l'utilisateur.

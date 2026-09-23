@@ -1,6 +1,7 @@
 "use server";
 
 import { POST as feedbackRoute } from "@/app/api/analyses/[id]/avis/route";
+import { POST as turnRoute } from "@/app/api/analyses/[id]/tours/route";
 import { forwardedJsonRequest } from "@/lib/forms/forward";
 import { parseTier } from "@/lib/rates/tier";
 import { isUuid } from "@/lib/security/request";
@@ -15,6 +16,41 @@ import { isUuid } from "@/lib/security/request";
 // arrive en différé, derrière l'écran de chargement, et c'est un script qui
 // l'affiche). Une analyse consommée pour rien à lire : le formulaire d'analyse
 // dit désormais qu'il demande JavaScript, et n'envoie rien.
+
+// ─── Réponse de la marque, sans JavaScript (mission #099, audit B15) ─────────
+//
+// Le formulaire du fil n'avait aucune action serveur : sans JavaScript, il ne
+// partait nulle part, et le texte collé était perdu. Il part maintenant vers la
+// même route que le bouton, et ce qui revient contient TOUJOURS le texte soumis :
+// un refus ne fait plus disparaître ce qu'on vient de coller.
+
+export type TurnWithoutJsState =
+  | { status: "idle" }
+  | { status: "saved"; reply: "" }
+  | { status: "error"; message: string; reply: string };
+
+export async function saveTurnWithoutJs(_previous: TurnWithoutJsState, formData: FormData): Promise<TurnWithoutJsState> {
+  const id = String(formData.get("analysisId") ?? "");
+  const reply = String(formData.get("reply") ?? "");
+  const tier = parseTier(formData.get("tier"));
+  const key = String(formData.get("idempotencyKey") ?? "") || undefined;
+  if (!isUuid(id) || !tier) {
+    return { status: "error", message: "La réponse n'a pas pu être envoyée. Recharge la page et réessaie.", reply };
+  }
+  try {
+    const request = await forwardedJsonRequest(`/api/analyses/${id}/tours`, { reply, tier, ...(key ? { idempotencyKey: key } : {}) });
+    const response = await turnRoute(request, { params: Promise.resolve({ id }) });
+    if (response.ok) return { status: "saved", reply: "" };
+    const body = (await response.json().catch(() => ({}))) as { error?: unknown };
+    return {
+      status: "error",
+      message: typeof body.error === "string" ? body.error : "La réponse n'a pas pu être analysée.",
+      reply,
+    };
+  } catch {
+    return { status: "error", message: "La réponse n'a pas pu être envoyée. Réessaie plus tard.", reply };
+  }
+}
 
 // ─── Avis sur l'estimation ───────────────────────────────────────────────────
 

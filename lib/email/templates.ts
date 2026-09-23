@@ -132,7 +132,7 @@ export function cancellationConfirmationEmail(options: { to: string; endsAt: Dat
   const when = endsAt
     ? `Ton abonnement Pro reste actif jusqu'au ${DATE.format(endsAt)}, puis il s'arrête. Aucun nouveau paiement ne sera prélevé.`
     : "Ton abonnement Pro s'arrête à la fin de la période en cours. Aucun nouveau paiement ne sera prélevé.";
-  const credits = "Les crédits d'analyse achetés séparément restent acquis.";
+  const credits = "Les négociations achetées séparément restent acquises.";
   const text = [
     "Bonjour,",
     "",
