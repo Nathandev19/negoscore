@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CheckIcon, LoaderCircleIcon } from "lucide-react";
+import { WORK_SURVIVES_BACKGROUND } from "@/lib/content/vocabulaire";
 import { cn } from "@/lib/utils";
 
 // Ce que fait réellement le serveur : un long appel au modèle (la lecture),
@@ -128,6 +129,11 @@ export function WaitingScreen({ kind, respondedAt, startedAgoMs = 0 }: WaitingSc
           );
         })}
       </ol>
+      {/* Mission #102, partie A — 100 % du trafic est mobile, et sortir de
+          l'application pendant l'attente est le geste normal. La phrase est
+          vraie : le travail n'est pas rattaché à cette connexion, et au retour
+          l'écran va rechercher l'état réel (lib/analysis/resume.ts). */}
+      {respondedAt === null ? <p className="text-small text-attenue">{WORK_SURVIVES_BACKGROUND}</p> : null}
       {note ? (
         <p role="status" className="border-l-4 border-encre pl-3 text-small font-semibold text-encre">
           {note}

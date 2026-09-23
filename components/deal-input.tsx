@@ -17,6 +17,8 @@ import { hasSessionHint } from "@/lib/auth/session-hint";
 import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
 import { clearDraft, readDraft, saveDraft, subscribeDraft } from "@/lib/draft";
 import { clearPendingKey, pendingKey } from "@/lib/analysis/pending-key";
+import { nextResume, type ServerAttempt } from "@/lib/analysis/resume";
+import { RESUME_FAILED } from "@/lib/content/vocabulaire";
 import { validateFile, type FileKind } from "@/lib/upload";
 import { WITH_JS_ONLY, WITHOUT_JS } from "@/lib/no-js";
 
@@ -104,6 +106,23 @@ async function uploadFile(kind: FileKind, file: File): Promise<string> {
   return storagePath;
 }
 
+// Mission #102, partie A — où en est cette tentative, d'après le serveur ?
+// Cette requête ne fait que LIRE : elle ne peut pas lancer une seconde analyse
+// ni décompter quoi que ce soit (app/api/analyse/etat).
+async function serverAttempt(key: string): Promise<ServerAttempt> {
+  try {
+    const response = await fetch(`/api/analyse/etat?cle=${encodeURIComponent(key)}`, { cache: "no-store" });
+    if (!response.ok) return { kind: "unreachable" };
+    const body = (await response.json()) as { etat?: unknown; analysisId?: unknown };
+    if (body.etat === "faite" && typeof body.analysisId === "string") return { kind: "done", analysisId: body.analysisId };
+    if (body.etat === "inconnu") return { kind: "unknown" };
+    return { kind: "unreachable" };
+  } catch {
+    // Réseau encore endormi au retour : on ne conclut rien.
+    return { kind: "unreachable" };
+  }
+}
+
 // Les cookies indicateurs ne changent qu'avec un chargement de page ou une
 // réponse du serveur, suivie ici par l'état « refused ».
 const noSubscription = () => () => undefined;
@@ -179,6 +198,18 @@ export function DealInput({ note }: { note?: string } = {}) {
   const [runningMode, setRunningMode] = useState<Mode>("text");
   const [notice, setNotice] = useState<{ message: string; paywall: boolean; signIn: boolean } | null>(null);
   const outcomeRef = useRef<Outcome | null>(null);
+  // Mission #102, partie A — ce qu'il faut pour se rattacher au travail en
+  // cours au retour au premier plan : la clé de CETTE tentative, son départ,
+  // et la dernière vérification lancée. Aucune de ces valeurs ne déclenche de
+  // rendu : elles ne servent qu'à décider (lib/analysis/resume.ts).
+  const attemptRef = useRef<{ key: string | null; startedAt: number | null; lastCheckAt: number | null }>({
+    key: null,
+    startedAt: null,
+    lastCheckAt: null,
+  });
+  // Une tentative ne se conclut qu'une fois : la requête d'origine peut très
+  // bien revenir après que la resynchronisation a déjà tranché.
+  const settledRef = useRef(false);
   const startedRef = useRef<Record<Mode, boolean>>({ text: false, photo: false, pdf: false });
 
   const textLength = text.trim().length;
@@ -220,7 +251,9 @@ export function DealInput({ note }: { note?: string } = {}) {
   // cocher les étapes restantes (REVEAL_TOTAL_MS), et pas plus.
   function finish() {
     const outcome = outcomeRef.current;
-    if (!outcome) return;
+    if (!outcome || settledRef.current) return;
+    settledRef.current = true;
+    attemptRef.current = { key: null, startedAt: null, lastCheckAt: null };
     if (outcome.ok) {
       // La réponse est là : les étapes restantes se cochent, puis le résultat s'affiche.
       setRespondedAt(Date.now());
@@ -239,8 +272,50 @@ export function DealInput({ note }: { note?: string } = {}) {
     }
   }
 
+  // Mission #102, partie A — iOS gèle les onglets en arrière-plan et coupe
+  // leurs connexions : la requête longue ne revient jamais, et l'écran reste
+  // figé. Au retour, on redemande l'état réel — visibilitychange, pageshow
+  // (celui du cache arrière de Safari) et online. On ne RELANCE jamais rien :
+  // on se rattache à la tentative par sa clé.
+  useEffect(() => {
+    if (!loading) return;
+    let stale = false;
+    async function resync() {
+      if (stale || settledRef.current) return;
+      const first = nextResume({ local: attemptRef.current, server: null, now: Date.now() });
+      if (first.action !== "verifier") return;
+      attemptRef.current = { ...attemptRef.current, lastCheckAt: Date.now() };
+      const server = await serverAttempt(first.key);
+      if (stale || settledRef.current) return;
+      const decision = nextResume({ local: attemptRef.current, server, now: Date.now() });
+      if (decision.action === "afficher") {
+        outcomeRef.current = { ok: true, analysisId: decision.analysisId };
+        finish();
+      } else if (decision.action === "echec") {
+        track(ANALYTICS_EVENTS.analysisFailed, { reason: "arriere_plan" });
+        outcomeRef.current = { ok: false, message: RESUME_FAILED, paywall: false, signIn: false };
+        finish();
+      }
+    }
+    const onBack = () => {
+      if (document.visibilityState === "hidden") return;
+      void resync();
+    };
+    document.addEventListener("visibilitychange", onBack);
+    window.addEventListener("pageshow", onBack);
+    window.addEventListener("online", onBack);
+    return () => {
+      stale = true;
+      document.removeEventListener("visibilitychange", onBack);
+      window.removeEventListener("pageshow", onBack);
+      window.removeEventListener("online", onBack);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   async function analyse(current: Mode) {
     outcomeRef.current = null;
+    settledRef.current = false;
     setNotice(null);
     setRespondedAt(null);
     setRunningMode(current);
@@ -253,7 +328,9 @@ export function DealInput({ note }: { note?: string } = {}) {
       // Clé gardée par le navigateur : la reprise ci-dessous et un nouvel appui
       // sur le bouton renvoient la même, et le serveur rend alors le résultat
       // déjà produit au lieu d'en payer un second (mission #060).
-      const payload = { ...source, idempotencyKey: pendingKey("analyse"), attribution: currentAttribution() };
+      const idempotencyKey = pendingKey("analyse");
+      attemptRef.current = { key: idempotencyKey, startedAt: Date.now(), lastCheckAt: null };
+      const payload = { ...source, idempotencyKey, attribution: currentAttribution() };
       const { analysisId, meta } = await withNetworkRetry(() => postJson("/api/analyse", payload));
       if (typeof analysisId === "string") {
         const info = meta as AnalysisMeta | undefined;

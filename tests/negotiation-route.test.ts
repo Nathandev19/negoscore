@@ -32,6 +32,8 @@ const state = vi.hoisted(() => ({
   rows: [] as Array<Record<string, unknown>>,
   deleted: [] as string[],
   guardReleased: 0,
+  // Mission #102 : un échange ne doit plus frapper le filet horaire du tout.
+  guardHits: 0,
   // Mission #080 bis : messages enregistrés comme envoyés, et ce que le modèle a reçu.
   sent: [] as Array<{ analysis_id: string; turn_number: number; text: string; source: string; updated_at: string }>,
   lastMessages: [] as string[],
@@ -57,7 +59,10 @@ vi.mock("@/lib/llm/turn", () => ({
   },
 }));
 vi.mock("@/lib/security/usage-guard", () => ({
-  hitUsageGuard: async () => ({ allowed: true, count: 1, retryInMinutes: 60 }),
+  hitUsageGuard: async () => {
+    state.guardHits += 1;
+    return { allowed: true, count: 1, retryInMinutes: 60 };
+  },
   releaseUsageGuard: async () => {
     state.guardReleased += 1;
   },
@@ -121,6 +126,7 @@ beforeEach(() => {
   state.rows = [];
   state.deleted = [];
   state.guardReleased = 0;
+  state.guardHits = 0;
   state.sent = [];
   state.lastMessages = [];
   vi.spyOn(console, "log").mockImplementation(() => undefined);
@@ -149,6 +155,16 @@ describe("tour de négociation — gardes", () => {
     expect(state.rows).toHaveLength(1);
     expect(state.rows[0]).toMatchObject({ analysis_id: ANALYSIS_ID, user_id: USER.id, kind: "reply", turn_number: 2, brand_reply: reply });
     expect(touchedBilling()).toEqual([]);
+  });
+
+  it("#102, partie B — un échange passe, même si le filet horaire refusait tout", async () => {
+    const reply = use("acceptation-partielle");
+    const r = await send({ reply, idempotencyKey: "cle-de-test-0000000102" });
+    expect(r.status).toBe(200);
+    // La route ne consulte plus ce compteur : elle ne peut plus être arrêtée
+    // par lui au milieu d'une négociation déjà ouverte.
+    expect(state.guardHits).toBe(0);
+    expect(state.rows).toHaveLength(1);
   });
 
   it("#100, point 2 — le texte collé atteint le moteur : un point réglé par l'offre porte une phrase de l'offre", async () => {
@@ -184,7 +200,10 @@ describe("tour de négociation — gardes", () => {
     expect(r.status).toBe(422);
     expect((await r.json()).error).toContain("ne ressemble pas à une réponse de la marque");
     expect(state.rows).toEqual([]);
-    expect(state.guardReleased).toBe(1);
+    // Mission #102, partie B — un échange ne compte plus dans le filet
+    // horaire : il n'y a donc rien à lui rendre après un échec.
+    expect(state.guardHits).toBe(0);
+    expect(state.guardReleased).toBe(0);
   });
 
   it("échec du modèle : rien d'enregistré, le filet horaire est rendu, le message ne parle d'aucun crédit", async () => {
@@ -194,7 +213,10 @@ describe("tour de négociation — gardes", () => {
     expect(r.status).toBe(503);
     expect((await r.json()).error).not.toMatch(/crédit|décompt|droit/);
     expect(state.rows).toEqual([]);
-    expect(state.guardReleased).toBe(1);
+    // Mission #102, partie B — un échange ne compte plus dans le filet
+    // horaire : il n'y a donc rien à lui rendre après un échec.
+    expect(state.guardHits).toBe(0);
+    expect(state.guardReleased).toBe(0);
   });
 
   it("B4, C5 — cinq tours au plus : le tour 6 est refusé, sans appel au modèle", async () => {

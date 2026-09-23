@@ -12,8 +12,8 @@ import { loadThread, threadConcluded, turnForKey, TURNS_TABLE } from "@/lib/nego
 import { processTurn, stateBefore } from "@/lib/negotiation/turn";
 import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, OFF_TOPIC_MESSAGE, TOO_SHORT_REPLY_MESSAGE, TURN_FAILURE_MESSAGE } from "@/lib/negotiation/types";
 import { parseTier } from "@/lib/rates/tier";
-import { clientIp, hashIp } from "@/lib/security/request";
-import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
+import { clientIp } from "@/lib/security/request";
+import { limitRule, limitVerdict } from "@/lib/security/limite";
 import { insertRow, SupabaseRequestError } from "@/lib/supabase/server";
 import { recordProductEvent } from "@/lib/analytics/first-party";
 
@@ -65,20 +65,9 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
   if (!tier) return json(400, { error: "Recharge la page et réessaie." });
   if (analysisPaused()) return json(503, { error: ANALYSIS_PAUSED_MESSAGE, reason: "paused" });
 
-  let hourlyKey: string | null = null;
-  async function abandon() {
-    const steps: Array<() => Promise<unknown>> = [];
-    if (hourlyKey) {
-      const guardKey = hourlyKey;
-      steps.push(() => releaseUsageGuard(guardKey));
-    }
-    for (const step of steps) {
-      await step().catch((error: unknown) =>
-        console.error(JSON.stringify({ event: "tour_abandon_error", detail: error instanceof Error ? error.message.slice(0, 200) : "inconnu" })),
-      );
-    }
-  }
-
+  // Mission #102 — ce tour ne compte plus rien dans le filet horaire, et il
+  // n'a jamais réservé de droit (la négociation est payée à l'analyse) : un
+  // échec n'a donc rien à défaire. Le brouillon collé reste dans le navigateur.
   try {
     // Propriétaire connecté seulement : l'analyse complète (message compris).
     const result = await loadResultForViewer(id, { user, anonToken: null });
@@ -100,10 +89,14 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
       return json(409, { error: `Les ${exchanges(NEGOTIATION_EXCHANGES)} de cette négociation sont utilisés. Tu peux conclure l'échange.`, reason: "max_turns" });
     }
 
-    const guardKey = hashIp(clientIp(request));
-    const guard = await hitUsageGuard(guardKey);
-    if (!guard.allowed) return json(429, { error: `Tu as lancé 5 analyses en une heure. Réessaie dans ${guard.retryInMinutes} min.` });
-    hourlyKey = guardKey;
+    // Mission #102, partie B — un échange est une étape À L'INTÉRIEUR d'une
+    // négociation déjà ouverte et déjà payée : il ne compte pas dans le filet
+    // horaire, qui ne voit que les ouvertures (lib/security/limite.ts). Avant
+    // cette mission, il frappait le compteur des analyses : une négociation
+    // normale — analyse, 4 échanges, conclusion — pouvait se bloquer elle-même
+    // au milieu, et le brouillon collé partait avec le refus.
+    const verdict = limitVerdict(limitRule("echange", { userId: user.id, ip: clientIp(request) }), null);
+    if (!verdict.allowed) return json(429, { error: verdict.message, reason: "rate_limited" });
 
     const original = result.analysis;
     const previous = thread.turns.map((turn) => turn.payload);
@@ -128,7 +121,6 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     } catch (caught) {
       const failure = classifyModelError(caught);
       if (!failure) throw caught;
-      await abandon();
       console.error(JSON.stringify({ event: failure.event.replace("analyse_", "tour_"), provider: failure.provider, status: failure.status, error_type: failure.errorType }));
       return json(failure.kind === "timeout" ? 504 : 503, { error: TURN_FAILURE_MESSAGE[failure.kind], reason: failure.kind });
     }
@@ -140,7 +132,6 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     );
     if (outcome.kind === "off_topic") {
       // B3 : rien n'est enregistré.
-      await abandon();
       console.warn(JSON.stringify({ event: "tour_hors_sujet", relevance: outcome.relevance }));
       return json(422, { error: OFF_TOPIC_MESSAGE[outcome.relevance], reason: "off_topic" });
     }
@@ -163,14 +154,10 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     } catch (caught) {
       // Deux envois simultanés du même tour : l'index unique n'en garde qu'un.
       if (caught instanceof SupabaseRequestError && caught.code === "23505") {
-        await abandon();
-        return json(409, { error: "Ce tour vient déjà d'être enregistré. Recharge la page.", reason: "duplicate" });
+          return json(409, { error: "Ce tour vient déjà d'être enregistré. Recharge la page.", reason: "duplicate" });
       }
       throw caught;
     }
-    // Tour enregistré : le filet horaire reste compté.
-    hourlyKey = null;
-
     if (thread.turns.length === 0) {
       await recordProductEvent({ event: "negotiation_started", userId: user.id, entityType: "analysis", entityId: id, dedupeKey: `negotiation_started:${id}` });
     }
@@ -202,7 +189,6 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     );
     return json(200, { turnNumber });
   } catch (caught) {
-    await abandon();
     console.error(JSON.stringify({ event: "tour_failed", detail: caught instanceof Error ? caught.message.slice(0, 300) : "inconnu" }));
     return json(503, { error: UNAVAILABLE, reason: "unavailable" });
   }

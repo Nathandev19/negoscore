@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import sampleExtraction from "@/lib/fixtures/sample-extraction.json";
 import type { Extraction } from "@/lib/llm/prompt";
+import { tooManyOpenings } from "@/lib/content/vocabulaire";
+import { OPENINGS_ACCOUNT, OPENINGS_ANON } from "@/lib/security/limite";
 
 // Mission #060 partie A — une requête perdue en route ne doit plus coûter un
 // droit ni une analyse. La route réelle /api/analyse est appelée, avec une base
@@ -25,6 +27,9 @@ const db = vi.hoisted(() => ({
 }));
 const user = vi.hoisted(() => ({ current: null as { id: string; email: string } | null }));
 const model = vi.hoisted(() => ({ calls: 0 }));
+// Mission #102, partie B : ce que le filet horaire répond, et sur quelle clé
+// il a été interrogé.
+const filet = vi.hoisted(() => ({ allowed: true, keys: [] as string[], limits: [] as number[] }));
 
 vi.mock("@/lib/llm/extract", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/llm/extract")>();
@@ -50,7 +55,11 @@ vi.mock("@/lib/llm/extract", async (importOriginal) => {
 });
 vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => user.current));
 vi.mock("@/lib/security/usage-guard", () => ({
-  hitUsageGuard: async () => ({ allowed: true, count: 1, retryInMinutes: 0 }),
+  hitUsageGuard: async (key: string, options?: { limit?: number }) => {
+    filet.keys.push(key);
+    filet.limits.push(options?.limit ?? 0);
+    return { allowed: filet.allowed, count: filet.allowed ? 1 : 6, retryInMinutes: 47 };
+  },
   releaseUsageGuard: async () => undefined,
 }));
 vi.mock("@/lib/rates/tier-preference", () => ({ preferredTier: async () => "starter" }));
@@ -153,7 +162,7 @@ function post(body: Record<string, unknown>, token: string | null = TOKEN) {
 }
 
 async function json(response: Response) {
-  return (await response.json()) as { analysisId?: string; error?: string; meta?: { replayed?: boolean } };
+  return (await response.json()) as { analysisId?: string; error?: string; reason?: string; meta?: { replayed?: boolean } };
 }
 
 // Nombre d'analyses gratuites réellement consommées.
@@ -169,6 +178,50 @@ beforeEach(() => {
   db.seq = 0;
   user.current = null;
   model.calls = 0;
+  filet.allowed = true;
+  filet.keys = [];
+  filet.limits = [];
+});
+
+describe("mission #102, partie B — le filet horaire ne compte que les ouvertures", () => {
+  it("lancer une analyse compte une ouverture, avec la limite des visiteurs sans compte", async () => {
+    const response = await post({ text: OFFER, idempotencyKey: KEY });
+    expect(response.status).toBe(200);
+    // La première interrogation est l'ouverture, à la limite des visiteurs
+    // sans compte. La seconde est le filet anti-abus de la gratuité
+    // (lib/billing/entitlement.ts), qui ne concerne que les analyses offertes
+    // et reste volontairement strict.
+    expect(filet.limits[0]).toBe(OPENINGS_ANON);
+    expect(filet.keys).toHaveLength(2);
+  });
+
+  it("filet saturé : refusé avant tout, rien n'est appelé ni consommé", async () => {
+    filet.allowed = false;
+    const response = await post({ text: OFFER, idempotencyKey: KEY });
+    expect(response.status).toBe(429);
+    const body = await json(response);
+    expect(body.reason).toBe("rate_limited");
+    // Le message parle de négociations, dit jusqu'à quand, et ne prétend pas
+    // que des analyses ont été « lancées » : c'est l'ouverture qui est freinée.
+    expect(body.error).toBe(tooManyOpenings(47));
+    expect(model.calls).toBe(0);
+    expect(freeConsumed()).toBe(0);
+    expect(db.analyses).toHaveLength(0);
+  });
+
+  it("un compte connecté a son propre compteur, pas celui de son réseau", async () => {
+    user.current = { id: "user-a", email: "a@exemple.test" };
+    await post({ text: OFFER, idempotencyKey: KEY });
+    const premier = filet.keys[0];
+
+    filet.keys = [];
+    user.current = { id: "user-b", email: "b@exemple.test" };
+    await post({ text: OFFER, idempotencyKey: "cle-de-test-0000000002" });
+
+    // Même adresse, deux comptes : deux compteurs distincts.
+    expect(filet.keys[0]).not.toBe(premier);
+    expect(filet.limits.at(-1)).toBe(OPENINGS_ACCOUNT);
+  });
 });
 
 describe("clé d'idempotence d'une analyse", () => {

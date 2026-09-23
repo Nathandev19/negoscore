@@ -50,3 +50,21 @@ export const COPILOT_PROMISE =
 
 export const ESTIMATE_DISCLAIMER =
   "Les montants affichés sont des repères de marché calculés à partir d'une table de tarifs, pas une promesse de gain.";
+
+// Mission #102, partie A — l'attente, sur un téléphone qu'on quitte. La
+// phrase est vraie : le travail n'est pas rattaché à la connexion du
+// navigateur, et au retour l'écran va rechercher l'état réel
+// (lib/analysis/resume.ts).
+export const WORK_SURVIVES_BACKGROUND = "L'analyse continue même si tu quittes l'application.";
+
+// Retour au premier plan, et le serveur ne connaît rien de cette tentative,
+// longtemps après : on le dit, sans rien relancer dans son dos.
+export const RESUME_FAILED =
+  "L'analyse n'est pas arrivée au bout. Rien n'a été décompté : appuie de nouveau sur « Analyser mon deal ».";
+
+// Mission #102, partie B — le filet horaire porte sur l'OUVERTURE d'une
+// négociation, jamais sur les échanges qu'elle contient. Le message dit donc
+// ce qui est bloqué, et jusqu'à quand.
+export function tooManyOpenings(minutes: number): string {
+  return `Trop de négociations ouvertes coup sur coup. Réessaie dans ${minutes} min : tes négociations en cours, elles, restent ouvertes.`;
+}

@@ -13,6 +13,7 @@ import { classifyModelError, modelFailureMessage, rightNotUsed, UNREADABLE_OFFER
 import { PROMPT_VERSION } from "@/lib/llm/prompt";
 import { preferredTier } from "@/lib/rates/tier-preference";
 import { ANON_COOKIE, anonCookieHeader, clientIp, hashIp, newAnonToken, readCookie, sameToken } from "@/lib/security/request";
+import { limitRule, limitVerdict } from "@/lib/security/limite";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
 import { isStoragePath, sniffMime } from "@/lib/storage/documents";
 import { inspectPdf } from "@/lib/storage/pdf";
@@ -223,12 +224,19 @@ export async function POST(request: Request) {
       }
     }
 
-    hourlyKey = hashIp(ip);
-    const guard = await hitUsageGuard(hourlyKey);
-    if (!guard.allowed) {
-      return fail(429, `Tu as lancé 5 analyses en une heure. Réessaie dans ${guard.retryInMinutes} min.`);
+    // Mission #102, partie B — lancer une analyse OUVRE une négociation :
+    // c'est cela, et cela seul, que le filet horaire compte. Un compte connecté
+    // a son propre compteur : l'activité d'un autre derrière la même adresse
+    // (wifi partagé, 4G, entreprise) ne peut plus le bloquer.
+    const rule = limitRule("ouverture", { userId: user?.id ?? null, ip });
+    hourlyKey = rule ? hashIp(rule.key) : null;
+    const guard = hourlyKey && rule ? await hitUsageGuard(hourlyKey, { limit: rule.limit, windowSeconds: rule.windowSeconds }) : null;
+    const verdict = limitVerdict(rule, guard);
+    if (!verdict.allowed) {
+      console.warn(JSON.stringify({ event: "ouverture_freinee", scope: rule?.scope ?? "aucun", signed_in: user !== null }));
+      return fail(429, verdict.message, { reason: "rate_limited" });
     }
-    hourlyCounted = true;
+    hourlyCounted = verdict.counted;
 
     if (fileMode) {
       document = await findDocument(storagePath, user, existingToken);
@@ -465,7 +473,7 @@ export async function POST(request: Request) {
         latency_ms: result.latencyMs,
         schema_valid_first_try: result.schemaValidFirstTry,
         attempts: result.attempts,
-        usage_count: guard.count,
+        usage_count: guard?.count ?? 0,
       }),
     );
     // Métadonnées de mesure : aucune donnée du deal, seulement des repères.

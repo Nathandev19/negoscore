@@ -14,6 +14,7 @@ import { exchanges, NEGOTIATION_EXCHANGES } from "@/lib/content/vocabulaire";
 import { saveTurnWithoutJs, type TurnWithoutJsState } from "@/lib/forms/no-js-actions";
 import { clearThreadDraft, readThreadKey, readThreadReply, saveThreadDraft, subscribeThreadDraft } from "@/lib/negotiation/draft";
 import { DEFAULT_TIER } from "@/lib/rates/tier";
+import { nextResume } from "@/lib/analysis/resume";
 import { nextReveal, prefersReducedMotion, reveal, THREAD_PENDING_ID, type ThreadSnapshot } from "@/lib/ui/reveal";
 
 // Mission #080 — « La marque t'a répondu ? » : le fil de l'échange, sous le
@@ -64,18 +65,19 @@ export function NegotiationThread({
   // clé d'idempotence ne se perdent au rechargement.
   const [server, serverAction] = useActionState(saveTurnWithoutJs, { status: "idle" } as TurnWithoutJsState);
   const draft = useSyncExternalStore(subscribeThreadDraft, () => readThreadReply(analysisId), () => "");
-  const [edited, setEdited] = useState<string | null>(null);
-  const reply = edited ?? (server.status === "error" ? server.reply : draft);
-  function setReply(value: string) {
-    setEdited(value);
-    saveThreadDraft(analysisId, { reply: value, key: keyRef.current });
-  }
+  // Mission #102 — le texte saisi appartient au TOUR qu'on prépare. Quand le
+  // tour arrive (y compris pendant une absence, par resynchronisation), le
+  // numéro suivant change et la zone repart du brouillon — vide — au lieu de
+  // garder la réponse déjà envoyée.
+  const [edited, setEdited] = useState<{ turn: number; text: string } | null>(null);
   const [sending, setSending] = useState<"turn" | "conclusion" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Clé d'idempotence gardée tant que le tour n'a pas abouti (D4) : un second
   // clic ou une reprise après coupure retombe sur le même tour. Mission #099 :
   // elle est gardée AVEC le brouillon, donc elle survit au rechargement.
   const keyRef = useRef<string | null>(null);
+  // Mission #102 : départ de l'attente, et dernière resynchronisation lancée.
+  const [attempt, setAttempt] = useState<{ startedAt: number; lastCheckAt: number | null } | null>(null);
 
   // B2, B3 — le message auquel la marque répond, selon l'outil : celui retenu
   // à la copie (ou corrigé), sinon le message proposé, gardé comme hypothèse.
@@ -91,7 +93,55 @@ export function NegotiationThread({
 
   const concluded = conclusion !== null || turns.some((turn) => turn.payload.conclusion !== null);
   const nextTurn = FIRST_TURN + turns.length;
+  const reply = edited?.turn === nextTurn ? edited.text : server.status === "error" ? server.reply : draft;
+  function setReply(value: string) {
+    setEdited({ turn: nextTurn, text: value });
+    saveThreadDraft(analysisId, { reply: value, key: keyRef.current });
+  }
   const turnsLeft = nextTurn <= LAST_TURN;
+  // Mission #102, partie A6 — même défaut que l'analyse : sur iPhone, quitter
+  // l'application pendant la lecture coupe la requête, qui ne revient jamais.
+  // Le tour, lui, est enregistré côté serveur. Au retour, on redemande la page
+  // au serveur (router.refresh) et l'attente s'arrête dès que le tour attendu
+  // est dans le fil — sans jamais renvoyer la réponse collée une seconde fois.
+  // Le tour qu'on attend. Posé à l'envoi (dans le gestionnaire, jamais pendant
+  // un rendu) : c'est sa présence dans le fil, rendu par le serveur, qui dit
+  // que la réponse est arrivée — que ce soit par la requête d'origine ou par
+  // une resynchronisation au retour.
+  const [awaited, setAwaited] = useState<number | null>(null);
+  const arrived = awaited !== null && turns.some((turn) => turn.turnNumber === awaited);
+  const waiting: "turn" | "conclusion" | null = sending === "turn" && !arrived ? "turn" : sending === "conclusion" ? "conclusion" : null;
+
+  useEffect(() => {
+    if (!arrived) return;
+    // Le tour est arrivé : plus rien à rejouer, et le brouillon a fait son temps.
+    keyRef.current = null;
+    clearThreadDraft(analysisId);
+  }, [arrived, analysisId]);
+
+  useEffect(() => {
+    if (waiting !== "turn") return;
+    const onBack = () => {
+      if (document.visibilityState === "hidden") return;
+      const decision = nextResume({
+        local: { key: attempt === null ? null : "tour", startedAt: attempt?.startedAt ?? null, lastCheckAt: attempt?.lastCheckAt ?? null },
+        server: null,
+        now: Date.now(),
+      });
+      if (decision.action !== "verifier") return;
+      setAttempt((current) => (current === null ? current : { ...current, lastCheckAt: Date.now() }));
+      // Lecture seule : la page est rendue par le serveur, qui a le fil réel.
+      router.refresh();
+    };
+    document.addEventListener("visibilitychange", onBack);
+    window.addEventListener("pageshow", onBack);
+    window.addEventListener("online", onBack);
+    return () => {
+      document.removeEventListener("visibilitychange", onBack);
+      window.removeEventListener("pageshow", onBack);
+      window.removeEventListener("online", onBack);
+    };
+  }, [waiting, router, attempt]);
   const canConclude = !concluded && access === "open";
 
   // Mission #096, défaut 3 — ce qui vient d'arriver est amené en vue par le
@@ -111,14 +161,14 @@ export function NegotiationThread({
 
   // L'attente s'affiche là où la réponse apparaîtra, et la page y amène.
   useEffect(() => {
-    if (sending !== "turn") return;
+    if (waiting !== "turn") return;
     const pending = document.getElementById(THREAD_PENDING_ID);
     reveal(pending, { flash: pending, reducedMotion: prefersReducedMotion() });
-  }, [sending]);
+  }, [waiting]);
 
   async function sendTurn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (sending) return;
+    if (waiting) return;
     if (reply.trim().length < MIN_REPLY_LENGTH) {
       setError(TOO_SHORT_REPLY_MESSAGE);
       return;
@@ -127,6 +177,8 @@ export function NegotiationThread({
     // Gardée avec le brouillon : un rechargement en plein traitement la
     // retrouve, et le second envoi est reconnu comme le même tour.
     saveThreadDraft(analysisId, { reply, key: keyRef.current });
+    setAwaited(nextTurn);
+    setAttempt({ startedAt: Date.now(), lastCheckAt: null });
     setSending("turn");
     setError(null);
     try {
@@ -138,7 +190,7 @@ export function NegotiationThread({
       const body = (await response.json().catch(() => ({}))) as { error?: string };
       if (response.ok) {
         keyRef.current = null;
-        setEdited("");
+        setEdited(null);
         setSentDraft(null);
         // Tour accepté : le brouillon n'a plus de raison d'être.
         clearThreadDraft(analysisId);
@@ -161,7 +213,7 @@ export function NegotiationThread({
   }
 
   async function conclude() {
-    if (sending) return;
+    if (waiting) return;
     setSending("conclusion");
     setError(null);
     try {
@@ -196,7 +248,7 @@ export function NegotiationThread({
 
       {/* L'attente est ici, à la place qu'occupera le tour : pas seulement sur
           le bouton, tout en bas. */}
-      {sending === "turn" ? <ThreadPending turnNumber={nextTurn} /> : null}
+      {waiting === "turn" ? <ThreadPending turnNumber={nextTurn} /> : null}
       {/* L'échec s'affiche au même endroit que l'attente : là où on regardait. */}
       {error ?? (server.status === "error" ? server.message : null) ? (
         <ThreadError message={error ?? (server.status === "error" ? server.message : "")} />
@@ -268,7 +320,7 @@ export function NegotiationThread({
               <p className="font-semibold text-encre">C&apos;est le dernier tour de suivi possible pour cette analyse.</p>
             ) : null}
           </div>
-          <Button type="submit" size="lg" aria-busy={sending === "turn"} aria-disabled={sending !== null} className="h-12 w-full text-base sm:w-fit">
+          <Button type="submit" size="lg" aria-busy={sending === "turn"} aria-disabled={waiting !== null} className="h-12 w-full text-base sm:w-fit">
             {sending === "turn" ? "Lecture de la réponse… (jusqu'à une minute)" : "Analyser sa réponse"}
           </Button>
         </form>
@@ -293,8 +345,8 @@ export function NegotiationThread({
             Tu décides d&apos;accepter les termes tels qu&apos;ils sont aujourd&apos;hui ? L&apos;outil prépare le récapitulatif
             de ce qui a été convenu et un message qui demande une confirmation écrite.
           </p>
-          <Button type="button" variant="outline" size="lg" onClick={conclude} aria-busy={sending === "conclusion"} aria-disabled={sending !== null} className="w-full sm:w-fit">
-            {sending === "conclusion" ? "Préparation…" : "J'accepte ces termes"}
+          <Button type="button" variant="outline" size="lg" onClick={conclude} aria-busy={waiting === "conclusion"} aria-disabled={waiting !== null} className="w-full sm:w-fit">
+            {waiting === "conclusion" ? "Préparation…" : "J'accepte ces termes"}
           </Button>
         </div>
       ) : null}
