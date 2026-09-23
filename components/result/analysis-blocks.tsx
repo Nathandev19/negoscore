@@ -174,7 +174,12 @@ export function RedFlags({ items, origin }: { items: Analysis["red_flags"]; orig
 // sont les mentions qui manquent. Le texte de loi, lui, se lit une fois.
 export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
   if (!legal.applicable) return null;
-  const missing = legal.missing_mandatory_clauses.length;
+  // Mission #100, point 3 — vu en production : « 2 mentions obligatoires
+  // absentes » et deux puces vides. Une entrée sans libellé n'est pas une
+  // mention : elle n'est ni rendue, ni comptée dans le résumé. La liste
+  // affichée et le nombre annoncé viennent donc de la MÊME source.
+  const clauses = legal.missing_mandatory_clauses.filter((clause) => clause.trim() !== "");
+  const missing = clauses.length;
   const hint =
     missing === 0
       ? "Aucune mention obligatoire ne manque à l'offre."
@@ -185,11 +190,11 @@ export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
     <CollapsibleSection title="Bon à savoir côté loi française" hint={hint}>
       <div className="flex flex-col gap-2 text-small">
         <p>{legal.note}</p>
-        {legal.missing_mandatory_clauses.length > 0 ? (
+        {clauses.length > 0 ? (
           <div>
             <p className="font-semibold text-encre">Mentions absentes de l&apos;offre :</p>
             <ul className="list-disc pl-5">
-              {legal.missing_mandatory_clauses.map((clause) => (
+              {clauses.map((clause) => (
                 <li key={clause}>{clause}</li>
               ))}
             </ul>

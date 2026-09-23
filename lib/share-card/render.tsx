@@ -25,8 +25,14 @@ export function loadFonts() {
   return fonts;
 }
 
-export async function renderShareCard(analysis: ResultView, headers: Record<string, string> = {}): Promise<ImageResponse> {
-  return new ImageResponse(shareCardElement(analysis), {
+export async function renderShareCard(
+  analysis: ResultView,
+  headers: Record<string, string> = {},
+  // Mission #100 : le montant que la marque met sur la table, quand il dépasse
+  // celui des termes (plafond annoncé). null : le montant des termes.
+  offered: number | null = null,
+): Promise<ImageResponse> {
+  return new ImageResponse(shareCardElement(analysis, offered), {
     ...SHARE_CARD_SIZE,
     fonts: await loadFonts(),
     headers,

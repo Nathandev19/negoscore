@@ -42,6 +42,11 @@ export type Point = {
   // Le point est-il déjà réglé par l'offre elle-même ? Mission #098 : l'offre
   // initiale est une source, au même titre que les réponses de la marque.
   inOffer: (deal: Deal) => boolean;
+  // Mission #100, point 2 — le sujet du point tel qu'une OFFRE l'écrit, quand
+  // il ne s'écrit pas comme dans une réponse de marque. Sert uniquement à
+  // retrouver la phrase à citer dans le texte d'origine ; la valeur reste
+  // exigée, et `pattern` seul décide de ce qu'une réponse renseigne.
+  offerSubject?: RegExp;
 };
 
 const word = (body: string) => new RegExp(`(?<![\\p{L}])(?:${body})`, "iu");
@@ -105,6 +110,10 @@ export const POINTS: readonly Point[] = [
     // n'est pas un droit d'utilisation publicitaire.
     pattern: word("droits? (?:pub|publicitaires?|d'utilisation|de diffusion|d'image)|durée des droits|publicit|whitelisting|spark"),
     value: MONTHS,
+    // Une offre dit rarement « droits pub » : « les droits pour les réutiliser
+    // sur nos réseaux et en pub pendant 6 mois ». La durée reste exigée, c'est
+    // elle qui fait de la phrase une réponse sur ce point.
+    offerSubject: word("droits?|licence|réutilis|diffus|publicit|whitelisting|spark"),
     applies: hasUsageRights,
     inOffer: (deal) => deal.usage.duration_months !== null || deal.usage.perpetual,
   },
@@ -200,19 +209,45 @@ export function askedPoints(deal: Deal, askLabels: readonly string[]): Set<Point
   return asked;
 }
 
+// Mission #100, point 2 — la phrase de l'OFFRE qui renseigne ce point, prise
+// dans le texte d'origine. Même exigence que pour les réponses de la marque :
+// un extrait qui existe caractère pour caractère, ramené aux frontières de sa
+// phrase. null : pas de texte d'origine (fichier déposé, texte effacé au bout
+// de 30 jours), ou aucune phrase ne dit ce point — on n'invente pas.
+export function offerCitation(point: Point, offerText: string | null | undefined): string | null {
+  if (!offerText) return null;
+  const subject = point.offerSubject ?? point.pattern;
+  const sentence = sentencesOf(offerText).find((entry) => subject.test(entry) && point.value.test(entry));
+  return sentence ? citation(sentence, offerText) : null;
+}
+
 // Mission #098, défaut 3a — l'état de départ vient de l'OFFRE : un terme déjà
 // écrit n'est pas à obtenir. turn 1 : l'analyse d'origine.
-export function emptyPoints(deal: Deal, askLabels: readonly string[] = []): PointState[] {
+export function emptyPoints(deal: Deal, askLabels: readonly string[] = [], offerText: string | null = null): PointState[] {
   const asked = askedPoints(deal, askLabels);
   return trackedPoints(deal).map((point) => ({
     key: point.key,
     status: point.inOffer(deal) ? ("answered" as const) : ("unknown" as const),
-    quote: null,
+    // Mission #100 : la phrase de l'offre, comme les autres points ont celle
+    // de la marque. Un point « répondu » sans citation ne se vérifiait pas.
+    quote: point.inOffer(deal) ? offerCitation(point, offerText) : null,
     turn: point.inOffer(deal) ? 1 : null,
     firm: false,
     asked: asked.has(point.key),
     previous: null,
+    reserves: [],
   }));
+}
+
+// Deux phrases disent-elles la MÊME valeur pour ce point ? Comparaison de ce
+// que la valeur du point relève dans chacune (« 6 mois » et « 6 mois »), pas
+// des phrases entières. false dès qu'une des deux n'en porte aucune.
+function sameValue(key: PointKey, before: string | null, after: string): boolean {
+  const point = POINTS.find((entry) => entry.key === key);
+  if (!point || before === null) return false;
+  const first = point.value.exec(before)?.[0];
+  const second = point.value.exec(after)?.[0];
+  return first !== undefined && second !== undefined && normalizeForQuote(first) === normalizeForQuote(second);
 }
 
 // Points que CETTE phrase de la marque renseigne.
@@ -243,7 +278,7 @@ export function readPoints({
   const state = new Map<PointKey, PointState>();
   for (const point of tracked) {
     const kept = previous.find((entry) => entry.key === point.key);
-    state.set(point.key, kept ?? { key: point.key, status: "unknown", quote: null, turn: null, firm: false, asked: false, previous: null });
+    state.set(point.key, kept ?? { key: point.key, status: "unknown", quote: null, turn: null, firm: false, asked: false, previous: null, reserves: [] });
   }
 
   const settle = (key: PointKey, status: PointStatus, quote: string, firm: boolean) => {
@@ -263,8 +298,18 @@ export function readPoints({
     // Mission #099 — elle revient sur un point réglé à un tour PRÉCÉDENT, et
     // dit autre chose : on garde ce qu'elle disait avant. Les deux citations
     // et les deux tours s'affichent ; rien n'est écrasé en silence.
+    // Mission #100, point 2 — depuis que le point réglé par l'OFFRE porte la
+    // phrase de l'offre, deux citations différentes ne suffisent plus : la
+    // marque qui confirme « les 6 mois de droits pub » ne change pas de
+    // position, elle redit la même valeur dans ses mots. On ne l'annonce que
+    // si la VALEUR change.
+    const confirmsOffer = current.turn === 1 && current.status === status && sameValue(key, current.quote, next);
     const changedMind =
-      !sameTurn && current.status !== "unknown" && current.quote !== null && (current.status !== status || current.quote !== next);
+      !sameTurn &&
+      current.status !== "unknown" &&
+      current.quote !== null &&
+      (current.status !== status || current.quote !== next) &&
+      !confirmsOffer;
     state.set(key, {
       key,
       status,
@@ -273,6 +318,9 @@ export function readPoints({
       firm: firm || (sameTurn && current.firm),
       asked: current.asked,
       previous: changedMind ? { status: current.status, quote: current.quote, turn: current.turn } : (sameTurn ? current.previous : null),
+      // Les réserves d'un tour précédent portaient sur ce qu'elle vient de
+      // préciser : elles repartent de zéro, et ce tour dira les siennes.
+      reserves: sameTurn ? current.reserves : [],
     });
   };
 
@@ -306,6 +354,36 @@ export function readPoints({
 // DEMANDÉS et sur lesquels la marque n'a pas encore répondu. Un point jamais
 // posé n'est pas un manque ; un point que l'OFFRE écrit mais qu'on a demandé de
 // changer reste à obtenir tant qu'elle n'a rien dit.
+// Mission #100, point 1 — répartir les doutes du modèle : ceux qui portent
+// sur un point DÉJÀ renseigné sont des réserves (« répondu, mais sans
+// détailler ») et rejoignent ce point ; les autres restent des incertitudes de
+// lecture. Le bloc des doutes ne garde que ce que l'outil n'a pas su lire.
+export function splitReserves(
+  doubts: readonly string[],
+  points: readonly PointState[],
+  deal: Deal,
+): { doubts: string[]; points: PointState[] } {
+  const settled = new Set(settledForDoubts(points).map((point) => point.key));
+  const reserves = new Map<PointKey, string[]>();
+  const kept: string[] = [];
+  for (const doubt of doubts) {
+    const mentioned = pointsOfSentence(doubt, deal).map((point) => point.key);
+    // Une réserve ne vaut que si TOUT ce dont elle parle est déjà renseigné :
+    // sinon elle porte encore sur une lecture manquante, et elle reste un doute.
+    if (mentioned.length === 0 || !mentioned.every((point) => settled.has(point))) {
+      kept.push(doubt);
+      continue;
+    }
+    for (const point of mentioned) reserves.set(point, [...(reserves.get(point) ?? []), doubt]);
+  }
+  return {
+    doubts: kept,
+    points: points.map((point) =>
+      reserves.has(point.key) ? { ...point, reserves: [...point.reserves, ...(reserves.get(point.key) ?? [])] } : point,
+    ),
+  };
+}
+
 export function openPoints(points: readonly PointState[]): PointState[] {
   return points.filter((point) => point.asked && point.status === "unknown");
 }

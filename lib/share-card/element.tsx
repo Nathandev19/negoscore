@@ -35,12 +35,12 @@ function plain(text: string): string {
 // Pas de carte vide : seulement une offre chiffrée (montant proposé ou produits)
 // face à une fourchette. Ni « unpriced » (aucun montant à comparer), ni
 // « incomplete » (aucune fourchette). Le bouton disparaît dans ces cas.
-export function shareCardAvailable(analysis: ResultView): boolean {
+export function shareCardAvailable(analysis: ResultView, offered: number | null = null): boolean {
   const { deal, estimate, evaluability } = analysis;
-  const offered = deal.payment.amount_eur !== null || deal.in_kind_value_eur !== null;
+  const proposed = offered !== null || deal.payment.amount_eur !== null || deal.in_kind_value_eur !== null;
   return (
     (evaluability === "complete" || evaluability === "terms_unknown") &&
-    offered &&
+    proposed &&
     estimate.total_low !== null &&
     estimate.total_high !== null
   );
@@ -56,17 +56,26 @@ export type ShareCardTexts = {
 };
 
 // Tous les textes de la carte, et rien d'autre : c'est ce que le test vérifie.
-export function shareCardTexts(analysis: ResultView): ShareCardTexts {
+//
+// Mission #100, point 4 — la carte affichait « Elle propose 600 € », le dernier
+// montant FERME retenu dans les termes, pendant que l'écran de conclusion
+// portait les 900 € annoncés au tour 3. Même règle que l'acceptation
+// (mission #096, offeredAmount) : le plus élevé des deux. Et la carte dit d'où
+// il vient — elle est faite pour être postée, elle ne doit pas laisser croire
+// à un accord qui n'existe pas.
+export function shareCardTexts(analysis: ResultView, offered: number | null = null): ShareCardTexts {
   const { deal, estimate, score } = analysis;
   const scored = analysis.evaluability === "complete" && score !== null;
   const pill = scored ? BAND_LABEL[score.band] : EVALUABILITY_LABEL[analysis.evaluability === "complete" ? "terms_unknown" : analysis.evaluability];
   const amount = deal.payment.amount_eur;
   const proposes =
-    amount !== null
-      ? `Elle propose ${formatEur(amount)}`
-      : deal.in_kind_value_eur !== null
-        ? `Elle propose ${formatEur(deal.in_kind_value_eur)} en produits`
-        : null;
+    offered !== null
+      ? `Elle propose jusqu'à ${formatEur(offered)}, à confirmer`
+      : amount !== null
+        ? `Elle propose ${formatEur(amount)}`
+        : deal.in_kind_value_eur !== null
+          ? `Elle propose ${formatEur(deal.in_kind_value_eur)} en produits`
+          : null;
   const range = formatEurRange(estimate.total_low, estimate.total_high);
   return {
     pill,
@@ -109,8 +118,8 @@ function Gauge({ value, color }: { value: number; color: string }) {
   );
 }
 
-export function shareCardElement(analysis: ResultView): ReactElement {
-  const texts = shareCardTexts(analysis);
+export function shareCardElement(analysis: ResultView, offered: number | null = null): ReactElement {
+  const texts = shareCardTexts(analysis, offered);
   const band = analysis.evaluability === "complete" && analysis.score ? analysis.score.band : null;
   const pillColor = band ? bandOnMarque[band] : creme;
   return (

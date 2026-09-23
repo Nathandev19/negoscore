@@ -260,6 +260,7 @@ describe("défaut 2 — « Convenu en plus » n'est plus du copier-coller", () =
     firm: false,
     asked: true,
     previous: null,
+    reserves: [],
   });
   const points: PointState[] = [
     point("usage_duration", "refused", "les 6 mois de droits pub, on ne peut pas bouger dessus"),

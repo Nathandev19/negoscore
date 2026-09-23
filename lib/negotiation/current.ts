@@ -9,17 +9,25 @@ import { TERM_GROUPS, type Deal, type TermGroup } from "@/lib/negotiation/types"
 
 // Termes actuels : ceux de la conclusion s'il y en a une, sinon ceux du dernier
 // tour. null : aucun tour, la page décrit l'offre telle qu'elle a été analysée.
-export type Negotiated = { deal: Deal; turn: number };
+// Mission #100, point 4 — ceiling : le plafond annoncé par la marque au
+// dernier tour (mission #096). Les TERMES ne le retiennent pas ; ce qu'on
+// propose d'accepter, si. La carte partageable doit dire le même montant que
+// l'écran de conclusion, donc elle lit la même chose.
+export type Negotiated = { deal: Deal; turn: number; ceiling: number | null };
 
 type ThreadLike = {
-  turns: ReadonlyArray<{ turnNumber: number; payload: { deal_after: Deal } }>;
+  turns: ReadonlyArray<{ turnNumber: number; payload: { deal_after: Deal; stated_ceiling?: number | null } }>;
   conclusion: { payload: { deal: Deal } } | null;
 };
 
 export function currentState(thread: ThreadLike | null): Negotiated | null {
   const last = thread?.turns.at(-1);
   if (!thread || !last) return null;
-  return { deal: thread.conclusion?.payload.deal ?? last.payload.deal_after, turn: last.turnNumber };
+  return {
+    deal: thread.conclusion?.payload.deal ?? last.payload.deal_after,
+    turn: last.turnNumber,
+    ceiling: last.payload.stated_ceiling ?? null,
+  };
 }
 
 // Groupes de termes dont la valeur lisible a changé depuis l'offre d'origine.

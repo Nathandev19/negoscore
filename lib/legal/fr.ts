@@ -60,7 +60,12 @@ export function computeFrLegal(deal: Deal): FrLegal {
     applicable,
     threshold_1000_reached: threshold,
     written_contract_required: applicable && threshold === "yes",
-    missing_mandatory_clauses: applicable ? clauses.filter(([, missing]) => missing).map(([label]) => label) : [],
+    // Mission #100, point 3 — un libellé vide ne compte pas comme une mention.
+    // Le calcul n'en produit pas (ce sont des littéraux), mais une analyse
+    // enregistrée peut en porter : on ne les laisse pas repartir d'ici.
+    missing_mandatory_clauses: applicable
+      ? clauses.filter(([label, missing]) => missing && label.trim() !== "").map(([label]) => label.trim())
+      : [],
     note,
   };
 }

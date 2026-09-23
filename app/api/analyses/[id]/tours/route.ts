@@ -106,7 +106,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
 
     const original = result.analysis;
     const previous = thread.turns.map((turn) => turn.payload);
-    const state = stateBefore(original, previous);
+    const state = stateBefore(original, previous, result.sourceText);
     // Le message auquel la marque répond (B) : corrigé à l'instant, sinon
     // enregistré à la copie, sinon le message proposé, gardé comme hypothèse.
     const answeredTurn = turnNumber - 1;
@@ -132,7 +132,11 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
       return json(failure.kind === "timeout" ? 504 : 503, { error: TURN_FAILURE_MESSAGE[failure.kind], reason: failure.kind });
     }
 
-    const outcome = processTurn({ original, previous, turnNumber, tier, brandReply: reply }, read.reading);
+    const outcome = processTurn(
+      // Mission #100 : le texte de l'offre sert à citer ce qu'elle dit déjà.
+      { original, previous, turnNumber, tier, brandReply: reply, offerText: result.sourceText },
+      read.reading,
+    );
     if (outcome.kind === "off_topic") {
       // B3 : rien n'est enregistré.
       await abandon();

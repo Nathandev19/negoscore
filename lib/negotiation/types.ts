@@ -222,6 +222,12 @@ export const pointSchema = z.object({
   // Ce point a-t-il été demandé à la marque ? Un point jamais posé ne figure
   // pas dans ce qui reste à obtenir.
   asked: z.boolean().default(false),
+  // Mission #100, point 1 — ce que la marque a bien renseigné, mais sans
+  // détailler (« la procédure de validation n'est pas détaillée »). Ce n'est
+  // pas une incertitude de LECTURE : l'outil a lu, et il lui reste une
+  // réserve. Elle s'affiche sous la citation du point, jamais dans le bloc des
+  // doutes, où elle se lisait comme une contradiction.
+  reserves: z.array(z.string()).default([]),
   // Mission #099, point 6 (audit B17) — la marque est revenue sur ce point.
   // Ce qu'elle en disait AVANT, avec son tour : écrasé en silence, un
   // changement de position ne se voyait pas. null : elle n'a rien changé.

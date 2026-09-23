@@ -37,6 +37,11 @@ export type LoadedResult = {
   unlocked: boolean;
   sourceRemoved: boolean;
   sourceType: DealRef["source_type"];
+  // Mission #100, point 2 — le texte collé de l'offre, pour le PROPRIÉTAIRE
+  // seulement. Il ne part jamais vers le navigateur : la route des tours s'en
+  // sert pour citer la phrase qui renseigne un point, et n'enregistre que
+  // l'extrait retenu. null : fichier déposé, texte effacé, ou non-propriétaire.
+  sourceText: string | null;
 };
 
 // Mémorisé par requête (mission #049), sur des valeurs simples : le layout de
@@ -76,5 +81,6 @@ async function load(id: string, viewer: Viewer): Promise<LoadedResult | null> {
     unlocked: access === "owner",
     sourceRemoved: sourceRemoved(row.deal),
     sourceType: row.deal.source_type,
+    sourceText: access === "owner" ? row.deal.raw_text : null,
   };
 }

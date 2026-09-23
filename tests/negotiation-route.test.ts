@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sentencesOf } from "@/lib/negotiation/points";
 import { loadScenarios, readingOf, scenarioContext } from "@/lib/negotiation/scenarios";
-import type { TurnReading } from "@/lib/negotiation/types";
+import type { TurnPayload, TurnReading } from "@/lib/negotiation/types";
 
 // Mission #080 — les gardes d'un tour de négociation, traversées par la vraie
 // route. Depuis la mission #080 ter, un tour ne consomme ni crédit ni quota :
@@ -12,6 +13,14 @@ const scenarios = loadScenarios();
 const byId = (suffix: string) => scenarios.find((s) => s.id.endsWith(suffix))!;
 const ANALYSIS_ID = "11111111-1111-4111-8111-111111111111";
 const USER = { id: "u1", email: "nina@exemple.test" };
+
+// Mission #100, point 2 — le texte de l'offre du scénario 01, écrit comme une
+// marque l'écrit : 300 €, 2 TikTok, 60 jours, 6 mois de droits. C'est de LÀ que
+// doivent venir les citations des points réglés par l'offre.
+const OFFRE_COLLEE = vi.hoisted(
+  () =>
+    "Bonjour, on te propose 300 € pour 2 vidéos TikTok. Le paiement se fait à 60 jours après réception. On souhaite les droits pour les diffuser en publicité pendant 6 mois. Les retouches sont illimitées.",
+);
 
 const state = vi.hoisted(() => ({
   user: null as { id: string; email: string } | null,
@@ -34,7 +43,9 @@ vi.mock("@/lib/analysis/load", async () => {
   const original = context(load()[0]).original;
   return {
     loadResultForViewer: async (id: string, viewer: { user: unknown }) =>
-      id === "11111111-1111-4111-8111-111111111111" && viewer.user ? { analysis: original, unlocked: true } : null,
+      id === "11111111-1111-4111-8111-111111111111" && viewer.user
+        ? { analysis: original, unlocked: true, sourceRemoved: false, sourceType: "text", sourceText: OFFRE_COLLEE }
+        : null,
   };
 });
 vi.mock("@/lib/llm/turn", () => ({
@@ -138,6 +149,18 @@ describe("tour de négociation — gardes", () => {
     expect(state.rows).toHaveLength(1);
     expect(state.rows[0]).toMatchObject({ analysis_id: ANALYSIS_ID, user_id: USER.id, kind: "reply", turn_number: 2, brand_reply: reply });
     expect(touchedBilling()).toEqual([]);
+  });
+
+  it("#100, point 2 — le texte collé atteint le moteur : un point réglé par l'offre porte une phrase de l'offre", async () => {
+    const reply = use("acceptation-partielle");
+    const r = await send({ reply, idempotencyKey: "cle-de-test-0000000100" });
+    expect(r.status).toBe(200);
+    const payload = state.rows[0].payload as TurnPayload;
+    const depuisLOffre = payload.points.filter((point) => point.turn === 1);
+    expect(depuisLOffre.length).toBeGreaterThan(0);
+    for (const point of depuisLOffre) {
+      expect(sentencesOf(OFFRE_COLLEE)).toContain(point.quote);
+    }
   });
 
   it("#080 ter — la route ne consulte plus aucun droit : ni réservation, ni décompte", async () => {

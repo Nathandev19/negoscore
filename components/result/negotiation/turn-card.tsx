@@ -27,6 +27,10 @@ import { toneLabel } from "@/lib/tone";
 // est montrée en entier pour pouvoir être vérifiée avant d'envoyer quoi que ce
 // soit (F2).
 
+// Courte : elle peut se répéter sur plusieurs points quand le texte collé a
+// été effacé. Elle dit où vérifier, sur cette même page.
+export const OFFER_QUOTE_MISSING = "Phrase de l'offre non retrouvée : le terme lu figure dans « Le deal proposé ».";
+
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 
 // Écart signé : « + 120 € », « − 80 € », « 0 € ».
@@ -337,7 +341,24 @@ export function TurnCard({
                   {POINT_LABEL[point.key]} — {POINT_STATUS_LABEL[point.status].toLowerCase()}{" "}
                   {point.turn === 1 ? "dans l'offre de départ" : `au tour ${point.turn}`}
                 </span>
-                {point.quote ? <q className="text-attenue">{point.quote}</q> : null}
+                {point.quote ? (
+                  <q className="text-attenue">{point.quote}</q>
+                ) : point.turn === 1 ? (
+                  // Mission #100, point 2 — « répondu dans l'offre de départ »
+                  // s'affichait seul, sans rien pour le vérifier. Quand la
+                  // phrase de l'offre n'a pas pu être retrouvée (texte effacé
+                  // au bout de 30 jours, ou aucune phrase ne porte le terme),
+                  // l'écran le dit au lieu de laisser un blanc.
+                  <span className="text-attenue">{OFFER_QUOTE_MISSING}</span>
+                ) : null}
+                {/* Mission #100 : répondu, mais sans détailler. La réserve est
+                    ici, avec ce qu'elle commente — plus dans le bloc des
+                    doutes, où elle se lisait comme une contradiction. */}
+                {point.reserves.map((reserve) => (
+                  <span key={reserve} className="text-small">
+                    Reste à préciser : {reserve}
+                  </span>
+                ))}
                 {/* Mission #099 (audit B17) : elle est revenue sur ce point. Les
                     deux versions, avec leur tour : rien n'est écrasé en silence. */}
                 {point.previous ? (

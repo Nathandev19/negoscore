@@ -7,7 +7,7 @@ import { buildClosing, offeredAmount } from "@/lib/negotiation/closing";
 import { buildConclusion } from "@/lib/negotiation/conclusion";
 import { readAmounts, statedCeiling, turnSituation } from "@/lib/negotiation/gap";
 import { fallbackMessage, finalMessage, stripRedundantQuestions } from "@/lib/negotiation/message";
-import { brandSettled, emptyPoints, everythingSettled, pointsOfSentence, readPoints, settledForDoubts } from "@/lib/negotiation/points";
+import { brandSettled, emptyPoints, everythingSettled, pointsOfSentence, readPoints, settledForDoubts, splitReserves } from "@/lib/negotiation/points";
 import { tableOf } from "@/lib/analysis/recompute";
 import { originPricing, priceFor, unavailablePricing } from "@/lib/negotiation/pricing";
 import { checkQuote, quoteIsIn } from "@/lib/negotiation/quotes";
@@ -42,6 +42,11 @@ export type TurnContext = {
   turnNumber: number;
   tier: Tier;
   brandReply: string;
+  // Mission #100, point 2 — le texte de l'offre d'origine, pour citer la
+  // phrase qui renseigne un point dès le tour 1. Il ne quitte pas le serveur
+  // autrement : seul l'extrait retenu est enregistré avec le tour. null :
+  // fichier déposé, ou texte effacé au bout de 30 jours.
+  offerText?: string | null;
 };
 
 export type TurnResult =
@@ -118,7 +123,7 @@ function settledElsewhere(doubt: string, points: readonly PointState[], deal: De
 
 // État à l'entrée d'un tour : le deal et les demandes après le tour précédent,
 // ou ceux de l'analyse d'origine.
-export function stateBefore(original: ResultView, previous: readonly TurnPayload[]): {
+export function stateBefore(original: ResultView, previous: readonly TurnPayload[], offerText: string | null = null): {
   deal: Deal;
   asks: Ask[];
   changedSinceOrigin: boolean;
@@ -131,23 +136,23 @@ export function stateBefore(original: ResultView, previous: readonly TurnPayload
     const asks = originalAsks(original);
     // Mission #098 — l'offre initiale renseigne déjà des points : ils ne sont
     // pas « à obtenir ».
-    return { deal, asks, changedSinceOrigin: false, points: emptyPoints(deal, asks.map((ask) => ask.label)) };
+    return { deal, asks, changedSinceOrigin: false, points: emptyPoints(deal, asks.map((ask) => ask.label), offerText) };
   }
   // Tour enregistré avant cette mission : aucun point mémorisé, on repart de
   // l'état vide plutôt que d'inventer ce que la marque aurait répondu.
-  const points = last.points.length > 0 ? last.points : emptyPoints(last.deal_after, last.asks.map((ask) => ask.label));
+  const points = last.points.length > 0 ? last.points : emptyPoints(last.deal_after, last.asks.map((ask) => ask.label), offerText);
   return { deal: last.deal_after, asks: last.asks, changedSinceOrigin: last.changed_since_origin, points };
 }
 
 export function processTurn(context: TurnContext, reading: TurnReading): TurnResult {
-  const { original, previous, turnNumber, tier, brandReply } = context;
+  const { original, previous, turnNumber, tier, brandReply, offerText = null } = context;
 
   // B3 — pas une réponse à cette offre : on le dit, rien n'est inventé.
   if (reading.relevance !== "reply") {
     return { kind: "off_topic", relevance: reading.relevance, note: reading.relevance_note };
   }
 
-  const before = stateBefore(original, previous);
+  const before = stateBefore(original, previous, offerText);
 
   // Demandes d'abord : celles que la marque accorde dans CE tour sont une
   // source écrite des nouveaux termes (accepter « exclusivité ramenée à 1
@@ -273,8 +278,15 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   const ceiling = announced ?? (changes.some((change) => change.group === "amount") ? null : (previous.at(-1)?.stated_ceiling ?? null));
 
 
+  // Mission #100, point 1 — les doutes du modèle sont triés AVANT d'être
+  // mêlés à ceux du code : « la procédure de validation n'est pas détaillée »
+  // sur un point déjà renseigné est une réserve, pas une incertitude de
+  // lecture. Elle s'affiche sous ce point (lib/negotiation/points.ts).
+  const sorted = splitReserves(cleanDoubts(reading.uncertainties), points, dealAfter);
+  const withReserves = sorted.points;
+
   const uncertainties = [
-    ...cleanDoubts(reading.uncertainties),
+    ...sorted.doubts,
     ...unverifiedNow
       // Mission #098, défaut 1 — « aucun passage trouvé » sur un point que la
       // mémoire affiche deux blocs plus bas comme répondu par la marque,
@@ -355,7 +367,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
         // est ce que la marque propose : la conclusion le porte, dit comme
         // tel, plutôt que de récapituler moins que ce qui est offert.
         offered: offeredAmount(dealAfter, ceiling, current),
-        points,
+        points: withReserves,
       })
     : null;
 
@@ -365,8 +377,8 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
   //    n'ouvre plus de question ; il présente l'état final et les deux
   //    messages, sans choisir à sa place.
   const closing =
-    conclusion === null && everythingSettled(points, dealAfter, asks)
-      ? buildClosing({ deal: dealAfter, asks, points, language: original.language, counter, pricing: current, ceiling, position, situation })
+    conclusion === null && everythingSettled(withReserves, dealAfter, asks)
+      ? buildClosing({ deal: dealAfter, asks, points: withReserves, language: original.language, counter, pricing: current, ceiling, position, situation })
       : null;
 
   const simple = () =>
@@ -437,7 +449,7 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
       brand_questions: questions,
       uncertainties,
       message,
-      points,
+      points: withReserves,
       situation: position === null || situation === null ? null : { ...position, sentence: situation },
       stated_ceiling: ceiling,
       dropped_questions: cleaned.dropped,
@@ -459,8 +471,8 @@ function counterAcceptedWithoutAmount(asks: readonly Ask[], original: ResultView
 
 // Conclusion sans nouvelle réponse de la marque : la personne décide
 // d'accepter les termes en l'état (C, D2). Aucun appel au modèle.
-export function concludeNow(original: ResultView, previous: readonly TurnPayload[], tier: Tier) {
-  const state = stateBefore(original, previous);
+export function concludeNow(original: ResultView, previous: readonly TurnPayload[], tier: Tier, offerText: string | null = null) {
+  const state = stateBefore(original, previous, offerText);
   const last = previous.at(-1);
   const pricing = last ? (last.pricing_after ?? last.pricing_before) : originPricing(original, tier);
   return {
