@@ -1,0 +1,13 @@
+"use client";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+export function UserActions({ userId, hasGrant }: { userId: string; hasGrant: boolean }) {
+  const router=useRouter();
+  const [pending,setPending]=useState(false); const [message,setMessage]=useState<string|null>(null);
+  async function send(kind:"entitlement"|"credits",body:Record<string,unknown>,confirm:string){if(!window.confirm(confirm))return;setPending(true);setMessage(null);try{const response=await fetch(`/api/admin/users/${userId}/${kind}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,requestId:crypto.randomUUID()})});setMessage(response.ok?"Action enregistrée et auditée.":"Échec de l’action.");if(response.ok)router.refresh();}catch{setMessage("Service indisponible.");}finally{setPending(false)}}
+  return <section className="border-t-4 border-marque pt-4"><h2 className="text-h2 mb-4">Actions sécurisées</h2><div className="grid gap-6 lg:grid-cols-2">
+    <form onSubmit={(e)=>{e.preventDefault();const f=new FormData(e.currentTarget);void send("entitlement",{action:hasGrant?"revoke":"grant",reason:f.get("reason"),expiresAt:f.get("expiresAt")||null},hasGrant?"Retirer uniquement le grant Pro offert ?":"Accorder cet accès Pro offert ?")}} className="flex flex-col gap-3"><h3>{hasGrant?"Retirer l’accès offert":"Accorder Pro offert"}</h3>{hasGrant?null:<input name="expiresAt" type="datetime-local" className="rounded-control border bg-creme px-3 py-2"/>}<input name="reason" required minLength={2} maxLength={500} placeholder="Motif obligatoire" className="rounded-control border bg-creme px-3 py-2"/><button disabled={pending} className="rounded-control bg-encre px-4 py-2 font-semibold text-creme disabled:opacity-50">{pending?"Enregistrement…":hasGrant?"Retirer le grant":"Accorder le grant"}</button></form>
+    <form onSubmit={(e)=>{e.preventDefault();const f=new FormData(e.currentTarget);const delta=Number(f.get("delta"));void send("credits",{delta,reason:f.get("reason")},`${delta>0?"Ajouter":"Retirer"} ${Math.abs(delta)} crédit(s) ?`)}} className="flex flex-col gap-3"><h3>Ajuster les crédits</h3><input name="delta" type="number" required min="-100000" max="100000" placeholder="+10 ou -2" className="rounded-control border bg-creme px-3 py-2"/><input name="reason" required minLength={2} maxLength={500} placeholder="Motif obligatoire" className="rounded-control border bg-creme px-3 py-2"/><button disabled={pending} className="rounded-control bg-encre px-4 py-2 font-semibold text-creme disabled:opacity-50">{pending?"Enregistrement…":"Ajuster et auditer"}</button></form>
+  </div>{message?<p role="status" className="mt-4 font-semibold">{message}</p>:null}</section>;
+}

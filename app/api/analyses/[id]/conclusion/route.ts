@@ -5,6 +5,7 @@ import { concludeNow } from "@/lib/negotiation/turn";
 import { TURN_SCHEMA_VERSION, type ConclusionPayload } from "@/lib/negotiation/types";
 import { parseTier } from "@/lib/rates/tier";
 import { insertRow, SupabaseRequestError } from "@/lib/supabase/server";
+import { recordProductEvent } from "@/lib/analytics/first-party";
 
 export const runtime = "nodejs";
 
@@ -58,6 +59,10 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
       if (caught instanceof SupabaseRequestError && caught.code === "23505") return json(200, { concluded: true });
       throw caught;
     }
+    await recordProductEvent({
+      event: "negotiation_concluded", userId: user.id, entityType: "analysis", entityId: id,
+      metadata: { turns: thread.turns.length, source: "creator_accepted" }, dedupeKey: `negotiation_concluded:${id}`,
+    });
     console.log(JSON.stringify({ event: "echange_conclu", source: "creator_accepted", turns: thread.turns.length, unclear: conclusion.unclear.length }));
     return json(200, { concluded: true });
   } catch (caught) {

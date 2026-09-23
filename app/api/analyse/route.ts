@@ -28,6 +28,7 @@ import {
   updateRows,
 } from "@/lib/supabase/server";
 import { MAX_FILE_BYTES } from "@/lib/upload";
+import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -120,15 +121,17 @@ export async function POST(request: Request) {
   } catch {
     return fail(400, "Requête illisible. Recharge la page et réessaie.");
   }
-  const { text, storagePath, retryOf, idempotencyKey } = (typeof body === "object" && body !== null ? body : {}) as {
+  const { text, storagePath, retryOf, idempotencyKey, attribution: rawAttribution } = (typeof body === "object" && body !== null ? body : {}) as {
     text?: unknown;
     storagePath?: unknown;
     // Relance gratuite d'une analyse incomplète : identifiant de l'analyse d'origine.
     retryOf?: unknown;
     // Clé tirée par le navigateur avant l'envoi (mission #060).
     idempotencyKey?: unknown;
+    attribution?: unknown;
   };
   const key = readIdempotencyKey(idempotencyKey);
+  const attribution = parseAttribution(rawAttribution);
 
   const fileMode = typeof storagePath === "string";
   const retryMode = retryOf !== undefined && retryOf !== null;
@@ -260,6 +263,12 @@ export async function POST(request: Request) {
       return fail(429, entitlement.message, { reason: entitlement.reason });
     }
     grant = entitlement;
+
+    await recordProductEvent({
+      event: "analysis_started", userId: user?.id ?? null, attribution, entityType: "analysis_request",
+      entityId: key, metadata: { source: fileMode ? "file" : "text", retry: retryMode },
+      dedupeKey: key ? `analysis_started:${key}` : null,
+    });
 
     const extraAssumptions: string[] = [];
     let result: ExtractResult;
@@ -435,6 +444,11 @@ export async function POST(request: Request) {
     savedDealId = null;
     document = null;
     hourlyCounted = false;
+
+    await recordProductEvent({
+      event: "analysis_completed", userId: user?.id ?? null, attribution, entityType: "analysis", entityId: saved.id,
+      metadata: { source, plan: entitlement.plan, retry: retry !== null }, dedupeKey: `analysis_completed:${saved.id}`,
+    });
 
     console.log(
       JSON.stringify({

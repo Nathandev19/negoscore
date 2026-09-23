@@ -5,9 +5,12 @@ import { insertIfAbsent, selectRows, updateRows } from "@/lib/supabase/server";
 
 // Première connexion : profil et ligne de crédits (plan gratuit, solde 0).
 // Sans effet si les lignes existent déjà.
-export async function ensureAccount(user: SessionUser): Promise<void> {
+export async function ensureAccount(user: SessionUser): Promise<{ created: boolean }> {
+  const existing = await selectRows<{ id: string }>("profiles", `select=id&id=eq.${user.id}&limit=1`);
+  const created = existing.length === 0;
   await insertIfAbsent("profiles", { id: user.id, email: user.email });
   await insertIfAbsent("credits", { user_id: user.id, balance: 0, plan: "free" });
+  return { created };
 }
 
 export type AttachResult = { attached: number; refused: boolean };

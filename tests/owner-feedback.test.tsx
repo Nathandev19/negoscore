@@ -95,7 +95,7 @@ afterEach(() => {
 
 describe("A3 — la bonne adresse, une autre adresse connectée, personne", () => {
   it("la bonne adresse : la page passe et s'affiche", async () => {
-    for (const pathname of ["/dev/retours", "/dev/retours/11111111-1111-4111-8111-111111111111"]) {
+    for (const pathname of ["/dev/retours", "/dev/retours/11111111-1111-4111-8111-111111111111", "/admin", "/admin/users"]) {
       const r = await visit(pathname, OWNER);
       expect(rewrittenTo(r), pathname).toBeNull();
       expect(r.status).toBe(200);
@@ -112,6 +112,7 @@ describe("A3 — la bonne adresse, une autre adresse connectée, personne", () =
   it("une autre adresse connectée : réponse d'une adresse inexistante, page jamais rendue", async () => {
     const r = await visit("/dev/retours", "nina@exemple.test");
     expect(rewrittenTo(r)).toBe("/_introuvable");
+    expect(rewrittenTo(await visit("/admin", "nina@exemple.test"))).toBe("/_introuvable");
     session.email = "nina@exemple.test";
     expect(await render()).toBe("404");
   });
@@ -120,6 +121,7 @@ describe("A3 — la bonne adresse, une autre adresse connectée, personne", () =
     const r = await visit("/dev/retours/11111111-1111-4111-8111-111111111111", null);
     expect(rewrittenTo(r)).toBe("/_introuvable");
     expect(fetch).not.toHaveBeenCalled();
+    expect(rewrittenTo(await visit("/admin/users", null))).toBe("/_introuvable");
     session.email = null;
     expect(await render()).toBe("404");
   });

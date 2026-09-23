@@ -23,7 +23,7 @@ export function SiteHeader({ tone = "creme" }: { tone?: HeaderTone }) {
     () => hasSessionHint(document.cookie),
     () => null,
   );
-  // Mission #080 : lien vers /dev/retours. Faux au rendu serveur, comme tout
+  // Lien vers le cockpit propriétaire. Faux au rendu serveur, comme tout
   // ce qui dépend de la personne qui regarde.
   const owner = useSyncExternalStore(
     subscribe,

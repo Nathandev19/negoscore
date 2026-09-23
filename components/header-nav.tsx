@@ -13,7 +13,7 @@ type NavItem = { href: string; label: string };
 // cookies indicateurs : ils ne choisissent que des liens, jamais un accès.
 // owner (mission #080) : lien vers les retours sur l'estimation, que le proxy
 // et la page ne servent qu'à l'adresse OWNER_EMAIL.
-export const OWNER_NAV_ITEM: NavItem = { href: "/dev/retours", label: "Retours" };
+export const OWNER_NAV_ITEM: NavItem = { href: "/admin", label: "Cockpit" };
 
 export function navItems(signedIn: boolean, owner = false): { main: NavItem[]; account: NavItem; cta: NavItem } {
   return {

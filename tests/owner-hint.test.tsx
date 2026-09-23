@@ -122,10 +122,10 @@ describe("A1 — le lien dans l'en-tête", () => {
     expect(navItems(true, true).main).toContainEqual(OWNER_NAV_ITEM);
     expect(navItems(true, false).main).not.toContainEqual(OWNER_NAV_ITEM);
     expect(navItems(false, true).main).not.toContainEqual(OWNER_NAV_ITEM);
-    expect(renderToStaticMarkup(<HeaderNav signedIn owner />)).toContain('href="/dev/retours"');
-    expect(renderToStaticMarkup(<HeaderNav signedIn owner={false} />)).not.toContain("/dev/retours");
+    expect(renderToStaticMarkup(<HeaderNav signedIn owner />)).toContain('href="/admin"');
+    expect(renderToStaticMarkup(<HeaderNav signedIn owner={false} />)).not.toContain('href="/admin"');
     // Rendu serveur (état inconnu) : jamais le lien.
-    expect(renderToStaticMarkup(<HeaderNav signedIn={null} />)).not.toContain("/dev/retours");
+    expect(renderToStaticMarkup(<HeaderNav signedIn={null} />)).not.toContain('href="/admin"');
   });
 
   it("lecture de l'indicateur dans document.cookie", () => {
@@ -137,7 +137,7 @@ describe("A1 — le lien dans l'en-tête", () => {
 
 describe("A2 — indicateur posé à la main : un lien qui ne mène qu'à une 404", () => {
   it("le lien s'affiche (l'en-tête ne sait rien de plus que le cookie)…", () => {
-    expect(renderToStaticMarkup(<HeaderNav signedIn owner />)).toContain('href="/dev/retours"');
+    expect(renderToStaticMarkup(<HeaderNav signedIn owner />)).toContain('href="/admin"');
   });
 
   it("…mais sans session, /dev/retours répond comme une adresse inexistante", async () => {

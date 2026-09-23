@@ -21,9 +21,15 @@ export const OWNER_EMAIL_ENV = "OWNER_EMAIL";
 // Préfixe des pages réservées. Le proxy (proxy.ts) y répond comme à une adresse
 // inexistante pour toute autre personne, avant le moindre rendu.
 export const OWNER_PAGES_PREFIX = "/dev/retours";
+export const ADMIN_PAGES_PREFIX = "/admin";
 
 export function isOwnerPath(pathname: string): boolean {
-  return pathname === OWNER_PAGES_PREFIX || pathname.startsWith(`${OWNER_PAGES_PREFIX}/`);
+  return (
+    pathname === OWNER_PAGES_PREFIX ||
+    pathname.startsWith(`${OWNER_PAGES_PREFIX}/`) ||
+    pathname === ADMIN_PAGES_PREFIX ||
+    pathname.startsWith(`${ADMIN_PAGES_PREFIX}/`)
+  );
 }
 
 // Toute la zone /dev, fermée en production aux autres que le propriétaire. Ses

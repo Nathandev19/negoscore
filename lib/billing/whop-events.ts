@@ -12,6 +12,7 @@ import {
 import { planKeyFromId, type PlanKey } from "@/lib/whop/api";
 import { adjustInteger, insertIfAbsent, isMissingColumn, isMissingRelation, rpc, selectRows, updateRows } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/security/request";
+import { parseAttribution, type Attribution } from "@/lib/analytics/first-party";
 
 // Effets d'un événement Whop sur les crédits. Tout passe par la clé
 // service_role : un utilisateur ne modifie jamais son solde.
@@ -29,6 +30,7 @@ export type EventOutcome = {
   plan?: PlanKey;
   amount?: number | null;
   currency?: string | null;
+  attribution?: Attribution;
 };
 
 type Credits = {
@@ -262,6 +264,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   const current = await credits(user.id);
   // Identifiant anonyme posé au checkout : il relie l'achat au parcours mesuré.
   const analyticsId = sanitizeDistinctId(record(source.metadata).ph_distinct_id);
+  const attribution = parseAttribution(source.metadata);
 
   if (type === "payment.succeeded" && plan === "pack") {
     // Le pack s'ajoute au solde existant, UNE SEULE FOIS par événement, même
@@ -287,6 +290,8 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       analyses_added: PACK_ANALYSES,
       period_end: null,
       paid_at: new Date().toISOString(),
+      amount: typeof source.total === "number" ? source.total : null,
+      currency: text(source.currency),
     });
     const total = typeof source.total === "number" ? source.total : null;
     return {
@@ -298,6 +303,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       plan,
       amount: total,
       currency: text(source.currency),
+      attribution,
     };
   }
 
@@ -330,6 +336,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       plan,
       amount: total,
       currency: text(source.currency),
+      attribution,
     };
   }
 
@@ -394,7 +401,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       period_end: periodEnd,
       paid_at: new Date().toISOString(),
     });
-    return { handled: true, reason: `Pro actif jusqu'au ${periodEnd} (${kind})`, userId: user.id, plan };
+    return { handled: true, reason: `Pro actif jusqu'au ${periodEnd} (${kind})`, userId: user.id, plan, attribution };
   }
 
   if (type === "membership.deactivated" && plan === "pro") {

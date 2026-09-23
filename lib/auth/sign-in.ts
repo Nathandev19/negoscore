@@ -8,6 +8,7 @@ import { sessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { ownerHintCookieHeaderFor } from "@/lib/auth/owner-hint";
 import { isOwnerEmail } from "@/lib/admin/owner";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
+import { recordProductEvent } from "@/lib/analytics/first-party";
 
 // Fin de connexion commune aux deux formats de lien magique.
 
@@ -53,7 +54,10 @@ export async function completeSignIn(
   next: string,
   options: { extraCookies?: string[]; source: "callback" | "confirm"; claim?: string | null },
 ): Promise<Response> {
-  await ensureAccount(session.user);
+  const account = (await ensureAccount(session.user)) ?? { created: false };
+  if (account.created) {
+    await recordProductEvent({ event: "signup", userId: session.user.id, entityType: "user", entityId: session.user.id, dedupeKey: `signup:${session.user.id}` });
+  }
   const anonToken = readCookie(request, ANON_COOKIE);
   const claimedToken = await redeemLoginClaim(options.claim ?? null, session.user.email);
   const tokens = [...new Set([anonToken, claimedToken].filter((token): token is string => Boolean(token)))];

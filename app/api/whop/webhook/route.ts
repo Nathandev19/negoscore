@@ -6,6 +6,7 @@ import { purchaseConfirmationEmail } from "@/lib/email/templates";
 import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
 import { insertRow, selectRows, SupabaseRequestError, updateRows } from "@/lib/supabase/server";
 import { readWebhookHeaders, verifyWhopSignature } from "@/lib/whop/webhook";
+import { recordProductEvent } from "@/lib/analytics/first-party";
 
 export const runtime = "nodejs";
 
@@ -82,6 +83,12 @@ export async function POST(request: Request) {
     );
 
     if (outcome.handled && outcome.userId && outcome.plan && parsed.type === "payment.succeeded") {
+      await recordProductEvent({
+        event: "purchase_completed", userId: outcome.userId, attribution: outcome.attribution,
+        entityType: "purchase", entityId: parsed.id,
+        metadata: { plan: outcome.plan, amount: outcome.amount ?? null, currency: outcome.currency ?? null },
+        dedupeKey: `purchase:${parsed.id}`,
+      });
       // Revenu mesuré côté serveur, jamais depuis le navigateur. L'identifiant
       // anonyme du navigateur rattache l'achat au parcours mesuré. À défaut, un
       // identifiant aléatoire à usage unique : jamais l'identifiant de compte ni

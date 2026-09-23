@@ -1,4 +1,5 @@
 import { displayedPlan, isCancelled, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
+import { accessSource, type AdminGrant, type AccessSource } from "@/lib/billing/access";
 
 // État du compte tel que l'utilisateur doit le lire. Le plan affiché est le
 // plan effectif : un Pro dont la période est passée n'est plus présenté Pro.
@@ -15,18 +16,21 @@ export type AccountSummary = {
   accessEndsAt: Date | null;
   // Lien vers /resilier : abonnement actif et pas encore résilié.
   canCancel: boolean;
+  accessSource: AccessSource;
 };
 
-export function accountSummary(credits: PlanState | null, now: Date = new Date()): AccountSummary {
-  const plan = displayedPlan(credits, now);
-  const active = plan === "pro";
-  const cancelled = active && isCancelled(credits);
+export function accountSummary(credits: PlanState | null, now: Date = new Date(), grant: AdminGrant | null = null): AccountSummary {
+  const source = accessSource(credits, grant, now);
+  const plan = source === "subscription" || source === "admin_grant" ? "pro" : displayedPlan(credits, now);
+  const paid = source === "subscription";
+  const cancelled = paid && isCancelled(credits);
   return {
     plan,
-    planLabel: PLAN_LABEL[plan],
+    planLabel: source === "subscription" ? "Pro" : source === "admin_grant" ? "Pro — accès offert" : PLAN_LABEL[plan],
     balance: credits?.balance ?? 0,
-    periodEnd: active ? periodEndsAt(credits) : null,
+    periodEnd: paid ? periodEndsAt(credits) : grant?.expires_at ? new Date(grant.expires_at) : null,
     accessEndsAt: cancelled ? periodEndsAt(credits) : null,
-    canCancel: active && !cancelled,
+    canCancel: paid && !cancelled,
+    accessSource: source,
   };
 }

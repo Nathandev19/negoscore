@@ -6,6 +6,7 @@ import { getViewer } from "@/lib/auth/viewer";
 import { accountFreeAnalysisUsed } from "@/lib/billing/entitlement";
 import type { PlanState } from "@/lib/billing/plan-access";
 import { selectRows } from "@/lib/supabase/server";
+import { activeAdminGrant } from "@/lib/billing/access";
 
 export const metadata: Metadata = {
   title: "Mon compte",
@@ -19,12 +20,12 @@ export default async function AccountPage() {
   const user = await getViewer();
   if (!user) redirect(`/connexion?next=${encodeURIComponent("/compte")}`);
 
-  const [credits] = await selectRows<PlanState>(
-    "credits",
-    `select=plan,balance,period_end,cancelled_at&user_id=eq.${user.id}&limit=1`,
-  );
+  const [[credits], adminGrant] = await Promise.all([
+    selectRows<PlanState>("credits", `select=plan,balance,period_end,cancelled_at&user_id=eq.${user.id}&limit=1`),
+    activeAdminGrant(user.id),
+  ]);
 
-  const summary = accountSummary(credits ?? null);
+  const summary = accountSummary(credits ?? null, new Date(), adminGrant);
   // Compte gratuit : « Crédits d'analyse : 0 » ne dit pas si l'analyse gratuite
   // reste disponible (mission #067). Lecture impossible : la ligne n'est pas
   // affichée plutôt que de deviner.

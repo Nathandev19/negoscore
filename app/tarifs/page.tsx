@@ -4,6 +4,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PaywallView } from "@/components/analytics/paywall-view";
+import { FirstPartyView } from "@/components/analytics/first-party-view";
 import { OffersError } from "@/components/offers/offers-error";
 import { OffersList } from "@/components/offers/offers-list";
 import { SiteFooter } from "@/components/site-footer";
@@ -22,6 +23,7 @@ export default function PlansPage() {
       <JsonLd data={softwareApplicationJsonLd()} />
       <SiteHeader />
       <PaywallView />
+      <FirstPartyView event="pricing_view" />
       <main id="contenu" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         <div className="flex flex-col gap-2">
           <h1 className="text-h1 font-extrabold">Tarifs</h1>

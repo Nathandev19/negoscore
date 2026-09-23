@@ -5,6 +5,7 @@ import { isProActive, type PlanState } from "@/lib/billing/plan-access";
 import { insertRow, selectRows } from "@/lib/supabase/server";
 import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
 import { checkoutUrlForConfiguration, createCheckoutUrl, fallbackCheckoutUrl, type PlanKey } from "@/lib/whop/api";
+import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,14 @@ export const runtime = "nodejs";
 // envoi) : pendant cette fenêtre, la même page de paiement Whop est renvoyée
 // au lieu d'en créer une seconde (mission #071).
 export const DUPLICATE_CHECKOUT_WINDOW_MS = 2 * 60 * 1000;
+
+function checkoutAttribution(value: FormDataEntryValue | null) {
+  try {
+    return parseAttribution(JSON.parse(String(value || "{}")));
+  } catch {
+    return parseAttribution(null);
+  }
+}
 
 function redirect(location: string) {
   return new Response(null, { status: 303, headers: { Location: location, "Cache-Control": "no-store" } });
@@ -66,13 +75,17 @@ export async function POST(request: Request) {
 
   // Identifiant de mesure d'audience : transmis s'il est propre, ignoré sinon.
   const analyticsId = sanitizeDistinctId(form?.get("ph_distinct_id"));
+  const attribution = checkoutAttribution(form?.get("attribution") ?? null);
   const origin = configuredSiteUrl() ?? originFromHeaders(request.headers);
   const redirectUrl = `${origin}/merci?formule=${plan}`;
 
   try {
     const checkout = await createCheckoutUrl({
       plan: plan as PlanKey,
-      metadata: { user_id: user.id, plan, ...(analyticsId ? { ph_distinct_id: analyticsId } : {}) },
+      metadata: {
+        user_id: user.id, plan, ...(analyticsId ? { ph_distinct_id: analyticsId } : {}),
+        ...Object.fromEntries(Object.entries(attribution).filter(([, value]) => value !== null)),
+      },
       redirectUrl,
     });
     await insertRow("checkout_consents", {
@@ -82,6 +95,11 @@ export async function POST(request: Request) {
       consent_text: CONSENT_TEXT,
       accepted_at: new Date().toISOString(),
       checkout_configuration_id: checkout?.checkoutConfigurationId ?? null,
+    });
+    await recordProductEvent({
+      event: "checkout_started", userId: user.id, attribution, entityType: "checkout", entityId: checkout?.checkoutConfigurationId ?? null,
+      metadata: { plan, attached: checkout !== null },
+      dedupeKey: checkout?.checkoutConfigurationId ? `checkout:${checkout.checkoutConfigurationId}` : null,
     });
     console.log(
       JSON.stringify({

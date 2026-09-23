@@ -4,6 +4,7 @@ import { judgedFigures } from "@/lib/analysis/judged";
 import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { loadThread } from "@/lib/negotiation/store";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
+import { recordProductEvent } from "@/lib/analytics/first-party";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,10 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     const shown = judged.analysis;
     const outcome = await saveFeedback(id, shown, input.data, judged.turn);
     if (outcome === "missing") return json(503, { error: UNAVAILABLE });
+    await recordProductEvent({
+      event: "feedback_submitted", userId: user?.id ?? null, entityType: "analysis", entityId: id,
+      metadata: { rating: input.data.rating, turn: judged.turn }, dedupeKey: `feedback:${id}:${judged.turn}`,
+    });
     console.log(JSON.stringify({ event: "analysis_feedback_saved", rating: input.data.rating, tier: shown.profile_tier, turn: judged.turn, has_comment: input.data.comment !== null }));
     return json(200, { ok: true });
   } catch (caught) {

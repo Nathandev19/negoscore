@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { TrackView } from "@/components/analytics/track-view";
+import { FirstPartyView } from "@/components/analytics/first-party-view";
 import { DealInput } from "@/components/deal-input";
 import { ScoreBand } from "@/components/result/score-band";
 import { SiteFooter } from "@/components/site-footer";
@@ -38,6 +39,7 @@ export default function HomePage() {
       <JsonLd data={faqJsonLd()} />
       <SiteHeader />
       <TrackView event={ANALYTICS_EVENTS.landingView} />
+      <FirstPartyView event="landing_view" />
       <main id="contenu" className="flex-1">
         {/* C1 — le champ reste au-dessus de la ligne de flottaison sur mobile. */}
         <section

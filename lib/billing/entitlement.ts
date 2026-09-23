@@ -6,6 +6,7 @@ import { NO_FREE_LEFT_MESSAGE } from "@/lib/billing/right-hint";
 import { hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
 import { adjustInteger, countRows, isMissingColumn, selectRows } from "@/lib/supabase/server";
+import { activeAdminGrant, grantPeriod } from "@/lib/billing/access";
 
 // Droit d'analyser, décidé uniquement côté serveur.
 //
@@ -155,10 +156,10 @@ async function decideRight(user: SessionUser | null, anonToken: string | null): 
     return { allowed: true, plan: "free" };
   }
 
-  const [credits] = await selectRows<PlanState>(
-    "credits",
-    `select=plan,balance,period_end&user_id=eq.${user.id}&limit=1`,
-  );
+  const [[credits], adminGrant] = await Promise.all([
+    selectRows<PlanState>("credits", `select=plan,balance,period_end&user_id=eq.${user.id}&limit=1`),
+    activeAdminGrant(user.id),
+  ]);
 
   // Le droit suit ce que le compte a réellement, pas la colonne `plan` : un
   // abonnement expiré retombe sur ses crédits restants, comme à l'affichage.
@@ -175,6 +176,14 @@ async function decideRight(user: SessionUser | null, anonToken: string | null): 
     // promis sans date d'expiration, ils doivent donc servir ici aussi.
     if ((credits?.balance ?? 0) > 0) return { allowed: true, plan: "pack" };
     return { allowed: false, reason: "no_credit", message: "Tu as atteint la limite de ton abonnement pour cette période." };
+  }
+
+  if (adminGrant) {
+    const { start, end } = grantPeriod(adminGrant);
+    const inPeriod = () => analysesInPeriod(user.id, start, end);
+    if ((await inPeriod()) < PRO_ANALYSES_PER_PERIOD) return { allowed: true, plan: "pro", inPeriod };
+    if ((credits?.balance ?? 0) > 0) return { allowed: true, plan: "pack" };
+    return { allowed: false, reason: "no_credit", message: "Tu as atteint la limite de ton accès Pro offert pour cette période." };
   }
 
   if (effectivePlan === "pack") {

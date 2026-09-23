@@ -105,6 +105,7 @@ export const PRIVATE_PREFIXES = [
   "/merci",
   "/resilier",
   "/dev/",
+  "/admin",
 ] as const;
 
 // Métadonnées d'une page publique : titre, description, adresse canonique, et

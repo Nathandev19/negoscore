@@ -6,6 +6,7 @@ import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import Link from "next/link";
 import { CONSENT_LINK_LABEL, CONSENT_TEXT } from "@/lib/billing/consent";
 import { Button } from "@/components/ui/button";
+import { currentAttribution } from "@/components/analytics/first-party-view";
 
 // Le texte de la case est celui enregistré en base : on ne le réécrit pas,
 // on rend simplement « conditions générales de vente » cliquable.
@@ -34,10 +35,12 @@ export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro
   // Identifiant anonyme de la mesure d'audience, écrit directement dans le
   // champ caché : vide si la mesure est désactivée (DNT, pas de clé).
   const distinctIdField = useRef<HTMLInputElement>(null);
+  const attributionField = useRef<HTMLInputElement>(null);
   const id = `consent-${plan}`;
 
   function fillDistinctId() {
     if (distinctIdField.current) distinctIdField.current.value = analyticsDistinctId() ?? "";
+    if (attributionField.current) attributionField.current.value = JSON.stringify(currentAttribution());
   }
 
   // Le départ en paiement se compte à l'envoi réel du formulaire, pas au clic :
@@ -72,6 +75,7 @@ export function PlanCheckoutForm({ plan, label, primary }: { plan: "pack" | "pro
     <form action="/api/checkout" method="post" className="flex flex-col gap-3" onSubmit={onSubmit}>
       <input type="hidden" name="plan" value={plan} />
       <input type="hidden" name="ph_distinct_id" ref={distinctIdField} defaultValue="" />
+      <input type="hidden" name="attribution" ref={attributionField} defaultValue="" />
       <label htmlFor={id} className="flex items-start gap-2 text-xs">
         <input
           id={id}

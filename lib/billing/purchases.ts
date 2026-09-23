@@ -1,4 +1,4 @@
-import { insertIfAbsent, isMissingRelation, selectRows } from "@/lib/supabase/server";
+import { insertIfAbsent, isMissingColumn, isMissingRelation, selectRows } from "@/lib/supabase/server";
 
 // Mission #090 — ce qui vient d'être acheté, écrit par le webhook au moment où
 // il accorde la contrepartie, et lu par la page « Merci ». Le solde ne le dit
@@ -11,6 +11,8 @@ export type Purchase = {
   analyses_added: number;
   period_end: string | null;
   paid_at: string;
+  amount?: number | null;
+  currency?: string | null;
 };
 
 // Un achat n'est enregistré qu'une fois par événement Whop : un rejeu du
@@ -21,6 +23,16 @@ export async function recordPurchase(purchase: Purchase & { user_id: string }): 
   try {
     await insertIfAbsent("purchases", purchase);
   } catch (caught) {
+    // Déploiement backward-compatible : le code peut précéder la migration qui
+    // ajoute le montant. La trace d'achat historique reste prioritaire ; le
+    // revenu sera simplement marqué non couvert jusqu'à la migration.
+    if (isMissingColumn(caught) && ("amount" in purchase || "currency" in purchase)) {
+      const { amount: _amount, currency: _currency, ...legacyPurchase } = purchase;
+      void _amount;
+      void _currency;
+      await insertIfAbsent("purchases", legacyPurchase);
+      return;
+    }
     if (!isMissingRelation(caught)) throw caught;
     console.warn(JSON.stringify({ event: "purchases_table_absente" }));
   }

@@ -15,6 +15,7 @@ import { parseTier } from "@/lib/rates/tier";
 import { clientIp, hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
 import { insertRow, SupabaseRequestError } from "@/lib/supabase/server";
+import { recordProductEvent } from "@/lib/analytics/first-party";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -169,6 +170,20 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     }
     // Tour enregistré : le filet horaire reste compté.
     hourlyKey = null;
+
+    if (thread.turns.length === 0) {
+      await recordProductEvent({ event: "negotiation_started", userId: user.id, entityType: "analysis", entityId: id, dedupeKey: `negotiation_started:${id}` });
+    }
+    await recordProductEvent({
+      event: "negotiation_turn", userId: user.id, entityType: "analysis", entityId: id,
+      metadata: { turn: turnNumber }, dedupeKey: `negotiation_turn:${id}:${turnNumber}`,
+    });
+    if (outcome.payload.conclusion !== null) {
+      await recordProductEvent({
+        event: "negotiation_concluded", userId: user.id, entityType: "analysis", entityId: id,
+        metadata: { turn: turnNumber, source: "brand_reply" }, dedupeKey: `negotiation_concluded:${id}`,
+      });
+    }
 
     console.log(
       JSON.stringify({

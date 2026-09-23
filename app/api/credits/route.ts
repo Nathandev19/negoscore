@@ -1,6 +1,7 @@
 import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { recentPurchases } from "@/lib/billing/purchases";
 import { selectRows } from "@/lib/supabase/server";
+import { activeAdminGrant, accessSource } from "@/lib/billing/access";
 
 export const runtime = "nodejs";
 
@@ -25,13 +26,17 @@ export async function GET(request: Request) {
   // parce que la page interroge cette route toutes les deux secondes en
   // attendant le webhook.
   const purchases = await recentPurchases(user.id).catch(() => "unavailable" as const);
-  const [credits] = await selectRows<{ plan: string; balance: number; period_end: string | null; cancelled_at: string | null }>(
-    "credits",
-    `select=plan,balance,period_end,cancelled_at&user_id=eq.${user.id}&limit=1`,
-  );
+  const [[credits], grant] = await Promise.all([
+    selectRows<{ plan: "free" | "pack" | "pro"; balance: number; period_end: string | null; cancelled_at: string | null }>(
+      "credits", `select=plan,balance,period_end,cancelled_at&user_id=eq.${user.id}&limit=1`,
+    ),
+    activeAdminGrant(user.id),
+  ]);
+  const source = accessSource(credits ?? null, grant);
   return Response.json(
     {
-      plan: credits?.plan ?? "free",
+      plan: source === "subscription" || source === "admin_grant" ? "pro" : (credits?.plan ?? "free"),
+      access_source: source,
       balance: credits?.balance ?? 0,
       period_end: credits?.period_end ?? null,
       // null : aucun achat récent. undefined (champ absent) : on ne sait pas.

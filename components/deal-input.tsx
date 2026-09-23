@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
 import { track } from "@/lib/analytics/client";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
+import { currentAttribution } from "@/components/analytics/first-party-view";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
 import { clearDraft, readDraft, saveDraft, subscribeDraft } from "@/lib/draft";
@@ -252,7 +253,7 @@ export function DealInput({ note }: { note?: string } = {}) {
       // Clé gardée par le navigateur : la reprise ci-dessous et un nouvel appui
       // sur le bouton renvoient la même, et le serveur rend alors le résultat
       // déjà produit au lieu d'en payer un second (mission #060).
-      const payload = { ...source, idempotencyKey: pendingKey("analyse") };
+      const payload = { ...source, idempotencyKey: pendingKey("analyse"), attribution: currentAttribution() };
       const { analysisId, meta } = await withNetworkRetry(() => postJson("/api/analyse", payload));
       if (typeof analysisId === "string") {
         const info = meta as AnalysisMeta | undefined;
