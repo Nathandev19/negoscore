@@ -17,7 +17,7 @@ import { hasSessionHint } from "@/lib/auth/session-hint";
 import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
 import { clearDraft, readDraft, saveDraft, subscribeDraft } from "@/lib/draft";
 import { clearPendingKey, pendingKey } from "@/lib/analysis/pending-key";
-import { nextResume, type ServerAttempt } from "@/lib/analysis/resume";
+import { nextResume, RESUME_TICK_MS, revealDelay, type ServerAttempt } from "@/lib/analysis/resume";
 import { RESUME_FAILED } from "@/lib/content/vocabulaire";
 import { validateFile, type FileKind } from "@/lib/upload";
 import { WITH_JS_ONLY, WITHOUT_JS } from "@/lib/no-js";
@@ -202,10 +202,11 @@ export function DealInput({ note }: { note?: string } = {}) {
   // cours au retour au premier plan : la clé de CETTE tentative, son départ,
   // et la dernière vérification lancée. Aucune de ces valeurs ne déclenche de
   // rendu : elles ne servent qu'à décider (lib/analysis/resume.ts).
-  const attemptRef = useRef<{ key: string | null; startedAt: number | null; lastCheckAt: number | null }>({
+  const attemptRef = useRef<{ key: string | null; startedAt: number | null; lastCheckAt: number | null; checking: boolean }>({
     key: null,
     startedAt: null,
     lastCheckAt: null,
+    checking: false,
   });
   // Une tentative ne se conclut qu'une fois : la requête d'origine peut très
   // bien revenir après que la resynchronisation a déjà tranché.
@@ -249,11 +250,11 @@ export function DealInput({ note }: { note?: string } = {}) {
 
   // L'écran d'attente reste affiché jusqu'à la réponse réelle, puis le temps de
   // cocher les étapes restantes (REVEAL_TOTAL_MS), et pas plus.
-  function finish() {
+  function finish(from: "reponse" | "reprise" = "reponse") {
     const outcome = outcomeRef.current;
     if (!outcome || settledRef.current) return;
     settledRef.current = true;
-    attemptRef.current = { key: null, startedAt: null, lastCheckAt: null };
+    attemptRef.current = { key: null, startedAt: null, lastCheckAt: null, checking: false };
     if (outcome.ok) {
       // La réponse est là : les étapes restantes se cochent, puis le résultat s'affiche.
       setRespondedAt(Date.now());
@@ -261,7 +262,11 @@ export function DealInput({ note }: { note?: string } = {}) {
       // Résultat acquis : il n'y a plus rien à rejouer (mission #060).
       clearPendingKey("analyse");
       const target = `/analyse/resultat/${outcome.analysisId}`;
-      window.setTimeout(() => router.push(target), REVEAL_TOTAL_MS);
+      // Mission #108 — au retour dans l'application, on n'ajoute pas une
+      // animation de plus : le résultat s'ouvre tout de suite.
+      const delay = revealDelay(from, REVEAL_TOTAL_MS);
+      if (delay === 0) router.push(target);
+      else window.setTimeout(() => router.push(target), delay);
     } else if (outcome.paywall) {
       // Plus de droit : l'action principale devient « Voir les tarifs », le texte reste.
       setRefused({ message: outcome.message });
@@ -282,19 +287,22 @@ export function DealInput({ note }: { note?: string } = {}) {
     let stale = false;
     async function resync() {
       if (stale || settledRef.current) return;
+      // Mission #108, A1 — rien n'est différé ici : au premier événement de
+      // retour, la décision est « vérifier » et l'appel part dans la foulée.
       const first = nextResume({ local: attemptRef.current, server: null, now: Date.now() });
       if (first.action !== "verifier") return;
-      attemptRef.current = { ...attemptRef.current, lastCheckAt: Date.now() };
+      attemptRef.current = { ...attemptRef.current, lastCheckAt: Date.now(), checking: true };
       const server = await serverAttempt(first.key);
+      attemptRef.current = { ...attemptRef.current, checking: false };
       if (stale || settledRef.current) return;
       const decision = nextResume({ local: attemptRef.current, server, now: Date.now() });
       if (decision.action === "afficher") {
         outcomeRef.current = { ok: true, analysisId: decision.analysisId };
-        finish();
+        finish("reprise");
       } else if (decision.action === "echec") {
         track(ANALYTICS_EVENTS.analysisFailed, { reason: "arriere_plan" });
         outcomeRef.current = { ok: false, message: RESUME_FAILED, paywall: false, signIn: false };
-        finish();
+        finish("reprise");
       }
     }
     const onBack = () => {
@@ -304,8 +312,14 @@ export function DealInput({ note }: { note?: string } = {}) {
     document.addEventListener("visibilitychange", onBack);
     window.addEventListener("pageshow", onBack);
     window.addEventListener("online", onBack);
+    // Battement de sécurité : un événement de retour manqué, ou une première
+    // vérification tombée sur un réseau encore endormi, ne doivent pas laisser
+    // l'écran figé jusqu'à l'expiration de la requête d'origine. Il ne retarde
+    // rien : la décision refuse d'elle-même un second appel en vol.
+    const tick = window.setInterval(onBack, RESUME_TICK_MS);
     return () => {
       stale = true;
+      window.clearInterval(tick);
       document.removeEventListener("visibilitychange", onBack);
       window.removeEventListener("pageshow", onBack);
       window.removeEventListener("online", onBack);
@@ -329,8 +343,16 @@ export function DealInput({ note }: { note?: string } = {}) {
       // sur le bouton renvoient la même, et le serveur rend alors le résultat
       // déjà produit au lieu d'en payer un second (mission #060).
       const idempotencyKey = pendingKey("analyse");
-      attemptRef.current = { key: idempotencyKey, startedAt: Date.now(), lastCheckAt: null };
-      const payload = { ...source, idempotencyKey, attribution: currentAttribution() };
+      attemptRef.current = { key: idempotencyKey, startedAt: Date.now(), lastCheckAt: null, checking: false };
+      const payload = {
+        ...source,
+        idempotencyKey,
+        attribution: currentAttribution(),
+        // Mission #108, B4 — les deux événements d'analyse sont émis par le
+        // SERVEUR ; sans ce drapeau, il ne peut pas savoir que le navigateur
+        // demande à ne pas être suivi. Il n'ajoute rien : il retire.
+        doNotTrack: navigator.doNotTrack === "1",
+      };
       const { analysisId, meta } = await withNetworkRetry(() => postJson("/api/analyse", payload));
       if (typeof analysisId === "string") {
         const info = meta as AnalysisMeta | undefined;

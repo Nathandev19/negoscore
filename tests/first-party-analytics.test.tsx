@@ -103,8 +103,11 @@ describe("les événements critiques restent placés à leur source serveur", ()
   const source = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8");
   it("analyse, inscription, feedback et achat sont instrumentés sans contenu métier", () => {
     const analyse = source("app/api/analyse/route.ts");
-    expect(analyse.indexOf('event: "analysis_started"')).toBeLessThan(analyse.indexOf("await extractDeal("));
-    expect(analyse.indexOf('event: "analysis_completed"')).toBeGreaterThan(analyse.indexOf("await grant.commit()"));
+    // Mission #108 — les deux événements passent par le même point d'émission,
+    // avec le même identifiant de passage. Ce qui compte reste leur PLACE :
+    // le lancement avant l'appel au modèle, la fin après le décompte.
+    expect(analyse.indexOf('runEvent("analysis_started"')).toBeLessThan(analyse.indexOf("await extractDeal("));
+    expect(analyse.indexOf('runEvent("analysis_completed"')).toBeGreaterThan(analyse.indexOf("await grant.commit()"));
     expect(source("lib/auth/sign-in.ts")).toContain('event: "signup"');
     expect(source("app/api/analyses/[id]/avis/route.ts")).toContain('event: "feedback_submitted"');
     expect(source("app/api/whop/webhook/route.ts")).toContain('event: "purchase_completed"');

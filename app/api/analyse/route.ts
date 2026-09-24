@@ -123,7 +123,14 @@ export async function POST(request: Request) {
   } catch {
     return fail(400, "Requête illisible. Recharge la page et réessaie.");
   }
-  const { text, storagePath, retryOf, idempotencyKey, attribution: rawAttribution } = (typeof body === "object" && body !== null ? body : {}) as {
+  const {
+    text,
+    storagePath,
+    retryOf,
+    idempotencyKey,
+    attribution: rawAttribution,
+    doNotTrack,
+  } = (typeof body === "object" && body !== null ? body : {}) as {
     text?: unknown;
     storagePath?: unknown;
     // Relance gratuite d'une analyse incomplète : identifiant de l'analyse d'origine.
@@ -131,9 +138,46 @@ export async function POST(request: Request) {
     // Clé tirée par le navigateur avant l'envoi (mission #060).
     idempotencyKey?: unknown;
     attribution?: unknown;
+    // Mission #108, B4 — le navigateur demande à ne pas être suivi. Lu en
+    // booléen strict : tout le reste vaut « non demandé ». Ce drapeau ne peut
+    // que RETIRER de la mesure, jamais en ajouter.
+    doNotTrack?: unknown;
   };
   const key = readIdempotencyKey(idempotencyKey);
   const attribution = parseAttribution(rawAttribution);
+
+  // Mission #108, partie B — les deux événements d'une analyse sont appariés.
+  //
+  // Avant : le lancement portait la clé d'idempotence du navigateur, la fin
+  // portait l'identifiant de l'analyse. Deux identifiants différents, aucun
+  // lien possible entre les deux bouts — et surtout, deux analyses lancées
+  // avec la MÊME clé (elle vit une heure dans le navigateur) écrasaient leur
+  // lancement par déduplication, alors que chaque fin restait comptée. D'où
+  // plus de terminées que de lancées, ce qui est impossible.
+  //
+  // Désormais un seul identifiant, tiré ici, au début de la requête qui
+  // exécute l'analyse : il n'existe que pour ce passage, il est porté par les
+  // deux événements, et il sert de clé de déduplication à chacun. Un rejeu
+  // idempotent sort avant d'en tirer un ; une reprise ne passe pas par ici.
+  const runId = crypto.randomUUID();
+  // Le navigateur a demandé à ne pas être suivi : ni lancement, ni fin. La
+  // symétrie tient donc aussi dans ce cas.
+  const tracks = doNotTrack !== true;
+  const runEvent = (
+    event: "analysis_started" | "analysis_completed",
+    metadata: Record<string, string | number | boolean | null>,
+  ) =>
+    tracks
+      ? recordProductEvent({
+          event,
+          userId: user?.id ?? null,
+          attribution,
+          entityType: "analysis_run",
+          entityId: runId,
+          metadata,
+          dedupeKey: `${event}:${runId}`,
+        })
+      : Promise.resolve();
 
   const fileMode = typeof storagePath === "string";
   const retryMode = retryOf !== undefined && retryOf !== null;
@@ -273,11 +317,7 @@ export async function POST(request: Request) {
     }
     grant = entitlement;
 
-    await recordProductEvent({
-      event: "analysis_started", userId: user?.id ?? null, attribution, entityType: "analysis_request",
-      entityId: key, metadata: { source: fileMode ? "file" : "text", retry: retryMode },
-      dedupeKey: key ? `analysis_started:${key}` : null,
-    });
+    await runEvent("analysis_started", { source: fileMode ? "file" : "text", retry: retryMode });
 
     const extraAssumptions: string[] = [];
     let result: ExtractResult;
@@ -461,10 +501,9 @@ export async function POST(request: Request) {
     document = null;
     hourlyCounted = false;
 
-    await recordProductEvent({
-      event: "analysis_completed", userId: user?.id ?? null, attribution, entityType: "analysis", entityId: saved.id,
-      metadata: { source, plan: entitlement.plan, retry: retry !== null }, dedupeKey: `analysis_completed:${saved.id}`,
-    });
+    // L'identifiant de l'analyse reste lisible dans les métadonnées : c'est
+    // l'identifiant de PASSAGE qui apparie les deux événements.
+    await runEvent("analysis_completed", { source, plan: entitlement.plan, retry: retry !== null, analysis_id: saved.id });
 
     console.log(
       JSON.stringify({

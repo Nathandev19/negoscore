@@ -30,6 +30,9 @@ export type LocalAttempt = {
   startedAt: number | null;
   // Dernière vérification lancée. null : aucune.
   lastCheckAt: number | null;
+  // Mission #108, A3 — une vérification est déjà en vol. On n'en lance pas une
+  // seconde par-dessus : elle ne dirait rien de plus et retarderait la réponse.
+  checking?: boolean;
 };
 
 // Ce que le serveur sait de cette clé. null : on ne lui a pas encore demandé.
@@ -69,6 +72,10 @@ export function nextResume({
   if (local.key === null || local.startedAt === null) return { action: "rien" };
 
   if (server === null) {
+    // Mission #108, A3 — un seul appel en vol à la fois. Le premier, lui,
+    // n'est jamais différé : au retour au premier plan, lastCheckAt vaut null
+    // et checking est faux, donc la vérification part SANS ATTENDRE.
+    if (local.checking) return { action: "attendre" };
     // Vérification déjà lancée à l'instant : une seule par retour.
     if (local.lastCheckAt !== null && now - local.lastCheckAt < RECHECK_MIN_MS) return { action: "attendre" };
     return { action: "verifier", key: local.key };
@@ -82,3 +89,28 @@ export function nextResume({
   // Le serveur ne connaît pas cette clé : il travaille peut-être encore.
   return now - local.startedAt >= RESUME_DEADLINE_MS ? { action: "echec" } : { action: "attendre" };
 }
+
+// Mission #108, A — d'où vient le résultat, et combien de temps l'écran garde
+// la main avant d'afficher.
+//
+// Chemin normal : la réponse arrive, les étapes restantes se cochent une à une
+// (REVEAL_TOTAL_MS), puis le résultat s'ouvre. C'est ce qui rend l'attente
+// lisible quand elle a duré quinze secondes.
+//
+// Chemin de REPRISE : la personne vient de revenir dans l'application après en
+// être sortie. Le serveur a fini depuis longtemps ; rejouer une animation de
+// sept cents millisecondes devant quelqu'un qui a déjà attendu soixante-dix
+// secondes n'explique plus rien, ça retarde. On ouvre tout de suite.
+export const RESUME_REVEAL_MS = 0;
+
+export function revealDelay(from: "reponse" | "reprise", normal: number): number {
+  return from === "reprise" ? RESUME_REVEAL_MS : normal;
+}
+
+// Rythme de vérification tant que l'attente dure : les événements de retour au
+// premier plan restent le déclencheur principal, mais ils ne sont pas garantis
+// — un onglet restauré depuis le cache de Safari peut les avoir émis avant que
+// l'écran n'écoute, et une première vérification peut échouer sur un réseau
+// encore endormi. Sans ce battement, plus rien ne relance : l'écran reste figé
+// jusqu'à ce que la requête d'origine expire, dix secondes plus tard.
+export const RESUME_TICK_MS = 1_000;
