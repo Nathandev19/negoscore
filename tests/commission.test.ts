@@ -90,15 +90,20 @@ describe("A — le schéma et la compatibilité", () => {
 // ─── B — dire ce qu'il faut obtenir ─────────────────────────────────────────
 
 describe("B — les cinq points", () => {
-  it("l'offre du contexte : les cinq points sont là, et le fixe porte 200 – 360 €", () => {
+  // Mission #117 — le contexte de la #116 : une offre qui annonce 15 % et RIEN
+  // d'autre. Le taux étant écrit, son point ne s'ajoute pas ; les quatre autres
+  // si. C'est ce que « dire ce qu'il faut obtenir » veut dire : ce qui manque.
+  it("l'offre du contexte : les points de ce qui manque, et le fixe porte 200 – 360 €", () => {
     const analysis = composeAnalysis(affiliation(), { tier: "starter" });
     expect([analysis.estimate.base_low, analysis.estimate.base_high]).toEqual([200, 360]);
     const list = labels(analysis);
     expect(list).toContain("Obtenir un fixe qui couvre au moins la création");
-    expect(list).toContain("Faire écrire le taux de commission et son assiette");
+    expect(list).toContain("Faire écrire sur quoi porte le pourcentage");
     expect(list).toContain("Faire écrire combien de temps une vente reste rattachée à ton code");
     expect(list).toContain("Vérifier que les publicités de la marque n'annulent pas ton attribution");
     expect(list).toContain("Faire écrire quand la commission est versée, et à partir de quel seuil");
+    // Le taux EST écrit : on ne le redemande pas.
+    expect(list).not.toContain("Faire écrire combien te rapporte chaque vente");
     const fixe = analysis.negotiate.find((point) => point.label.startsWith("Obtenir un fixe"));
     expect(fixe?.why.replace(/[  ]/g, " ")).toContain("200 € – 360 €");
   });
@@ -137,7 +142,7 @@ describe("B — les cinq points", () => {
     };
     const list = labels(composeAnalysis(dejaTraite));
     expect(list).not.toContain("Obtenir un fixe qui couvre au moins la création");
-    expect(list).not.toContain("Faire écrire le taux de commission et son assiette");
+    expect(list).not.toContain("Faire écrire sur quoi porte le pourcentage");
     // Ceux qui manquaient, eux, s'ajoutent.
     expect(list).toContain("Faire écrire combien de temps une vente reste rattachée à ton code");
   });
@@ -291,5 +296,107 @@ describe("D — la règle de couverture de #115 s'applique aux nouveaux points",
     const text = analysis.ready_to_send_message.text;
     expect(messageCoverage(analysis, text).ok).toBe(true);
     expect(text.replace(/[  ]/g, " ")).toContain("entre 300 € et 620 €");
+  });
+});
+
+// ─── Mission #117 — ne demander que ce que l'offre ne dit pas ───────────────
+
+describe("#117 — chaque point suit le champ qui lui correspond", () => {
+  // Les quatre libellés conditionnés à un champ. Le cinquième, celui des
+  // publicités, ne l'est pas : cette information n'est jamais écrite.
+  const TAUX = "Faire écrire combien te rapporte chaque vente";
+  const ASSIETTE = "Faire écrire sur quoi porte le pourcentage";
+  const ATTRIBUTION = "Faire écrire combien de temps une vente reste rattachée à ton code";
+  const VERSEMENT = "Faire écrire quand la commission est versée, et à partir de quel seuil";
+  const PUBS = "Vérifier que les publicités de la marque n'annulent pas ton attribution";
+  const CONDITIONNES = [TAUX, ASSIETTE, ATTRIBUTION, VERSEMENT];
+
+  const avec = (pay: Partial<Analysis["deal"]["variable_pay"]>, over: Partial<Extraction["deal"]> = {}) =>
+    composeAnalysis(affiliation({ variable_pay: { present: true, rate_percent: null, base: null, per_sale_eur: null, attribution_days: null, payout: null, ...pay }, ...over }), {
+      tier: "starter",
+    });
+
+  // 1 — l'offre réelle du 24/09 : elle précise TOUT.
+  it("offre entièrement renseignée : aucun des quatre points, seul celui des publicités reste", () => {
+    const analysis = avec({ rate_percent: 15, base: "montant HT hors frais de port", attribution_days: 30, payout: "le 15 du mois suivant, à partir de 50 € cumulés" });
+    const list = labels(analysis);
+    for (const point of CONDITIONNES) expect(list, point).not.toContain(point);
+    expect(list).toContain(PUBS);
+  });
+
+  it("… et sans droits pub payante, il ne reste aucun point de commission", () => {
+    const analysis = avec(
+      { rate_percent: 15, base: "montant HT", attribution_days: 30, payout: "mensuel dès 50 €" },
+      { usage: { organic: true, paid_ads: false, whitelisting: false, spark_ads: false, perpetual: false, duration_months: null, territory: null } },
+    );
+    const list = labels(analysis);
+    for (const point of [...CONDITIONNES, PUBS]) expect(list, point).not.toContain(point);
+  });
+
+  // 2 — partiellement renseignée : taux et versement écrits, le reste non.
+  it("offre partiellement renseignée : exactement assiette et attribution", () => {
+    const analysis = avec({ rate_percent: 15, base: null, attribution_days: null, payout: "le 15 du mois suivant" });
+    const list = labels(analysis);
+    expect(list).toContain(ASSIETTE);
+    expect(list).toContain(ATTRIBUTION);
+    expect(list).not.toContain(TAUX);
+    expect(list).not.toContain(VERSEMENT);
+    // Le point assiette NE REDEMANDE PAS le taux : il le reprend pour poser la
+    // question, il ne le réclame pas.
+    const assiette = analysis.negotiate.find((point) => point.label === ASSIETTE);
+    expect(assiette?.why.replace(/[\u202f\u00a0]/g, " ")).toContain("15 % de quoi ?");
+    expect(assiette?.label).not.toContain("taux");
+    expect(assiette?.why).not.toContain("demande le pourcentage");
+  });
+
+  it("une commission par vente en euros tient lieu de taux", () => {
+    const list = labels(avec({ per_sale_eur: 3, base: "prix de vente" }));
+    expect(list).not.toContain(TAUX);
+    expect(list).not.toContain(ASSIETTE);
+  });
+
+  // 3 — aucune précision : les quatre points.
+  it("offre sans aucune précision : les quatre points apparaissent", () => {
+    const list = labels(avec({}));
+    for (const point of CONDITIONNES) expect(list, point).toContain(point);
+    expect(list).toContain(PUBS);
+    // Sans taux écrit, le point assiette pose la question sans chiffre.
+    const assiette = avec({}).negotiate.find((point) => point.label === ASSIETTE);
+    expect(assiette?.why).toContain("Un pourcentage de quoi ?");
+  });
+
+  it("chaque champ, un par un : il suffit qu'il soit écrit pour que son point disparaisse", () => {
+    const cas: Array<[Partial<Analysis["deal"]["variable_pay"]>, string]> = [
+      [{ rate_percent: 15 }, TAUX],
+      [{ per_sale_eur: 2 }, TAUX],
+      [{ base: "prix de vente" }, ASSIETTE],
+      [{ attribution_days: 30 }, ATTRIBUTION],
+      [{ payout: "mensuel" }, VERSEMENT],
+    ];
+    for (const [pay, disparu] of cas) {
+      const list = labels(avec(pay));
+      expect(list, `${JSON.stringify(pay)} → ${disparu}`).not.toContain(disparu);
+      // Les autres, eux, restent : un champ écrit n'en masque pas un autre.
+      for (const autre of CONDITIONNES) {
+        if (autre === disparu) continue;
+        if (disparu === TAUX && autre === ASSIETTE && pay.base !== undefined) continue;
+        expect(list, `${JSON.stringify(pay)} → ${autre}`).toContain(autre);
+      }
+    }
+  });
+
+  // 4 — aucune commission : rien de tout cela.
+  it("offre sans commission : aucun de ces points, comme avant", () => {
+    const list = labels(composeAnalysis(base(), { tier: "starter" }));
+    for (const point of [...CONDITIONNES, PUBS]) expect(list, point).not.toContain(point);
+  });
+
+  it("l'outil ne contredit jamais ce qu'il vient de lire", () => {
+    // Pour chaque champ écrit, aucun texte affiché ne doit dire qu'il manque.
+    const analysis = avec({ rate_percent: 15, base: "montant HT hors frais de port", attribution_days: 30, payout: "le 15 du mois suivant, à partir de 50 € cumulés" });
+    const textes = analysis.negotiate.flatMap((point) => [point.label, point.why]).join(" ");
+    for (const demande of ["sans assiette écrite", "sans ce nombre écrit", "ne dit pas quand tu es payée", "sans dire ce qu'elle rapporte"]) {
+      expect(textes, demande).not.toContain(demande);
+    }
   });
 });

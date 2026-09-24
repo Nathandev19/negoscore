@@ -20,6 +20,11 @@ import type { Analysis } from "@/lib/schema";
 // « potentiel », aucune projection. Le seul chiffre que ces points portent est
 // celui de la CRÉATION, que le moteur de tarifs calcule déjà.
 
+// Même mise en forme que formatNumber (lib/display.ts), recopiée ici en une
+// ligne plutôt qu'importée : display lit ce module pour la ligne « Commission »
+// du deal, et deux modules ne doivent pas s'importer l'un l'autre.
+const PERCENT = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 });
+
 type Deal = Analysis["deal"];
 type Point = Analysis["negotiate"][number];
 type RedFlag = Analysis["red_flags"][number];
@@ -61,7 +66,10 @@ function brandRuns(deal: Pick<Deal, "usage">): boolean {
 type Candidate = { label: string; why: string; sameAs: RegExp };
 
 const FIXED = /\bfixe\b|garanti|minimum\s+garanti|forfait/i;
-const RATE = /assiette|base\s+de\s+calcul|sur\s+quoi\s+porte|taux\s+(?:de\s+)?commission|pourcentage/i;
+// Mission #117 — le taux et l'assiette sont DEUX informations, qui peuvent
+// manquer l'une sans l'autre. Deux expressions, donc, et jamais une seule.
+const RATE = /taux\s+(?:de\s+)?commission|pourcentage|quel\s+%|combien\s+tu\s+touches/i;
+const BASE = /assiette|base\s+de\s+calcul|sur\s+quoi\s+(?:il\s+)?porte|pourcentage\s+de\s+quoi/i;
 const ATTRIBUTION = /attribution|rattach[ée]|cookie|dur[ée]e\s+du\s+code/i;
 const ADS_ATTRIBUTION = /(?:attribution|rattach[ée]|code).{0,40}(?:pub|publicit)|(?:pub|publicit).{0,40}(?:attribution|rattach[ée]|code)/i;
 const PAYOUT = /versement|revers[ée]|seuil|fr[ée]quence\s+de\s+paiement|quand\s+.{0,20}pay/i;
@@ -90,23 +98,54 @@ export function commissionCandidates(deal: Deal, baseLow: number | null, baseHig
     });
   }
 
-  // B2 — 15 % de quoi ? Sans assiette écrite, le pourcentage ne veut rien dire.
-  out.push({
-    label: "Faire écrire le taux de commission et son assiette",
-    why: "Un pourcentage sans assiette ne veut rien dire : demande sur quoi il porte — prix de vente, panier, hors taxes, hors frais de port — et que ce soit écrit.",
-    sameAs: RATE,
-  });
+  // Mission #117 — CHAQUE POINT NE DEMANDE QUE CE QUE L'OFFRE NE DIT PAS.
+  //
+  // Défaut vu le 24/09 sur une offre d'affiliation qui précisait pourtant tout :
+  // 15 %, montant HT hors frais de port, 30 jours, le 15 du mois suivant à
+  // partir de 50 €. Les quatre informations étaient extraites et affichées dans
+  // « Le deal proposé », et les points demandaient quand même de les faire
+  // écrire. L'outil contredisait l'offre qu'il venait de lire — pour une
+  // créatrice, c'est le signal que l'analyse n'a pas lu son message.
+  //
+  // Le déclencheur n'est donc plus « il y a une commission », mais « CE
+  // CHAMP-LÀ est absent ».
+  const pay = variablePayOf(deal);
 
-  // B3 — sans attribution écrite, elle est ce que la marque décide. Le libellé
-  // évite le mot « durée » : il est réservé aux droits et à l'exclusivité, que
-  // le recalcul après un tour suit de près (mission #084).
-  out.push({
-    label: "Faire écrire combien de temps une vente reste rattachée à ton code",
-    why: "Sans attribution écrite, c'est la marque qui décide si une vente compte pour toi. Demande le nombre de jours, et que ce soit dans l'accord.",
-    sameAs: ATTRIBUTION,
-  });
+  // B2a — le taux. Une commission par vente en euros tient lieu de taux : les
+  // deux disent combien la créatrice touche.
+  if (pay.rate_percent === null && pay.per_sale_eur === null) {
+    out.push({
+      label: "Faire écrire combien te rapporte chaque vente",
+      why: "L'offre parle d'une commission sans dire ce qu'elle rapporte : demande le pourcentage, ou le montant par vente, et que ce soit écrit noir sur blanc.",
+      sameAs: RATE,
+    });
+  }
 
-  // B4 — le plus vicieux, et il ne s'ajoute que si la marque diffuse.
+  // B2b — l'assiette, séparément. Quand le taux est connu et l'assiette non, le
+  // point ne redemande PAS le taux : il serait faux de le faire.
+  if (pay.base === null) {
+    const rate = pay.rate_percent !== null ? `${PERCENT.format(pay.rate_percent)} %` : "Un pourcentage";
+    out.push({
+      label: "Faire écrire sur quoi porte le pourcentage",
+      why: `${rate} de quoi ? Du prix de vente, du panier, hors taxes, hors frais de port ? Sans assiette écrite, le pourcentage ne veut rien dire.`,
+      sameAs: BASE,
+    });
+  }
+
+  // B3 — l'attribution. Le libellé évite le mot « durée » : il est réservé aux
+  // droits et à l'exclusivité, que le recalcul après un tour suit de près
+  // (mission #084).
+  if (pay.attribution_days === null) {
+    out.push({
+      label: "Faire écrire combien de temps une vente reste rattachée à ton code",
+      why: "L'offre ne dit pas combien de jours une vente compte pour toi après un clic ou un code utilisé. Sans ce nombre écrit, c'est la marque qui décide.",
+      sameAs: ATTRIBUTION,
+    });
+  }
+
+  // B4 — le plus vicieux, et il ne s'ajoute que si la marque diffuse. Cette
+  // information n'est jamais écrite dans une offre : le point reste conditionné
+  // à la seule présence de droits publicitaires.
   if (brandRuns(deal)) {
     out.push({
       label: "Vérifier que les publicités de la marque n'annulent pas ton attribution",
@@ -116,11 +155,13 @@ export function commissionCandidates(deal: Deal, baseLow: number | null, baseHig
   }
 
   // B5 — un seuil de déclenchement peut rendre une commission inatteignable.
-  out.push({
-    label: "Faire écrire quand la commission est versée, et à partir de quel seuil",
-    why: "Un seuil de déclenchement peut rendre une commission inatteignable. Demande la fréquence, le délai et le montant minimum de versement.",
-    sameAs: PAYOUT,
-  });
+  if (pay.payout === null) {
+    out.push({
+      label: "Faire écrire quand la commission est versée, et à partir de quel seuil",
+      why: "L'offre ne dit pas quand tu es payée ni à partir de quel montant. Un seuil de déclenchement peut rendre une commission inatteignable : demande la fréquence, le délai et le minimum.",
+      sameAs: PAYOUT,
+    });
+  }
 
   return out;
 }
