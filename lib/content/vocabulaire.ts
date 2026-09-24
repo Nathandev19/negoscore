@@ -75,6 +75,48 @@ export function tooManyOpenings(minutes: number, scope: "adresse" | "compte" = "
   return `Trop de nouvelles négociations ouvertes ${source} dans l'heure. Réessaie dans ${minutes} min : tes négociations déjà ouvertes, elles, continuent.`;
 }
 
+// Mission #111 — ce que la page Tarifs propose à un compte, selon ce qu'il
+// possède déjà. Aucune de ces phrases n'est écrite dans le composant.
+//
+// Le Pack devient une RECHARGE dans deux situations, et elle ne se raconte pas
+// de la même façon : un abonné Pro achète de quoi dépasser son quota du mois,
+// quelqu'un qui a déjà des négociations en réserve achète simplement la suite.
+// Dire « utilisables quand ton quota mensuel est atteint » au second serait
+// faux : il n'a pas de quota mensuel.
+export const RECHARGE_NAME = "Recharge";
+export const RECHARGE_ACTION = "Recharger";
+export const RECHARGE_SUMMARY = `${negotiations(NEGOTIATIONS.pack)} supplémentaires`;
+
+export const RECHARGE_FEATURES: Record<"pro" | "reserve", readonly string[]> = {
+  pro: [
+    "Utilisables quand ton quota mensuel est atteint",
+    "Sans date d'expiration",
+    "Conservées si tu résilies ton abonnement",
+  ],
+  reserve: [
+    "Ajoutées à celles qu'il te reste",
+    "Sans date d'expiration",
+    "Utilisables quand tu veux",
+  ],
+};
+
+// Action d'achat d'une formule qu'on ne possède pas encore.
+export function takePlan(name: string): string {
+  return `Prendre ${name}`;
+}
+
+export const SIGN_IN_TO_PAY = "Se connecter pour payer";
+
+// Formule Pro en cours. Trois cas, trois phrases vraies : abonnement payé avec
+// une date, abonnement résilié qui court encore, et accès offert par
+// l'administrateur — qui n'a ni date ni résiliation possible.
+export function proInProgress(endsAt: string | null, cancelled: boolean): string {
+  if (cancelled) return endsAt ? `Ta formule en cours. Elle prend fin le ${endsAt}.` : "Ta formule en cours. Elle prend fin à la fin de la période.";
+  return endsAt ? `Ta formule en cours, jusqu'au ${endsAt}.` : "Ta formule en cours.";
+}
+
+export const PRO_OFFERED = "Ton accès Pro offert est en cours. Rien à payer.";
+
 // Mission #104, A3 — les libellés de concept vivent dans lib/content/labels.ts
 // (module feuille, sans import) et sont ré-exportés ici : le vocabulaire reste
 // la porte d'entrée, sans entraîner la facturation dans le graphe d'imports de

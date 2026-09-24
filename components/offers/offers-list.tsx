@@ -7,9 +7,26 @@ import { Button } from "@/components/ui/button";
 import { Bone } from "@/components/ui/skeleton";
 import { CONSENT_TEXT } from "@/lib/billing/consent";
 import { hasSessionHint } from "@/lib/auth/session-hint";
-import { isCancelled, isProActive, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
+import {
+  hasProAccess,
+  isCancelled,
+  isGrantedPro,
+  offerAction,
+  periodEndsAt,
+  type AccountView,
+  type PlanState,
+} from "@/lib/billing/plan-access";
 import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
-import { negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
+import {
+  PRO_OFFERED,
+  proInProgress,
+  RECHARGE_ACTION,
+  RECHARGE_FEATURES,
+  RECHARGE_NAME,
+  RECHARGE_SUMMARY,
+  SIGN_IN_TO_PAY,
+  takePlan,
+} from "@/lib/content/vocabulaire";
 import { WITH_JS_ONLY, WITHOUT_JS } from "@/lib/no-js";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +84,7 @@ export function OffersList() {
     };
   }, [hinted]);
 
-  const account: "inconnu" | "visiteur" | "illisible" | PlanState =
+  const account: AccountView =
     hinted === null
       ? "inconnu"
       : !hinted
@@ -78,8 +95,13 @@ export function OffersList() {
             ? "visiteur"
             : credits;
   const known = typeof account === "object" ? account : null;
-  const proActive = isProActive(known);
-  const proCancelled = proActive && isCancelled(known);
+  // Mission #111 — ce que le compte possède déjà, décidé au même endroit pour
+  // toute l'application (lib/billing/plan-access.ts). Un accès Pro OFFERT n'a
+  // pas de period_end : lu avec isProActive seul, il était invisible, et la
+  // page proposait « Prendre Pro » à quelqu'un qui l'avait déjà.
+  const proAccess = hasProAccess(known);
+  const proOffered = isGrantedPro(known);
+  const proCancelled = proAccess && isCancelled(known);
   const proEndsAt = periodEndsAt(known);
   const proEndsAtLabel = proEndsAt ? DATE.format(proEndsAt) : null;
 
@@ -91,16 +113,20 @@ export function OffersList() {
         </li>
       ) : null}
       {PLANS.map((plan) => {
-        // Même prix, même plan Whop, même parcours : seule la présentation change.
-        const asRecharge = proActive && plan.id === "pack";
-        // Abonnement en cours : on ne le revend pas, on dit où il en est.
-        const isCurrentPro = proActive && plan.id === "pro";
+        // Même prix, même plan Whop, même parcours : seule la présentation
+        // change. Mission #111 — le Pack devient une RECHARGE pour qui a déjà
+        // des négociations en réserve, et plus seulement pour un abonné Pro :
+        // un compte qui vient d'acheter un pack se voyait proposer « Prendre
+        // Pack Deal », comme s'il n'avait rien.
+        // Mission #111 — la décision est prise hors du composant, une seule
+        // fois, et se teste seule (lib/billing/plan-access.ts).
+        const action = offerAction(plan.id, account);
+        const asRecharge = action === "recharger";
+        const isCurrentPro = action === "formule_en_cours";
         const featured = plan.id === FEATURED_PLAN;
-        const name = asRecharge ? "Recharge" : plan.name;
-        const summary = asRecharge ? `${negotiations(NEGOTIATIONS.pack)} supplémentaires` : plan.summary;
-        const features = asRecharge
-          ? ["Utilisables quand ton quota mensuel est atteint", "Sans date d'expiration", "Conservées si tu résilies ton abonnement"]
-          : plan.features;
+        const name = asRecharge ? RECHARGE_NAME : plan.name;
+        const summary = asRecharge ? RECHARGE_SUMMARY : plan.summary;
+        const features = asRecharge ? RECHARGE_FEATURES[proAccess ? "pro" : "reserve"] : plan.features;
         return (
           <li
             key={plan.id}
@@ -136,33 +162,30 @@ export function OffersList() {
                 {isCurrentPro ? (
                   <div className="flex flex-col gap-1">
                     <p className="alert-bad py-1 text-sm">
-                      {proCancelled
-                        ? proEndsAtLabel
-                          ? `Ta formule en cours. Elle prend fin le ${proEndsAtLabel}.`
-                          : "Ta formule en cours. Elle prend fin à la fin de la période."
-                        : proEndsAtLabel
-                          ? `Ta formule en cours, jusqu'au ${proEndsAtLabel}.`
-                          : "Ta formule en cours."}
+                      {proOffered ? PRO_OFFERED : proInProgress(proEndsAtLabel, proCancelled)}
                     </p>
-                    {proCancelled ? null : (
+                    {/* Accès offert : il n'y a pas d'abonnement chez le
+                        prestataire de paiement, donc rien à résilier. Le lien
+                        y menait à une page qui répond « aucun abonnement ». */}
+                    {proCancelled || proOffered ? null : (
                       <Link href="/resilier" className="link flex min-h-11 w-fit items-center text-sm">
                         Résilier votre contrat
                       </Link>
                     )}
                   </div>
-                ) : account === "inconnu" ? (
+                ) : action === "attente" ? (
                   <PendingPurchase primary={featured} />
-                ) : account === "illisible" ? (
+                ) : action === "illisible" ? (
                   <p className="text-sm">Ton compte n&apos;a pas pu être lu. Recharge la page pour payer.</p>
-                ) : known ? (
-                  <PlanCheckoutForm plan={plan.id} label={asRecharge ? "Recharger" : `Prendre ${plan.name}`} primary={featured} />
+                ) : action === "acheter" || action === "recharger" ? (
+                  <PlanCheckoutForm plan={plan.id} label={asRecharge ? RECHARGE_ACTION : takePlan(plan.name)} primary={featured} />
                 ) : featured ? (
                   <Button asChild size="lg" className="h-12 w-full text-base">
-                    <Link href={LOGIN_HREF}>Se connecter pour payer</Link>
+                    <Link href={LOGIN_HREF}>{SIGN_IN_TO_PAY}</Link>
                   </Button>
                 ) : (
                   <Link href={LOGIN_HREF} className="link flex min-h-11 w-fit items-center font-semibold">
-                    Se connecter pour payer
+                    {SIGN_IN_TO_PAY}
                   </Link>
                 )}
               </ActionSlot>
