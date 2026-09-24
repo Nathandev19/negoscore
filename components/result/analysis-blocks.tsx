@@ -7,6 +7,7 @@ import {
   SEVERITY_LABEL,
   sortByPriority,
 } from "@/lib/display";
+import { readableClauses } from "@/lib/legal/fr";
 import { rateTable } from "@/lib/rates/tables";
 import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
@@ -174,11 +175,12 @@ export function RedFlags({ items, origin }: { items: Analysis["red_flags"]; orig
 // sont les mentions qui manquent. Le texte de loi, lui, se lit une fois.
 export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
   if (!legal.applicable) return null;
-  // Mission #100, point 3 — vu en production : « 2 mentions obligatoires
-  // absentes » et deux puces vides. Une entrée sans libellé n'est pas une
-  // mention : elle n'est ni rendue, ni comptée dans le résumé. La liste
-  // affichée et le nombre annoncé viennent donc de la MÊME source.
-  const clauses = legal.missing_mandatory_clauses.filter((clause) => clause.trim() !== "");
+  // Mission #100, point 3, renforcée par #104, A2 — vu en production : « 4
+  // mentions obligatoires absentes » et quatre puces vides. Une entrée qui ne
+  // s'affiche pas n'est pas une mention : elle n'est ni rendue, ni comptée. Le
+  // nombre annoncé et les puces sortent de la MÊME liste, filtrée par la même
+  // fonction que le calcul (lib/legal/fr.ts).
+  const clauses = readableClauses(legal.missing_mandatory_clauses);
   const missing = clauses.length;
   const hint =
     missing === 0

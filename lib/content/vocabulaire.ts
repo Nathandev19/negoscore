@@ -65,6 +65,18 @@ export const RESUME_FAILED =
 // Mission #102, partie B — le filet horaire porte sur l'OUVERTURE d'une
 // négociation, jamais sur les échanges qu'elle contient. Le message dit donc
 // ce qui est bloqué, et jusqu'à quand.
-export function tooManyOpenings(minutes: number): string {
-  return `Trop de négociations ouvertes coup sur coup. Réessaie dans ${minutes} min : tes négociations en cours, elles, restent ouvertes.`;
+//
+// Mission #104, E3 — il ne dit plus « tu as lancé » à quelqu'un qui n'a rien
+// lancé : derrière une même adresse mobile, plusieurs visiteurs partagent le
+// compteur. Le message nomme donc ce qui est compté — ce réseau, ou ce compte
+// — et reste vrai dans les deux cas.
+export function tooManyOpenings(minutes: number, scope: "adresse" | "compte" = "adresse"): string {
+  const source = scope === "compte" ? "avec ce compte" : "depuis ce réseau";
+  return `Trop de nouvelles négociations ouvertes ${source} dans l'heure. Réessaie dans ${minutes} min : tes négociations déjà ouvertes, elles, continuent.`;
 }
+
+// Mission #104, A3 — les libellés de concept vivent dans lib/content/labels.ts
+// (module feuille, sans import) et sont ré-exportés ici : le vocabulaire reste
+// la porte d'entrée, sans entraîner la facturation dans le graphe d'imports de
+// l'écran de résultat.
+export { RAW_FOOTAGE_LABEL } from "@/lib/content/labels";

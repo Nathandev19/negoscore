@@ -9,24 +9,45 @@ import { TERM_GROUPS, type Deal, type TermGroup } from "@/lib/negotiation/types"
 
 // Termes actuels : ceux de la conclusion s'il y en a une, sinon ceux du dernier
 // tour. null : aucun tour, la page décrit l'offre telle qu'elle a été analysée.
-// Mission #100, point 4 — ceiling : le plafond annoncé par la marque au
-// dernier tour (mission #096). Les TERMES ne le retiennent pas ; ce qu'on
-// propose d'accepter, si. La carte partageable doit dire le même montant que
-// l'écran de conclusion, donc elle lit la même chose.
-export type Negotiated = { deal: Deal; turn: number; ceiling: number | null };
+// Mission #100, point 4, refaite en #104, D — offered : LE MONTANT SUR LA
+// TABLE, celui que porte le message d'acceptation.
+//
+// Il n'est pas recalculé ici. Il est LU là où il a été décidé et enregistré :
+// closing.accept.offered pour un tour, conclusion.offered pour une conclusion
+// (mission #096, lib/negotiation/conclusion.ts). Un second calcul, même avec
+// la même fonction, peut diverger dès que ses entrées diffèrent d'un cheveu —
+// c'est exactement ce qui faisait afficher 600 € à la carte quand l'écran
+// proposait d'accepter 900 €.
+//
+// null : aucun plafond au-dessus des termes ; le montant est celui du deal.
+export type Negotiated = { deal: Deal; turn: number; offered: number | null };
 
 type ThreadLike = {
-  turns: ReadonlyArray<{ turnNumber: number; payload: { deal_after: Deal; stated_ceiling?: number | null } }>;
-  conclusion: { payload: { deal: Deal } } | null;
+  turns: ReadonlyArray<{
+    turnNumber: number;
+    payload: {
+      deal_after: Deal;
+      closing?: { accept: { offered?: number | null } } | null;
+      conclusion?: { offered?: number | null } | null;
+    };
+  }>;
+  conclusion: { payload: { deal: Deal; conclusion?: { offered?: number | null } } } | null;
 };
 
 export function currentState(thread: ThreadLike | null): Negotiated | null {
   const last = thread?.turns.at(-1);
   if (!thread || !last) return null;
+  // La conclusion prime : c'est le dernier message écrit, et c'est lui qui
+  // porte le montant que la créatrice s'apprête à accepter.
+  const offered =
+    thread.conclusion?.payload.conclusion?.offered ??
+    last.payload.conclusion?.offered ??
+    last.payload.closing?.accept.offered ??
+    null;
   return {
     deal: thread.conclusion?.payload.deal ?? last.payload.deal_after,
     turn: last.turnNumber,
-    ceiling: last.payload.stated_ceiling ?? null,
+    offered,
   };
 }
 

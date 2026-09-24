@@ -179,6 +179,11 @@ export const conclusionSchema = z.object({
   unclear: z.array(z.string()),
   message: z.string(),
   legal_note: z.string(),
+  // Mission #104, D — le montant que CE message porte. Même valeur que
+  // closing.accept.offered : le point de vérité unique du montant proposé
+  // (mission #096). null : c'est le montant retenu dans les termes. Écrit ici
+  // pour que la carte partageable le LISE au lieu de le recalculer.
+  offered: z.number().nullable().default(null),
 });
 export type Conclusion = z.infer<typeof conclusionSchema>;
 

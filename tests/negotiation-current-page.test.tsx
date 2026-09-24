@@ -38,7 +38,7 @@ function turnFrom(suffix: string) {
   return { original: context.original, payload: result.payload as TurnPayload };
 }
 const { original, payload } = turnFrom("termes-a-la-hausse");
-const negotiated = { deal: payload.deal_after, turn: 2, ceiling: null };
+const negotiated = { deal: payload.deal_after, turn: 2, offered: null };
 const page = () => text(renderToStaticMarkup(<AnalysisResult analysis={original} unlockHref="/connexion" negotiated={negotiated} />));
 
 describe("A2 — ce que le code déduit des termes est recalculé sur les termes actuels", () => {

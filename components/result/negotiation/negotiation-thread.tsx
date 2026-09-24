@@ -32,9 +32,30 @@ export type SentView = { text: string; source: "copied" | "corrected"; updatedAt
 
 const SENT_DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 
-// Extrait lisible d'un message : sa première ligne utile, coupée proprement.
+// Mission #104, A4 — cet extrait sert à RECONNAÎTRE le message auquel la
+// marque répond, sans le déplier. « Bonjour Camille, » ne reconnaît rien : la
+// salutation est la même dans tous les messages. On cherche donc la ligne qui
+// identifie vraiment ce message-là — celle qui porte le tarif — et à défaut la
+// première ligne qui ne soit ni une salutation ni un remerciement.
+const GREETING = /^(?:bonjour|bonsoir|hello|hi|salut|coucou)\b[^.!?]{0,40}[.!…]?$/i;
+const THANKS = /^(?:merci|mille mercis)\b[^.!?]{0,60}[.!…]?$/i;
+
 export function excerpt(text: string, max = 90): string {
-  const line = text.split("\n").map((l) => l.trim()).find((l) => l.length > 0 && !/^(bonjour|hello|hi)\b[\s,!.]*$/i.test(l)) ?? text.trim();
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const useful = lines.filter((line) => !GREETING.test(line) && !THANKS.test(line));
+  // Le tarif est ce qui distingue un message d'un autre dans un échange.
+  // À défaut de tarif, la première ligne utile ; à défaut, la première qui ne
+  // soit pas une salutation (un message tout en politesse reste identifiable
+  // par son remerciement) ; à défaut, ce qu'il y a.
+  const line =
+    useful.find((entry) => /\d[\d\s\u00a0\u202f]*(?:€|eur\b|euros?\b)/i.test(entry)) ??
+    useful[0] ??
+    lines.find((entry) => !GREETING.test(entry)) ??
+    lines[0] ??
+    text.trim();
   return line.length <= max ? line : `${line.slice(0, max).replace(/\s+\S*$/, "")}…`;
 }
 

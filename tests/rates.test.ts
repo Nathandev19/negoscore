@@ -133,9 +133,13 @@ describe("computeEstimate", () => {
     expect(byTopic.ip_transfer.eur_low).toBe(Math.round(lowBase * m.ip_full_assignment.low));
     expect(byTopic.extra_hooks.eur_high).toBe(rates.flat_eur.extra_hook_or_cta.high * 3);
 
+    // Mission #104, A1 — le total affiché est la somme des lignes affichées.
+    // Avant : les bornes étaient descendues et montées au multiple de 10, et
+    // l'addition de l'écran ne tombait pas juste.
     const sumLow = lowBase + estimate.lines.reduce((s, l) => s + l.eur_low, 0);
-    expect(estimate.total_low).toBe(Math.floor(sumLow / 10) * 10);
-    expect((estimate.total_high ?? 0) % 10).toBe(0);
+    const sumHigh = estimate.base_high! + estimate.lines.reduce((s, l) => s + l.eur_high, 0);
+    expect(estimate.total_low).toBe(sumLow);
+    expect(estimate.total_high).toBe(sumHigh);
   });
 
   it("pondère les livrables : une story ou une photo pèse moins qu'une vidéo", () => {
@@ -164,16 +168,18 @@ describe("computeEstimate", () => {
     // fr-2026.2 : 5 unités pondérées facturées 4,3 au lieu de 4 (paliers) :
     // 3 500–7 000 € devient 3 760–7 530 € au niveau confirmé.
     // fr-2026.3 (#040) : niveau par défaut « starter ». Base 100 × 4,3 = 430 €,
-    // plafond heavy +250 % → 1 505 € arrondi à 1 500 ; haut 180 × 4,3 × 3,5 =
-    // 2 709 € → 2 710. L'offre de 3 500 € passe au-dessus de la fourchette.
+    // plafond heavy +250 % → 1 505 € ; haut 180 × 4,3 × 3,5 = 2 709 €.
+    // Mission #104, A1 : ces totaux ne sont plus arrondis à la dizaine, ils
+    // valent exactement la somme des lignes affichées. L'offre de 3 500 €
+    // passe toujours au-dessus de la fourchette.
     expect(units).toBe(5);
     expect(estimate.base_low).toBe(Math.round(base.low * billableUnits(units)));
-    expect(estimate.total_low).toBe(1500);
-    expect(estimate.total_high).toBe(2710);
+    expect(estimate.total_low).toBe(1505);
+    expect(estimate.total_high).toBe(2709);
     expect(estimate.assumptions).toContain(UPLIFT_CAPPED_ASSUMPTION);
     // Même deal au niveau confirmé : montants de fr-2026.2 inchangés.
     const confirmed = computeEstimate(deal, { tier: "confirmed" });
-    expect([confirmed.total_low, confirmed.total_high]).toEqual([3760, 7530]);
+    expect([confirmed.total_low, confirmed.total_high]).toEqual([3763, 7525]);
     expect(estimate.total_low! / deal.payment.amount_eur!).toBeLessThanOrEqual(3);
   });
 

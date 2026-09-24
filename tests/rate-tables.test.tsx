@@ -152,7 +152,7 @@ describe("C — une table disparue du code : rien n'est recalculé, et l'écran 
     const result = processTurn(goneContext, readingOf(s, gone));
     if (result.kind !== "turn") throw new Error("pas un tour");
     const html = text(
-      renderToStaticMarkup(<AnalysisResult analysis={gone} unlockHref="/connexion" negotiated={{ deal: result.payload.deal_after, turn: 2, ceiling: null }} />),
+      renderToStaticMarkup(<AnalysisResult analysis={gone} unlockHref="/connexion" negotiated={{ deal: result.payload.deal_after, turn: 2, offered: null }} />),
     );
     expect(html).toContain("La table fr-2026.1 n'existe plus dans l'outil. Ces chiffres sont ceux calculés le jour de l'analyse");
     expect(html).toContain("Table de tarifs fr-2026.1");

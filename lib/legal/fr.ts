@@ -18,6 +18,21 @@ const DISCLAIMER = "C'est une information générale, pas un conseil juridique."
 const BASE_NOTE =
   `En France, un contrat écrit est obligatoire quand une collaboration dépasse ${formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)}\u00a0HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus.`;
 
+// Mission #104, A2 — un libellé n'est une mention que s'il se LIT. Espaces,
+// mais aussi caractères de largeur nulle et marques de formatage : une puce
+// qui n'affiche rien ne doit ni s'afficher ni être comptée.
+const INVISIBLE = /[\s\u00ad\u200b-\u200f\u2060\ufeff]/gu;
+
+export function readableClause(label: string): boolean {
+  return label.replace(INVISIBLE, "") !== "";
+}
+
+// Les mentions réellement affichables, dans l'ordre. Le nombre annoncé et les
+// puces affichées sortent de CETTE fonction, jamais de deux chemins séparés.
+export function readableClauses(clauses: readonly string[]): string[] {
+  return clauses.filter(readableClause).map((clause) => clause.trim());
+}
+
 function isFrenchLaw(governingLaw: string | null): boolean {
   return governingLaw !== null && /fran(ce|çais|çaise|cais|caise)|french/i.test(governingLaw);
 }
@@ -63,9 +78,7 @@ export function computeFrLegal(deal: Deal): FrLegal {
     // Mission #100, point 3 — un libellé vide ne compte pas comme une mention.
     // Le calcul n'en produit pas (ce sont des littéraux), mais une analyse
     // enregistrée peut en porter : on ne les laisse pas repartir d'ici.
-    missing_mandatory_clauses: applicable
-      ? clauses.filter(([label, missing]) => missing && label.trim() !== "").map(([label]) => label.trim())
-      : [],
+    missing_mandatory_clauses: applicable ? readableClauses(clauses.filter(([, missing]) => missing).map(([label]) => label)) : [],
     note,
   };
 }

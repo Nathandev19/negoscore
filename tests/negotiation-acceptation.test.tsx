@@ -350,7 +350,7 @@ describe("défaut 3 — on voit la réponse arriver", () => {
     const target = nextReveal({ turnNumbers: [2], concluded: false, error: false }, { turnNumbers: [2], concluded: true, error: false });
     expect(target).toBe(CONCLUSION_ANCHOR);
     const html = renderToStaticMarkup(
-      <ConclusionView conclusion={{ source: "creator_accepted", recap: [], unclear: [], message: "Bonjour,", legal_note: "" }} />,
+      <ConclusionView conclusion={{ source: "creator_accepted", recap: [], unclear: [], message: "Bonjour,", legal_note: "", offered: null }} />,
     );
     expect(html).toContain(`id="${CONCLUSION_ANCHOR}"`);
     expect(html).toContain('tabindex="-1"');

@@ -119,9 +119,11 @@ describe("un utilisateur n'est pas bloqué par l'activité d'un autre", () => {
     expect(limitRule("ouverture", premiere)?.scope).toBe("compte");
   });
 
-  it("7. sans compte, c'est l'adresse qui sert de repère, et la limite est plus stricte", () => {
+  it("7. sans compte, c'est l'adresse qui sert de repère", () => {
     expect(limitRule("ouverture", anonyme)).toEqual({ scope: "adresse", key: IP, limit: OPENINGS_ANON, windowSeconds: 3600 });
-    expect(OPENINGS_ANON).toBeLessThan(OPENINGS_ACCOUNT);
+    // Mission #104, E1 — un compte connecté n'est jamais plus contraint qu'un
+    // visiteur de passage.
+    expect(OPENINGS_ACCOUNT).toBeGreaterThanOrEqual(OPENINGS_ANON);
   });
 
   it("8. compteur non interrogé alors qu'une règle existait : on laisse passer plutôt que de bloquer à l'aveugle", () => {

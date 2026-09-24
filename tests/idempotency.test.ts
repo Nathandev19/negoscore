@@ -220,7 +220,9 @@ describe("mission #102, partie B — le filet horaire ne compte que les ouvertur
 
     // Même adresse, deux comptes : deux compteurs distincts.
     expect(filet.keys[0]).not.toBe(premier);
-    expect(filet.limits.at(-1)).toBe(OPENINGS_ACCOUNT);
+    // La PREMIÈRE interrogation est l'ouverture, à la limite des comptes. Les
+    // suivantes appartiennent au filet anti-abus de la gratuité, qui a la sienne.
+    expect(filet.limits[0]).toBe(OPENINGS_ACCOUNT);
   });
 });
 

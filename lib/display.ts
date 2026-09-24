@@ -1,4 +1,5 @@
 import { formatEur } from "@/lib/money";
+import { RAW_FOOTAGE_LABEL } from "@/lib/content/labels";
 import type { Analysis } from "@/lib/schema";
 
 // Mise en forme pour l'affichage. Aucun calcul métier : on ne fait que
@@ -170,7 +171,7 @@ export function dealRecapRows(deal: Deal): RecapRow[] {
             .join(", ") || "Oui",
         }
       : null,
-    deal.raw_footage ? { label: "Raw footage", value: "Inclus" } : null,
+    deal.raw_footage ? { label: RAW_FOOTAGE_LABEL, value: "Inclus" } : null,
     IP_TRANSFER_LABEL[deal.ip_transfer]
       ? { label: "Droits d'auteur", value: IP_TRANSFER_LABEL[deal.ip_transfer] ?? "" }
       : null,

@@ -194,6 +194,8 @@ describe("étape 6 — la question de l'avis", () => {
       unclear: [],
       message: "Bonjour, je confirme.",
       legal_note: "",
+      // Mission #104, D : la conclusion porte le montant qu'elle propose.
+      offered: null,
     };
     const markup = page({
       afterMessage: <ConclusionView conclusion={conclusion} />,

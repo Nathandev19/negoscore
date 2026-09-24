@@ -144,7 +144,7 @@ describe("page /combien-facturer", () => {
     });
     const estimate = computeEstimate(exemple, { tier: "starter" });
     expect([estimate.base_low, estimate.base_high]).toEqual([300, 540]);
-    expect([estimate.total_low, estimate.total_high]).toEqual([540, 1190]);
+    expect([estimate.total_low, estimate.total_high]).toEqual([540, 1188]);
     const ads = estimate.lines.find((line) => line.topic === "paid_ads");
     const exclusivite = estimate.lines.find((line) => line.topic === "exclusivity");
     expect([ads?.eur_low, ads?.eur_high]).toEqual([150, 378]);
@@ -153,7 +153,7 @@ describe("page /combien-facturer", () => {
     expect(texte).toContain(`ça fait ${euros(300, 540)}`);
     expect(texte).toContain(`soit ${euros(150, 378)} en plus`);
     expect(texte).toContain(`soit ${euros(90, 270)} en plus`);
-    expect(texte).toContain("Total juste : entre 540 et 1 190 €");
+    expect(texte).toContain("Total juste : entre 540 et 1 188 €");
   });
 
   it("un seul h1, des tableaux qui restent des tableaux, et le lien final vers l'analyse", () => {

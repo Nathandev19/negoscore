@@ -59,9 +59,9 @@ export default function PricingGuidePage() {
             rows={[
               ["1", "100 à 180 €"],
               ["2", "200 à 360 €"],
-              ["3", "280 à 510 €"],
-              ["5", "430 à 780 €"],
-              ["10", "780 à 1 410 €"],
+              ["3", "280 à 504 €"],
+              ["5", "430 à 774 €"],
+              ["10", "780 à 1 404 €"],
             ]}
           />
           <p>
@@ -145,7 +145,7 @@ export default function PricingGuidePage() {
               <strong className="font-semibold text-encre">90 à 270 €</strong> en plus.
             </li>
           </ul>
-          <p className="font-display text-h3 font-bold text-encre">Total juste : entre 540 et 1 190 €.</p>
+          <p className="font-display text-h3 font-bold text-encre">Total juste : entre 540 et 1 188 €.</p>
           <p>
             La marque en propose 300. Elle ne paie donc même pas la création seule — et elle repart avec six mois de
             publicité et trois mois pendant lesquels tu ne peux pas travailler avec ses concurrents.

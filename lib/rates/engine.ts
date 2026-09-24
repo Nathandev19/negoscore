@@ -1,6 +1,7 @@
 import { isForeignCurrency } from "@/lib/analysis/normalize";
 import { formatNumber } from "@/lib/display";
 import { CURRENT_RATE_TABLE, type RateTable } from "@/lib/rates/tables";
+import { RAW_FOOTAGE_LABEL } from "@/lib/content/labels";
 import { DEFAULT_TIER, type Tier } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";
 
@@ -153,6 +154,32 @@ export const UNKNOWN_QUANTITY_ASSUMPTION: Record<Deal["deliverables"][number]["t
   live: "Nombre de lives non précisé : un seul live supposé.",
 };
 
+// Mission #104, A1 — répartition à plus fort reste. La somme des valeurs
+// rendues vaut exactement l'arrondi de la somme des valeurs exactes : aucun
+// euro n'apparaît ni ne disparaît entre les lignes et le total. Arrondir la
+// SOMME (et non chaque terme) garde aussi la monotonie du moteur : une
+// contrainte de plus ne peut pas faire baisser le total.
+export function apportion(values: readonly number[]): number[] {
+  // Somme de flottants : deux chemins de calcul qui valent tous deux 712,5
+  // peuvent donner 712,499999999 et 712,500000001, donc deux euros différents
+  // — et un total qui baisse quand une contrainte s'ajoute. On stabilise à la
+  // sixième décimale avant d'arrondir.
+  const exact = values.reduce((sum, value) => sum + value, 0);
+  const target = Math.round(Number(exact.toFixed(6)));
+  const floors = values.map((value) => Math.floor(value));
+  let left = target - floors.reduce((sum, value) => sum + value, 0);
+  const byFraction = values
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction || a.index - b.index);
+  const out = [...floors];
+  for (const { index } of byFraction) {
+    if (left <= 0) break;
+    out[index] += 1;
+    left -= 1;
+  }
+  return out;
+}
+
 export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEstimate {
   const assumptions: string[] = [];
   // Le niveau est un choix affiché sur la page de résultat, pas une hypothèse.
@@ -253,7 +280,7 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   }
 
   if (deal.raw_footage) {
-    addMultiplier("raw_footage", "raw_footage", "Raw footage");
+    addMultiplier("raw_footage", "raw_footage", RAW_FOOTAGE_LABEL);
   }
 
   if (isWorldwide(usage.territory)) {
@@ -288,7 +315,16 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   if (scaleLow < 1 || scaleHigh < 1) {
     assumptions.push(UPLIFT_CAPPED_ASSUMPTION);
   }
-  for (const u of uplifts) {
+  // Mission #104, A1 — les euros de chaque majoration, répartis pour que leur
+  // somme vaille EXACTEMENT le total affiché. Arrondir chaque ligne de son
+  // côté ferait perdre ou gagner quelques euros à l'addition ; arrondir le
+  // total de son côté la ferait tomber faux. Chaque ligne reçoit donc sa part
+  // entière, puis les euros restants vont aux plus grandes fractions.
+  const exactLow = uplifts.map((u) => baseLow * u.low * scaleLow);
+  const exactHigh = uplifts.map((u) => baseHigh * u.high * scaleHigh);
+  const eurLow = apportion(exactLow);
+  const eurHigh = apportion(exactHigh);
+  uplifts.forEach((u, index) => {
     // Les deux bornes sont plafonnées séparément : le pourcentage appliqué à la
     // borne basse peut dépasser celui de la borne haute. L'affichage reste ordonné.
     const percentLow = roundPercent(u.low * scaleLow);
@@ -299,10 +335,10 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
       type: "percent",
       low: Math.min(percentLow, percentHigh),
       high: Math.max(percentLow, percentHigh),
-      eur_low: Math.round(baseLow * u.low * scaleLow),
-      eur_high: Math.round(baseHigh * u.high * scaleHigh),
+      eur_low: eurLow[index],
+      eur_high: eurHigh[index],
     });
-  }
+  });
 
   // Variantes d'accroche ou de CTA, lues dans le format des livrables
   // (« 3 hooks », « 2 accroches », « 2 variantes de CTA »).
@@ -323,14 +359,21 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     });
   }
 
-  // Total sur les majorations exactes, pas sur les lignes arrondies à l'euro.
-  const flatLow = lines.filter((l) => l.type === "flat").reduce((sum, l) => sum + l.eur_low, 0);
-  const flatHigh = lines.filter((l) => l.type === "flat").reduce((sum, l) => sum + l.eur_high, 0);
-  const grossLow = Math.round(baseLow * (1 + sumLow * scaleLow)) + flatLow;
-  const grossHigh = Math.round(baseHigh * (1 + sumHigh * scaleHigh)) + flatHigh;
-
-  let totalLow: number | null = Math.floor(grossLow / 10) * 10;
-  let totalHigh: number | null = Math.ceil(grossHigh / 10) * 10;
+  // Mission #104, A1 — le total est la SOMME DES LIGNES AFFICHÉES, à l'euro
+  // près, en bas comme en haut de fourchette.
+  //
+  // Avant : chaque ligne était arrondie à l'euro, le total était calculé sur
+  // les majorations exactes puis descendu (bas) ou monté (haut) au multiple de
+  // 10 le plus proche. L'addition affichée ne tombait donc pas juste :
+  // 180 + 216 donnait 400 à l'écran, 340+170+102+119+34 donnait 760. Une
+  // fourchette ronde ne vaut pas une addition fausse : quelqu'un qui refait le
+  // calcul doit retrouver le chiffre.
+  //
+  // Le plafond de majoration, lui, est déjà réparti sur chaque ligne
+  // (scaleLow / scaleHigh ci-dessus) : il n'a pas à figurer en ligne séparée,
+  // et une ligne négative ferait compter sa réduction deux fois.
+  let totalLow: number | null = baseLow + lines.reduce((sum, line) => sum + line.eur_low, 0);
+  let totalHigh: number | null = baseHigh + lines.reduce((sum, line) => sum + line.eur_high, 0);
 
   // Sans montant proposé, la fourchette reste calculée : c'est quand la marque
   // ne donne pas de budget que le créateur a le plus besoin d'un chiffre.

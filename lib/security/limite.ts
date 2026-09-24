@@ -34,13 +34,21 @@ export type Requester = {
   ip: string;
 };
 
-// Visiteur sans compte : filet strict, il n'a de toute façon qu'une seule
-// négociation gratuite. C'est la protection anti-script, elle reste.
-export const OPENINGS_ANON = 5;
+// Visiteur sans compte. Mission #104, E1 — 30, et non plus 5 : le trafic est
+// intégralement mobile, et les opérateurs français partagent une même adresse
+// IPv4 publique entre de nombreux abonnés. À 5, six visiteurs distincts
+// derrière la même adresse suffisaient à refuser au sixième sa toute première
+// analyse. Le filet garde son rôle — arrêter un script — et ce n'est pas lui
+// qui protège la gratuité : une seule négociation offerte par navigateur, et
+// le filet anti-abus de lib/billing/entitlement.ts font ce travail en amont.
+export const OPENINGS_ANON = 30;
 // Compte connecté : de quoi ouvrir plusieurs négociations d'affilée sans
 // jamais tomber dessus en usage normal. Ce compteur ne voit QUE les
 // ouvertures, donc une négociation entière n'en consomme qu'une.
-export const OPENINGS_ACCOUNT = 20;
+// Mission #104 — jamais en dessous du filet anonyme : une personne connectée,
+// identifiée et souvent payante, ne peut pas être plus contrainte qu'un
+// visiteur de passage.
+export const OPENINGS_ACCOUNT = 30;
 export const LIMIT_WINDOW_SECONDS = 60 * 60;
 
 export type LimitRule = {
@@ -84,7 +92,7 @@ export function limitVerdict(
   return {
     allowed: false,
     reason: "trop_d_ouvertures",
-    message: tooManyOpenings(hit.retryInMinutes),
+    message: tooManyOpenings(hit.retryInMinutes, rule.scope),
     retryInMinutes: hit.retryInMinutes,
   };
 }

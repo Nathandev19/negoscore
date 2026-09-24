@@ -414,5 +414,8 @@ export function buildConclusion({
     // C4 — même règle et même texte que l'analyse : lib/legal/fr.ts, seul
     // endroit du projet où un énoncé juridique est écrit.
     legal_note: computeFrLegal(legalDeal(deal, counterRange ? counterAccepted : null)).note,
+    // Mission #104, D — le montant que ce message porte, enregistré tel quel.
+    // La carte partageable le lit ; elle ne le recalcule plus.
+    offered,
   };
 }

@@ -3,9 +3,7 @@ import { recomputeForDeal, recomputeForTier } from "@/lib/analysis/recompute";
 import { getRequestUser } from "@/lib/auth/request-user";
 import { currentState } from "@/lib/negotiation/current";
 import { loadThread } from "@/lib/negotiation/store";
-import { offeredAmount } from "@/lib/negotiation/closing";
 import { SHARE_CARD_FILENAME, shareCardAvailable } from "@/lib/share-card/element";
-import { pricingOf } from "@/lib/share-card/offered";
 import { renderShareCard } from "@/lib/share-card/render";
 import { tierFromUrl } from "@/lib/share-card/tier-param";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
@@ -46,10 +44,12 @@ export async function GET(request: Request, { params }: RouteContext<"/analyse/r
   // Mission #085 : table de l'analyse disparue du code, les chiffres ne
   // peuvent pas suivre les termes actuels. Pas de carte, plutôt qu'une carte
   // aux chiffres de l'offre d'origine (la page ne propose alors pas le bouton).
-  // Mission #100, point 4 — le montant de la carte est celui de l'écran de
-  // conclusion : le plus élevé entre ce que les termes retiennent et le
-  // plafond annoncé au dernier tour (mission #096, offeredAmount).
-  const offered = negotiated ? offeredAmount(analysis?.deal ?? atTier.deal, negotiated.ceiling, pricingOf(analysis ?? atTier)) : null;
+  // Mission #104, D — le montant de la carte est CELUI DU MESSAGE
+  // D'ACCEPTATION, lu tel qu'il a été enregistré (lib/negotiation/current.ts).
+  // La carte ne le recalcule pas : deux calculs, même fonction, entrées
+  // légèrement différentes, et la carte annonçait 600 € quand l'écran
+  // proposait 900 €.
+  const offered = negotiated?.offered ?? null;
   if (!analysis || !shareCardAvailable(analysis, offered)) return notFound();
   return renderShareCard(
     analysis,
