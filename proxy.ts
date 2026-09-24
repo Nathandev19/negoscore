@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { shortPathTarget } from "@/lib/acquisition/chemins";
 import { isDevZone, isOwnerEmail, isOwnerPath, ownerRefusal, ownerRefusalLog } from "@/lib/admin/owner";
 import { requiresAccount } from "@/lib/auth/account-pages";
 import { signedInRedirectPath } from "@/lib/auth/next-path";
@@ -71,6 +72,14 @@ const NOWHERE = "/_introuvable";
 const AUTH_UNAVAILABLE_PAGE = "/session-indisponible";
 
 export async function proxy(request: NextRequest) {
+  // Mission #106 — chemins courts porteurs d'UTM (/dm, /verdicts…). Avant
+  // tout le reste : ce sont des adresses dictées à l'oral, tapées à la main,
+  // qui n'ont besoin ni de session ni de rien d'autre. Redirection TEMPORAIRE
+  // (307) : la table doit pouvoir changer sans qu'un navigateur ait mis
+  // l'ancienne destination en cache pour toujours.
+  const shortPath = shortPathTarget(request.nextUrl.pathname);
+  if (shortPath) return NextResponse.redirect(new URL(shortPath, request.url), 307);
+
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   const hasHint = request.cookies.has(SESSION_HINT_COOKIE);
