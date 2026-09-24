@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import { SessionUnavailable } from "@/components/session-unavailable";
 import { loadResultForViewer } from "@/lib/analysis/load";
-import { getViewer } from "@/lib/auth/viewer";
+import { getViewerState } from "@/lib/auth/viewer";
 import { ANON_COOKIE } from "@/lib/security/request";
 
 // Mission #049 : le 404 est décidé ICI, au-dessus de loading.tsx.
@@ -14,10 +15,15 @@ import { ANON_COOKIE } from "@/lib/security/request";
 // page, même code, même nombre de lectures en base. Rien ne permet de
 // distinguer un identifiant qui existe d'un identifiant qui n'existe pas.
 // La lecture est mémorisée par requête : la page réutilise ce résultat.
+// Mission #089 bis — l'authentification injoignable N'EST PAS une absence de
+// session. Lire la suite avec user = null ferait répondre « introuvable » à la
+// propriétaire de l'analyse : un 404 définitif pour une panne passagère. On
+// affiche l'état réel, à la même adresse, que recharger réessaie.
 export default async function AnalysisLayout({ children, params }: LayoutProps<"/analyse/resultat/[id]">) {
   const { id } = await params;
   const anonToken = (await cookies()).get(ANON_COOKIE)?.value ?? null;
-  const user = await getViewer();
+  const { state, user } = await getViewerState();
+  if (state === "indisponible") return <SessionUnavailable />;
   if (!(await loadResultForViewer(id, { user, anonToken }))) notFound();
   return children;
 }

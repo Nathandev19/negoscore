@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { sessionStateFrom } from "@/lib/auth/session-state";
 
 // Session Supabase Auth côté serveur, par l'API REST. Magic link uniquement,
 // en PKCE : le vérificateur reste dans un cookie httpOnly, le code du lien
@@ -108,12 +109,10 @@ export async function verifyTokenHash(tokenHash: string, type: string): Promise<
 // révoquée, jeton de rafraîchissement expiré ou déjà utilisé) — on peut, et on
 // doit, effacer les cookies. « Indisponible » : Supabase n'a pas pu répondre
 // (réseau, 5xx, 429) — on ne sait RIEN de la session, on n'y touche pas.
-// Même partage que le client officiel supabase-js (auth-js, GoTrueClient) : il
-// garde la session sur une erreur « retryable » (réseau, 502/503/504) et la
-// retire sur les autres. Ici, toute erreur serveur compte comme indisponible.
-function authUnavailable(status: number): boolean {
-  return status >= 500 || status === 429 || status === 408;
-}
+//
+// Mission #089 bis — le partage lui-même vit dans lib/auth/session-state.ts,
+// module pur sans dépendance : un seul endroit décide, et il se teste seul.
+// Ce fichier ne fait plus que traduire un appel réseau en « AuthCall ».
 
 export type RefreshOutcome =
   | { kind: "refreshed"; session: Session }
@@ -130,12 +129,11 @@ export async function refreshSessionOutcome(refreshToken: string): Promise<Refre
   } catch {
     return { kind: "unavailable", status: null };
   }
-  if (response.ok) {
-    const session = toSession(await response.json().catch(() => null));
-    // Réponse 200 illisible : on ne conclut pas que la session est invalide.
-    return session ? { kind: "refreshed", session } : { kind: "unavailable", status: response.status };
-  }
-  return authUnavailable(response.status) ? { kind: "unavailable", status: response.status } : { kind: "rejected", status: response.status };
+  const session = response.ok ? toSession(await response.json().catch(() => null)) : null;
+  // Réponse 200 illisible : « indisponible », pas « invalide » (session-state).
+  const state = sessionStateFrom({ kind: "reponse", status: response.status, user: session !== null });
+  if (state === "valide" && session) return { kind: "refreshed", session };
+  return state === "indisponible" ? { kind: "unavailable", status: response.status } : { kind: "rejected", status: response.status };
 }
 
 export async function refreshSession(refreshToken: string): Promise<Session | null> {
@@ -156,11 +154,10 @@ export async function checkAccessToken(accessToken: string): Promise<AccessCheck
   } catch {
     return { kind: "unavailable", status: null };
   }
-  if (response.ok) {
-    const body = (await response.json().catch(() => null)) as { id?: string; email?: string } | null;
-    return body?.id ? { kind: "valid", user: { id: body.id, email: body.email ?? null } } : { kind: "unavailable", status: response.status };
-  }
-  return authUnavailable(response.status) ? { kind: "unavailable", status: response.status } : { kind: "rejected", status: response.status };
+  const body = response.ok ? ((await response.json().catch(() => null)) as { id?: string; email?: string } | null) : null;
+  const state = sessionStateFrom({ kind: "reponse", status: response.status, user: Boolean(body?.id) });
+  if (state === "valide" && body?.id) return { kind: "valid", user: { id: body.id, email: body.email ?? null } };
+  return state === "indisponible" ? { kind: "unavailable", status: response.status } : { kind: "rejected", status: response.status };
 }
 
 // Mission #089 — la session d'une requête, dans le vocabulaire de la mission

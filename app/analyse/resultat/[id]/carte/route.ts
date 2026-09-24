@@ -1,6 +1,6 @@
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { recomputeForDeal, recomputeForTier } from "@/lib/analysis/recompute";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { currentState } from "@/lib/negotiation/current";
 import { loadThread } from "@/lib/negotiation/store";
 import { SHARE_CARD_FILENAME, shareCardAvailable } from "@/lib/share-card/element";
@@ -27,7 +27,17 @@ function notFound() {
 // niveau de l'analyse enregistrée.
 export async function GET(request: Request, { params }: RouteContext<"/analyse/resultat/[id]/carte">) {
   const { id } = await params;
-  const user = await getRequestUser(request);
+  // Mission #089 bis — l'authentification injoignable donnait user = null, et
+  // la carte d'une analyse rattachée à un compte devenait « Analyse
+  // introuvable » pour sa propre propriétaire. Une panne n'est pas une absence
+  // de session : la carte est momentanément indisponible, et un second clic la
+  // produit. Rien n'est supprimé, rien n'est décompté.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("carte");
+    return unavailable();
+  }
+  const user = session.kind === "valid" ? session.user : null;
   const anonToken = readCookie(request, ANON_COOKIE);
   const result = await loadResultForViewer(id, { user, anonToken });
   if (!result || !shareCardAvailable(result.analysis)) return notFound();

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { getViewer } from "@/lib/auth/viewer";
+import { getViewerState } from "@/lib/auth/viewer";
 
 export const metadata: Metadata = {
   title: "Analyse introuvable",
@@ -20,8 +20,11 @@ export const metadata: Metadata = {
 // avant la #067, ou secret perdu en route) : la personne doit savoir qu'elle
 // EST connectée et comment récupérer son analyse.
 export default async function ResultNotFound() {
-  const viewer = await getViewer().catch(() => null);
-  const signedIn = viewer !== null;
+  // Mission #089 bis — « pas connectée » et « on n'a pas pu demander » ne se
+  // confondent plus dans un catch : sur une panne, on affiche le texte neutre,
+  // qui n'affirme rien sur la session, plutôt que le texte « tu es bien
+  // connecté » qu'on ne peut pas garantir.
+  const signedIn = (await getViewerState()).state === "valide";
   return (
     <>
       <SiteHeader />

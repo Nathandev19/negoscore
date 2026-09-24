@@ -336,7 +336,7 @@ const db = vi.hoisted(() => ({
   rendered: null as { analysis: unknown; offered: number | null } | null,
 }));
 
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => ({ id: "u1", email: "creatrice@example.fr" }) }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => ({ id: "u1", email: "creatrice@example.fr" })));
 vi.mock("@/lib/analysis/load", () => ({ loadResultForViewer: async () => db.result }));
 vi.mock("@/lib/negotiation/store", () => ({ loadThread: async () => db.thread }));
 vi.mock("@/lib/share-card/render", () => ({

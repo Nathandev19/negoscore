@@ -12,7 +12,12 @@ import { baseExtraction } from "@/lib/fixtures/preview-states";
 // Mission #067, parties B, C et D.
 
 const viewer = vi.hoisted(() => ({ current: null as { id: string; email: string } | null }));
-vi.mock("@/lib/auth/viewer", () => ({ getViewer: async () => viewer.current }));
+// Mission #089 bis — les pages lisent l'ÉTAT (trois issues), plus seulement
+// l'utilisateur : connecté → « valide », null → « absente ».
+vi.mock("@/lib/auth/viewer", () => ({
+  getViewer: async () => viewer.current,
+  getViewerState: async () => ({ state: viewer.current ? "valide" : "absente", user: viewer.current }),
+}));
 vi.mock("@/components/site-header", () => ({ SiteHeader: () => null }));
 vi.mock("@/components/site-footer", () => ({ SiteFooter: () => null }));
 

@@ -23,7 +23,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => ({
     return row ? [row] : [];
   },
 }));
-vi.mock("@/lib/auth/request-user", () => ({ getRequestUser: async () => user.current }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => user.current));
 // Le rendu PNG lui-même (satori) est vérifié dans le navigateur ; ici, on
 // vérifie qui y a accès.
 vi.mock("@/lib/share-card/render", () => ({

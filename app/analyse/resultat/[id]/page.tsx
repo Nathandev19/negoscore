@@ -8,6 +8,7 @@ import { EstimateFeedback } from "@/components/result/estimate-feedback";
 import { NegotiationThread } from "@/components/result/negotiation/negotiation-thread";
 import { RetryPanel, type RetryPanelState } from "@/components/result/retry-panel";
 import { ShareCardLink } from "@/components/result/share-card-link";
+import { SessionUnavailable } from "@/components/session-unavailable";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
@@ -16,7 +17,7 @@ import { judgedRanges } from "@/lib/analysis/judged-ranges";
 import { loadResultForViewer } from "@/lib/analysis/load";
 import { recomputeForDeal } from "@/lib/analysis/recompute";
 import { retryStateFor, type RetryPageState } from "@/lib/analysis/retry";
-import { getViewer } from "@/lib/auth/viewer";
+import { getViewerState } from "@/lib/auth/viewer";
 import { currentState } from "@/lib/negotiation/current";
 import { loadSentMessages, type SentMessage } from "@/lib/negotiation/sent";
 import { loadThread, type Thread } from "@/lib/negotiation/store";
@@ -41,7 +42,11 @@ function panelState(state: RetryPageState | null): RetryPanelState | null {
 export default async function AnalysisPage({ params }: PageProps<"/analyse/resultat/[id]">) {
   const { id } = await params;
   const anonToken = (await cookies()).get(ANON_COOKIE)?.value ?? null;
-  const user = await getViewer();
+  // Mission #089 bis — même garde que le layout, pour elle-même : la page est
+  // rendue en parallèle de lui, et lire la suite avec user = null pendant une
+  // panne dirait « introuvable » à la propriétaire de l'analyse.
+  const { state, user } = await getViewerState();
+  if (state === "indisponible") return <SessionUnavailable />;
   const result = await loadResultForViewer(id, { user, anonToken });
   if (!result) notFound();
   // Offre incomplète : relance gratuite (mission #043). null : indisponible

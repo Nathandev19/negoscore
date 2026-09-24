@@ -1,4 +1,4 @@
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { parseTier } from "@/lib/rates/tier";
 import { saveAccountTier } from "@/lib/rates/tier-preference";
 
@@ -22,8 +22,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "Niveau inconnu." }, { status: 400 });
   }
   const at = typeof body?.at === "number" && Number.isFinite(body.at) && body.at > 0 ? body.at : Date.now();
-  const user = await getRequestUser(request);
-  if (!user) return new Response(null, { status: 204 });
+  // Mission #089 bis — une panne d'authentification passait pour « personne
+  // n'est connectée », et la préférence était abandonnée en silence sous un
+  // 204 qui annonce le contraire. Même issue que toutes les autres pannes de
+  // cette route : 503, et le cookie du navigateur reste la référence.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("niveau");
+    return Response.json({ error: "indisponible" }, { status: 503 });
+  }
+  if (session.kind !== "valid") return new Response(null, { status: 204 });
+  const user = session.user;
   try {
     const outcome = await saveAccountTier(user.id, tier, at);
     if (outcome === "missing") return Response.json({ error: "indisponible" }, { status: 503 });

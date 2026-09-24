@@ -70,6 +70,17 @@ export function saveThreadDraft(
   }
 }
 
+// Mission #089 bis — ce qui décide du sort du brouillon quand un envoi est
+// refusé. Un refus DÉFINITIF (hors sujet, plus de tours, pas le droit) abandonne
+// la clé d'idempotence : le tour ne partira pas. Une PANNE — et une
+// authentification injoignable en est une, 503 — garde tout : le texte, et la
+// clé, pour que le second essai soit reconnu comme le même tour. Confondre les
+// deux fait perdre à la créatrice la réponse qu'elle vient d'écrire, parce que
+// Supabase n'a pas répondu pendant deux secondes.
+export function draftSurvives(status: number): boolean {
+  return status >= 500;
+}
+
 export function clearThreadDraft(analysisId: string, store: DraftStorage | null = storage()): void {
   try {
     store?.removeItem(threadDraftKey(analysisId));

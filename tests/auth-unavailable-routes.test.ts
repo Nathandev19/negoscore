@@ -185,3 +185,60 @@ describe("C — les autres routes corrigées, pendant une panne d'authentificati
   });
 
 });
+
+// Mission #089 bis — les trois routes qui lisaient encore getRequestUser, où
+// une panne devenait « personne n'est connectée » : la carte partageable
+// répondait « Analyse introuvable » à sa propriétaire, le message copié
+// répondait 401, et la préférence de niveau était jetée sous un 204 qui
+// annonce le contraire.
+describe("089 bis — les routes qui confondaient encore panne et absence", () => {
+  beforeEach(() => {
+    state.session = "unavailable";
+  });
+  afterEach(() => {
+    expect(state.db).toEqual([]);
+  });
+
+  it("carte partageable : 503 « momentanément indisponible », jamais 404 « introuvable »", async () => {
+    const { GET } = await import("@/app/analyse/resultat/[id]/carte/route");
+    const response = await GET(new Request(`http://localhost:3000/analyse/resultat/${ID}/carte`), { params });
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain("introuvable");
+  });
+
+  it("message retenu comme envoyé : 503, pas 401 (« tu n'es pas identifiée »)", async () => {
+    const { POST } = await import("@/app/api/analyses/[id]/message-envoye/route");
+    const response = await POST(post(`/api/analyses/${ID}/message-envoye`, { turn: 1, text: "Bonjour, voici ma proposition pour cette collaboration." }), { params });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ saved: false });
+  });
+
+  it("préférence de niveau : 503, pas un 204 qui fait croire que c'est enregistré", async () => {
+    const { POST } = await import("@/app/api/niveau/route");
+    const response = await POST(post("/api/niveau", { tier: "starter", at: Date.now() }));
+    expect(response.status).toBe(503);
+  });
+
+  it("les mêmes routes, session ABSENTE : comportement d'aujourd'hui, inchangé", async () => {
+    state.session = null;
+    const niveau = await (await import("@/app/api/niveau/route")).POST(post("/api/niveau", { tier: "starter" }));
+    expect(niveau.status).toBe(204);
+    const envoye = await (await import("@/app/api/analyses/[id]/message-envoye/route")).POST(
+      post(`/api/analyses/${ID}/message-envoye`, { turn: 1, text: "Bonjour, voici ma proposition pour cette collaboration." }),
+      { params },
+    );
+    expect(envoye.status).toBe(401);
+  });
+});
+
+// Mission #089 bis — l'invariant qui compte pour quelqu'un qui a payé.
+describe("089 bis — une panne ne montre jamais le mur de la gratuité", () => {
+  it("analyse : 503 de panne, aucune réservation, et pas un mot sur la gratuité ou l'abonnement", async () => {
+    state.session = "unavailable";
+    const response = await (await import("@/app/api/analyse/route")).POST(post("/api/analyse", { text: TEXT }));
+    const body = JSON.stringify(await response.json());
+    expect(response.status).toBe(503);
+    expect(state.reserved).toEqual([]);
+    for (const mot of ["gratuit", "Connecte-toi", "abonn", "crédit", "Tarifs"]) expect(body).not.toContain(mot);
+  });
+});

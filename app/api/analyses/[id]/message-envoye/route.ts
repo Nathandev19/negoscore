@@ -1,5 +1,5 @@
 import { loadResultForViewer } from "@/lib/analysis/load";
-import { getRequestUser } from "@/lib/auth/request-user";
+import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { cleanSentText, saveSentMessage } from "@/lib/negotiation/sent";
 import { loadThread } from "@/lib/negotiation/store";
 
@@ -15,8 +15,17 @@ function json(status: number, body: Record<string, unknown>) {
 
 export async function POST(request: Request, { params }: RouteContext<"/api/analyses/[id]/message-envoye">) {
   const { id } = await params;
-  const user = await getRequestUser(request);
-  if (!user) return json(401, { saved: false });
+  // Mission #089 bis — une panne d'authentification répondait 401 à la
+  // propriétaire connectée : « tu n'es pas identifiée », ce qui est faux, et
+  // le message copié n'était retenu pour aucun tour. 503 : rien n'est affirmé
+  // sur la session, et le navigateur peut réessayer.
+  const session = await getRequestSession(request);
+  if (session.kind === "unavailable") {
+    logAuthUnavailable("message-envoye");
+    return json(503, { saved: false });
+  }
+  if (session.kind !== "valid") return json(401, { saved: false });
+  const user = session.user;
   const body = (await request.json().catch(() => null)) as { turn?: unknown; text?: unknown } | null;
   const turn = typeof body?.turn === "number" && Number.isInteger(body.turn) ? body.turn : null;
   const text = cleanSentText(body?.text);

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, TOO_SHORT_REPLY_MESSAGE, type Conclusion, type ThreadAccess, type TurnPayload } from "@/lib/negotiation/types";
 import { exchanges, NEGOTIATION_EXCHANGES } from "@/lib/content/vocabulaire";
 import { saveTurnWithoutJs, type TurnWithoutJsState } from "@/lib/forms/no-js-actions";
-import { clearThreadDraft, readThreadKey, readThreadReply, saveThreadDraft, subscribeThreadDraft } from "@/lib/negotiation/draft";
+import { clearThreadDraft, draftSurvives, readThreadKey, readThreadReply, saveThreadDraft, subscribeThreadDraft } from "@/lib/negotiation/draft";
 import { DEFAULT_TIER } from "@/lib/rates/tier";
 import { nextResume } from "@/lib/analysis/resume";
 import { nextReveal, prefersReducedMotion, reveal, THREAD_PENDING_ID, type ThreadSnapshot } from "@/lib/ui/reveal";
@@ -219,8 +219,9 @@ export function NegotiationThread({
         return;
       }
       // Refus définitif (hors sujet, pas de droit, fin des tours) : la clé est
-      // abandonnée, le texte reste dans la zone.
-      if (response.status < 500) {
+      // abandonnée, le texte reste dans la zone. Une panne, elle, garde tout
+      // (lib/negotiation/draft.ts) — 503 d'authentification injoignable compris.
+      if (!draftSurvives(response.status)) {
         keyRef.current = null;
         // Refus définitif : la clé est abandonnée, le TEXTE reste (audit B15).
         saveThreadDraft(analysisId, { reply, key: null });
