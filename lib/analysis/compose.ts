@@ -4,6 +4,7 @@ import { evaluability, incompleteRequestMessage, termsRequestMessage } from "@/l
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { computeEscalation } from "@/lib/legal/escalate";
 import { computeFrLegal } from "@/lib/legal/fr";
+import { commissionPoints, commissionRedFlags } from "@/lib/negotiation/commission";
 import { completeMessage } from "@/lib/negotiation/coverage";
 import { PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
 import { isFarAboveOffer, type EstimateLine } from "@/lib/rates/engine";
@@ -26,7 +27,15 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
   const tier = options.tier ?? DEFAULT_TIER;
   const { estimate, lines, score, counter } = engineParts(deal, state, tier, options.extraAssumptions ?? []);
 
-  const negotiate = mergeNegotiate(extraction.negotiate, lines);
+  const merged = mergeNegotiate(extraction.negotiate, lines);
+  // Mission #116 — une offre à commission dit ce qu'il faut obtenir. Les points
+  // s'AJOUTENT à ceux du modèle, sans doublonner, et ne portent aucun euro :
+  // une commission ne se chiffre pas. Offre sans commission : liste vide, et
+  // rien ne change (lib/negotiation/commission.ts).
+  const negotiate = [...merged, ...commissionPoints(deal, merged, estimate.base_low, estimate.base_high)].map((point, index) => ({
+    ...point,
+    priority: index + 1,
+  }));
 
   // Sans montant proposé, on ne peut pas être confiant, quoi qu'en dise le modèle.
   // Estimation très au-dessus de l'offre : la confiance ne peut pas rester haute.
@@ -48,7 +57,11 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
     score,
     good_points: extraction.good_points,
     negotiate,
-    red_flags: extraction.red_flags,
+    // Mission #116, C — le signal « aucune rémunération fixe » est écrit par le
+    // moteur quand une commission est seule, et retiré quand un fixe existe :
+    // il serait alors faux. Sans commission, la liste du modèle passe telle
+    // quelle.
+    red_flags: commissionRedFlags(deal, extraction.red_flags),
     estimate,
     fr_legal: computeFrLegal(deal),
     escalate_to_professional: computeEscalation(deal),

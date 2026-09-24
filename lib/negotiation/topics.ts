@@ -18,7 +18,10 @@ export type Topic = {
 const word = (body: string) => new RegExp(`(?<![\\p{L}])(?:${body})`, "iu");
 
 export const TOPICS: readonly Topic[] = [
-  { key: "amount", groups: ["amount"], rows: ["Rémunération"], pattern: word("rémunér|budget|tarif|prix|montant|contre-offre|cachet|sous-pay") },
+  // Mission #116 — « un fixe » parle bien de rémunération : sans cette forme,
+  // le point « Obtenir un fixe qui couvre la création » n'aurait aucun sujet,
+  // et la règle de couverture du message (#115) ne saurait pas le reconnaître.
+  { key: "amount", groups: ["amount"], rows: ["Rémunération"], pattern: word("rémunér|budget|tarif|prix|montant|contre-offre|cachet|sous-pay|fixe(?![\\p{L}])|garanti") },
   { key: "payment", groups: ["payment_terms"], rows: ["Paiement"], pattern: word("paiement|payer|payé|acompte|règlement|signature|facturation") },
   { key: "exclusivity", groups: ["exclusivity"], rows: ["Exclusivité"], pattern: word("exclusivit") },
   {
@@ -34,6 +37,15 @@ export const TOPICS: readonly Topic[] = [
   { key: "in_kind", groups: ["in_kind"], rows: [], pattern: word("produits? offert|dotation|en nature") },
   { key: "raw", groups: [], rows: [], pattern: word("raw footage|rushs?(?![\\p{L}])|fichiers? sources?") },
   { key: "revisions", groups: [], rows: [], pattern: word("révision|retouche") },
+  // Mission #116 — la rémunération variable. Aucun groupe de termes suivi : ce
+  // n'est pas un terme que le moteur chiffre, et il ne doit surtout pas l'être.
+  // Le sujet sert à relier les cinq points à obtenir au message qui les porte.
+  {
+    key: "commission",
+    groups: [],
+    rows: [],
+    pattern: word("commission|affiliation|affili[ée]|code promo|pourcentage|assiette|attribution|rattach[ée]|versement|revers[ée]|seuil"),
+  },
 ];
 
 export function topicsOf(label: string): Topic[] {

@@ -6,7 +6,7 @@ import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { extractionSchema, type Extraction } from "@/lib/llm/prompt";
 import { computeEstimate } from "@/lib/rates/engine";
 import { computeScore } from "@/lib/rates/score";
-import type { Analysis } from "@/lib/schema";
+import { analysisSchema, type Analysis } from "@/lib/schema";
 
 type Deal = Analysis["deal"];
 
@@ -22,7 +22,9 @@ const NO_USAGE: Deal["usage"] = {
 
 // Deal extrait en production pour « Tu postes 1 vidéo sur ton TikTok, on te paie 250 € ».
 const POSTS_ON_OWN_ACCOUNT: Deal = {
-  ...(sample.deal as Deal),
+  // Mission #116 — relu par le schéma : les champs ajoutés depuis prennent
+  // leur valeur par défaut, comme pour une analyse enregistrée.
+  ...analysisSchema.shape.deal.parse(sample.deal),
   brand: null,
   deliverables: [{ type: "video", platform: "tiktok", quantity: 1, format: null }],
   publication_required: true,

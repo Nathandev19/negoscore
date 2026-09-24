@@ -18,6 +18,7 @@ export const PREVIEW_STATES = [
   "terms_unknown",
   "quantite-inconnue",
   "prix-plafonne",
+  "commission",
 ] as const;
 export type PreviewState = (typeof PREVIEW_STATES)[number];
 
@@ -72,6 +73,32 @@ export function previewAnalysis(state: PreviewState): { analysis: ResultView; un
         }),
         unlocked: true,
       };
+    case "commission": {
+      // Mission #116 — l'offre réelle du 24/09 : 2 vidéos TikTok, 15 % sur les
+      // ventes via un code promo, aucun fixe, droits pub 6 mois. Elle sert à
+      // voir de ses yeux les cinq points à obtenir et la ligne « Commission »,
+      // sans lancer d'analyse payante.
+      return {
+        analysis: composeAnalysis({
+          ...base,
+          deal: {
+            ...base.deal,
+            deliverables: [{ type: "video", platform: "tiktok", quantity: 2, format: null }],
+            usage: { ...base.deal.usage, paid_ads: true, duration_months: 6, territory: null },
+            exclusivity: { present: false, duration_months: null, category: null },
+            raw_footage: false,
+            revisions: { count: 2, unlimited: false },
+            payment: { ...base.deal.payment, amount_eur: null, terms_days: null },
+            in_kind_value_eur: null,
+            variable_pay: { present: true, rate_percent: 15, base: null, per_sale_eur: null, attribution_days: null, payout: null },
+          },
+          red_flags: [
+            { label: "Aucune rémunération fixe", severity: "high", why: "Tu n'as aucune garantie de paiement si les ventes générées sont faibles." },
+          ],
+        }),
+        unlocked: true,
+      };
+    }
     case "prix-plafonne": {
       // Mission #050 : offre correcte sur tout le reste (droits limités, délai
       // court, pas d'exclusivité), mais payée un peu plus de la moitié du bas

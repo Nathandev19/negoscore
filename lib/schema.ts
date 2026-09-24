@@ -64,6 +64,32 @@ export const analysisSchema = z.object({
       schedule: z.string().nullable(),
     }),
     in_kind_value_eur: z.number().nullable(),
+    // Mission #116 — RÉMUNÉRATION VARIABLE : commission sur les ventes, code
+    // promo, lien d'affiliation, partenariat au chiffre d'affaires.
+    //
+    // Elle n'est JAMAIS chiffrée en euros : lui donner une valeur demanderait
+    // le prix du produit, un taux de conversion et la taille de l'audience —
+    // trois choses que le produit n'a pas. Ce champ ne sert qu'à LIRE ce que
+    // l'offre écrit, et à en déduire ce qu'il faut obtenir par écrit.
+    //
+    // Tous les champs ont une valeur par défaut : une analyse enregistrée avant
+    // cette mission se relit sans erreur, avec « aucune commission ».
+    variable_pay: z
+      .object({
+        present: z.boolean().default(false),
+        // Taux en pourcentage, tel qu'il est écrit (15 pour « 15 % »).
+        rate_percent: z.number().nullable().default(null),
+        // Assiette : sur quoi porte le pourcentage (« prix de vente HT »,
+        // « panier »). null : l'offre ne le dit pas, et c'est un point à obtenir.
+        base: z.string().nullable().default(null),
+        // Commission fixe par vente, quand l'offre en annonce une.
+        per_sale_eur: z.number().nullable().default(null),
+        // Durée d'attribution du code ou du lien, en jours.
+        attribution_days: z.number().nullable().default(null),
+        // Modalités de versement, telles qu'écrites (fréquence, seuil).
+        payout: z.string().nullable().default(null),
+      })
+      .default({ present: false, rate_percent: null, base: null, per_sale_eur: null, attribution_days: null, payout: null }),
     deadlines: z.array(z.string()),
     kill_fee: z.string().nullable(),
     termination: z.string().nullable(),

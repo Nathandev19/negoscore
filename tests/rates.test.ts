@@ -24,6 +24,8 @@ const FIXTURE_17_DEAL = extracted17 as Deal;
 // Deal neutre : 1 vidéo TikTok, 300 €, usage organique, rien d'autre.
 function makeDeal(overrides: Partial<Deal> = {}): Deal {
   return {
+    // Mission #116 — aucune commission : valeur par défaut.
+    variable_pay: { present: false, rate_percent: null, base: null, per_sale_eur: null, attribution_days: null, payout: null },
     brand: "Marque Test",
     deliverables: [{ type: "video", platform: "tiktok", quantity: 1, format: null }],
     publication_required: false,

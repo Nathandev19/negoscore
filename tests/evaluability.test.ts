@@ -30,6 +30,8 @@ import { analysisSchema, type Analysis } from "@/lib/schema";
 type Deal = Analysis["deal"];
 
 const EMPTY_DEAL: Deal = {
+  // Mission #116 — aucune commission : valeur par défaut, comportement inchangé.
+  variable_pay: { present: false, rate_percent: null, base: null, per_sale_eur: null, attribution_days: null, payout: null },
   brand: null,
   deliverables: [],
   publication_required: false,

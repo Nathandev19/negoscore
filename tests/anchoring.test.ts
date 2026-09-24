@@ -7,14 +7,17 @@ import { extractionSchema, PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/
 import { formatEur } from "@/lib/money";
 import { computeEstimate } from "@/lib/rates/engine";
 import { computeScore, pricePoints, uncappedScore } from "@/lib/rates/score";
-import type { Analysis } from "@/lib/schema";
+import { analysisSchema, type Analysis } from "@/lib/schema";
 import nova from "./fixtures/deal-26-nova-sportswear.json";
 
 type Deal = Analysis["deal"];
 
 // Fixture 26 — NOVA Sportswear, testée en production : 90/100 « Excellent deal »
 // et un message annonçant « entre 460 € et 1 090 € » pour une offre à 600 €.
-const NOVA = nova as Deal;
+// Mission #116 — relu par le schéma plutôt que forcé par un cast : c'est ce
+// qui applique les valeurs par défaut des champs ajoutés depuis, et c'est
+// exactement ce qui se passe pour une analyse enregistrée (lib/analysis/load).
+const NOVA: Deal = analysisSchema.shape.deal.parse(nova);
 
 function extraction(deal: Deal): Extraction {
   return extractionSchema.parse({

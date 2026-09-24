@@ -1,5 +1,6 @@
 import { formatEur } from "@/lib/money";
 import { RAW_FOOTAGE_LABEL } from "@/lib/content/labels";
+import { variablePayOf } from "@/lib/negotiation/commission";
 import type { PriceCapReason } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
 
@@ -151,6 +152,23 @@ export function deliverablesLine(deal: Deal): string | null {
 export type RecapRow = { label: string; value: string };
 
 // Ne renvoie que les lignes qui ont une valeur : jamais de « non spécifié ».
+// Mission #116 — la rémunération variable, telle qu'elle est écrite dans
+// l'offre. Le taux sans son assiette ne veut rien dire : quand l'assiette
+// manque, la ligne le DIT plutôt que de laisser croire que « 15 % » suffit.
+function variablePayRow(pay: Deal["variable_pay"]): RecapRow | null {
+  if (!pay.present && pay.rate_percent === null && pay.per_sale_eur === null) return null;
+  const parts = [
+    pay.rate_percent !== null ? `${formatNumber(pay.rate_percent)} %` : null,
+    pay.rate_percent !== null ? (pay.base ? `sur ${pay.base}` : "assiette non précisée") : null,
+    // Une commission PAR VENTE est un montant écrit dans l'offre, pas une
+    // estimation de gains : on le montre tel quel, sans jamais le multiplier.
+    pay.per_sale_eur !== null ? `${formatEur(pay.per_sale_eur)} par vente` : null,
+    pay.attribution_days !== null ? `attribution ${formatNumber(pay.attribution_days)} jours` : "attribution non précisée",
+    pay.payout ? `versement : ${pay.payout}` : "versement non précisé",
+  ].filter(Boolean);
+  return { label: "Commission", value: parts.join(", ") || "Oui, sans détail écrit" };
+}
+
 export function dealRecapRows(deal: Deal): RecapRow[] {
   const rows: Array<RecapRow | null> = [
     deal.brand ? { label: "Marque", value: deal.brand } : null,
@@ -205,6 +223,11 @@ export function dealRecapRows(deal: Deal): RecapRow[] {
     deal.in_kind_value_eur !== null
       ? { label: "Produits offerts", value: formatEur(deal.in_kind_value_eur) }
       : null,
+    // Mission #116, A3 — ce que l'outil a LU de la commission. La créatrice
+    // doit voir qu'il l'a vue. Aucun euro n'y est associé : ni gain estimé,
+    // ni potentiel. Seulement ce que l'offre écrit, et « non précisé » pour
+    // ce qu'elle n'écrit pas — c'est justement ce qu'il faut obtenir.
+    variablePayRow(variablePayOf(deal)),
     deal.deadlines.length > 0 ? { label: "Échéances", value: deal.deadlines.join(", ") } : null,
     deal.kill_fee ? { label: "Indemnité d'annulation", value: deal.kill_fee } : null,
     deal.termination ? { label: "Résiliation", value: deal.termination } : null,

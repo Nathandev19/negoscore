@@ -118,6 +118,7 @@ EXTRACTION (objet deal)
 - payment.terms_days : délai de paiement en jours, null s'il n'est pas écrit.
 - payment.schedule : échéancier écrit (par exemple "50 % à la signature, 50 % à la livraison"), sinon null.
 - in_kind_value_eur : valeur des produits offerts si elle est chiffrée dans l'offre, sinon null.
+- variable_pay : rémunération qui dépend des ventes — commission sur les ventes, pourcentage du chiffre d'affaires, commission par vente, code promo, lien d'affiliation, partenariat à la performance. present = true dès qu'une de ces formes apparaît. rate_percent = le pourcentage écrit, en nombre (15 pour « 15 % »). base = sur quoi il porte, tel qu'écrit (« prix de vente HT », « panier »). per_sale_eur = commission fixe par vente si l'offre en annonce une. attribution_days = combien de jours une vente reste rattachée au code ou au lien. payout = ce que l'offre dit du versement (fréquence, délai, seuil minimum). Laisse à null tout ce qui n'est PAS écrit dans l'offre : ne déduis rien, ne calcule rien, n'estime aucun gain.
 - deadlines : dates ou délais écrits, tels quels.
 - kill_fee, termination, governing_law : résumé court de ce qui est écrit, sinon null.
 

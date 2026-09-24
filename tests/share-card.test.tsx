@@ -117,9 +117,16 @@ describe("contenu de la carte", () => {
   });
 
   it("pas de carte vide : ni « unpriced » ni « incomplete » ; les états chiffrés en ont une", () => {
+    // Mission #116 — la règle porte sur l'ÉVALUABILITÉ, pas sur le nom de
+    // l'aperçu : l'offre à commission est « unpriced » (aucun montant proposé),
+    // et n'a donc pas de carte. Une carte pour une offre à commission
+    // laisserait croire à un montant que le produit refuse de chiffrer.
     for (const state of PREVIEW_STATES) {
-      expect(shareCardAvailable(previewAnalysis(state).analysis), state).toBe(state !== "incomplete" && state !== "unpriced");
+      const { analysis } = previewAnalysis(state);
+      const chiffrable = analysis.evaluability !== "incomplete" && analysis.evaluability !== "unpriced";
+      expect(shareCardAvailable(analysis), state).toBe(chiffrable);
     }
+    expect(previewAnalysis("commission").analysis.evaluability).toBe("unpriced");
   });
 });
 

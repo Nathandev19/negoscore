@@ -1,3 +1,4 @@
+import { variablePayOf } from "@/lib/negotiation/commission";
 import type { Analysis } from "@/lib/schema";
 
 type Deal = Analysis["deal"];
@@ -66,5 +67,9 @@ export function normalizeDeal(deal: Deal): Deal {
     exclusivity: { ...exclusivity, duration_months: stated(exclusivity.duration_months) },
     payment: { ...payment, amount_eur: amount },
     in_kind_value_eur: stated(deal.in_kind_value_eur),
+    // Mission #116 — le champ est optionnel à l'entrée du schéma, pour que les
+    // analyses enregistrées avant lui restent lisibles. Après normalisation, il
+    // existe toujours : tout ce qui suit peut le lire sans précaution.
+    variable_pay: variablePayOf(deal),
   };
 }

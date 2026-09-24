@@ -57,6 +57,9 @@ function randomDeal(rng: ReturnType<typeof lcg>): Deal {
     format: rng.chance(0.1) ? "30 s, 2 hooks" : null,
   }));
   const deal: Deal = {
+    // Mission #116 — aucune commission dans l'échantillon : le périmètre est
+    // une branche, pas le produit.
+    variable_pay: { present: false, rate_percent: null, base: null, per_sale_eur: null, attribution_days: null, payout: null },
     brand: rng.chance(0.8) ? "Marque" : null,
     deliverables,
     publication_required: rng.chance(0.4),
