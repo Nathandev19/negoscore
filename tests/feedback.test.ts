@@ -88,6 +88,10 @@ describe("enregistrement de l'avis", () => {
           total_low: 510,
           total_high: 1100,
           updated_at: expect.any(String),
+          // Mission #103 — d'où vient ce retour, décidé par le serveur. Ce
+          // test tourne dans vitest : la valeur est donc « test », et le
+          // cockpit, qui ne compte que « production », l'ignorera.
+          environment: "test",
         },
       },
     ]);
@@ -106,7 +110,7 @@ describe("enregistrement de l'avis", () => {
     await post(ANON_ID, OWNER, { rating: "fair", tier: "confirmed" });
     const row = db.writes[0].row;
     expect(Object.keys(row).sort()).toEqual(
-      ["analysis_id", "comment", "profile_tier", "rate_table_version", "rating", "score", "total_high", "total_low", "turn_number", "turn_recorded", "updated_at"].sort(),
+      ["analysis_id", "comment", "environment", "profile_tier", "rate_table_version", "rating", "score", "total_high", "total_low", "turn_number", "turn_recorded", "updated_at"].sort(),
     );
     const serialized = JSON.stringify(row);
     for (const forbidden of ["Marque Exemple", "Camille", "Ortie", OWNER_TOKEN, "user-a"]) expect(serialized).not.toContain(forbidden);

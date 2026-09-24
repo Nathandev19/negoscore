@@ -53,6 +53,9 @@ describe("fixture synthétique du dashboard", () => {
   };
   const dashboard: DashboardData = {
     counts,
+    // Mission #103 : les lignes écartées parce qu'elles ne viennent pas de la
+    // production. Elles ne pèsent sur aucun autre chiffre de cet objet.
+    excluded: 218,
     paid_pro: 1,
     granted_pro: 1,
     feedback: { total: 5, fair: 3, not_fair: 2 },

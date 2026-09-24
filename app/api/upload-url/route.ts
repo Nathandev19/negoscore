@@ -1,4 +1,5 @@
 import { ANALYSIS_PAUSED_MESSAGE, analysisPaused } from "@/lib/analysis/pause";
+import { withEnvironment } from "@/lib/telemetry/tagged";
 import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { DOCUMENT_TTL_DAYS, newStoragePath, validateAnnouncedFile } from "@/lib/storage/documents";
 import { ANON_COOKIE, anonCookieHeader, clientIp, hashIp, newAnonToken, readCookie } from "@/lib/security/request";
@@ -62,12 +63,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const deal = await insertRow<{ id: string }>("deals", {
-      user_id: user?.id ?? null,
-      anon_token: anonToken,
-      source_type: file.kind === "photo" ? "image" : "pdf",
-      status: "awaiting_upload",
-    });
+    // Mission #103 : d'où vient ce dossier.
+    const deal = await withEnvironment((environment) =>
+      insertRow<{ id: string }>("deals", {
+        ...environment,
+        user_id: user?.id ?? null,
+        anon_token: anonToken,
+        source_type: file.kind === "photo" ? "image" : "pdf",
+        status: "awaiting_upload",
+      }),
+    );
     await insertRow("deal_documents", {
       deal_id: deal.id,
       storage_path: storagePath,

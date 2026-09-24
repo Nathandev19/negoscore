@@ -1,4 +1,5 @@
 import { insertIfAbsent } from "@/lib/supabase/server";
+import { withEnvironment } from "@/lib/telemetry/tagged";
 
 export const PRODUCT_EVENTS = [
   "landing_view", "pricing_view", "analysis_started", "analysis_completed", "feedback_submitted", "signup",
@@ -33,12 +34,15 @@ export async function recordProductEvent(input: {
 }): Promise<void> {
   const a = input.attribution ?? {};
   try {
-    await insertIfAbsent("product_events", {
-      event_name: input.event, user_id: input.userId ?? null, path: a.path ?? null, referrer_host: a.referrer_host ?? null,
-      utm_source: a.utm_source ?? null, utm_medium: a.utm_medium ?? null, utm_campaign: a.utm_campaign ?? null,
-      utm_content: a.utm_content ?? null, entity_type: input.entityType ?? null, entity_id: input.entityId ?? null,
-      metadata: input.metadata ?? {}, dedupe_key: input.dedupeKey ?? null,
-    });
+    await withEnvironment((environment) =>
+      insertIfAbsent("product_events", {
+        ...environment,
+        event_name: input.event, user_id: input.userId ?? null, path: a.path ?? null, referrer_host: a.referrer_host ?? null,
+        utm_source: a.utm_source ?? null, utm_medium: a.utm_medium ?? null, utm_campaign: a.utm_campaign ?? null,
+        utm_content: a.utm_content ?? null, entity_type: input.entityType ?? null, entity_id: input.entityId ?? null,
+        metadata: input.metadata ?? {}, dedupe_key: input.dedupeKey ?? null,
+      }),
+    );
   } catch (error) {
     console.error(JSON.stringify({ event: "product_telemetry_error", name: input.event, detail: error instanceof Error ? error.message.slice(0, 120) : "inconnu" }));
   }

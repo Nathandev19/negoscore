@@ -16,6 +16,11 @@ export function sinceForPeriod(period: AdminPeriod, now = new Date()): string | 
 
 export type DashboardData = {
   counts: Record<string, number>;
+  // Mission #103 — lignes de product_events écartées sur la période parce
+  // qu'elles ne viennent pas de la production (local, prévisualisation, tests,
+  // ou historique d'avant la mission). Affiché : c'est la preuve visible que
+  // le filtre travaille.
+  excluded: number;
   paid_pro: number;
   granted_pro: number;
   feedback: { total: number; fair: number; not_fair: number };
@@ -25,7 +30,7 @@ export type DashboardData = {
 };
 
 const EMPTY_DASHBOARD: DashboardData = {
-  counts: {}, paid_pro: 0, granted_pro: 0,
+  counts: {}, excluded: 0, paid_pro: 0, granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },
   purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
   timeseries: [], acquisition: [],
@@ -33,10 +38,58 @@ const EMPTY_DASHBOARD: DashboardData = {
 
 export async function loadDashboard(period: AdminPeriod): Promise<DashboardData | "missing"> {
   try {
-    return (await rpc<DashboardData>("admin_dashboard_metrics", { p_since: sinceForPeriod(period) })) ?? EMPTY_DASHBOARD;
+    const data = await rpc<DashboardData>("admin_dashboard_metrics", { p_since: sinceForPeriod(period) });
+    // Migration #103 pas encore appliquée : la RPC ne renvoie pas encore le
+    // compteur d'exclusions. Zéro plutôt qu'un affichage cassé.
+    return data ? { ...EMPTY_DASHBOARD, ...data, excluded: data.excluded ?? 0 } : EMPTY_DASHBOARD;
   } catch {
     return "missing";
   }
+}
+
+// Mission #103 — les tuiles du cockpit, décidées ici pour être vérifiables.
+//
+// Deux règles y sont tenues :
+//   - aucun ratio affiché ne peut dépasser 100 % : un taux ne sort d'ici que
+//     si son numérateur fait partie de son dénominateur (fair ⊆ total). Le
+//     « Taux visite → analyse » divisait des événements par d'autres
+//     événements : il affichait 505 %, il est supprimé, et rien ne le remplace
+//     tant qu'on ne peut pas relier une analyse lancée à sa complétion ;
+//   - un dénominateur nul n'affiche jamais 0 % ni NaN, mais « — ».
+export type DashboardTile = { label: string; value: string };
+
+const NUMBER = new Intl.NumberFormat("fr-FR");
+const count = (value: number | undefined) => NUMBER.format(value ?? 0);
+
+// Part d'un tout, en pourcentage. null quand le tout est vide, ou quand la
+// part n'est pas incluse dans le tout — auquel cas ce n'est pas un taux.
+export function share(part: number, total: number): string | null {
+  if (!Number.isFinite(part) || !Number.isFinite(total) || total <= 0) return null;
+  if (part < 0 || part > total) return null;
+  return `${Math.round((part / total) * 100)} %`;
+}
+
+export function dashboardTiles(data: DashboardData): DashboardTile[] {
+  const visits = (data.counts.landing_view ?? 0) + (data.counts.pricing_view ?? 0);
+  const revenue = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(data.purchases.revenue_eur);
+  return [
+    { label: "Visites mesurées", value: count(visits) },
+    // Deux compteurs bruts, côte à côte, sans ratio entre eux : voir plus haut.
+    { label: "Analyses lancées", value: count(data.counts.analysis_started) },
+    { label: "Analyses terminées", value: count(data.counts.analysis_completed) },
+    { label: "Inscriptions", value: count(data.counts.signup) },
+    { label: "Feedbacks", value: count(data.feedback.total) },
+    { label: "Estimations jugées justes", value: share(data.feedback.fair, data.feedback.total) ?? "—" },
+    { label: "Achats", value: count(data.purchases.purchases) },
+    { label: `Revenu EUR couvert (${data.purchases.revenue_covered}/${data.purchases.purchases})`, value: revenue },
+    { label: "Pro payants", value: count(data.paid_pro) },
+    { label: "Pro offerts", value: count(data.granted_pro) },
+  ];
+}
+
+// La preuve visible que le filtre travaille, en une ligne.
+export function excludedNotice(data: DashboardData): string {
+  return `Production uniquement. ${count(data.excluded)} événement(s) hors production exclus sur la période (local, prévisualisation, tests, historique).`;
 }
 
 export type AdminUserRow = {

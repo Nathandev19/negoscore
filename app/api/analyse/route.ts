@@ -30,6 +30,7 @@ import {
 } from "@/lib/supabase/server";
 import { MAX_FILE_BYTES } from "@/lib/upload";
 import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
+import { withEnvironment } from "@/lib/telemetry/tagged";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -373,33 +374,40 @@ export async function POST(request: Request) {
         updateRows("deals", `id=eq.${dealId}`, { status: "analysed", ...(user ? { user_id: user.id } : {}), ...extra }),
       );
     } else {
+      // Mission #103 : d'où vient ce dossier. Le cockpit ne compte que la production.
       const deal = await withKey((extra) =>
-        insertRow<{ id: string }>("deals", {
-          user_id: user?.id ?? null,
-          anon_token: anonToken,
-          source_type: "text",
-          raw_text: rawText,
-          status: "analysed",
-          ...extra,
-        }),
+        withEnvironment((environment) =>
+          insertRow<{ id: string }>("deals", {
+            ...environment,
+            user_id: user?.id ?? null,
+            anon_token: anonToken,
+            source_type: "text",
+            raw_text: rawText,
+            status: "analysed",
+            ...extra,
+          }),
+        ),
       );
       dealId = deal.id;
       savedDealId = dealId;
     }
-    const saved = await insertRow<{ id: string }>("analyses", {
-      deal_id: dealId,
-      model: result.model,
-      prompt_version: PROMPT_VERSION,
-      rate_table_version: analysis.estimate.rate_table_version,
-      payload: analysis,
-      score: analysis.score?.value ?? null,
-      confidence: analysis.confidence,
-      cost_cents: Number((result.costEur * 100).toFixed(4)),
-      latency_ms: result.latencyMs,
-      // Colonnes de la migration 018, écrites seulement pour une relance : une
-      // analyse normale s'enregistre même si la migration n'est pas appliquée.
-      ...(retry ? { retry_of: retry.originalId, is_retry: true } : {}),
-    });
+    const saved = await withEnvironment((environment) =>
+      insertRow<{ id: string }>("analyses", {
+        ...environment,
+        deal_id: dealId,
+        model: result.model,
+        prompt_version: PROMPT_VERSION,
+        rate_table_version: analysis.estimate.rate_table_version,
+        payload: analysis,
+        score: analysis.score?.value ?? null,
+        confidence: analysis.confidence,
+        cost_cents: Number((result.costEur * 100).toFixed(4)),
+        latency_ms: result.latencyMs,
+        // Colonnes de la migration 018, écrites seulement pour une relance : une
+        // analyse normale s'enregistre même si la migration n'est pas appliquée.
+        ...(retry ? { retry_of: retry.originalId, is_retry: true } : {}),
+      }),
+    );
     if (document) savedDealId = dealId;
 
     // Analyse valide et enregistrée : le droit est décompté MAINTENANT, jamais avant.

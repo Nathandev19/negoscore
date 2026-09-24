@@ -1,6 +1,7 @@
 import type { ResultView } from "@/lib/analysis/lock";
 import type { FeedbackInput, StoredFeedback } from "@/lib/analysis/feedback-options";
 import { isMissingColumn, isMissingRelation, selectRows, upsertRow } from "@/lib/supabase/server";
+import { withEnvironment } from "@/lib/telemetry/tagged";
 
 export { feedbackInputSchema } from "@/lib/analysis/feedback-options";
 
@@ -109,7 +110,10 @@ export async function saveFeedback(analysisId: string, analysis: ResultView, inp
   try {
     // Un avis par tour : renvoyer un avis sur le même tour le remplace ; un
     // avis sur un autre tour s'ajoute, il n'écrase jamais celui d'origine.
-    await upsertRow("analysis_feedback", feedbackRow(analysisId, analysis, input, turn), "analysis_id,turn_number");
+    // Mission #103 : un retour donné en local ne doit pas peser sur le cockpit.
+    await withEnvironment((environment) =>
+      upsertRow("analysis_feedback", { ...feedbackRow(analysisId, analysis, input, turn), ...environment }, "analysis_id,turn_number"),
+    );
     return "saved";
   } catch (caught) {
     // Colonne profile_tier ou turn_number absente : l'avis est refusé plutôt

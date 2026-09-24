@@ -1,4 +1,5 @@
 import { insertIfAbsent, isMissingColumn, isMissingRelation, selectRows } from "@/lib/supabase/server";
+import { currentEnvironment } from "@/lib/telemetry/environment";
 
 // Mission #090 — ce qui vient d'être acheté, écrit par le webhook au moment où
 // il accorde la contrepartie, et lu par la page « Merci ». Le solde ne le dit
@@ -20,14 +21,18 @@ export type Purchase = {
 // (migration pas encore appliquée) : le crédit, lui, a déjà été accordé ; on
 // ne fait pas échouer le webhook pour autant, et la page reste prudente.
 export async function recordPurchase(purchase: Purchase & { user_id: string }): Promise<void> {
+  // Mission #103 : d'où vient cet achat. Le cockpit ne compte que la
+  // production ; sans cette valeur, un achat réel disparaîtrait du chiffre
+  // d'affaires affiché.
+  const row = { ...purchase, environment: currentEnvironment() };
   try {
-    await insertIfAbsent("purchases", purchase);
+    await insertIfAbsent("purchases", row);
   } catch (caught) {
     // Déploiement backward-compatible : le code peut précéder la migration qui
     // ajoute le montant. La trace d'achat historique reste prioritaire ; le
     // revenu sera simplement marqué non couvert jusqu'à la migration.
     if (isMissingColumn(caught) && ("amount" in purchase || "currency" in purchase)) {
-      const { amount: _amount, currency: _currency, ...legacyPurchase } = purchase;
+      const { amount: _amount, currency: _currency, ...legacyPurchase } = row;
       void _amount;
       void _currency;
       await insertIfAbsent("purchases", legacyPurchase);
