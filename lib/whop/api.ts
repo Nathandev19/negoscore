@@ -94,16 +94,22 @@ export type WhopMembership = {
   status: string | null;
   cancel_at_period_end: boolean | null;
   renewal_period_end: string | null;
+  // Mission #114 — les metadata dont l'abonnement a hérité de la session de
+  // paiement. Docs Whop, checkout configurations : « Payments and memberships
+  // created from a checkout session inherit its metadata. » C'est là que se
+  // trouve l'identifiant du compte quand un RENOUVELLEMENT ne le porte pas.
+  metadata: Record<string, unknown>;
 };
 
 function membershipFrom(body: unknown): WhopMembership | null {
-  const row = body as Partial<WhopMembership> | null;
+  const row = body as (Partial<WhopMembership> & { metadata?: unknown }) | null;
   if (!row?.id) return null;
   return {
     id: row.id,
     status: row.status ?? null,
     cancel_at_period_end: row.cancel_at_period_end ?? null,
     renewal_period_end: row.renewal_period_end ?? null,
+    metadata: typeof row.metadata === "object" && row.metadata !== null ? (row.metadata as Record<string, unknown>) : {},
   };
 }
 
@@ -125,6 +131,42 @@ async function membershipRequest(path: string, init: RequestInit): Promise<WhopM
 // État d'un abonnement. Docs : https://docs.whop.com/api-reference/memberships/retrieve-membership
 export function getMembership(id: string): Promise<WhopMembership | null> {
   return membershipRequest(`/memberships/${encodeURIComponent(id)}`, { method: "GET" });
+}
+
+// Mission #114 — LA LECTURE D'UN ABONNEMENT, EN TROIS ÉTATS.
+//
+// getMembership rend null aussi bien quand Whop répond « cet abonnement
+// n'existe pas » que quand Whop ne répond pas du tout. Pour décider de
+// créditer un compte, ces deux réponses ne se valent pas : la première est un
+// fait, la seconde est une ignorance. Même règle que la mission #089 bis sur
+// l'authentification — une indisponibilité n'est pas une absence.
+export type MembershipRead =
+  | { kind: "found"; membership: WhopMembership }
+  // Whop a répondu, et cet abonnement n'existe pas ou n'est pas lisible.
+  | { kind: "absent" }
+  // Whop n'a pas pu répondre : réseau, 5xx, clé absente, corps illisible.
+  | { kind: "unavailable"; detail: string };
+
+export async function readMembership(id: string): Promise<MembershipRead> {
+  const apiKey = process.env.WHOP_API_KEY;
+  if (!apiKey) return { kind: "unavailable", detail: "cle_absente" };
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/memberships/${encodeURIComponent(id)}`, {
+      method: "GET",
+      headers: whopHeaders(apiKey),
+      cache: "no-store",
+    });
+  } catch (error) {
+    return { kind: "unavailable", detail: error instanceof Error ? error.message.slice(0, 120) : "reseau" };
+  }
+  // 404 et 410 : Whop a répondu, cet abonnement n'existe pas. Tout le reste
+  // (401, 429, 5xx) : on ne sait pas, et on ne devine pas.
+  if (response.status === 404 || response.status === 410) return { kind: "absent" };
+  if (!response.ok) return { kind: "unavailable", detail: `http_${response.status}` };
+  const body = await response.json().catch(() => null);
+  const membership = membershipFrom(body);
+  return membership ? { kind: "found", membership } : { kind: "unavailable", detail: "corps_illisible" };
 }
 
 // Annulation à la fin de la période en cours.

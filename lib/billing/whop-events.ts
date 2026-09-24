@@ -9,7 +9,7 @@ import {
   honoredProAwaitingActivation,
   recordPending,
 } from "@/lib/billing/pending-payments";
-import { planKeyFromId, type PlanKey } from "@/lib/whop/api";
+import { planKeyFromId, readMembership, type PlanKey } from "@/lib/whop/api";
 import { adjustInteger, insertIfAbsent, isMissingColumn, isMissingRelation, rpc, selectRows, updateRows } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/security/request";
 import { parseAttribution, type Attribution } from "@/lib/analytics/first-party";
@@ -115,6 +115,79 @@ async function resolveByMembership(membershipId: string | null): Promise<{ id: s
     if (!isMissingColumn(caught)) throw caught;
     return null;
   }
+}
+
+// Mission #114 — L'IDENTIFIANT D'ABONNEMENT PORTÉ PAR UNE CHARGE.
+//
+// Sur un `membership.*`, c'est `data.id`. Sur un `payment.succeeded`,
+// `data.id` est l'identifiant du PAIEMENT : l'abonnement est ailleurs, et Whop
+// ne documente pas une forme unique. Aucune charge de renouvellement n'étant
+// encore enregistrée chez nous au moment d'écrire ceci, on lit défensivement
+// les formes plausibles plutôt que d'en tailler une sur un exemple qu'on n'a
+// pas : chaîne directe, objet imbriqué, ou champ suffixé.
+export function membershipIdOf(type: string, data: Record<string, unknown>): string | null {
+  if (type.startsWith("membership.")) return text(data.id);
+  const candidates = [
+    text(data.membership_id),
+    typeof data.membership === "string" ? data.membership : text(record(data.membership).id),
+    text(record(data.subscription).id),
+    text(data.subscription_id),
+  ];
+  return candidates.find((value): value is string => value !== null && MEMBERSHIP_ID.test(value)) ?? null;
+}
+
+// TROISIÈME CHEMIN (mission #114) : l'abonnement lu chez Whop, et l'identifiant
+// du compte dans les metadata dont il a HÉRITÉ de la session de paiement.
+//
+// Docs Whop, checkout configurations : « Payments and memberships created from
+// a checkout session inherit its metadata. » L'abonnement porte donc le
+// user_id posé au départ, même quand le paiement de renouvellement, lui, ne le
+// recopie pas. C'est un identifiant, pas une adresse : la règle de la mission
+// #112 tient.
+//
+// Trois issues, jamais deux, exactement comme la session de la #089 bis :
+//   - un compte ;
+//   - « aucun » : Whop a répondu, et il n'y a pas d'identifiant exploitable ;
+//   - « indisponible » : on n'a pas pu demander. On ne devine pas, le paiement
+//     reste en attente et l'événement sera rejoué.
+type Attachment =
+  | { kind: "user"; user: { id: string; email: string | null }; how: "metadata" | "membership" | "abonnement_whop" }
+  | { kind: "none" }
+  | { kind: "unavailable"; detail: string };
+
+async function resolveByWhopMembership(membershipId: string | null): Promise<Attachment> {
+  if (!membershipId || !MEMBERSHIP_ID.test(membershipId)) return { kind: "none" };
+  const read = await readMembership(membershipId);
+  if (read.kind === "unavailable") {
+    console.warn(JSON.stringify({ event: "whop_abonnement_illisible", membership: membershipId, detail: read.detail }));
+    return { kind: "unavailable", detail: read.detail };
+  }
+  if (read.kind === "absent") return { kind: "none" };
+  // A3 et A5 — aucune écriture, aucune invention : on LIT un identifiant, et
+  // on LIT le profil correspondant. S'il n'existe pas, on s'arrête là.
+  const fromMetadata = text(read.membership.metadata.user_id);
+  if (!fromMetadata || !isUuid(fromMetadata)) return { kind: "none" };
+  const [profile] = await selectRows<Profile>("profiles", `select=id,email&id=eq.${encodeURIComponent(fromMetadata)}&limit=1`);
+  return profile ? { kind: "user", user: { id: profile.id, email: profile.email }, how: "abonnement_whop" } : { kind: "none" };
+}
+
+// LES TROIS CHEMINS, DANS CET ORDRE STRICT, ET AUCUN AUTRE.
+//
+//   1. data.metadata.user_id, posé par nous au checkout ;
+//   2. credits.membership_id, enregistré par nous à l'activation ;
+//   3. l'abonnement lu chez Whop, et le user_id dont il a hérité.
+//
+// Jamais d'email, à aucune étape, sous aucune condition : une adresse de
+// paiement n'est pas une adresse de compte (mission #112).
+async function attachUser(type: string, data: Record<string, unknown>): Promise<Attachment> {
+  const byMetadata = await resolveUser(data);
+  if (byMetadata) return { kind: "user", user: { id: byMetadata.id, email: byMetadata.email }, how: "metadata" };
+
+  const membershipId = membershipIdOf(type, data);
+  const byStored = await resolveByMembership(membershipId);
+  if (byStored) return { kind: "user", user: { id: byStored.id, email: byStored.email }, how: "membership" };
+
+  return resolveByWhopMembership(membershipId);
 }
 
 async function credits(userId: string): Promise<Credits> {
@@ -278,20 +351,33 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   const plan = planOf(source);
   if (!plan) return { handled: false, reason: "plan hors formules Negoscore" };
 
-  // Mission #112 — l'identifiant du compte d'abord ; pour un événement
-  // d'abonnement, à défaut, l'identifiant de l'abonnement que nous avons
-  // nous-mêmes enregistré. Jamais l'adresse de l'acheteur.
-  const user =
-    (await resolveUser(source)) ??
-    (type === "membership.activated" || type === "membership.deactivated" ? await resolveByMembership(text(source.id)) : null);
-  if (!user) {
+  // Mission #112, complétée par la #114 — trois chemins, tous par identifiant,
+  // dans un ordre strict. Jamais l'adresse de l'acheteur.
+  const attached = await attachUser(type, source);
+  if (attached.kind !== "user") {
     // Mission #092, B — de l'argent est encaissé et personne n'est crédité :
     // le paiement est mis en attente de rattachement, avec l'email de
     // l'acheteur, et l'événement reste à reprendre. Un événement qui n'est pas
     // un paiement (activation, résiliation) n'a rien à accorder : inchangé.
-    if (type !== "payment.succeeded") return { handled: false, reason: "aucun compte rattaché à cet événement" };
+    //
+    // Mission #114, A4 — « on n'a pas pu demander » et « il n'y a pas
+    // d'identifiant » mènent au même endroit (l'attente), mais ne se
+    // journalisent pas pareil : c'est la trace qui dira, en production, si
+    // Whop recopie les metadata ou non.
+    if (type !== "payment.succeeded") {
+      return { handled: false, reason: `aucun compte rattaché à cet événement (${attached.kind === "unavailable" ? "abonnement illisible" : "aucun identifiant"})` };
+    }
     const email = text(record(source.user).email);
-    console.warn(JSON.stringify({ event: "whop_paiement_non_rattache", event_id: event.id, email, plan }));
+    console.warn(
+      JSON.stringify({
+        event: "whop_paiement_non_rattache",
+        event_id: event.id,
+        email,
+        plan,
+        raison: attached.kind === "unavailable" ? "abonnement_illisible" : "aucun_identifiant",
+        ...(attached.kind === "unavailable" ? { detail: attached.detail } : {}),
+      }),
+    );
     await recordPending({
       event_id: event.id,
       user_id: null,
@@ -302,8 +388,19 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       paid_at: new Date().toISOString(),
       reason: "compte_introuvable",
     });
-    return { handled: false, pending: true, reason: "aucun compte rattaché à ce paiement : en attente de rattachement" };
+    return {
+      handled: false,
+      pending: true,
+      reason:
+        attached.kind === "unavailable"
+          ? "abonnement illisible chez Whop : en attente, l'événement sera rejoué"
+          : "aucun compte rattaché à ce paiement : en attente de rattachement",
+    };
   }
+  const user = attached.user;
+  // Mission #114, A6 — PAR QUEL CHEMIN. Sans cette trace, on ne saurait pas si
+  // Whop recopie les metadata sur les renouvellements : on le devinerait.
+  console.log(JSON.stringify({ event: "whop_rattachement", event_id: event.id, type, how: attached.how }));
   const current = await credits(user.id);
   // Identifiant anonyme posé au checkout : il relie l'achat au parcours mesuré.
   const analyticsId = sanitizeDistinctId(record(source.metadata).ph_distinct_id);
@@ -339,7 +436,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
     const total = typeof source.total === "number" ? source.total : null;
     return {
       handled: true,
-      reason: `+${PACK_ANALYSES} analyses (rattachement par ${user.how})`,
+      reason: `+${PACK_ANALYSES} analyses (rattachement par ${attached.how})`,
       userId: user.id,
       userEmail: user.email,
       analyticsId,
@@ -372,7 +469,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
     });
     return {
       handled: true,
-      reason: `paiement Pro enregistré (rattachement par ${user.how})`,
+      reason: `paiement Pro enregistré (rattachement par ${attached.how})`,
       userId: user.id,
       userEmail: user.email,
       analyticsId,
@@ -529,10 +626,12 @@ async function applyRefund(event: WhopEvent): Promise<EventOutcome> {
     return { handled: false, pending: true, reason: "remboursement : paiement remboursé introuvable" };
   }
 
-  // 2. Le compte se retrouve par le MÊME chemin que le crédit initial :
-  //    métadonnées du paiement, puis email de l'acheteur.
-  const user = await resolveUser(payment);
-  if (!user) {
+  // 2. Le compte se retrouve par les MÊMES chemins que le crédit initial, dans
+  //    le même ordre : metadata, abonnement enregistré, abonnement lu chez
+  //    Whop. Jamais l'email. Un paiement crédité par le troisième chemin doit
+  //    pouvoir être révoqué par le troisième chemin (mission #114).
+  const attached = await attachUser("payment.succeeded", payment);
+  if (attached.kind !== "user") {
     console.warn(
       JSON.stringify({
         event: "whop_remboursement_non_rattache",
@@ -540,10 +639,12 @@ async function applyRefund(event: WhopEvent): Promise<EventOutcome> {
         paiement: paymentId,
         email: text(record(payment.user).email),
         plan,
+        raison: attached.kind === "unavailable" ? "abonnement_illisible" : "aucun_identifiant",
       }),
     );
     return { handled: false, pending: true, reason: "remboursement : aucun compte rattaché à ce paiement" };
   }
+  const user = attached.user;
 
   // 3. Remboursement partiel : le montant rendu est inférieur au total payé.
   //    On ne révoque RIEN — retirer un mois entier pour un geste commercial
