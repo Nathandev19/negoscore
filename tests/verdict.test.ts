@@ -46,8 +46,10 @@ describe("formes de la phrase de verdict", () => {
     expect(plain(verdictSentence(analysis({ amount: 300, band: "bad" })))).toBe("300 € proposés. Ces droits en valent 510 à 1 100.");
   });
 
-  it("complete, dans la fourchette, bon deal", () => {
-    expect(plain(verdictSentence(analysis({ amount: 800, band: "good" })))).toBe("800 € proposés. C'est dans les prix pour ces droits.");
+  // Mission #109, A — 800 € dans 510 – 1 100 € est au tiers MÉDIAN : la phrase
+  // ne dit plus seulement « dedans », elle dit où.
+  it("complete, au milieu de la fourchette, bon deal", () => {
+    expect(plain(verdictSentence(analysis({ amount: 800, band: "good" })))).toBe("800 € proposés. C'est dans les prix.");
   });
 
   it("complete, au-dessus, bon deal", () => {
@@ -59,7 +61,7 @@ describe("formes de la phrase de verdict", () => {
   it("B1 — dans la fourchette mais deal sous « good » : la phrase nomme les conditions", () => {
     for (const band of ["bad", "weak", "fair"] as const) {
       expect(plain(verdictSentence(analysis({ amount: 800, band })))).toBe(
-        "800 € proposés. C'est dans les prix pour ces droits. Mais les conditions demandées posent problème.",
+        "800 € proposés. C'est dans les prix. Mais les conditions demandées posent problème.",
       );
     }
   });
@@ -119,8 +121,10 @@ describe("seuil « très en dessous »", () => {
 
 describe("bornes et cas limites", () => {
   it("un montant égal à une borne est dans les prix", () => {
-    expect(verdictForm(analysis({ amount: 510 }))).toBe("complete_within");
-    expect(verdictForm(analysis({ amount: 1100 }))).toBe("complete_within");
+    // Mission #109, A — toujours « dans les prix », mais la borne basse est le
+    // bas de la fourchette et la borne haute en est le haut.
+    expect(verdictForm(analysis({ amount: 510 }))).toBe("complete_within_bottom");
+    expect(verdictForm(analysis({ amount: 1100 }))).toBe("complete_within_top");
     expect(verdictForm(analysis({ amount: 509 }))).toBe("complete_below");
     expect(verdictForm(analysis({ amount: 1101 }))).toBe("complete_above");
   });

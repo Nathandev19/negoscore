@@ -1,3 +1,4 @@
+import { rangePosition } from "@/lib/analysis/anchoring";
 import type { Analysis } from "@/lib/schema";
 
 type Deal = Analysis["deal"];
@@ -52,7 +53,11 @@ type Score = NonNullable<Analysis["score"]>;
 // (QUANTITY_CAP_NOTE, lib/display.ts). Le plafond est un minimum appliqué à la
 // fin : il ne change pas le sens des variations du score (invariant I10).
 
-const BASE = 50;
+// Points inconditionnels. Exporté : la phrase de verdict s'en sert pour savoir
+// si le PRIX SEUL aurait suffi à faire un bon deal, et donc si les conditions
+// sont vraiment la raison d'une note basse (lib/analysis/verdict.ts).
+export const SCORE_BASE = 50;
+const BASE = SCORE_BASE;
 const MAX_PRICE_POINTS = 30;
 // Points gagnés en atteignant la borne basse de l'estimation. Ne pas être
 // floué mérite l'essentiel du crédit prix, pas la totalité : le reste est
@@ -105,8 +110,59 @@ export const PRICE_CAPS: ReadonlyArray<{ readonly minRatio: number; readonly cap
   { minRatio: 0, cap: 29 },
 ];
 
-// Au-dessus de ce rapport, le prix ne plafonne plus rien.
+// Au-dessus de ce rapport, le prix ne plafonne plus rien SOUS LA FOURCHETTE.
 export const PRICE_CAP_FREE_RATIO = 0.85;
+
+// PLAFOND PAR LA POSITION DANS LA FOURCHETTE (mission #109, B).
+//
+// Le plafond ci-dessus mesure r = montant / borne BASSE : il cesse d'agir dès
+// que le montant approche le plancher, par construction. Il ne savait donc rien
+// de la position DANS la fourchette, et c'est là que l'écran se contredisait :
+// sur le cas de référence (250 € dans 180 – 400 €), il affichait « Bon deal »
+// et 72/100 au-dessus d'une contre-offre à 325 – 400 €. Être payé au tiers bas
+// de ce que valent les droits n'est pas un bon deal : c'est un deal correct
+// qu'il reste à négocier, et c'est exactement ce que la contre-offre dit.
+//
+//   tiers INFÉRIEUR  → 69 au plus, la dernière valeur de « Deal correct »
+//   tiers MÉDIAN     → 84 au plus, la dernière valeur de « Bon deal »
+//   tiers SUPÉRIEUR  → aucun plafond
+//   au-dessus du haut → aucun plafond
+//
+// Les bandes (bandFor) ne changent pas : c'est la borne supérieure du score qui
+// s'aligne dessus.
+export const WITHIN_RANGE_CAPS: Readonly<Record<"bottom" | "middle", number>> = {
+  bottom: 69,
+  middle: 84,
+};
+
+// Pourquoi le score est plafonné, pour l'expliquer à l'écran sans jamais
+// annoncer « X % du bas de la fourchette » à quelqu'un qui est DANS la
+// fourchette — le pourcentage dépasserait 100 %.
+export type PriceCapReason = "ratio" | "bottom" | "middle";
+
+// Le plafond prix complet : sous la fourchette, les paliers de ratio existants,
+// inchangés ; dedans, la position. Sans fourchette exploitable, aucun plafond.
+export function priceCapFor(amount: number | null, low: number | null, high: number | null): { cap: number; reason: PriceCapReason } | null {
+  if (amount === null || low === null || !(low > 0)) return null;
+  if (amount < low || high === null || !(high > low)) {
+    // Sous le plancher, les paliers de ratio existants s'appliquent, inchangés
+    // — MAIS jamais plus haut que le tiers inférieur de la fourchette.
+    //
+    // Sans cette borne, le score REMONTAIT quand une contrainte s'ajoutait, ce
+    // qui casse l'invariant I10 : 300 € dans 230 – 450 € est au tiers bas, donc
+    // plafonné à 69 ; une plateforme de plus porte la fourchette à 320 – 630 €,
+    // le montant passe SOUS le plancher à 94 % — au-dessus de PRICE_CAP_FREE_RATIO,
+    // donc plus aucun plafond, et la note montait à 71. Être payé sous le
+    // plancher ne peut pas valoir mieux qu'être payé au bas de la fourchette.
+    // Les trois paliers (59, 39, 29) ne bougent pas : ils sont tous déjà
+    // au-dessous de ce plafond, seule la zone 0,85 ≤ r < 1 était sans borne.
+    const cap = priceScoreCap(amount / low);
+    return { cap: Math.min(cap ?? WITHIN_RANGE_CAPS.bottom, WITHIN_RANGE_CAPS.bottom), reason: "ratio" };
+  }
+  const position = rangePosition(amount, low, high);
+  if (position === "bottom" || position === "middle") return { cap: WITHIN_RANGE_CAPS[position], reason: position };
+  return null;
+}
 
 // Part du plancher réellement payée par l'offre. null quand elle n'est pas
 // calculable : c'est le cas A4, aucun plafond prix ne s'applique alors.
@@ -125,11 +181,13 @@ export function priceScoreCap(ratio: number | null): number | null {
 // Plafond prix réellement appliqué, c'est-à-dire qui a fait baisser le score :
 // null s'il n'y en a pas, ou s'il ne mordait pas. Sert à expliquer la note sur
 // la page de résultat (mission #050, partie B), jamais à la calculer.
-export function appliedPriceCap(deal: Deal, estimate: Estimate): { cap: number; ratio: number; percent: number } | null {
+export function appliedPriceCap(deal: Deal, estimate: Estimate): { cap: number; ratio: number; percent: number; reason: PriceCapReason } | null {
   const ratio = priceRatio(deal, estimate);
-  const cap = priceScoreCap(ratio);
-  if (cap === null || ratio === null) return null;
-  return withoutPriceCap(deal, estimate) > cap ? { cap, ratio, percent: Math.round(ratio * 100) } : null;
+  const capped = priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
+  if (capped === null || ratio === null) return null;
+  return withoutPriceCap(deal, estimate) > capped.cap
+    ? { cap: capped.cap, ratio, percent: Math.round(ratio * 100), reason: capped.reason }
+    : null;
 }
 
 // Score plafonné par la quantité inconnue seulement : point de comparaison pour
@@ -143,8 +201,8 @@ function withoutPriceCap(deal: Deal, estimate: Estimate): number {
 // deux existent, le plus bas l'emporte. Ce sont des bornes supérieures : elles
 // ne peuvent que faire baisser le score, jamais le monter.
 export function computeScore(deal: Deal, estimate: Estimate): Score {
-  const priceCap = priceScoreCap(priceRatio(deal, estimate));
-  const value = Math.min(withoutPriceCap(deal, estimate), priceCap ?? Number.POSITIVE_INFINITY);
+  const priceCap = priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
+  const value = Math.min(withoutPriceCap(deal, estimate), priceCap?.cap ?? Number.POSITIVE_INFINITY);
   return { value, band: bandFor(value) };
 }
 

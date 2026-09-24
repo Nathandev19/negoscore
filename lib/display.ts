@@ -1,5 +1,6 @@
 import { formatEur } from "@/lib/money";
 import { RAW_FOOTAGE_LABEL } from "@/lib/content/labels";
+import type { PriceCapReason } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
 
 // Mise en forme pour l'affichage. Aucun calcul métier : on ne fait que
@@ -63,7 +64,18 @@ export const QUANTITY_CAP_NOTE =
 // (lib/rates/score.ts, PRICE_CAPS, mission #050). Le pourcentage est celui de
 // cette offre : cette phrase n'est jamais reprise sur la carte partageable ni
 // sur l'image d'aperçu, qui ne disent rien du montant.
-export function priceCapNote(percent: number): string {
+//
+// Mission #109, B — le plafond mord désormais aussi pour un montant DANS la
+// fourchette, où « X % du bas de la fourchette » dépasserait 100 % et ne
+// voudrait plus rien dire. La note nomme alors la position, et la bande
+// qu'elle interdit, en reprenant les libellés affichés juste à côté.
+export function priceCapNote(percent: number, reason: PriceCapReason = "ratio"): string {
+  if (reason === "bottom") {
+    return `Le montant proposé est dans le tiers bas de la fourchette : la note ne peut pas dépasser « ${BAND_LABEL.fair} ».`;
+  }
+  if (reason === "middle") {
+    return `Le montant proposé est au milieu de la fourchette : la note ne peut pas dépasser « ${BAND_LABEL.good} ».`;
+  }
   return `Le montant proposé représente ${percent} % du bas de la fourchette. Le score ne peut pas monter plus haut.`;
 }
 

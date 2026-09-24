@@ -80,3 +80,6 @@ export function tooManyOpenings(minutes: number, scope: "adresse" | "compte" = "
 // la porte d'entrée, sans entraîner la facturation dans le graphe d'imports de
 // l'écran de résultat.
 export { RAW_FOOTAGE_LABEL } from "@/lib/content/labels";
+// Mission #109 — la phrase de verdict selon la position du montant dans la
+// fourchette, et le premier palier de contre-offre.
+export { COUNTER_FIRST_STEP_TITLE, counterFirstStepSentence, WITHIN_RANGE_SENTENCE, type WithinRange } from "@/lib/content/labels";

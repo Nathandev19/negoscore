@@ -1,6 +1,8 @@
 import type { Analysis } from "@/lib/schema";
+import { rangePosition } from "@/lib/analysis/anchoring";
+import { WITHIN_RANGE_SENTENCE, type WithinRange } from "@/lib/content/labels";
 import { formatAmount, formatEur } from "@/lib/money";
-import { hasUnknownQuantity, RATIO_ZERO, uncappedScore } from "@/lib/rates/score";
+import { bandFor, hasUnknownQuantity, priceCapFor, pricePoints, RATIO_ZERO, SCORE_BASE, uncappedScore } from "@/lib/rates/score";
 
 // Phrase de verdict en tête de la page de résultat. Écrite par le moteur,
 // jamais par le modèle : elle ne dépend que de l'état d'évaluabilité, du
@@ -13,7 +15,11 @@ import { hasUnknownQuantity, RATIO_ZERO, uncappedScore } from "@/lib/rates/score
 
 export type VerdictForm =
   | "complete_below"
-  | "complete_within"
+  // Mission #109, A — « dedans » se scinde par tiers : la phrase dit OÙ, pas
+  // seulement que le montant est dans la fourchette.
+  | "complete_within_bottom"
+  | "complete_within_middle"
+  | "complete_within_top"
   | "complete_within_poor_terms"
   | "complete_above"
   | "complete_above_poor_terms"
@@ -43,8 +49,30 @@ function offered(deal: Analysis["deal"]): { value: number; inKind: boolean } | n
   return null;
 }
 
+// Ce que vaudrait l'offre sans aucun ajustement de conditions : la base et les
+// seuls points de prix.
+function priceOnlyScore(deal: Analysis["deal"], estimate: Analysis["estimate"]): number {
+  const amount = deal.payment.amount_eur;
+  if (amount === null || !estimate.total_low) return SCORE_BASE;
+  return Math.round(SCORE_BASE + pricePoints(amount, estimate.total_low, estimate.total_high));
+}
+
 export function farBelow(amount: number, low: number): boolean {
   return amount < FAR_BELOW_RATIO * low;
+}
+
+// Mission #109, A — le tiers de la fourchette où tombe un montant qu'on sait
+// déjà « dedans ». rangePosition rend « above » dès la borne haute atteinte,
+// alors que le verdict compte les bornes comme dedans : un montant ÉGAL au
+// haut est donc « top », pas un cas à part. Sans borne haute exploitable, il
+// n'y a pas de tiers à nommer et on reste au milieu, qui n'affirme rien de
+// plus que « dans les prix ».
+export function withinRange(amount: number, low: number, high: number): WithinRange {
+  if (!(high > low)) return "middle";
+  const position = rangePosition(amount, low, high);
+  if (position === "bottom") return "bottom";
+  if (position === "middle") return "middle";
+  return "top";
 }
 
 // Position du montant : sous la borne basse, au-dessus de la borne haute, ou
@@ -61,13 +89,29 @@ export function verdictForm(analysis: VerdictInput): VerdictForm {
   // Quantité inconnue : le score peut être sous « good » à cause du seul plafond
   // (lib/rates/score.ts). Les conditions ne sont alors pas la raison, et la note
   // de plafond l'explique près du score.
+  //
+  // Mission #109, B — le plafond par le PRIX descend lui aussi le score sous
+  // « bon » (tiers bas → 69, tiers médian → 84). Sans cette ligne, l'écran
+  // annonçait « Mais les conditions demandées posent problème. » sur le cas de
+  // référence, qui n'en demande aucune : c'est la position du montant qui
+  // plafonne, et la note de plafond le dit déjà à côté du score.
   const cappedOnly =
-    hasUnknownQuantity(analysis.deal) && GOOD_BANDS.includes(uncappedScore(analysis.deal, analysis.estimate).band);
-  const poorTerms = analysis.score !== null && !GOOD_BANDS.includes(analysis.score.band) && !cappedOnly;
-  if (offer === null || low === null || high === null) return poorTerms ? "complete_within_poor_terms" : "complete_within";
+    (hasUnknownQuantity(analysis.deal) ||
+      priceCapFor(analysis.deal.payment.amount_eur, analysis.estimate.total_low, analysis.estimate.total_high) !== null) &&
+    GOOD_BANDS.includes(uncappedScore(analysis.deal, analysis.estimate).band);
+  //
+  // Mission #109 — et les conditions ne sont nommées que si le PRIX SEUL aurait
+  // suffi. Sans cette condition, une offre payée tout en bas de la fourchette,
+  // sans une seule mauvaise clause, s'entendait dire « Mais les conditions
+  // demandées posent problème. » : la note était basse à cause du prix, que la
+  // phrase venait justement de nommer.
+  const priceAloneGood = GOOD_BANDS.includes(bandFor(priceOnlyScore(analysis.deal, analysis.estimate)));
+  const poorTerms = analysis.score !== null && !GOOD_BANDS.includes(analysis.score.band) && !cappedOnly && priceAloneGood;
+  if (offer === null || low === null || high === null) return poorTerms ? "complete_within_poor_terms" : "complete_within_middle";
   if (offer.value < low) return "complete_below";
   if (offer.value > high) return poorTerms ? "complete_above_poor_terms" : "complete_above";
-  return poorTerms ? "complete_within_poor_terms" : "complete_within";
+  if (poorTerms) return "complete_within_poor_terms";
+  return `complete_within_${withinRange(offer.value, low, high)}` as const;
 }
 
 // Titre en Bricolage 800 très serré : l'espace fine insécable du formateur
@@ -95,7 +139,7 @@ function sentence(analysis: VerdictInput): string {
   const { total_low: low, total_high: high } = analysis.estimate;
   // « complete » sans montant ne se produit pas (le moteur chiffre toute offre
   // complète) ; on ne dit alors que ce qui est sûr.
-  if (offer === null) return form === "complete_within_poor_terms" ? POOR_TERMS : "C'est dans les prix pour ces droits.";
+  if (offer === null) return form === "complete_within_poor_terms" ? POOR_TERMS : WITHIN_RANGE_SENTENCE.middle;
   const proposed = offer.inKind ? `${formatEur(offer.value)} en produits proposés.` : `${formatEur(offer.value)} proposés.`;
   // Quantité inconnue : la fourchette ne chiffre qu'un seul contenu, c'est un
   // plancher. La phrase ne dit donc ni « au-dessus » ni « dans les prix » pour
@@ -115,9 +159,18 @@ function sentence(analysis: VerdictInput): string {
       return `${proposed} C'est au-dessus de ce que ces droits valent.`;
     case "complete_above_poor_terms":
       return `${proposed} C'est au-dessus de ce que ces droits valent. ${POOR_TERMS}`;
-    case "complete_within_poor_terms":
-      return `${proposed} C'est dans les prix pour ces droits. ${POOR_TERMS}`;
+    case "complete_within_poor_terms": {
+      // Les conditions restent la raison annoncée, mais la position, elle, ne
+      // se perd plus : « dans les prix » tout court était la phrase qui
+      // contredisait la contre-offre.
+      const within = low !== null && high !== null ? withinRange(offer.value, low, high) : "middle";
+      return `${proposed} ${WITHIN_RANGE_SENTENCE[within]} ${POOR_TERMS}`;
+    }
+    case "complete_within_bottom":
+      return `${proposed} ${WITHIN_RANGE_SENTENCE.bottom}`;
+    case "complete_within_top":
+      return `${proposed} ${WITHIN_RANGE_SENTENCE.top}`;
     default:
-      return `${proposed} C'est dans les prix pour ces droits.`;
+      return `${proposed} ${WITHIN_RANGE_SENTENCE.middle}`;
   }
 }

@@ -21,6 +21,26 @@ export function counterOfferRange(amount: number | null, low: number | null, hig
   return { low: Math.ceil((amount + high) / 2), high };
 }
 
+// Mission #109, C — premier palier de contre-offre.
+//
+// Quand la marque propose moins que le plancher, la contre-offre est toute la
+// fourchette. Sur le cas du PDF (450 € proposés, 760 – 1 530 € estimés), ça
+// revient à demander 3,4 fois l'offre : défendable comme valeur, inutilisable
+// tel quel comme message — beaucoup renoncent plutôt que d'envoyer ça.
+//
+// L'écran donne donc DEUX chiffres, pas un : ce que le lot vaut, et un premier
+// palier pour qui ne veut pas tout demander d'un coup. Ce palier n'invente
+// rien : c'est le plancher de la fourchette, déjà calculé, déjà affiché comme
+// borne basse. Le produit ne choisit pas à la place du créateur, il lui montre
+// les deux stratégies.
+//
+// null : le montant n'est pas sous le plancher (ou rien n'est chiffrable). Le
+// cas « montant dans la fourchette » ne change pas.
+export function counterFirstStep(amount: number | null, low: number | null, high: number | null): number | null {
+  if (amount === null || low === null || high === null) return null;
+  return amount < low ? low : null;
+}
+
 export type RangePosition = "below" | "bottom" | "middle" | "top" | "above";
 
 // Où se situe une valeur dans la fourchette, par tiers.

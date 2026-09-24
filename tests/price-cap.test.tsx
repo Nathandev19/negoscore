@@ -10,6 +10,7 @@ import {
   appliedPriceCap,
   bandFor,
   computeScore,
+  priceCapFor,
   PRICE_CAP_FREE_RATIO,
   priceRatio,
   priceScoreCap,
@@ -77,11 +78,18 @@ describe("plafond du score par le prix", () => {
     expect(bandFor(59)).toBe("fair");
   });
 
-  it("r ≥ 0,85 : aucun plafond prix", () => {
+  // Mission #109, B — les trois paliers de ratio ne bougent pas, et au-delà de
+  // 0,85 aucun d'eux ne s'applique. Mais être payé SOUS le plancher ne peut pas
+  // valoir mieux qu'être payé au bas de la fourchette : le plafond du tiers
+  // inférieur (69) s'applique alors. Sans cette borne, le score REMONTAIT quand
+  // une contrainte s'ajoutait et faisait passer le montant sous le plancher
+  // (invariant I10, tests/invariants.test.ts).
+  it("r ≥ 0,85 : aucun palier de ratio, mais jamais mieux que le tiers bas", () => {
     const { deal, estimate, ratio } = dealAtRatio(0.9);
     expect(ratio).toBeGreaterThanOrEqual(PRICE_CAP_FREE_RATIO);
     expect(priceScoreCap(ratio)).toBeNull();
-    expect(computeScore(deal, estimate).value).toBe(uncappedScore(deal, estimate).value);
+    expect(priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high)).toEqual({ cap: 69, reason: "ratio" });
+    expect(computeScore(deal, estimate).value).toBe(Math.min(uncappedScore(deal, estimate).value, 69));
   });
 
   it("les bornes de la table sont celles décidées", () => {
@@ -157,10 +165,15 @@ describe("explication du plafond sur la page de résultat", () => {
     expect(html).toContain("du bas de la fourchette. Le score ne peut pas monter plus haut.");
   });
 
+  // Mission #109, B — le seul endroit sans plafond prix est désormais le TIERS
+  // SUPÉRIEUR de la fourchette (et au-dessus) : c'est là qu'il n'y a plus rien
+  // à négocier sur le prix.
   it("B2 — rien n'est affiché quand aucun plafond ne s'applique", () => {
-    const { analysis, deal, estimate } = dealAtRatio(0.9);
+    const { analysis, deal, estimate } = dealAtRatio(3);
+    expect(priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high)).toBeNull();
     expect(appliedPriceCap(deal, estimate)).toBeNull();
     expect(render(analysis)).not.toContain("du bas de la fourchette");
+    expect(render(analysis)).not.toContain("la note ne peut pas dépasser");
   });
 
   it("B2 — rien n'est affiché quand le plafond ne mord pas", () => {

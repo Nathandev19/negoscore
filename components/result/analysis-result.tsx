@@ -16,7 +16,7 @@ import { rememberTier, TierContext, TierSelector } from "@/components/result/tie
 import { SentMessageContext } from "@/components/result/negotiation/sent-message";
 import { CounterOffer, MESSAGE_ANCHOR, ReadyMessage } from "@/components/result/unlocked-blocks";
 import { IncompleteCard, TermsUnknownCard, UnpricedCard } from "@/components/result/verdict-card";
-import { counterOfferRange, counterSameAsEstimate } from "@/lib/analysis/anchoring";
+import { counterFirstStep, counterOfferRange, counterSameAsEstimate } from "@/lib/analysis/anchoring";
 import { missingInformation } from "@/lib/analysis/evaluability";
 import type { ResultView } from "@/lib/analysis/lock";
 import { recomputeForDeal, recomputeForTier, tierChangeAvailable } from "@/lib/analysis/recompute";
@@ -174,6 +174,9 @@ export function AnalysisResult({
   // Après un tour, la fourchette affichée est celle des termes actuels : la
   // contre-offre d'origine n'est plus fusionnée avec elle.
   const counterSame = negotiated ? null : counterSameAsEstimate(deal.payment.amount_eur, origin.counter_offer, estimate);
+  // Mission #109, C — montant sous le plancher : un premier palier, à côté de
+  // la fourchette complète. Calculé sur l'offre d'origine, comme la contre-offre.
+  const firstStep = counterFirstStep(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
   return (
     <TierContext value={analysis.profile_tier}>
     <SentMessageContext value={{ analysisId, firstMessage: origin.ready_to_send_message?.text ?? null }}>
@@ -234,6 +237,7 @@ export function AnalysisResult({
             title={counterOfferTitle}
             justUnlocked={justUnlocked}
             sameAsEstimate={counterSame}
+            firstStep={incomplete ? null : firstStep}
             missing={incomplete ? missingInformation(analysis) : []}
           />
         ) : (

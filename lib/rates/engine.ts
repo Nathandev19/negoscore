@@ -21,6 +21,7 @@ export type Profile = { tier?: Tier; table?: RateTable };
 // l'impact en euros sur les points à négocier.
 export type RateTopic =
   | "paid_ads"
+  | "organic"
   | "whitelisting"
   | "spark_ads"
   | "exclusivity"
@@ -282,6 +283,23 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
       const key: MultiplierKey =
         months <= 1 ? "paid_ads_1m" : months <= 3 ? "paid_ads_3m" : months <= 6 ? "paid_ads_6m" : "paid_ads_12m";
       addMultiplier(key, "paid_ads", `Droits pub ${formatNumber(months)} mois`);
+    }
+  }
+
+  // Mission #109, D — la republication ORGANIQUE par la marque sur ses propres
+  // comptes. Jusqu'à douze mois, elle reste comprise dans le tarif de base :
+  // rien ne change, et les fourchettes déjà filmées non plus. Au-delà, elle
+  // cesse d'être gratuite — toutes les sources consultées l'incluent dans la
+  // base pour trois à six mois, aucune ne l'offre sans limite, et une marque
+  // qui republie indéfiniment ne payait jusqu'ici rien du tout.
+  //
+  // Durée non écrite : la même hypothèse que partout ailleurs (3 mois), donc
+  // aucune majoration. On ne facture pas un droit qu'on a supposé.
+  if (usage.organic) {
+    if (usage.perpetual) {
+      addMultiplier("organic_perpetual", "organic", "Republication à vie");
+    } else if ((usage.duration_months ?? ASSUMED_MONTHS) > 12) {
+      addMultiplier("organic_beyond_12m", "organic", `Republication ${formatNumber(usage.duration_months as number)} mois`);
     }
   }
 

@@ -364,8 +364,11 @@ describe("CASE F — prix connu, conditions inconnues", () => {
 
   it("« terms_unknown » : estimation conservée, score null, hypothèse explicite", () => {
     const estimate = computeEstimate(CASE_F);
-    // Niveau confirmé : 73 (250 € pile sur la borne basse, +18 depuis la #019).
-    expect(computeScore(CASE_F, computeEstimate(CASE_F, { tier: "confirmed" }))).toEqual({ value: 73, band: "good" });
+    // Niveau confirmé : 250 € pile sur la borne basse de 250 – 500 €, donc au
+    // TIERS BAS de la fourchette. Mission #109, B : le score y est plafonné à
+    // 69. Il valait 73 (« Bon deal ») grâce aux bonus de conditions, au-dessus
+    // d'une contre-offre qui demandait de monter.
+    expect(computeScore(CASE_F, computeEstimate(CASE_F, { tier: "confirmed" }))).toEqual({ value: 69, band: "fair" });
     // Niveau par défaut starter (fr-2026.3) : 250 € au-dessus de 100–180 €, +30 → 85.
     expect([estimate.total_low, estimate.total_high]).toEqual([100, 180]);
     expect(computeScore(CASE_F, estimate)).toEqual({ value: 85, band: "excellent" });

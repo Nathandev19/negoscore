@@ -57,7 +57,7 @@ export function ScoreBand({
               vraiment fait baisser la note, avec la part réellement payée. */}
           {priceCap ? (
             <p data-price-cap className="measure text-small font-semibold text-creme">
-              {priceCapNote(priceCap.percent)}
+              {priceCapNote(priceCap.percent, priceCap.reason)}
             </p>
           ) : null}
           {tierNote}

@@ -6,7 +6,7 @@ import sample from "@/lib/fixtures/analysis-legacy-1.0.json";
 import { extractionSchema, PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
 import { formatEur } from "@/lib/money";
 import { computeEstimate } from "@/lib/rates/engine";
-import { computeScore, pricePoints } from "@/lib/rates/score";
+import { computeScore, pricePoints, uncappedScore } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
 import nova from "./fixtures/deal-26-nova-sportswear.json";
 
@@ -58,12 +58,17 @@ describe("A — points prix gradués sur la position dans la fourchette", () => 
 
   // Cas NOVA (#019) mesuré au niveau confirmé, niveau par défaut jusqu'à fr-2026.2.
   // Le calcul du prix dans la fourchette y est gardé tel quel, au niveau explicite.
-  it("NOVA au niveau confirmé : 600 € dans 460–1 090 € vaut 81, « Bon deal »", () => {
+  // Mission #109, B — 600 € est au TIERS BAS de 460 – 1 090 € (22 %), et la
+  // contre-offre demande 845 – 1 090 €. Le badge disait « Bon deal » au-dessus
+  // d'une demande de +41 % : les deux ne racontaient pas la même chose. Le
+  // plafond du tiers inférieur ramène la note à 69, « Deal correct ».
+  it("NOVA au niveau confirmé : 600 € au tiers bas de 460–1 090 € vaut 69, « Deal correct »", () => {
     const estimate = computeEstimate(NOVA, { tier: "confirmed" });
     expect([estimate.total_low, estimate.total_high]).toEqual([460, 1090]);
     const score = computeScore(NOVA, estimate);
-    expect(score).toEqual({ value: 81, band: "good" });
-    expect(BAND_LABEL[score.band]).toBe("Bon deal");
+    expect(uncappedScore(NOVA, estimate).value).toBe(81);
+    expect(score).toEqual({ value: 69, band: "fair" });
+    expect(BAND_LABEL[score.band]).toBe("Deal correct");
   });
 
   it("NOVA au niveau par défaut (starter, fr-2026.3) : 600 € au-dessus de 180–400 € vaut 90, « Excellent deal »", () => {
@@ -131,7 +136,7 @@ describe("D — le message cite la contre-offre, jamais l'estimation", () => {
   it("NOVA au niveau confirmé : contre-offre au-dessus de 600 €, message aligné sur elle", () => {
     const analysis = composeAnalysis(extraction(NOVA), { tier: "confirmed" });
     expect(analysis.evaluability).toBe("complete");
-    expect(analysis.score).toEqual({ value: 81, band: "good" });
+    expect(analysis.score).toEqual({ value: 69, band: "fair" });
     expect(analysis.estimate.total_low).toBe(460);
     expect(analysis.counter_offer).toMatchObject({ amount_low: 845, amount_high: 1090 });
     expect(analysis.ready_to_send_message.text).toContain(`entre ${formatEur(845)} et ${formatEur(1090)}`);
