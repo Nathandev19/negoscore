@@ -103,14 +103,26 @@ const MEMBERSHIP = "mem_abonnement";
 const pending = (eventId: string) => (db.tables.get("pending_payments") ?? []).find((row) => row.event_id === eventId);
 const logged = (event: string) => db.logs.filter((entry) => entry.event === event);
 
-// Un paiement de RENOUVELLEMENT : data.id est l'identifiant du PAIEMENT,
-// l'abonnement est ailleurs. On ne connaît pas la forme exacte de la charge
-// Whop : les tests couvrent les formes plausibles.
-const renewal = (id: string, data: Row = {}) => ({
-  id,
-  type: "payment.succeeded",
-  data: { id: `pay_${id}`, plan: { id: "plan_pro" }, total: 12.99, currency: "eur", user: { email: "portefeuille@exemple.test" }, ...data },
-});
+// Un paiement de RENOUVELLEMENT, à la forme RÉELLE relevée en base : data.id
+// est l'identifiant du PAIEMENT, l'abonnement est dans `membership`, qui est un
+// objet, et `billing_reason` dit pourquoi Whop a encaissé.
+const renewal = (id: string, data: Row = {}) => {
+  const { membership_id: membershipId, ...rest } = data as { membership_id?: string };
+  return {
+    id,
+    type: "payment.succeeded",
+    data: {
+      id: `pay_${id}`,
+      plan: { id: "plan_pro" },
+      total: 12.99,
+      currency: "eur",
+      billing_reason: "subscription_renewal",
+      user: { email: "portefeuille@exemple.test" },
+      ...(membershipId ? { membership: { id: membershipId, status: "completed", phone_number: null } } : {}),
+      ...rest,
+    },
+  };
+};
 
 function capture(level: "log" | "warn" | "error") {
   vi.spyOn(console, level).mockImplementation((line: unknown) => {
@@ -142,17 +154,42 @@ describe("D1 — l'identifiant d'abonnement porté par une charge", () => {
     expect(membershipIdOf("membership.deactivated", { id: "mem_2" })).toBe("mem_2");
   });
 
-  it("sur un paiement, il est cherché sous plusieurs formes plausibles, jamais dans data.id", () => {
+  // Forme réelle relevée en base sur cinq payment.succeeded : `membership` est
+  // un OBJET, et son identifiant est dans `id`.
+  it("sur un paiement, c'est data.membership.id — la forme observée — jamais data.id", () => {
+    const reel = { id: "pay_1", membership: { id: "mem_YRj9pLI56IEhid", status: "completed", phone_number: null } };
+    expect(membershipIdOf("payment.succeeded", reel)).toBe("mem_YRj9pLI56IEhid");
     expect(membershipIdOf("payment.succeeded", { id: "pay_1" })).toBeNull();
-    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership_id: "mem_1" })).toBe("mem_1");
+  });
+
+  it("la forme observée passe AVANT les replis, même quand les deux existent", () => {
+    const deux = { id: "pay_1", membership: { id: "mem_objet" }, membership_id: "mem_repli", subscription_id: "mem_autre" };
+    expect(membershipIdOf("payment.succeeded", deux)).toBe("mem_objet");
+  });
+
+  it("les replis restent en place, pour une forme qu'on n'a pas encore vue", () => {
     expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership: "mem_2" })).toBe("mem_2");
-    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership: { id: "mem_3" } })).toBe("mem_3");
-    expect(membershipIdOf("payment.succeeded", { id: "pay_1", subscription_id: "mem_4" })).toBe("mem_4");
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership_id: "mem_3" })).toBe("mem_3");
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", subscription: { id: "mem_4" } })).toBe("mem_4");
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", subscription_id: "mem_5" })).toBe("mem_5");
+  });
+
+  it("un objet membership SANS id ne rend rien d'absurde", () => {
+    // La forme réelle d'un paiement qui n'est rattaché à aucun abonnement.
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership: { status: "completed", phone_number: null } })).toBeNull();
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership: {} })).toBeNull();
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership: null })).toBeNull();
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership: { id: null } })).toBeNull();
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership: { id: "" } })).toBeNull();
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership: { id: 42 } })).toBeNull();
+    // Et le repli ne va pas chercher l'identifiant du paiement à la place.
+    expect(membershipIdOf("payment.succeeded", { id: "pay_1", membership: {} })).not.toBe("pay_1");
   });
 
   it("une valeur hors gabarit n'entre jamais dans un filtre", () => {
+    expect(membershipIdOf("payment.succeeded", { membership: { id: "mem,1" } })).toBeNull();
+    expect(membershipIdOf("payment.succeeded", { membership: { id: "mem 1" } })).toBeNull();
     expect(membershipIdOf("payment.succeeded", { membership_id: "mem,1" })).toBeNull();
-    expect(membershipIdOf("payment.succeeded", { membership_id: "mem 1" })).toBeNull();
   });
 });
 
@@ -232,6 +269,60 @@ describe("A4 et A5 — ce qui ne se devine pas", () => {
     const avant = (db.tables.get("profiles") ?? []).length;
     await applyWhopEvent(renewal("evt_ecriture", { membership_id: MEMBERSHIP }));
     expect((db.tables.get("profiles") ?? []).length).toBe(avant);
+  });
+});
+
+describe("A6 — la trace dit par quel chemin, et pour quelle raison de facturation", () => {
+  it("rattaché : le chemin ET billing_reason sont dans la même ligne", async () => {
+    await applyWhopEvent(renewal("evt_trace", { metadata: { user_id: USER } }));
+    expect(logged("whop_rattachement")[0].row).toMatchObject({
+      event_id: "evt_trace",
+      type: "payment.succeeded",
+      billing_reason: "subscription_renewal",
+      how: "metadata",
+    });
+  });
+
+  it("les trois chemins portent tous billing_reason", async () => {
+    await applyWhopEvent(renewal("evt_t1", { metadata: { user_id: USER } }));
+    (db.tables.get("credits") ?? [])[0].membership_id = MEMBERSHIP;
+    await applyWhopEvent(renewal("evt_t2", { membership_id: MEMBERSHIP }));
+    (db.tables.get("credits") ?? [])[0].membership_id = null;
+    db.membership = { user_id: USER };
+    await applyWhopEvent(renewal("evt_t3", { membership_id: MEMBERSHIP }));
+    const traces = logged("whop_rattachement");
+    expect(traces.map((entry) => entry.row.how)).toEqual(["metadata", "membership", "abonnement_whop"]);
+    for (const trace of traces) expect(trace.row.billing_reason).toBe("subscription_renewal");
+  });
+
+  it("non rattaché : billing_reason est là aussi, avec la raison de l'échec", async () => {
+    db.membership = "unavailable";
+    await applyWhopEvent(renewal("evt_ko_trace", { membership_id: MEMBERSHIP }));
+    expect(logged("whop_paiement_non_rattache")[0].row).toMatchObject({
+      billing_reason: "subscription_renewal",
+      raison: "abonnement_illisible",
+    });
+  });
+
+  it("une charge sans billing_reason ne casse pas la trace", async () => {
+    await applyWhopEvent({
+      id: "evt_sans_raison",
+      type: "payment.succeeded",
+      data: { id: "pay_x", plan: { id: "plan_pack" }, total: 4.99, currency: "eur", metadata: { user_id: USER } },
+    });
+    expect(logged("whop_rattachement")[0].row.billing_reason).toBeNull();
+  });
+
+  it("les valeurs réelles relevées en base passent telles quelles", async () => {
+    for (const [index, reason] of ["one_time", "subscription_create"].entries()) {
+      db.logs = [];
+      await applyWhopEvent({
+        id: `evt_reason_${index}`,
+        type: "payment.succeeded",
+        data: { id: "pay_y", plan: { id: "plan_pack" }, total: 4.99, currency: "eur", billing_reason: reason, metadata: { user_id: USER } },
+      });
+      expect(logged("whop_rattachement")[0].row.billing_reason, reason).toBe(reason);
+    }
   });
 });
 

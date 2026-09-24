@@ -120,20 +120,40 @@ async function resolveByMembership(membershipId: string | null): Promise<{ id: s
 // Mission #114 — L'IDENTIFIANT D'ABONNEMENT PORTÉ PAR UNE CHARGE.
 //
 // Sur un `membership.*`, c'est `data.id`. Sur un `payment.succeeded`,
-// `data.id` est l'identifiant du PAIEMENT : l'abonnement est ailleurs, et Whop
-// ne documente pas une forme unique. Aucune charge de renouvellement n'étant
-// encore enregistrée chez nous au moment d'écrire ceci, on lit défensivement
-// les formes plausibles plutôt que d'en tailler une sur un exemple qu'on n'a
-// pas : chaîne directe, objet imbriqué, ou champ suffixé.
+// `data.id` est l'identifiant du PAIEMENT : l'abonnement est ailleurs.
+//
+// FORME RÉELLE, relevée sur cinq payment.succeeded enregistrés : `membership`
+// est un OBJET, et son identifiant est dans `id`.
+//
+//   "membership": { "id": "mem_YRj9pLI56IEhid", "status": "completed", … }
+//
+// C'est donc la première forme essayée. Les autres restent en repli : elles
+// ne coûtent rien, et une charge d'un autre type de paiement — ou une
+// évolution de l'API — n'a pas à faire tomber un abonné en attente pour un
+// nom de champ. Un objet `membership` sans `id` ne rend rien : `record()` puis
+// `text()` donnent null, et le gabarit filtre ensuite ce qui reste.
 export function membershipIdOf(type: string, data: Record<string, unknown>): string | null {
   if (type.startsWith("membership.")) return text(data.id);
   const candidates = [
+    // Forme observée en base.
+    text(record(data.membership).id),
+    // Replis, jamais observés.
+    typeof data.membership === "string" ? data.membership : null,
     text(data.membership_id),
-    typeof data.membership === "string" ? data.membership : text(record(data.membership).id),
     text(record(data.subscription).id),
     text(data.subscription_id),
   ];
   return candidates.find((value): value is string => value !== null && MEMBERSHIP_ID.test(value)) ?? null;
+}
+
+// Mission #114 — POURQUOI CE PAIEMENT A ÉTÉ ENCAISSÉ, tel que Whop le dit.
+// Relevé en base : « one_time » pour un pack, « subscription_create » pour la
+// première échéance d'un abonnement. Un renouvellement en portera une
+// troisième, qu'on n'a pas encore vue. Journalisé à côté du chemin de
+// rattachement : le premier renouvellement se lira alors en une ligne, sans
+// avoir à croiser deux sources.
+function billingReason(data: Record<string, unknown>): string | null {
+  return text(data.billing_reason);
 }
 
 // TROISIÈME CHEMIN (mission #114) : l'abonnement lu chez Whop, et l'identifiant
@@ -374,6 +394,7 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
         event_id: event.id,
         email,
         plan,
+        billing_reason: billingReason(source),
         raison: attached.kind === "unavailable" ? "abonnement_illisible" : "aucun_identifiant",
         ...(attached.kind === "unavailable" ? { detail: attached.detail } : {}),
       }),
@@ -400,7 +421,9 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   const user = attached.user;
   // Mission #114, A6 — PAR QUEL CHEMIN. Sans cette trace, on ne saurait pas si
   // Whop recopie les metadata sur les renouvellements : on le devinerait.
-  console.log(JSON.stringify({ event: "whop_rattachement", event_id: event.id, type, how: attached.how }));
+  console.log(
+    JSON.stringify({ event: "whop_rattachement", event_id: event.id, type, billing_reason: billingReason(source), how: attached.how }),
+  );
   const current = await credits(user.id);
   // Identifiant anonyme posé au checkout : il relie l'achat au parcours mesuré.
   const analyticsId = sanitizeDistinctId(record(source.metadata).ph_distinct_id);
