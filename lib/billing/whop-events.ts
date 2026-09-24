@@ -1,5 +1,5 @@
 import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
-import { isProActive } from "@/lib/billing/plan-access";
+import { furthestPeriodEnd, isProActive } from "@/lib/billing/plan-access";
 import { PACK_ANALYSES } from "@/lib/billing/plans";
 import { recordPurchase } from "@/lib/billing/purchases";
 import {
@@ -461,10 +461,9 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       // une période déjà payée : quand un second abonnement l'avait prolongée,
       // la date en place est plus lointaine que celle de l'abonnement résilié.
       // On garde la plus lointaine des deux.
-      const keptEnd =
-        current.period_end && new Date(current.period_end).getTime() > new Date(renewalEnd).getTime()
-          ? current.period_end
-          : renewalEnd;
+      // Mission #113, E — la même règle que la résiliation manuelle, au même
+      // endroit (lib/billing/plan-access.ts).
+      const keptEnd = furthestPeriodEnd(current.period_end, renewalEnd) ?? renewalEnd;
       await updateRows("credits", `user_id=eq.${user.id}`, {
         plan: "pro",
         period_end: keptEnd,

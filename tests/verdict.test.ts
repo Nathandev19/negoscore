@@ -123,7 +123,16 @@ describe("bornes et cas limites", () => {
   it("un montant égal à une borne est dans les prix", () => {
     // Mission #109, A — toujours « dans les prix », mais la borne basse est le
     // bas de la fourchette et la borne haute en est le haut.
-    expect(verdictForm(analysis({ amount: 510 }))).toBe("complete_within_bottom");
+    //
+    // Mission #113, B — sauf quand le score ENREGISTRÉ contredit la position :
+    // ce gabarit porte un score de 75 (« Bon deal »), qui ne respecte pas le
+    // plafond de 69 du tiers bas. La phrase se tait alors sur la position
+    // plutôt que de contredire le badge affiché à côté d'elle.
+    expect(verdictForm(analysis({ amount: 510 }))).toBe("complete_within_middle");
+    // Score ramené sous le plafond : la position est de nouveau dite.
+    const coherente = analysis({ amount: 510 });
+    expect(verdictForm({ ...coherente, score: { value: 69, band: "fair" } })).toBe("complete_within_bottom");
+    // Au tiers haut, aucun plafond ne s'applique : rien à concilier.
     expect(verdictForm(analysis({ amount: 1100 }))).toBe("complete_within_top");
     expect(verdictForm(analysis({ amount: 509 }))).toBe("complete_below");
     expect(verdictForm(analysis({ amount: 1101 }))).toBe("complete_above");

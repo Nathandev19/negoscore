@@ -2,7 +2,7 @@ import type { Analysis } from "@/lib/schema";
 import { rangePosition } from "@/lib/analysis/anchoring";
 import { WITHIN_RANGE_SENTENCE, type WithinRange } from "@/lib/content/labels";
 import { formatAmount, formatEur } from "@/lib/money";
-import { bandFor, hasUnknownQuantity, priceCapFor, pricePoints, RATIO_ZERO, SCORE_BASE, uncappedScore } from "@/lib/rates/score";
+import { bandFor, hasUnknownQuantity, priceCapFor, pricePoints, RATIO_ZERO, SCORE_BASE, scoreHonoursPriceCap, uncappedScore } from "@/lib/rates/score";
 
 // Phrase de verdict en tête de la page de résultat. Écrite par le moteur,
 // jamais par le modèle : elle ne dépend que de l'état d'évaluabilité, du
@@ -111,6 +111,16 @@ export function verdictForm(analysis: VerdictInput): VerdictForm {
   if (offer.value < low) return "complete_below";
   if (offer.value > high) return poorTerms ? "complete_above_poor_terms" : "complete_above";
   if (poorTerms) return "complete_within_poor_terms";
+  // Mission #113, B — le score affiché vient de la base, la phrase est
+  // recalculée ici. Quand le score enregistré ne respecte pas le plafond
+  // d'aujourd'hui (analyse d'avant la mission #109), dire « tout en bas de la
+  // fourchette » au-dessus d'un badge « Bon deal » est une contradiction à
+  // l'écran. La position se tait alors, et la phrase se replie sur ce qui
+  // reste vrai dans les trois cas : « C'est dans les prix. »
+  //
+  // C'est l'enregistré qui fait foi, conformément à la décision de la #085 :
+  // aucun chiffre n'est retouché, c'est le texte qui s'aligne.
+  if (!scoreHonoursPriceCap(analysis.deal, analysis.estimate, analysis.score)) return "complete_within_middle";
   return `complete_within_${withinRange(offer.value, low, high)}` as const;
 }
 

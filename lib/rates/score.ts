@@ -178,6 +178,25 @@ export function priceScoreCap(ratio: number | null): number | null {
   return PRICE_CAPS.find((step) => ratio >= step.minRatio)?.cap ?? null;
 }
 
+// Mission #113, B — LE SCORE MONTRÉ RESPECTE-T-IL LE PLAFOND D'AUJOURD'HUI ?
+//
+// Une analyse garde les chiffres du jour où elle a été faite (mission #085) :
+// c'est son score ENREGISTRÉ qui s'affiche, pas un score recalculé. Tout ce qui
+// se déduit de l'analyse à l'ouverture — la phrase de verdict, la note de
+// plafond — est en revanche calculé par le code d'AUJOURD'HUI. Quand une règle
+// de plafond change, les deux peuvent se contredire : une analyse d'avant la
+// mission #109 affiche « Bon deal, 81/100 » pendant que la phrase, recalculée,
+// dit « tout en bas de la fourchette ».
+//
+// Un seul endroit décide donc si le score montré et le plafond actuel sont
+// d'accord. Quand ils ne le sont pas, ce qui se déduit se tait plutôt que de
+// contredire le chiffre affiché : c'est le chiffre enregistré qui fait foi.
+export function scoreHonoursPriceCap(deal: Deal, estimate: Estimate, score: Pick<Score, "value"> | null): boolean {
+  if (!score) return true;
+  const capped = priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
+  return capped === null || score.value <= capped.cap;
+}
+
 // Plafond prix réellement appliqué, c'est-à-dire qui a fait baisser le score :
 // null s'il n'y en a pas, ou s'il ne mordait pas. Sert à expliquer la note sur
 // la page de résultat (mission #050, partie B), jamais à la calculer.

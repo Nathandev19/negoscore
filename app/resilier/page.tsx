@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CancelView } from "@/components/account/cancel-view";
 import { getViewer } from "@/lib/auth/viewer";
+import { entryFor } from "@/lib/lookup";
 import type { PlanState } from "@/lib/billing/plan-access";
 import { SELLER } from "@/lib/legal/identity";
 import { selectRows } from "@/lib/supabase/server";
@@ -22,7 +23,9 @@ export default async function CancelPage({ searchParams }: PageProps<"/resilier"
   if (!user) redirect(`/connexion?next=${encodeURIComponent("/resilier")}`);
 
   const params = await searchParams;
-  const error = typeof params.erreur === "string" ? ERRORS[params.erreur] : null;
+  // Mission #113, C — même garde que sur /tarifs : une clé hostile se
+  // comporte comme une clé inconnue (lib/lookup.ts).
+  const error = typeof params.erreur === "string" ? (entryFor(ERRORS, params.erreur) ?? null) : null;
 
   const [credits] = await selectRows<PlanState>(
     "credits",

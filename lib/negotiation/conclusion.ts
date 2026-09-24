@@ -1,6 +1,7 @@
 import type { CounterRange } from "@/lib/analysis/anchoring";
 import { deliverablesLine, formatEur, formatEurRange } from "@/lib/display";
 import { computeFrLegal, WRITTEN_CONTRACT_THRESHOLD_EUR } from "@/lib/legal/fr";
+import { entryFor } from "@/lib/lookup";
 import {
   amountLabel,
   exclusivityLabel,
@@ -313,7 +314,7 @@ export function conclusionMessage(
           ]),
       ...known.map((row) => `- ${row.label}: ${row.value}`),
       ...(also.length > 0 ? ["", "We also agree to:", ...also.map((item) => `- ${item}`)] : []),
-      ...(questions.length > 0 ? ["", "Could you also specify:", ...questions.map((q) => `- ${QUESTIONS_EN[q] ?? q}`)] : []),
+      ...(questions.length > 0 ? ["", "Could you also specify:", ...questions.map((q) => `- ${entryFor(QUESTIONS_EN, q) ?? q}`)] : []),
       "",
       "Could you confirm these points in writing in reply to this message? Thank you!",
       "",

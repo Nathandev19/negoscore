@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { entryFor } from "@/lib/lookup";
 
 const ERRORS: Record<string, string> = {
   consentement: "Coche la case avant de continuer vers le paiement.",
@@ -16,7 +17,9 @@ const ERRORS: Record<string, string> = {
 // ?erreur= renvoyé par /api/checkout, lu dans le navigateur : /tarifs reste statique.
 export function OffersError() {
   const code = useSearchParams().get("erreur");
-  const error = code ? ERRORS[code] : undefined;
+  // Mission #113, C — une clé venue de l'adresse ne doit obtenir une réponse
+  // que si elle est vraiment dans la table (lib/lookup.ts).
+  const error = code ? entryFor(ERRORS, code) : undefined;
   if (!error) return null;
   return (
     <p role="alert" className="alert-bad py-1 text-sm">

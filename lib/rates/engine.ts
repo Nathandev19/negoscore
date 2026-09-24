@@ -295,7 +295,15 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   //
   // Durée non écrite : la même hypothèse que partout ailleurs (3 mois), donc
   // aucune majoration. On ne facture pas un droit qu'on a supposé.
-  if (usage.organic) {
+  //
+  // Mission #113, A — des droits publicitaires PERPÉTUELS comprennent déjà la
+  // republication organique : une marque qui peut diffuser la vidéo en
+  // publicité pour toujours peut évidemment la republier sur ses comptes. La
+  // ligne organique ne s'ajoute donc pas à « Droits pub à vie » ; elle
+  // s'applique partout ailleurs, y compris quand les droits pub sont limités
+  // dans le temps et la republication non.
+  const adsForever = usage.paid_ads && usage.perpetual;
+  if (usage.organic && !adsForever) {
     if (usage.perpetual) {
       addMultiplier("organic_perpetual", "organic", "Republication à vie");
     } else if ((usage.duration_months ?? ASSUMED_MONTHS) > 12) {

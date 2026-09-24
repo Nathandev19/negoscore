@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { verdictSentence } from "@/lib/analysis/verdict";
 import type { ResultView } from "@/lib/analysis/lock";
 import { BAND_LABEL, BAND_STYLE, EVALUABILITY_LABEL, priceCapNote, QUANTITY_CAP_NOTE } from "@/lib/display";
-import { appliedPriceCap, hasUnknownQuantity } from "@/lib/rates/score";
+import { appliedPriceCap, hasUnknownQuantity, scoreHonoursPriceCap } from "@/lib/rates/score";
 import { TIER_LABEL } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
@@ -36,8 +36,12 @@ export function ScoreBand({
   // Une analyse enregistrée avant la mission #050 garde le score calculé sans
   // plafond : la phrase serait alors affichée à côté d'un score qui la
   // contredit. Elle n'apparaît donc que si le score montré respecte le plafond.
+  // Mission #113, B — un seul endroit décide si le score montré et le plafond
+  // d'aujourd'hui sont d'accord (lib/rates/score.ts). La note de plafond et la
+  // phrase de verdict s'y réfèrent toutes les deux : elles ne peuvent plus
+  // diverger l'une de l'autre.
   const capState = appliedPriceCap(analysis.deal, analysis.estimate);
-  const priceCap = capState && analysis.score && analysis.score.value <= capState.cap ? capState : null;
+  const priceCap = capState && scoreHonoursPriceCap(analysis.deal, analysis.estimate, analysis.score) ? capState : null;
   return (
     <div className={cn("grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-12", className)}>
       <p className="headline text-verdict text-balance text-creme lg:order-last">{verdictSentence(analysis)}</p>

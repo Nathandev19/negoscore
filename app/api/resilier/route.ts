@@ -1,5 +1,5 @@
 import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
-import { isProActive, type PlanState } from "@/lib/billing/plan-access";
+import { furthestPeriodEnd, isProActive, type PlanState } from "@/lib/billing/plan-access";
 import { findMembershipId } from "@/lib/billing/subscription";
 import { sendEmail } from "@/lib/email/send";
 import { cancellationConfirmationEmail } from "@/lib/email/templates";
@@ -46,7 +46,11 @@ export async function POST(request: Request) {
     const membership = await cancelMembershipAtPeriodEnd(membershipId);
     if (!membership) return redirect("/resilier?erreur=whop");
 
-    const endsAt = membership.renewal_period_end ?? credits.period_end;
+    // Mission #113, E — la plus lointaine des deux, comme le webhook. Whop ne
+    // connaît que la fin de l'abonnement résilié ; une période empilée par un
+    // second abonnement ou par un paiement rattrapé va plus loin, et elle est
+    // payée. La prendre telle quelle retirait au compte ce qu'il avait réglé.
+    const endsAt = furthestPeriodEnd(membership.renewal_period_end, credits.period_end);
     // La demande est datée chez nous : l'accès reste ouvert jusqu'à period_end,
     // quelle que soit la façon dont le prestataire coupe l'abonnement.
     await updateRows("credits", `user_id=eq.${user.id}&cancelled_at=is.null`, {

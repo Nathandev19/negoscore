@@ -1,3 +1,5 @@
+import { entryFor } from "@/lib/lookup";
+
 // Mission #106 — des chemins courts, tapables à la main, qui portent
 // l'attribution.
 //
@@ -40,8 +42,12 @@ function key(pathname: string): string {
 // L'adresse vers laquelle rediriger, ou null si ce chemin n'est pas dans la
 // table. null ne veut PAS dire « accueil » : un chemin inconnu reste une
 // adresse inconnue, et rend un 404 comme n'importe quelle autre.
+// Mission #113, C — `SHORT_PATHS[cle]` répondait aussi pour les clés
+// héritées d'Object.prototype : /constructor et /__proto__ redirigeaient vers
+// l'accueil avec un utm_content fabriqué, au lieu de rendre 404 comme toute
+// autre adresse inconnue.
 export function shortPathTarget(pathname: string): string | null {
-  const content = SHORT_PATHS[key(pathname)];
+  const content = entryFor(SHORT_PATHS, key(pathname));
   if (content === undefined) return null;
   const params = new URLSearchParams({
     utm_source: ACQUISITION_UTM.source,
