@@ -231,18 +231,29 @@ describe("B — paiement non rattachable à un compte", () => {
     expect(db.balance).toBe(0);
   });
 
-  it("6. le compte est créé le lendemain avec le même email : le crédit est appliqué à la passe suivante", async () => {
+  // Mission #112 — CE COMPORTEMENT A CHANGÉ, volontairement.
+  //
+  // Avant : un compte créé plus tard avec la même adresse que celle du paiement
+  // était crédité par le rattrapage. C'était une attribution PAR EMAIL, et
+  // l'adresse de paiement n'est pas l'adresse du compte — avec Apple Pay, c'est
+  // celle du portefeuille. Le crédit pouvait donc tomber sur le compte de
+  // quelqu'un d'autre, sans que personne le voie passer.
+  //
+  // Désormais : sans identifiant de compte, rien n'est crédité, jamais. Le
+  // paiement reste en attente, visible dans /admin, et se rattache à la main.
+  // Ce cas ne peut plus naître du produit : un paiement n'ouvre plus quand la
+  // session ne porte pas l'identifiant (app/api/checkout/route.ts).
+  it("6. le compte est créé le lendemain avec le même email : TOUJOURS rien de crédité", async () => {
     await applyWhopEvent(orphan("evt_orphelin"));
     expect(db.balance).toBe(0);
 
-    // Le lendemain : le compte existe, la passe de rattrapage rejoue l'événement.
     db.tables.set("profiles", [{ id: USER, email: "inconnue@exemple.test" }]);
     vi.setSystemTime(at(DAY));
     const outcome = await applyWhopEvent(orphan("evt_orphelin"));
-    expect(outcome.handled).toBe(true);
-    expect(outcome.pending).toBeUndefined();
-    expect(db.balance).toBe(3);
-    expect(db.credited.has("evt_orphelin")).toBe(true);
+    expect(outcome.handled).toBe(false);
+    expect(outcome.pending).toBe(true);
+    expect(db.balance).toBe(0);
+    expect(db.credited.has("evt_orphelin")).toBe(false);
   });
 
   it("7. trente et un jours sans rattachement : abandonné, et dit", async () => {
@@ -342,5 +353,101 @@ describe("B — le webhook lui-même", () => {
     expect(report.traites).toBe(0);
     expect((db.tables.get("whop_events") ?? [])[0].processed_at).toBeNull();
     expect(db.balance).toBe(0);
+  });
+});
+
+// ─── Mission #112 — attribution par identifiant, jamais par email ────────────
+
+describe("#112 — qui est crédité, et sur quelle preuve", () => {
+  const AUTRE = "22222222-2222-4222-8222-222222222222";
+  const pack = (id: string, data: Row) => ({ id, type: "payment.succeeded", data: { plan: { id: "plan_pack" }, total: 4.99, currency: "eur", ...data } });
+
+  it("l'adresse de paiement diffère de celle du compte : c'est l'identifiant qui décide", async () => {
+    // Le cas réel du 24/09 : compte jolareactsrtm@…, paiement Apple Pay sous
+    // nathansuprm@…. L'adresse de l'acheteur n'est celle d'aucun compte connu.
+    const outcome = await applyWhopEvent(
+      pack("evt_applepay", { metadata: { user_id: USER }, user: { email: "portefeuille@exemple.test" } }),
+    );
+    expect(outcome.handled).toBe(true);
+    expect(outcome.userId).toBe(USER);
+    expect(outcome.reason).toContain("metadata");
+    expect(db.balance).toBe(3);
+  });
+
+  it("l'adresse de paiement est celle d'un AUTRE compte : l'autre compte n'est pas crédité", async () => {
+    db.tables.set("profiles", [
+      { id: USER, email: EMAIL },
+      { id: AUTRE, email: "voisin@exemple.test" },
+    ]);
+    const outcome = await applyWhopEvent(
+      pack("evt_croise", { metadata: { user_id: USER }, user: { email: "voisin@exemple.test" } }),
+    );
+    expect(outcome.userId).toBe(USER);
+    expect(outcome.userId).not.toBe(AUTRE);
+    expect(db.balance).toBe(3);
+  });
+
+  it("aucun identifiant, mais une adresse qui correspond à un compte : RIEN n'est crédité", async () => {
+    // Avant la mission #112, ce paiement créditait le compte trouvé par son
+    // adresse. C'est exactement l'attribution qu'on a supprimée.
+    const outcome = await applyWhopEvent(pack("evt_sans_id", { user: { email: EMAIL } }));
+    expect(outcome.handled).toBe(false);
+    expect(outcome.pending).toBe(true);
+    expect(db.balance).toBe(0);
+    expect(db.credited.size).toBe(0);
+    // Le paiement est en attente, avec l'adresse gardée pour le rattachement
+    // à la main — affichée, jamais décisive.
+    expect(pending("evt_sans_id")).toMatchObject({ reason: "compte_introuvable", user_id: null, email: EMAIL });
+  });
+
+  it("aucun identifiant et une adresse inconnue : aucun compte n'est créé", async () => {
+    const avant = (db.tables.get("profiles") ?? []).length;
+    await applyWhopEvent(pack("evt_inconnu", { user: { email: "personne@exemple.test" } }));
+    expect((db.tables.get("profiles") ?? []).length).toBe(avant);
+    expect((db.tables.get("profiles") ?? []).some((row) => row.email === "personne@exemple.test")).toBe(false);
+    expect(db.balance).toBe(0);
+  });
+
+  it("le rattrapage rejoue le même événement : toujours par identifiant, toujours rien", async () => {
+    await applyWhopEvent(pack("evt_sans_id", { user: { email: EMAIL } }));
+    // Trois passes de rattrapage plus tard, l'adresse n'a toujours rien décidé.
+    for (const minutes of [DAY, 2 * DAY, 3 * DAY]) {
+      vi.setSystemTime(at(minutes));
+      const outcome = await applyWhopEvent(pack("evt_sans_id", { user: { email: EMAIL } }));
+      expect(outcome.pending).toBe(true);
+    }
+    expect(db.balance).toBe(0);
+    // La reprise à 30 jours l'abandonne, et le dit.
+    expect(await expireUnattachedPayments(at(31 * DAY))).toBe(1);
+    expect(pending("evt_sans_id")).toMatchObject({ resolution: "abandonne" });
+    expect(logged("whop_paiement_non_rattache_expire")[0].row).toMatchObject({ event_id: "evt_sans_id", email: EMAIL });
+  });
+
+  it("un renouvellement sans metadata se rattache par l'abonnement enregistré, pas par l'adresse", async () => {
+    // Activation initiale : l'abonnement est mémorisé sur le compte.
+    await applyWhopEvent(activation("evt_act1", "mem_1", at(30 * DAY).toISOString()));
+    expect(credits()).toMatchObject({ user_id: USER, membership_id: "mem_1" });
+
+    // Renouvellement : Whop ne recopie pas les metadata, mais l'abonnement est
+    // le même — et c'est un identifiant que NOUS avons posé.
+    vi.setSystemTime(at(30 * DAY));
+    const outcome = await applyWhopEvent({
+      id: "evt_act2",
+      type: "membership.activated",
+      data: { id: "mem_1", plan: { id: "plan_pro" }, renewal_period_end: at(60 * DAY).toISOString(), user: { email: "portefeuille@exemple.test" } },
+    });
+    expect(outcome.handled).toBe(true);
+    expect(outcome.userId).toBe(USER);
+    expect(credits()).toMatchObject({ plan: "pro" });
+  });
+
+  it("un abonnement inconnu et sans metadata : rien n'est accordé", async () => {
+    const outcome = await applyWhopEvent({
+      id: "evt_act_inconnue",
+      type: "membership.activated",
+      data: { id: "mem_jamais_vu", plan: { id: "plan_pro" }, renewal_period_end: at(30 * DAY).toISOString(), user: { email: EMAIL } },
+    });
+    expect(outcome.handled).toBe(false);
+    expect(credits()).toMatchObject({ plan: "free" });
   });
 });

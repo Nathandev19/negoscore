@@ -267,6 +267,10 @@ describe("E2 — entrées brutes tenues hors des journaux et des filtres", () =>
   it("le webhook Whop contrôle la forme avant de poser une valeur dans un filtre", () => {
     const events = read("lib/billing/whop-events.ts");
     expect(events).toContain("isUuid(fromMetadata)");
-    expect(events).toContain("PLAIN_EMAIL.test(email)");
+    // Mission #112 — l'email n'entre plus dans aucun filtre : il ne sert plus à
+    // attribuer un paiement. Le seul autre identifiant posé dans un filtre est
+    // celui de l'abonnement, gabarité de la même façon.
+    expect(events).toContain("MEMBERSHIP_ID.test(membershipId)");
+    expect(events).not.toContain("email=ilike.");
   });
 });

@@ -92,6 +92,35 @@ export function excludedNotice(data: DashboardData): string {
   return `Production uniquement. ${count(data.excluded)} événement(s) hors production exclus sur la période (local, prévisualisation, tests, historique).`;
 }
 
+// Mission #112, A4 — les paiements que le produit n'a pas su rattacher à un
+// compte doivent être VISIBLES, pas seulement journalisés : un journal ne se
+// regarde pas, un cockpit si. Deux états y figurent :
+//   - encore en attente : le rattrapage réessaie pendant 30 jours ;
+//   - abandonnés : au-delà, on a cessé d'espérer. C'est de l'argent encaissé
+//     dont personne n'a eu la contrepartie, et c'est à traiter à la main.
+// Depuis la mission #112, ce tableau ne devrait plus jamais se remplir : le
+// paiement n'ouvre pas quand la session ne porte pas l'identifiant du compte.
+export type UnattachedPayment = {
+  event_id: string;
+  email: string | null;
+  plan: "pack" | "pro";
+  amount: number | null;
+  currency: string | null;
+  paid_at: string;
+  resolution: string | null;
+};
+
+export async function loadUnattachedPayments(limit = 25): Promise<UnattachedPayment[] | "missing"> {
+  try {
+    return await selectRows<UnattachedPayment>(
+      "pending_payments",
+      `select=event_id,email,plan,amount,currency,paid_at,resolution&reason=eq.compte_introuvable&order=paid_at.desc&limit=${limit}`,
+    );
+  } catch {
+    return "missing";
+  }
+}
+
 export type AdminUserRow = {
   id: string; email: string | null; created_at: string; balance: number;
   plan: "free" | "pack" | "pro" | null; period_end: string | null;

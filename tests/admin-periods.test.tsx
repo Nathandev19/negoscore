@@ -1,10 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const supabase = vi.hoisted(() => ({ rpc: vi.fn() }));
+const supabase = vi.hoisted(() => ({ rpc: vi.fn(), selectRows: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
   rpc: supabase.rpc,
-  selectRows: vi.fn(),
+  // Mission #112 — le cockpit lit aussi les paiements non rattachés
+  // (lib/admin/data.ts, loadUnattachedPayments). Aucun ici.
+  selectRows: supabase.selectRows,
 }));
 
 const { loadDashboard, parsePeriod, sinceForPeriod } = await import("@/lib/admin/data");
@@ -25,6 +27,7 @@ describe("filtres de période du cockpit", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-23T12:00:00.000Z"));
     supabase.rpc.mockReset().mockResolvedValue(EMPTY);
+    supabase.selectRows.mockReset().mockResolvedValue([]);
   });
   afterEach(() => vi.useRealTimers());
 
@@ -51,5 +54,27 @@ describe("filtres de période du cockpit", () => {
     for (const period of ["24h", "7d", "30d", "all"]) expect(html).toContain(`href="/admin?period=${period}"`);
     expect(html).toMatch(/<a aria-current="page"[^>]+href="\/admin\?period=30d">30 jours<\/a>/);
     expect(supabase.rpc).toHaveBeenCalledWith("admin_dashboard_metrics", { p_since: "2026-08-24T12:00:00.000Z" });
+  });
+
+  // Mission #112, A4 — un paiement qu'on n'a pas su rattacher doit SE VOIR.
+  // Un journal ne se regarde pas ; le cockpit, si.
+  it("affiche les paiements sans compte rattaché, et rien quand il n'y en a pas", async () => {
+    const render = async () =>
+      renderToStaticMarkup(await AdminDashboard({ params: Promise.resolve({}), searchParams: Promise.resolve({}) }));
+
+    expect(await render()).not.toContain("Paiements sans compte rattaché");
+
+    supabase.selectRows.mockResolvedValue([
+      { event_id: "evt_1", email: "acheteur@exemple.test", plan: "pack", amount: 4.99, currency: "eur", paid_at: "2026-09-23T09:00:00.000Z", resolution: null },
+      { event_id: "evt_2", email: null, plan: "pro", amount: 12.99, currency: "eur", paid_at: "2026-08-01T09:00:00.000Z", resolution: "abandonne" },
+    ]);
+    const html = await render();
+    expect(html).toContain("Paiements sans compte rattaché");
+    expect(html).toContain("evt_1");
+    expect(html).toContain("acheteur@exemple.test");
+    expect(html).toContain("En attente");
+    expect(html).toContain("Abandonné");
+    // La lecture porte bien sur les paiements qu'on n'a pas su rattacher.
+    expect(supabase.selectRows).toHaveBeenCalledWith("pending_payments", expect.stringContaining("reason=eq.compte_introuvable"));
   });
 });

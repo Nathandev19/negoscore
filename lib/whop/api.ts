@@ -40,9 +40,12 @@ export function checkoutUrlForConfiguration(configurationId: string): string {
   return `${CHECKOUT_BASE}/checkout/${encodeURIComponent(configurationId)}/`;
 }
 
-export function fallbackCheckoutUrl(plan: PlanKey): string {
-  return `${CHECKOUT_BASE}/checkout/${planId(plan)}`;
-}
+// Mission #112 — il n'y a PLUS de lien de paiement de secours. Une page de
+// paiement sans identifiant de compte encaisse de l'argent que le webhook ne
+// saura rattacher qu'à une adresse email, c'est-à-dire pas du tout de façon
+// sûre : avec Apple Pay, l'adresse de l'acheteur n'est pas celle du compte.
+// Si la session ne peut pas être créée avec l'identifiant, le paiement
+// n'ouvre pas (app/api/checkout/route.ts).
 
 // Crée une configuration de checkout portant l'identifiant du compte en
 // metadata : le webhook le relit dans data.metadata. Renvoie null si l'appel

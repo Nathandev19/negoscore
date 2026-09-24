@@ -4,7 +4,7 @@ import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/billing/consent";
 import { isProActive, type PlanState } from "@/lib/billing/plan-access";
 import { insertRow, selectRows } from "@/lib/supabase/server";
 import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
-import { checkoutUrlForConfiguration, createCheckoutUrl, fallbackCheckoutUrl, type PlanKey } from "@/lib/whop/api";
+import { checkoutUrlForConfiguration, createCheckoutUrl, type PlanKey } from "@/lib/whop/api";
 import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
 
 export const runtime = "nodejs";
@@ -88,29 +88,40 @@ export async function POST(request: Request) {
       },
       redirectUrl,
     });
+    // Mission #112, A1 — UN PAIEMENT QU'ON NE SAURA PAS ATTRIBUER N'A PAS LIEU.
+    //
+    // Avant : quand la création de session échouait (clé API absente, Whop en
+    // erreur, réseau), la route renvoyait quand même vers une page de paiement
+    // STATIQUE, sans l'identifiant du compte. La personne payait, et le webhook
+    // n'avait plus que l'adresse de l'acheteur pour deviner qui créditer — une
+    // adresse qui, avec Apple Pay, n'est pas celle du compte. Le client payait,
+    // son compte restait gratuit, et rien ne le lui disait.
+    //
+    // Règle déjà posée dans ce projet pour les analyses (aucun droit consommé
+    // sans résultat rendu), appliquée ici à l'argent : rien n'est encaissé
+    // qu'on ne sache pas rattacher. Aucun consentement n'est enregistré non
+    // plus : il n'y a pas de vente à consentir.
+    if (!checkout) {
+      console.error(JSON.stringify({ event: "checkout_refused", plan, reason: "session_sans_identifiant" }));
+      return redirect(`/tarifs?erreur=session&formule=${plan}`);
+    }
     await insertRow("checkout_consents", {
       user_id: user.id,
       plan,
       consent_version: CONSENT_VERSION,
       consent_text: CONSENT_TEXT,
       accepted_at: new Date().toISOString(),
-      checkout_configuration_id: checkout?.checkoutConfigurationId ?? null,
+      checkout_configuration_id: checkout.checkoutConfigurationId,
     });
     await recordProductEvent({
-      event: "checkout_started", userId: user.id, attribution, entityType: "checkout", entityId: checkout?.checkoutConfigurationId ?? null,
-      metadata: { plan, attached: checkout !== null },
-      dedupeKey: checkout?.checkoutConfigurationId ? `checkout:${checkout.checkoutConfigurationId}` : null,
+      event: "checkout_started", userId: user.id, attribution, entityType: "checkout", entityId: checkout.checkoutConfigurationId,
+      metadata: { plan, attached: true },
+      dedupeKey: `checkout:${checkout.checkoutConfigurationId}`,
     });
     console.log(
-      JSON.stringify({
-        event: "checkout_started",
-        plan,
-        attached: checkout !== null ? "metadata" : "email_fallback",
-        analytics_id: analyticsId !== null,
-      }),
+      JSON.stringify({ event: "checkout_started", plan, attached: "metadata", analytics_id: analyticsId !== null }),
     );
-    // Repli : lien de paiement simple, le webhook rapprochera par l'email.
-    return redirect(checkout?.url ?? fallbackCheckoutUrl(plan as PlanKey));
+    return redirect(checkout.url);
   } catch (caught) {
     console.error(
       JSON.stringify({

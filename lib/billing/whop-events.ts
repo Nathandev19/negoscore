@@ -48,35 +48,73 @@ function record(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 }
 
-// Gabarit volontairement strict : aucun caractère réservé par les filtres
-// PostgREST (virgule, parenthèse, guillemet, espace).
-const PLAIN_EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,}$/;
+// Identifiant d'abonnement Whop, avant d'entrer dans un filtre PostgREST.
+// Gabarit strict : aucun caractère réservé par les filtres (virgule,
+// parenthèse, guillemet, espace, point). Le gabarit d'email qui vivait ici a
+// disparu avec son seul usage, l'attribution par adresse (mission #112).
+const MEMBERSHIP_ID = /^[A-Za-z0-9_-]{1,100}$/;
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
 
-// Rattachement : l'identifiant du compte posé en metadata au checkout, sinon
-// l'email de l'acheteur renvoyé par Whop.
+// RATTACHEMENT PAR IDENTIFIANT, JAMAIS PAR EMAIL (mission #112, A3).
+//
+// Ce qui existait avant : à défaut de l'identifiant posé en metadata au
+// checkout, on cherchait un compte par l'ADRESSE DE L'ACHETEUR renvoyée par
+// Whop. Deux façons de créditer le mauvais compte :
+//   - l'adresse de paiement n'est pas l'adresse du compte. Testé en production
+//     le 24/09 : un paiement Apple Pay part sous l'adresse du portefeuille, pas
+//     sous celle avec laquelle on s'est inscrit ;
+//   - si cette adresse appartient à un AUTRE compte Negoscore, c'est lui qui
+//     était crédité, et personne ne le voyait passer.
+//
+// L'email reste utile pour AFFICHER et pour CONTACTER (il est enregistré sur la
+// ligne d'attente, et il apparaît dans /admin). Il ne décide plus de qui est
+// crédité.
+//
+// Ce que ce code ne fait pas, et n'a jamais fait : créer un compte. Il ne fait
+// que LIRE la table profiles. La seule création de compte du produit est
+// ensureAccount (lib/auth/account.ts), appelée à la connexion, avec une session
+// Supabase Auth vérifiée.
 async function resolveUser(
   data: Record<string, unknown>,
-): Promise<{ id: string; email: string | null; how: "metadata" | "email" } | null> {
+): Promise<{ id: string; email: string | null; how: "metadata" | "membership" } | null> {
   const metadata = record(data.metadata);
   const fromMetadata = text(metadata.user_id);
-  // Les deux valeurs viennent de la charge du webhook. Elles ne sont posées
-  // dans un filtre PostgREST qu'après contrôle de forme (mission #062, E2) :
-  // une valeur hors gabarit ferait échouer la requête, et Postgres recopie
-  // alors la valeur fautive dans le message d'erreur, qui est journalisé.
+  // La valeur vient de la charge du webhook. Elle n'est posée dans un filtre
+  // PostgREST qu'après contrôle de forme (mission #062, E2) : une valeur hors
+  // gabarit ferait échouer la requête, et Postgres recopie alors la valeur
+  // fautive dans le message d'erreur, qui est journalisé.
   if (fromMetadata && isUuid(fromMetadata)) {
     const rows = await selectRows<Profile>("profiles", `select=id,email&id=eq.${encodeURIComponent(fromMetadata)}&limit=1`);
     if (rows.length > 0) return { id: rows[0].id, email: rows[0].email, how: "metadata" };
   }
-  const email = text(record(data.user).email);
-  if (email && PLAIN_EMAIL.test(email)) {
-    const rows = await selectRows<Profile>("profiles", `select=id,email&email=ilike.${encodeURIComponent(email)}&limit=1`);
-    if (rows.length > 0) return { id: rows[0].id, email: rows[0].email, how: "email" };
-  }
   return null;
+}
+
+// Second IDENTIFIANT, pour les événements d'abonnement : celui de l'abonnement
+// Whop, que NOUS avons enregistré sur le compte à l'activation
+// (credits.membership_id, migration 026). Ce n'est pas un repli par email :
+// c'est un identifiant technique que nous avons nous-mêmes rattaché à un
+// compte. Sans lui, un renouvellement dont Whop ne recopierait pas les
+// metadata n'étendrait plus la période d'un abonné en règle.
+async function resolveByMembership(membershipId: string | null): Promise<{ id: string; email: string | null; how: "membership" } | null> {
+  if (!membershipId || !MEMBERSHIP_ID.test(membershipId)) return null;
+  try {
+    const rows = await selectRows<{ user_id: string }>(
+      "credits",
+      `select=user_id&membership_id=eq.${encodeURIComponent(membershipId)}&limit=1`,
+    );
+    if (rows.length === 0) return null;
+    const [profile] = await selectRows<Profile>("profiles", `select=id,email&id=eq.${rows[0].user_id}&limit=1`);
+    return profile ? { id: profile.id, email: profile.email, how: "membership" } : null;
+  } catch (caught) {
+    // Colonne membership_id absente (migration 026 non appliquée) : on ne sait
+    // pas rattacher par ce chemin, et on ne devine pas.
+    if (!isMissingColumn(caught)) throw caught;
+    return null;
+  }
 }
 
 async function credits(userId: string): Promise<Credits> {
@@ -240,7 +278,12 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
   const plan = planOf(source);
   if (!plan) return { handled: false, reason: "plan hors formules Negoscore" };
 
-  const user = await resolveUser(source);
+  // Mission #112 — l'identifiant du compte d'abord ; pour un événement
+  // d'abonnement, à défaut, l'identifiant de l'abonnement que nous avons
+  // nous-mêmes enregistré. Jamais l'adresse de l'acheteur.
+  const user =
+    (await resolveUser(source)) ??
+    (type === "membership.activated" || type === "membership.deactivated" ? await resolveByMembership(text(source.id)) : null);
   if (!user) {
     // Mission #092, B — de l'argent est encaissé et personne n'est crédité :
     // le paiement est mis en attente de rattachement, avec l'email de
