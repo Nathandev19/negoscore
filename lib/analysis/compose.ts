@@ -4,6 +4,7 @@ import { evaluability, incompleteRequestMessage, termsRequestMessage } from "@/l
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { computeEscalation } from "@/lib/legal/escalate";
 import { computeFrLegal } from "@/lib/legal/fr";
+import { completeMessage } from "@/lib/negotiation/coverage";
 import { PRICE_PLACEHOLDER, type Extraction } from "@/lib/llm/prompt";
 import { isFarAboveOffer, type EstimateLine } from "@/lib/rates/engine";
 import { DEFAULT_TIER, type Tier } from "@/lib/rates/tier";
@@ -68,6 +69,25 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
             : extraction.ready_to_send_message.text.replaceAll(PRICE_PLACEHOLDER, pricePhrase(extraction.language, counter)),
     },
   };
+
+  // Mission #115, A2 et A3 — LE MESSAGE PORTE CE QUE L'ANALYSE A ÉTABLI.
+  //
+  // Le message vient du modèle ; rien ne vérifiait ce qu'il contenait. Sur une
+  // offre d'affiliation sans fixe, il tenait en une phrase — « quel budget
+  // est prévu ? » — pendant que l'écran affichait une fourchette, une
+  // contre-offre et trois points à négocier.
+  //
+  // Le complément est DÉTERMINISTE et ne réécrit rien : ce que le modèle a
+  // produit reste en tête, ce qui manquait s'ajoute derrière. La route peut
+  // demander une seconde version au modèle AVANT d'en arriver là
+  // (app/api/analyse/route.ts) ; ici, c'est le filet qui ne laisse jamais
+  // partir un message qui oublie ce qui est en jeu.
+  //
+  // Les deux états sans chiffrage gardent leur message écrit par le moteur :
+  // il demande déjà exactement ce qui manque pour pouvoir juger.
+  if (state !== "incomplete" && state !== "terms_unknown") {
+    analysis.ready_to_send_message.text = completeMessage(analysis, analysis.ready_to_send_message.text);
+  }
 
   return analysisSchema.parse(analysis);
 }

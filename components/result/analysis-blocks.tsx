@@ -7,7 +7,7 @@ import {
   SEVERITY_LABEL,
   sortByPriority,
 } from "@/lib/display";
-import { readableClauses } from "@/lib/legal/fr";
+import { missingClausesView } from "@/lib/legal/fr";
 import { rateTable } from "@/lib/rates/tables";
 import type { Analysis } from "@/lib/schema";
 import { cn } from "@/lib/utils";
@@ -180,14 +180,9 @@ export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
   // s'affiche pas n'est pas une mention : elle n'est ni rendue, ni comptée. Le
   // nombre annoncé et les puces sortent de la MÊME liste, filtrée par la même
   // fonction que le calcul (lib/legal/fr.ts).
-  const clauses = readableClauses(legal.missing_mandatory_clauses);
-  const missing = clauses.length;
-  const hint =
-    missing === 0
-      ? "Aucune mention obligatoire ne manque à l'offre."
-      : missing === 1
-        ? "1 mention obligatoire absente de l'offre."
-        : `${missing} mentions obligatoires absentes de l'offre.`;
+  // Mission #115, B1 — un seul objet : la liste rendue EST celle qui a été
+  // comptée. Le composant ne recompte rien et ne refiltre rien.
+  const { clauses, hint } = missingClausesView(legal);
   return (
     <CollapsibleSection title="Bon à savoir côté loi française" hint={hint}>
       <div className="flex flex-col gap-2 text-small">

@@ -21,7 +21,15 @@ const BASE_NOTE =
 // Mission #104, A2 — un libellé n'est une mention que s'il se LIT. Espaces,
 // mais aussi caractères de largeur nulle et marques de formatage : une puce
 // qui n'affiche rien ne doit ni s'afficher ni être comptée.
-const INVISIBLE = /[\s\u00ad\u200b-\u200f\u2060\ufeff]/gu;
+//
+// Mission #115, B2 — l'ensemble était incomplet. `\s` ne couvre ni les
+// caractères de formatage au-delà de U+2060 (U+2061 à U+2064, U+2066 à
+// U+2069), ni les remplisseurs que les polices ne dessinent pas : U+2800
+// (point braille vide), U+3164 (remplisseur hangûl), U+180E (séparateur
+// mongol). Une puce faite de ces caractères-là s'affichait vide et se comptait
+// quand même. La catégorie Unicode fait le travail à notre place : `\p{Cf}`
+// couvre tout le formatage, celui d'aujourd'hui comme celui de demain.
+const INVISIBLE = /[\s\u00ad\u180e\u2800\u3164\ufeff]|\p{Cf}/gu;
 
 export function readableClause(label: string): boolean {
   return label.replace(INVISIBLE, "") !== "";
@@ -31,6 +39,31 @@ export function readableClause(label: string): boolean {
 // puces affichées sortent de CETTE fonction, jamais de deux chemins séparés.
 export function readableClauses(clauses: readonly string[]): string[] {
   return clauses.filter(readableClause).map((clause) => clause.trim());
+}
+
+// Mission #115, B1 — LE NOMBRE ANNONCÉ ET LES PUCES SORTENT D'ICI, ENSEMBLE.
+//
+// Vu en production le 24/09, après la mission #104 qui affirmait l'avoir
+// corrigé : « 5 mentions obligatoires absentes », suivi de cinq puces sans
+// texte. La #104 avait fait filtrer les deux côtés par la même fonction, mais
+// laissait l'appelant appeler cette fonction deux fois et compter d'un côté,
+// rendre de l'autre. Deux appels, c'est déjà deux chemins.
+//
+// Ici, il n'y a plus qu'un objet : la liste rendue est celle qui a été comptée,
+// et le texte du résumé est construit à partir de sa longueur. Aucun composant
+// ne peut plus les faire diverger, ni en oublier le filtre.
+export type MissingClausesView = { clauses: string[]; count: number; hint: string };
+
+export function missingClausesView(legal: Pick<FrLegal, "missing_mandatory_clauses">): MissingClausesView {
+  const clauses = readableClauses(legal.missing_mandatory_clauses);
+  const count = clauses.length;
+  const hint =
+    count === 0
+      ? "Aucune mention obligatoire ne manque à l'offre."
+      : count === 1
+        ? "1 mention obligatoire absente de l'offre."
+        : `${count} mentions obligatoires absentes de l'offre.`;
+  return { clauses, count, hint };
 }
 
 function isFrenchLaw(governingLaw: string | null): boolean {

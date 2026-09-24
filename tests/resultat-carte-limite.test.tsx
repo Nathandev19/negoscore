@@ -171,10 +171,15 @@ describe("A2 — le nombre annoncé et les puces affichées sont toujours égaux
     expect(lisible(html)).not.toContain("Mentions absentes de l'offre");
   });
 
-  it("le calcul et l'affichage filtrent par la MÊME fonction", () => {
+  // Mission #115, B1 — la garde de la #104 n'a pas suffi : les deux côtés
+  // filtraient bien par la même fonction, mais l'APPELAIENT chacun de leur
+  // côté, et comptaient d'un côté, rendaient de l'autre. Le nombre et la liste
+  // sortent maintenant d'un seul objet (missingClausesView).
+  it("le compte et les puces sortent du MÊME objet, pas de deux appels", () => {
     expect(readableClauses(["a", "", "​", " b "])).toEqual(["a", "b"]);
     const rendu = readFileSync("components/result/analysis-blocks.tsx", "utf8");
-    expect(rendu).toContain("readableClauses(legal.missing_mandatory_clauses)");
+    expect(rendu).toContain("missingClausesView(legal)");
+    expect(rendu).not.toContain("readableClauses(");
     const calcul = readFileSync("lib/legal/fr.ts", "utf8");
     expect(calcul).toContain("readableClauses(");
   });

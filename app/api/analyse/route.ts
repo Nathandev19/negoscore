@@ -1,4 +1,6 @@
 import { composeAnalysis } from "@/lib/analysis/compose";
+import { messageCoverage, needsRewrite } from "@/lib/negotiation/coverage";
+import { rewriteMessage } from "@/lib/llm/message-rewrite";
 import { MAX_TEXT_LENGTH, TEXT_TRUNCATED_NOTE } from "@/lib/analysis/text";
 import type { SessionUser } from "@/lib/auth/session";
 import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
@@ -371,7 +373,40 @@ export async function POST(request: Request) {
     // Niveau mémorisé (compte, sinon cookie du navigateur, sinon défaut de la table) :
     // l'analyse est calculée et enregistrée à ce niveau, modifiable ensuite sur la page de résultat.
     const tier = await preferredTier(request, user);
-    const analysis = composeAnalysis(result.extraction, { extraAssumptions, tier });
+    let analysis = composeAnalysis(result.extraction, { extraAssumptions, tier });
+
+    // Mission #115, A3 — le message doit porter ce que l'analyse a établi. Il
+    // est déjà complété de façon déterministe par composeAnalysis ; avant d'en
+    // arriver là, on laisse UNE chance au modèle d'écrire lui-même un message
+    // complet, ce qui se lit toujours mieux qu'un ajout mécanique.
+    //
+    // Ce second appel ne réanalyse rien : il reçoit les points et la langue,
+    // jamais le texte de l'offre. La fourchette, le score et les points ne
+    // peuvent donc pas bouger entre les deux versions.
+    if (needsRewrite(result.extraction, analysis)) {
+      try {
+        const rewritten = await rewriteMessage(analysis);
+        const second = composeAnalysis(
+          { ...result.extraction, ready_to_send_message: { ...result.extraction.ready_to_send_message, text: rewritten.text } },
+          { extraAssumptions, tier },
+        );
+        console.log(
+          JSON.stringify({
+            event: "message_reecrit",
+            manquants_avant: messageCoverage(analysis, analysis.ready_to_send_message.text).uncovered.length,
+            complete_apres: messageCoverage(second, rewritten.text).ok,
+            cost_eur: Number(rewritten.usage.costEur.toFixed(6)),
+          }),
+        );
+        analysis = second;
+      } catch (caught) {
+        // Seconde tentative impossible : le complément déterministe de
+        // composeAnalysis a déjà fait le travail, l'analyse part telle quelle.
+        console.warn(
+          JSON.stringify({ event: "message_reecriture_impossible", detail: caught instanceof Error ? caught.message.slice(0, 200) : "inconnu" }),
+        );
+      }
+    }
 
     // Offre illisible : le modèle n'a rien pu lire d'exploitable. Ce n'est pas
     // un résultat : rien n'est enregistré ni décompté, et on dit quoi faire.
