@@ -127,7 +127,7 @@ describe("l'affichage de la liste", () => {
 });
 
 describe("D — ce que la page lit en plus", () => {
-  it("une requête pour les tours (compte ET analyses listées, sans réponse collée), une pour les seules analyses négociées", async () => {
+  it("une requête pour les tours (bornée au compte, sans réponse collée), une pour les seules analyses négociées", async () => {
     db.turns = [turn2];
     db.payloads = [{ id: A, payload: original }];
     const summaries = await loadNegotiationSummaries(USER, "jeton", [A, B]);
@@ -136,8 +136,22 @@ describe("D — ce que la page lit en plus", () => {
     expect(db.queries).toHaveLength(2);
     expect(db.queries[0]).toContain("service:negotiation_turns?");
     expect(db.queries[0]).toContain(`user_id=eq.${USER}`);
-    expect(db.queries[0]).toContain(`analysis_id=in.(${A},${B})`);
+    // Mission #107 — plus de filtre sur les analyses listées : il ne servait
+    // qu'au confort et forçait cette lecture à ATTENDRE la liste. Le compte la
+    // borne déjà, et le tri en mémoire ne garde que les analyses affichées.
+    expect(db.queries[0]).not.toContain("analysis_id=in.");
+    expect(db.queries[0]).toContain("limit=");
     expect(db.queries[0]).not.toMatch(/brand_reply|message/);
+    expect(db.queries[1]).toBe(`user:analyses?select=id,payload&id=in.(${A})`);
+  });
+
+  it("un tour d'une analyse NON listée est ignoré : l'affichage ne change pas", async () => {
+    const autre = "33333333-3333-4333-8333-333333333333";
+    db.turns = [turn2, { ...turn2, analysis_id: autre }];
+    db.payloads = [{ id: A, payload: original }];
+    const summaries = await loadNegotiationSummaries(USER, "jeton", [A]);
+    expect(summaries?.has(autre)).toBe(false);
+    // Le payload n'est demandé que pour l'analyse listée.
     expect(db.queries[1]).toBe(`user:analyses?select=id,payload&id=in.(${A})`);
   });
 

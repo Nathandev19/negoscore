@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { HistoryView, type HistoryRow } from "@/components/account/history-view";
 import { getViewer, getViewerAccessToken } from "@/lib/auth/viewer";
-import { loadNegotiationSummaries } from "@/lib/negotiation/history-load";
+import { loadHistoryTurns, summariesFromTurns } from "@/lib/negotiation/history-load";
 import { selectRowsAsUser } from "@/lib/supabase/as-user";
 
 export const metadata: Metadata = {
@@ -17,17 +17,24 @@ export default async function HistoryPage() {
   const token = await getViewerAccessToken();
   if (!user || !token) redirect("/connexion?next=%2Fhistorique");
 
-  // Lecture sous l'identité de l'utilisateur : la RLS ne renvoie que ses analyses.
-  const rows = await selectRowsAsUser<HistoryRow>(
-    token,
-    "analyses",
-    "select=id,created_at,score,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability,tier:payload->>profile_tier,rateTable:rate_table_version&order=created_at.desc&limit=100",
-  );
+  // Mission #107 — les deux lectures partent ENSEMBLE : la liste des analyses
+  // (sous l'identité de la personne, la RLS ne renvoie que les siennes) et ses
+  // tours de négociation, qui ne dépendent que de son compte. Avant, la
+  // seconde attendait la première pour un filtre dont elle n'avait pas besoin.
+  const [rows, turns] = await Promise.all([
+    selectRowsAsUser<HistoryRow>(
+      token,
+      "analyses",
+      "select=id,created_at,score,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability,tier:payload->>profile_tier,rateTable:rate_table_version&order=created_at.desc&limit=100",
+    ),
+    loadHistoryTurns(user.id),
+  ]);
 
   // Mission #087 : état des échanges et chiffres actuels, pour les analyses
-  // listées qui ont des tours (lib/negotiation/history-load.ts).
-  const summaries = await loadNegotiationSummaries(
-    user.id,
+  // listées qui ont des tours (lib/negotiation/history-load.ts). Une lecture de
+  // plus seulement s'il y a des tours à résumer.
+  const summaries = await summariesFromTurns(
+    turns,
     token,
     rows.map((row) => row.id),
   );

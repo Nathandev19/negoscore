@@ -123,7 +123,19 @@ describe("D — /compte dit où en est l'analyse gratuite", () => {
     expect(html).not.toContain("Analyse gratuite");
   });
 
-  it("la page ne la demande que pour un compte gratuit", () => {
-    expect(read("app/compte/page.tsx")).toMatch(/summary\.plan === "free"\s*\?\s*await accountFreeAnalysisUsed/);
+  it("la ligne n'est affichée que pour un compte gratuit", () => {
+    // Mission #107 — la lecture part EN MÊME TEMPS que le solde, au lieu de
+    // l'attendre : elle ne dépendait pas de lui, seul son affichage en dépend.
+    // Ce qui compte pour la personne est inchangé : un compte payant ne voit
+    // pas cette ligne.
+    const source = read("app/compte/page.tsx");
+    // Mission #107 — le compteur se lit avec le solde ; c'est son
+    // interprétation, et le repli qui la complète, qui restent réservés au
+    // compte gratuit.
+    expect(source).toMatch(/summary\.plan === "free"\s*\?\s*await accountFreeAnalysisUsedFrom/);
+    expect(source).toMatch(/accountFreeUsage\(user\.id\)/);
+    const payant = accountSummary({ plan: "pro", balance: 0, period_end: new Date(Date.now() + 86_400_000).toISOString() });
+    const rendu = text(renderToStaticMarkup(<AccountView data={{ email: "n@e.test", summary: payant, freeAnalysis: null }} />));
+    expect(rendu).not.toContain("Analyse gratuite");
   });
 });

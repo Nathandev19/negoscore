@@ -114,17 +114,34 @@ function grantPack(userId: string): Grant {
   };
 }
 
-async function freeAlreadyUsed(subject: FreeSubject): Promise<boolean> {
-  const used = await freeUsed(subject);
+// La règle, à partir d'un compteur DÉJÀ lu : gratuité prise si le compteur le
+// dit ; sinon, et seulement sinon, on regarde les analyses déjà faites. Le
+// second aller-retour ne part donc que lorsqu'il tranche quelque chose.
+async function freeUsedFromCounter(subject: FreeSubject, used: number | "missing"): Promise<boolean> {
   if (used !== "missing" && used >= FREE_ANALYSES) return true;
   const owner = subject.kind === "anon" ? `anon_token=eq.${encodeURIComponent(subject.token)}` : `user_id=eq.${subject.id}`;
   const done = await selectRows<{ id: string }>("deals", `select=id&${owner}&status=eq.analysed&limit=${FREE_ANALYSES}`);
   return done.length >= FREE_ANALYSES;
 }
 
+async function freeAlreadyUsed(subject: FreeSubject): Promise<boolean> {
+  return freeUsedFromCounter(subject, await freeUsed(subject));
+}
+
+// Mission #107 — le compteur seul, lisible EN MÊME TEMPS que le solde : il ne
+// dépend que du compte. C'est son interprétation qui attend le solde, pas sa
+// lecture.
+export async function accountFreeUsage(userId: string): Promise<number | "missing"> {
+  return freeUsed({ kind: "user", id: userId });
+}
+
 // Analyse gratuite déjà consommée par ce compte (mission #067, page /compte).
 // Lecture seule, même règle que le droit réel : compteur durable, ou analyses
 // déjà faites. Ne réserve et ne compte rien.
+export async function accountFreeAnalysisUsedFrom(userId: string, used: number | "missing"): Promise<boolean> {
+  return freeUsedFromCounter({ kind: "user", id: userId }, used);
+}
+
 export async function accountFreeAnalysisUsed(userId: string): Promise<boolean> {
   return freeAlreadyUsed({ kind: "user", id: userId });
 }

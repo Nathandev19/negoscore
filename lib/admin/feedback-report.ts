@@ -328,13 +328,22 @@ export function buildReport(allRows: FeedbackRow[]): FeedbackReport {
   };
 }
 
-const PAGE_SIZE = 1000;
+// Mission #107 — borne explicite du rapport. La base plafonne de toute façon
+// une réponse à 1 000 lignes : au-delà, il faudrait paginer à l'écran, ce que
+// 0 retour enregistré ne justifie pas encore.
+export const FEEDBACK_MAX = 1000;
 const COLUMNS =
   "analysis_id,rating,comment,profile_tier,score,total_low,total_high,rate_table_version,turn_number,turn_recorded,created_at,updated_at,analysis:analyses(deal:payload->deal)";
 
 // Mission #086 — termes des tours jugés, lus dans negotiation_turns : seulement
-// payload->deal_after, jamais la réponse collée. Par lots d'identifiants.
-const TURN_BATCH = 100;
+// payload->deal_after, jamais la réponse collée.
+//
+// Mission #107 — un seul lot pour les volumes réels. Le lot reste borné parce
+// que la liste d'identifiants voyage dans l'ADRESSE de la requête : 150 UUID
+// font déjà 5,5 Kio, et une passerelle refuse une adresse trop longue. C'est
+// la seule raison de ce découpage, et il ne se déclenche qu'au-delà de 150
+// analyses commentées sur un tour.
+const TURN_BATCH = 150;
 export async function attachTurnDeals(rows: FeedbackRow[]): Promise<FeedbackRow[]> {
   const wanted = rows.filter((row) => row.turn_number > 0);
   if (wanted.length === 0) return rows;
@@ -353,19 +362,25 @@ export async function attachTurnDeals(rows: FeedbackRow[]): Promise<FeedbackRow[
   );
 }
 
-// Toutes les lignes, par pages (la base plafonne une réponse à 1 000 lignes).
+// Mission #107 — UNE requête bornée, au lieu d'une boucle page par page.
+//
+// L'ancienne version demandait 1 000 lignes, puis les 1 000 suivantes, jusqu'à
+// une page incomplète : le nombre d'allers-retours grandissait avec le volume,
+// et la page attendait toute la chaîne avant de s'afficher. La borne est
+// maintenant explicite et le nombre de lectures constant. Au-delà, le rapport
+// porte sur les ${FEEDBACK_MAX} retours les plus récents, et le dit.
+//
 // "missing" : table ou colonne profile_tier absente (migrations 016 et 017).
 export async function loadFeedbackRows(): Promise<FeedbackRow[] | "missing"> {
-  const rows: FeedbackRow[] = [];
   try {
-    for (let offset = 0; ; offset += PAGE_SIZE) {
-      const page = await selectRows<FeedbackRow>(
-        "analysis_feedback",
-        `select=${COLUMNS}&order=updated_at.desc,analysis_id.asc&limit=${PAGE_SIZE}&offset=${offset}`,
-      );
-      rows.push(...page);
-      if (page.length < PAGE_SIZE) return await attachTurnDeals(rows);
+    const rows = await selectRows<FeedbackRow>(
+      "analysis_feedback",
+      `select=${COLUMNS}&order=updated_at.desc,analysis_id.asc&limit=${FEEDBACK_MAX}`,
+    );
+    if (rows.length === FEEDBACK_MAX) {
+      console.warn(JSON.stringify({ event: "feedback_report_tronque", limite: FEEDBACK_MAX }));
     }
+    return await attachTurnDeals(rows);
   } catch (caught) {
     if (isMissingRelation(caught) || isMissingColumn(caught)) return "missing";
     throw caught;
