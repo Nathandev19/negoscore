@@ -144,16 +144,20 @@ describe("page /combien-facturer", () => {
     });
     const estimate = computeEstimate(exemple, { tier: "starter" });
     expect([estimate.base_low, estimate.base_high]).toEqual([300, 540]);
-    expect([estimate.total_low, estimate.total_high]).toEqual([540, 1188]);
+    expect([estimate.total_low, estimate.total_high]).toEqual([540, 1190]);
     const ads = estimate.lines.find((line) => line.topic === "paid_ads");
     const exclusivite = estimate.lines.find((line) => line.topic === "exclusivity");
-    expect([ads?.eur_low, ads?.eur_high]).toEqual([150, 378]);
-    expect([exclusivite?.eur_low, exclusivite?.eur_high]).toEqual([90, 270]);
+    // Mission #105 — l'écart d'arrondi du total à la dizaine est logé dans les
+    // lignes de majoration : la ligne vaut sa part à un euro près, et c'est la
+    // somme qui tombe juste. Les chiffres du guide viennent du moteur.
+    expect([ads?.eur_low, ads?.eur_high]).toEqual([150, 379]);
+    expect([exclusivite?.eur_low, exclusivite?.eur_high]).toEqual([90, 271]);
+    expect((estimate.base_high ?? 0) + (ads?.eur_high ?? 0) + (exclusivite?.eur_high ?? 0)).toBe(estimate.total_high);
 
     expect(texte).toContain(`ça fait ${euros(300, 540)}`);
-    expect(texte).toContain(`soit ${euros(150, 378)} en plus`);
-    expect(texte).toContain(`soit ${euros(90, 270)} en plus`);
-    expect(texte).toContain("Total juste : entre 540 et 1 188 €");
+    expect(texte).toContain(`soit ${euros(150, 379)} en plus`);
+    expect(texte).toContain(`soit ${euros(90, 271)} en plus`);
+    expect(texte).toContain("Total juste : entre 540 et 1 190 €");
   });
 
   it("un seul h1, des tableaux qui restent des tableaux, et le lien final vers l'analyse", () => {

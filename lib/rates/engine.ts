@@ -154,30 +154,73 @@ export const UNKNOWN_QUANTITY_ASSUMPTION: Record<Deal["deliverables"][number]["t
   live: "Nombre de lives non précisé : un seul live supposé.",
 };
 
+// Somme de flottants : deux chemins de calcul qui valent tous deux 712,5 peuvent
+// donner 712,499999999 et 712,500000001, donc deux euros différents — et un
+// total qui baisse quand une contrainte s'ajoute. On stabilise à la sixième
+// décimale avant tout arrondi.
+export function stable(value: number): number {
+  return Number(value.toFixed(6));
+}
+
 // Mission #104, A1 — répartition à plus fort reste. La somme des valeurs
-// rendues vaut exactement l'arrondi de la somme des valeurs exactes : aucun
-// euro n'apparaît ni ne disparaît entre les lignes et le total. Arrondir la
-// SOMME (et non chaque terme) garde aussi la monotonie du moteur : une
-// contrainte de plus ne peut pas faire baisser le total.
-export function apportion(values: readonly number[]): number[] {
-  // Somme de flottants : deux chemins de calcul qui valent tous deux 712,5
-  // peuvent donner 712,499999999 et 712,500000001, donc deux euros différents
-  // — et un total qui baisse quand une contrainte s'ajoute. On stabilise à la
-  // sixième décimale avant d'arrondir.
-  const exact = values.reduce((sum, value) => sum + value, 0);
-  const target = Math.round(Number(exact.toFixed(6)));
-  const floors = values.map((value) => Math.floor(value));
-  let left = target - floors.reduce((sum, value) => sum + value, 0);
+// rendues vaut exactement la cible : aucun euro n'apparaît ni ne disparaît
+// entre les lignes et le total.
+//
+// Mission #105 — la cible n'est plus forcément l'arrondi de la somme exacte :
+// c'est le total ARRONDI À LA DIZAINE qui commande, et l'écart se répartit sur
+// ces mêmes lignes. Chaque ligne reçoit sa part entière, puis les euros
+// restants vont aux plus grandes fractions ; s'il faut en retirer, ils sont
+// pris aux plus petites, et JAMAIS au point de faire disparaître une ligne.
+// null : l'écart ne peut pas être absorbé — l'appelant renonce alors à
+// l'arrondi plutôt qu'à l'addition juste.
+export function apportion(values: readonly number[], target?: number): number[] | null {
+  const wanted = target ?? Math.round(stable(values.reduce((sum, value) => sum + value, 0)));
+  const out = values.map((value) => Math.floor(value));
+  // Plancher par ligne : une majoration qui vaut au moins un euro n'est jamais
+  // ramenée à zéro par l'ajustement. Sous l'euro, elle peut valoir zéro : ce
+  // n'est pas l'ajustement qui l'y met.
+  const floor = values.map((value) => (value >= 1 ? 1 : 0));
+  let left = wanted - out.reduce((sum, value) => sum + value, 0);
   const byFraction = values
     .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
     .sort((a, b) => b.fraction - a.fraction || a.index - b.index);
-  const out = [...floors];
-  for (const { index } of byFraction) {
-    if (left <= 0) break;
-    out[index] += 1;
-    left -= 1;
+
+  // Ajouter : les plus grandes fractions d'abord, en boucle si l'écart dépasse
+  // le nombre de lignes.
+  while (left > 0 && out.length > 0) {
+    for (const { index } of byFraction) {
+      if (left <= 0) break;
+      out[index] += 1;
+      left -= 1;
+    }
   }
-  return out;
+  // Retirer : les plus petites fractions d'abord, sans passer sous le plancher.
+  const reversed = [...byFraction].reverse();
+  while (left < 0) {
+    let moved = false;
+    for (const { index } of reversed) {
+      if (left >= 0) break;
+      if (out[index] > floor[index]) {
+        out[index] -= 1;
+        left += 1;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return left === 0 ? out : null;
+}
+
+// Mission #105 — la fourchette affichée est ronde : borne basse descendue à la
+// dizaine, borne haute montée. C'était le comportement d'avant #104, et cinq
+// vidéos déjà tournées montrent ces chiffres-là. L'addition, elle, reste juste :
+// l'écart est absorbé par les lignes de majoration (voir apportion).
+export function roundedDown(value: number): number {
+  return Math.floor(stable(value) / 10) * 10;
+}
+
+export function roundedUp(value: number): number {
+  return Math.ceil(stable(value) / 10) * 10;
 }
 
 export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEstimate {
@@ -315,15 +358,33 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   if (scaleLow < 1 || scaleHigh < 1) {
     assumptions.push(UPLIFT_CAPPED_ASSUMPTION);
   }
-  // Mission #104, A1 — les euros de chaque majoration, répartis pour que leur
-  // somme vaille EXACTEMENT le total affiché. Arrondir chaque ligne de son
-  // côté ferait perdre ou gagner quelques euros à l'addition ; arrondir le
-  // total de son côté la ferait tomber faux. Chaque ligne reçoit donc sa part
-  // entière, puis les euros restants vont aux plus grandes fractions.
+  // Forfaits en euros (accroches ou CTA), lus dans le format des livrables
+  // (« 3 hooks », « 2 accroches », « 2 variantes de CTA »). Connus avant la
+  // répartition : ils entrent dans le total, mais ne l'ajustent pas.
+  const hookCount = deal.deliverables.reduce((sum, d) => {
+    const match = d.format?.match(/(\d+)\s*(hooks?|accroches?|cta|variantes?)/i);
+    return sum + (match ? Number(match[1]) : 0);
+  }, 0);
+  const hookRate = rates.flat_eur.extra_hook_or_cta;
+  const flatLow = hookCount > 0 ? hookRate.low * hookCount : 0;
+  const flatHigh = hookCount > 0 ? hookRate.high * hookCount : 0;
+
+  // Mission #104, A1 et #105 — les euros de chaque majoration, répartis pour
+  // que leur somme vaille EXACTEMENT ce que le total affiché annonce.
+  //
+  // La cible est le total arrondi à la dizaine, moins la base et les forfaits :
+  // la ligne « Création (base) » est l'ancre, elle n'est jamais ajustée, et un
+  // forfait en euros n'a pas de fraction à donner. Sans aucune majoration, ou
+  // quand l'écart ne peut pas être absorbé sans vider une ligne, on renonce à
+  // l'arrondi : une addition juste vaut mieux qu'une fourchette ronde.
   const exactLow = uplifts.map((u) => baseLow * u.low * scaleLow);
   const exactHigh = uplifts.map((u) => baseHigh * u.high * scaleHigh);
-  const eurLow = apportion(exactLow);
-  const eurHigh = apportion(exactHigh);
+  const exactTotalLow = baseLow + flatLow + exactLow.reduce((sum, value) => sum + value, 0);
+  const exactTotalHigh = baseHigh + flatHigh + exactHigh.reduce((sum, value) => sum + value, 0);
+  const eurLow =
+    (uplifts.length > 0 ? apportion(exactLow, roundedDown(exactTotalLow) - baseLow - flatLow) : null) ?? apportion(exactLow) ?? [];
+  const eurHigh =
+    (uplifts.length > 0 ? apportion(exactHigh, roundedUp(exactTotalHigh) - baseHigh - flatHigh) : null) ?? apportion(exactHigh) ?? [];
   uplifts.forEach((u, index) => {
     // Les deux bornes sont plafonnées séparément : le pourcentage appliqué à la
     // borne basse peut dépasser celui de la borne haute. L'affichage reste ordonné.
@@ -340,22 +401,16 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     });
   });
 
-  // Variantes d'accroche ou de CTA, lues dans le format des livrables
-  // (« 3 hooks », « 2 accroches », « 2 variantes de CTA »).
-  const hookCount = deal.deliverables.reduce((sum, d) => {
-    const match = d.format?.match(/(\d+)\s*(hooks?|accroches?|cta|variantes?)/i);
-    return sum + (match ? Number(match[1]) : 0);
-  }, 0);
+
   if (hookCount > 0) {
-    const flat = rates.flat_eur.extra_hook_or_cta;
     lines.push({
       label: `${formatNumber(hookCount)} accroche${hookCount > 1 ? "s" : ""} ou CTA`,
       topic: "extra_hooks",
       type: "flat",
-      low: flat.low,
-      high: flat.high,
-      eur_low: flat.low * hookCount,
-      eur_high: flat.high * hookCount,
+      low: hookRate.low,
+      high: hookRate.high,
+      eur_low: flatLow,
+      eur_high: flatHigh,
     });
   }
 

@@ -138,14 +138,14 @@ export default function PricingGuidePage() {
             </li>
             <li>
               Droits publicitaires six mois : +50 à +70 %, soit{" "}
-              <strong className="font-semibold text-encre">150 à 378 €</strong> en plus.
+              <strong className="font-semibold text-encre">150 à 379 €</strong> en plus.
             </li>
             <li>
               Exclusivité trois mois : +30 à +50 %, soit{" "}
-              <strong className="font-semibold text-encre">90 à 270 €</strong> en plus.
+              <strong className="font-semibold text-encre">90 à 271 €</strong> en plus.
             </li>
           </ul>
-          <p className="font-display text-h3 font-bold text-encre">Total juste : entre 540 et 1 188 €.</p>
+          <p className="font-display text-h3 font-bold text-encre">Total juste : entre 540 et 1 190 €.</p>
           <p>
             La marque en propose 300. Elle ne paie donc même pas la création seule — et elle repart avec six mois de
             publicité et trois mois pendant lesquels tu ne peux pas travailler avec ses concurrents.

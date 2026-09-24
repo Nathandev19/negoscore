@@ -108,7 +108,7 @@ export default function UsageRightsPage() {
           <p>
             Un exemple concret. Trois vidéos TikTok et une story chez un créateur qui débute, ça vaut entre 300 et 540 €
             de création. Ajoute six mois de droits pub et trois mois d&apos;exclusivité, et l&apos;offre juste monte
-            entre 540 et 1 188 €. La marque, elle, en a proposé 300.
+            entre 540 et 1 190 €. La marque, elle, en a proposé 300.
           </p>
         </Section>
 

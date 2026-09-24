@@ -73,6 +73,18 @@ describe("computeEstimate", () => {
     expect(estimate.assumptions.some((a) => a.includes("confirmé"))).toBe(false);
   });
 
+// Mission #105 — l'écart entre le total arrondi à la dizaine et la somme
+// exacte est absorbé par les lignes de majoration. Une ligne vaut donc sa part
+// exacte à quelques euros près (jamais plus que l'arrondi lui-même), et c'est
+// leur SOMME qui tombe juste. Ce que ces tests vérifient : la ligne reste
+// attachée à son coefficient de la table.
+const PROCHE = 10;
+
+function proche(valeur: number | undefined, attendu: number, quoi: string) {
+  expect(valeur, quoi).toBeGreaterThan(0);
+  expect(Math.abs((valeur as number) - attendu), `${quoi} : ${valeur} attendu autour de ${attendu}`).toBeLessThan(PROCHE);
+}
+
   it("utilise le palier demandé", () => {
     const estimate = computeEstimate(makeDeal(), { tier: "starter" });
     expect(estimate.base_low).toBe(rates.base_rates_eur.starter.low);
@@ -87,22 +99,22 @@ describe("computeEstimate", () => {
   ] as const)("droits pub %i mois → %s", (months, key) => {
     const deal = makeDeal({ usage: { ...makeDeal().usage, paid_ads: true, duration_months: months } });
     const line = lineFor(deal, "paid_ads");
-    expect(line?.eur_low).toBe(Math.round(base.low * m[key].low));
-    expect(line?.eur_high).toBe(Math.round(base.high * m[key].high));
+    proche(line?.eur_low, Math.round(base.low * m[key].low), `droits pub ${months} mois (bas)`);
+    proche(line?.eur_high, Math.round(base.high * m[key].high), `droits pub ${months} mois (haut)`);
   });
 
   it("droits pub à vie → paid_ads_perpetual", () => {
     const deal = makeDeal({ usage: { ...makeDeal().usage, paid_ads: true, perpetual: true } });
     const line = lineFor(deal, "paid_ads");
-    expect(line?.eur_low).toBe(Math.round(base.low * m.paid_ads_perpetual.low));
+    proche(line?.eur_low, Math.round(base.low * m.paid_ads_perpetual.low), "droits pub à vie");
   });
 
   it("whitelisting et Spark Ads sont facturés par mois", () => {
     const deal = makeDeal({
       usage: { ...makeDeal().usage, whitelisting: true, spark_ads: true, duration_months: 2 },
     });
-    expect(lineFor(deal, "whitelisting")?.eur_high).toBe(Math.round(base.high * m.whitelisting_per_month.high * 2));
-    expect(lineFor(deal, "spark_ads")?.eur_low).toBe(Math.round(base.low * m.spark_ads_per_month.low * 2));
+    proche(lineFor(deal, "whitelisting")?.eur_high, Math.round(base.high * m.whitelisting_per_month.high * 2), "whitelisting");
+    proche(lineFor(deal, "spark_ads")?.eur_low, Math.round(base.low * m.spark_ads_per_month.low * 2), "spark ads");
   });
 
   it.each([
@@ -111,7 +123,7 @@ describe("computeEstimate", () => {
     [9, "exclusivity_6m_plus"],
   ] as const)("exclusivité %i mois → %s", (months, key) => {
     const deal = makeDeal({ exclusivity: { present: true, duration_months: months, category: "beauté" } });
-    expect(lineFor(deal, "exclusivity")?.eur_low).toBe(Math.round(base.low * m[key].low));
+    proche(lineFor(deal, "exclusivity")?.eur_low, Math.round(base.low * m[key].low), `exclusivité ${months} mois`);
   });
 
   it("raw footage, territoire mondial, plateforme en plus, cession totale, variantes d'accroche", () => {
@@ -127,10 +139,10 @@ describe("computeEstimate", () => {
     const estimate = computeEstimate(deal);
     const lowBase = base.low * 2;
     const byTopic = Object.fromEntries(estimate.lines.map((l) => [l.topic, l]));
-    expect(byTopic.raw_footage.eur_low).toBe(Math.round(lowBase * m.raw_footage.low));
-    expect(byTopic.territory.eur_low).toBe(Math.round(lowBase * m.territory_worldwide.low));
-    expect(byTopic.extra_platform.eur_low).toBe(Math.round(lowBase * m.extra_platform.low));
-    expect(byTopic.ip_transfer.eur_low).toBe(Math.round(lowBase * m.ip_full_assignment.low));
+    proche(byTopic.raw_footage.eur_low, Math.round(lowBase * m.raw_footage.low), "rushs");
+    proche(byTopic.territory.eur_low, Math.round(lowBase * m.territory_worldwide.low), "territoire");
+    proche(byTopic.extra_platform.eur_low, Math.round(lowBase * m.extra_platform.low), "plateforme");
+    proche(byTopic.ip_transfer.eur_low, Math.round(lowBase * m.ip_full_assignment.low), "cession");
     expect(byTopic.extra_hooks.eur_high).toBe(rates.flat_eur.extra_hook_or_cta.high * 3);
 
     // Mission #104, A1 — le total affiché est la somme des lignes affichées.
@@ -168,18 +180,18 @@ describe("computeEstimate", () => {
     // fr-2026.2 : 5 unités pondérées facturées 4,3 au lieu de 4 (paliers) :
     // 3 500–7 000 € devient 3 760–7 530 € au niveau confirmé.
     // fr-2026.3 (#040) : niveau par défaut « starter ». Base 100 × 4,3 = 430 €,
-    // plafond heavy +250 % → 1 505 € ; haut 180 × 4,3 × 3,5 = 2 709 €.
-    // Mission #104, A1 : ces totaux ne sont plus arrondis à la dizaine, ils
-    // valent exactement la somme des lignes affichées. L'offre de 3 500 €
-    // passe toujours au-dessus de la fourchette.
+    // plafond heavy +250 % → 1 505 € arrondi à 1 500 ; haut 180 × 4,3 × 3,5 =
+    // 2 709 € → 2 710. Mission #105 : la fourchette est de nouveau ronde, et
+    // l'écart d'arrondi est réparti sur les lignes de majoration — la somme
+    // des lignes affichées vaut exactement ce total.
     expect(units).toBe(5);
     expect(estimate.base_low).toBe(Math.round(base.low * billableUnits(units)));
-    expect(estimate.total_low).toBe(1505);
-    expect(estimate.total_high).toBe(2709);
+    expect(estimate.total_low).toBe(1500);
+    expect(estimate.total_high).toBe(2710);
     expect(estimate.assumptions).toContain(UPLIFT_CAPPED_ASSUMPTION);
     // Même deal au niveau confirmé : montants de fr-2026.2 inchangés.
     const confirmed = computeEstimate(deal, { tier: "confirmed" });
-    expect([confirmed.total_low, confirmed.total_high]).toEqual([3763, 7525]);
+    expect([confirmed.total_low, confirmed.total_high]).toEqual([3760, 7530]);
     expect(estimate.total_low! / deal.payment.amount_eur!).toBeLessThanOrEqual(3);
   });
 
