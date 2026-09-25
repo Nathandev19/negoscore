@@ -37,6 +37,7 @@ const text = (html: string) =>
 const APRES_MIGRATION: DashboardData = {
   counts: {},
   excluded: 234,
+  internal: 12,
   paid_pro: 0,
   granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },

@@ -72,6 +72,7 @@ export async function POST(request: Request) {
         source_type: file.kind === "photo" ? "image" : "pdf",
         status: "awaiting_upload",
       }),
+      { userId: user?.id ?? null },
     );
     await insertRow("deal_documents", {
       deal_id: deal.id,

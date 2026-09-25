@@ -15,7 +15,7 @@ const SQL = MIGRATION.replace(/^\s*--.*$/gm, "");
 
 function dashboard(patch: Partial<DashboardData> = {}): DashboardData {
   return {
-    counts: {}, excluded: 0, paid_pro: 0, granted_pro: 0,
+    counts: {}, excluded: 0, internal: 0, paid_pro: 0, granted_pro: 0,
     feedback: { total: 0, fair: 0, not_fair: 0 },
     purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
     timeseries: [], acquisition: [],

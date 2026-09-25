@@ -461,6 +461,7 @@ export async function POST(request: Request) {
             status: "analysed",
             ...extra,
           }),
+          { userId: user?.id ?? null },
         ),
       );
       dealId = deal.id;
@@ -482,6 +483,7 @@ export async function POST(request: Request) {
         // analyse normale s'enregistre même si la migration n'est pas appliquée.
         ...(retry ? { retry_of: retry.originalId, is_retry: true } : {}),
       }),
+      { userId: user?.id ?? null },
     );
     if (document) savedDealId = dealId;
 

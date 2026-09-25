@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Funnel, TimeSeries } from "@/components/admin/charts";
-import { ADMIN_PERIODS, dashboardTiles, excludedNotice, loadDashboard, loadUnattachedPayments, parsePeriod } from "@/lib/admin/data";
+import { ADMIN_PERIODS, dashboardTiles, excludedNotice, internalNotice, loadDashboard, loadUnattachedPayments, parsePeriod } from "@/lib/admin/data";
 import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Cockpit", robots: { index: false, follow: false } };
@@ -35,6 +35,7 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
         </tbody></table></div>
       </section> : null}
       <p className="text-small text-attenue">{excludedNotice(data)}</p>
+      <p className="text-small text-attenue">{internalNotice(data)}</p>
       <p className="text-xs text-attenue">« Analyses lancées » et « Analyses terminées » sont deux compteurs bruts : aucun taux n’est calculé entre eux, faute d’un identifiant commun permettant de suivre une même analyse du lancement à sa fin.</p>
       <p className="text-xs text-attenue">Les visites et UTM commencent avec cette instrumentation et respectent DNT. Sans identifiant anonyme persistant, l’attribution est partielle. Le revenu est disponible uniquement pour les achats futurs dont Whop fournit montant et devise.</p>
     </>}

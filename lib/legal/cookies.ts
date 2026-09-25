@@ -13,4 +13,5 @@ export const COOKIES = [
   "ns_gratuit — indiquer à l'affichage que l'analyse gratuite de ce navigateur est déjà utilisée, sans identifiant — 30 jours. Il n'est lu que par ton navigateur : comme tout cookie, il accompagne les requêtes vers le site, qui ne le lit ni ne l'enregistre.",
   "ns_flash — afficher une fois « Connexion réussie » ou « Déconnexion réussie » — 60 secondes au plus, effacé dès l'affichage.",
   "negoscore_niveau — retenir le niveau choisi pour le calcul des tarifs — 12 mois.",
+  "ns_interne — marquer un appareil de l'équipe du site pour que ses propres visites ne soient pas comptées dans les statistiques d'usage ; il ne peut être posé qu'après connexion avec une adresse de l'équipe, ne contient ni identifiant ni email, et ne donne accès à rien — 24 mois, illisible par les scripts de la page.",
 ] as const;

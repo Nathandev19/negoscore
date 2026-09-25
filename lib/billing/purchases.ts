@@ -1,5 +1,5 @@
 import { insertIfAbsent, isMissingColumn, isMissingRelation, selectRows } from "@/lib/supabase/server";
-import { currentEnvironment } from "@/lib/telemetry/environment";
+import { withEnvironment } from "@/lib/telemetry/tagged";
 
 // Mission #090 — ce qui vient d'être acheté, écrit par le webhook au moment où
 // il accorde la contrepartie, et lu par la page « Merci ». Le solde ne le dit
@@ -24,18 +24,23 @@ export async function recordPurchase(purchase: Purchase & { user_id: string }): 
   // Mission #103 : d'où vient cet achat. Le cockpit ne compte que la
   // production ; sans cette valeur, un achat réel disparaîtrait du chiffre
   // d'affaires affiché.
-  const row = { ...purchase, environment: currentEnvironment() };
+  //
+  // Mission #118 : et de QUI. C'est la seule écriture comptée par le cockpit
+  // qui n'a aucun navigateur derrière elle — le webhook Whop l'écrit depuis
+  // une requête de Whop. Sans le compte, un paiement de test continuerait
+  // d'être compté comme un revenu réel. `withEnvironment` porte les deux
+  // champs et leur repli quand la migration n'est pas encore appliquée.
   try {
-    await insertIfAbsent("purchases", row);
+    await withEnvironment((extra) => insertIfAbsent("purchases", { ...purchase, ...extra }), { userId: purchase.user_id });
   } catch (caught) {
     // Déploiement backward-compatible : le code peut précéder la migration qui
     // ajoute le montant. La trace d'achat historique reste prioritaire ; le
     // revenu sera simplement marqué non couvert jusqu'à la migration.
     if (isMissingColumn(caught) && ("amount" in purchase || "currency" in purchase)) {
-      const { amount: _amount, currency: _currency, ...legacyPurchase } = row;
+      const { amount: _amount, currency: _currency, ...legacyPurchase } = purchase;
       void _amount;
       void _currency;
-      await insertIfAbsent("purchases", legacyPurchase);
+      await withEnvironment((extra) => insertIfAbsent("purchases", { ...legacyPurchase, ...extra }), { userId: purchase.user_id });
       return;
     }
     if (!isMissingRelation(caught)) throw caught;

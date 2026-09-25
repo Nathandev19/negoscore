@@ -15,6 +15,7 @@ import {
 } from "@/lib/auth/session";
 import { expiredSessionHintCookieHeader, SESSION_HINT_COOKIE, sessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { expiredOwnerHintCookieHeader, OWNER_HINT_COOKIE, ownerHintCookieHeaderFor } from "@/lib/auth/owner-hint";
+import { INTERNAL_COOKIE, internalCookieHeader, isInternalEmail } from "@/lib/telemetry/internal";
 
 // Avant tout rendu :
 //
@@ -175,6 +176,20 @@ export async function proxy(request: NextRequest) {
     // vérifier, aucun appel à Supabase : il n'y a de toute façon pas de session.
     if (hasHint) response.headers.append("Set-Cookie", expiredSessionHintCookieHeader());
     if (hasOwnerHint) response.headers.append("Set-Cookie", expiredOwnerHintCookieHeader());
+  }
+
+  // Mission #118 — une session INTERNE déjà ouverte marque ce navigateur, sans
+  // rien demander à personne. Complète le marquage posé à la connexion
+  // (lib/auth/sign-in.ts) : il couvre les sessions ouvertes AVANT cette
+  // mission, qui n'y repasseront pas.
+  //
+  // Aucun appel supplémentaire à Supabase : on ne se sert que d'une adresse
+  // déjà vérifiée plus haut, sur les pages qui la vérifiaient de toute façon.
+  // Rien n'est écrit si le cookie est déjà là.
+  const internalEmail = sessionEmail ?? (rejected ? null : (refreshed?.user.email ?? null));
+  if (!request.cookies.has(INTERNAL_COOKIE) && isInternalEmail(internalEmail)) {
+    const internal = internalCookieHeader();
+    if (internal) response.headers.append("Set-Cookie", internal);
   }
   return response;
 }

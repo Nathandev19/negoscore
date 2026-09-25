@@ -111,7 +111,7 @@ describe("le client n'a aucune autorité sur l'environnement", () => {
     // Les clés écrites sont exactement celles que le code construit.
     expect(Object.keys(row).sort()).toEqual(
       [
-        "dedupe_key", "entity_id", "entity_type", "environment", "event_name", "metadata",
+        "dedupe_key", "entity_id", "entity_type", "environment", "event_name", "internal", "metadata",
         "path", "referrer_host", "user_id", "utm_campaign", "utm_content", "utm_medium", "utm_source",
       ].sort(),
     );
@@ -128,17 +128,34 @@ describe("le client n'a aucune autorité sur l'environnement", () => {
 });
 
 describe("le repli quand la colonne n'existe pas encore", () => {
-  it("colonne absente : la ligne repart SANS environnement, une seule fois de plus", async () => {
+  // Mission #118 — le repli est devenu PROGRESSIF : on ne renonce à
+  // l'environnement que si c'est lui qui manque, et pas parce que la colonne
+  // `internal` n'existe pas encore.
+  it("colonne internal absente : la ligne repart avec l'environnement, sans la marque", async () => {
     const calls: Array<Record<string, unknown>> = [];
-    const result = await withEnvironment(async (environment) => {
-      calls.push(environment);
-      if ("environment" in environment) throw new SupabaseRequestError("colonne absente", 400, "42703");
+    const result = await withEnvironment(async (extra) => {
+      calls.push(extra);
+      if ("internal" in extra) throw new SupabaseRequestError("colonne absente", 400, "42703");
       return "écrit";
     });
     expect(result).toBe("écrit");
     expect(calls).toHaveLength(2);
-    expect(calls[0]).toHaveProperty("environment");
-    expect(calls[1]).toEqual({});
+    expect(calls[0]).toEqual({ environment: "test", internal: false });
+    // L'environnement est CONSERVÉ : le cockpit ne perd pas ses lignes de
+    // production pendant le temps qui sépare le déploiement de la migration.
+    expect(calls[1]).toEqual({ environment: "test" });
+  });
+
+  it("colonne environment absente aussi : la ligne repart nue, une seule fois de plus", async () => {
+    const calls: Array<Record<string, unknown>> = [];
+    const result = await withEnvironment(async (extra) => {
+      calls.push(extra);
+      if ("environment" in extra || "internal" in extra) throw new SupabaseRequestError("colonne absente", 400, "42703");
+      return "écrit";
+    });
+    expect(result).toBe("écrit");
+    expect(calls).toHaveLength(3);
+    expect(calls[2]).toEqual({});
   });
 
   it("toute autre erreur remonte telle quelle : la ligne n'est pas réécrite", async () => {

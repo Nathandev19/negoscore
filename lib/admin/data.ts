@@ -21,6 +21,11 @@ export type DashboardData = {
   // ou historique d'avant la mission). Affiché : c'est la preuve visible que
   // le filtre travaille.
   excluded: number;
+  // Mission #118 — lignes DE PRODUCTION écartées parce qu'elles viennent du
+  // propriétaire : ses comptes de test, son téléphone, son PC. Compteur
+  // distinct de `excluded`, avec lequel il ne se recouvre jamais : une ligne
+  // hors production n'est pas comptée ici, et réciproquement.
+  internal: number;
   paid_pro: number;
   granted_pro: number;
   feedback: { total: number; fair: number; not_fair: number };
@@ -30,7 +35,7 @@ export type DashboardData = {
 };
 
 const EMPTY_DASHBOARD: DashboardData = {
-  counts: {}, excluded: 0, paid_pro: 0, granted_pro: 0,
+  counts: {}, excluded: 0, internal: 0, paid_pro: 0, granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },
   purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
   timeseries: [], acquisition: [],
@@ -41,7 +46,7 @@ export async function loadDashboard(period: AdminPeriod): Promise<DashboardData 
     const data = await rpc<DashboardData>("admin_dashboard_metrics", { p_since: sinceForPeriod(period) });
     // Migration #103 pas encore appliquée : la RPC ne renvoie pas encore le
     // compteur d'exclusions. Zéro plutôt qu'un affichage cassé.
-    return data ? { ...EMPTY_DASHBOARD, ...data, excluded: data.excluded ?? 0 } : EMPTY_DASHBOARD;
+    return data ? { ...EMPTY_DASHBOARD, ...data, excluded: data.excluded ?? 0, internal: data.internal ?? 0 } : EMPTY_DASHBOARD;
   } catch {
     return "missing";
   }
@@ -90,6 +95,14 @@ export function dashboardTiles(data: DashboardData): DashboardTile[] {
 // La preuve visible que le filtre travaille, en une ligne.
 export function excludedNotice(data: DashboardData): string {
   return `Production uniquement. ${count(data.excluded)} événement(s) hors production exclus sur la période (local, prévisualisation, tests, historique).`;
+}
+
+// Mission #118 — la même preuve, pour le trafic du propriétaire. Une seconde
+// ligne plutôt qu'un ajout à la première : « hors production » et « interne »
+// ne disent pas la même chose, et mélanger leurs nombres rendrait les deux
+// illisibles.
+export function internalNotice(data: DashboardData): string {
+  return `Dont ${count(data.internal)} événement(s) de production produits par un compte ou un appareil interne, exclus eux aussi.`;
 }
 
 // Mission #112, A4 — les paiements que le produit n'a pas su rattacher à un

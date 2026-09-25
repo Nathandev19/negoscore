@@ -10,10 +10,20 @@ export function clientIp(request: Request): string {
   return forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "local";
 }
 
-// HMAC-SHA256 de l'IP avec un sel serveur. IP_HASH_SALT si défini, sinon la
-// clé service_role, qui est elle aussi un secret serveur. L'IP en clair n'est
-// ni stockée ni journalisée.
-export function hashIp(ip: string, salt = process.env.IP_HASH_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY): string {
+// Le sel serveur du produit : IP_HASH_SALT si défini, sinon la clé
+// service_role, qui est elle aussi un secret serveur. Un seul endroit le lit,
+// et tests/security.test.ts fige cette liste.
+//
+// Mission #118 — il signe aussi le cookie de trafic interne
+// (lib/telemetry/internal.ts) : cette fonction existe pour que ce module-là
+// n'ait pas à lire la clé service_role lui-même.
+export function serverSalt(): string | null {
+  return process.env.IP_HASH_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+}
+
+// HMAC-SHA256 de l'IP avec le sel serveur. L'IP en clair n'est ni stockée ni
+// journalisée.
+export function hashIp(ip: string, salt: string | null | undefined = serverSalt()): string {
   if (!salt) throw new Error("Sel serveur absent pour hacher l'IP");
   return createHmac("sha256", salt).update(ip).digest("hex");
 }

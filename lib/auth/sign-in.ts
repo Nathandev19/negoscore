@@ -8,6 +8,7 @@ import { sessionHintCookieHeader } from "@/lib/auth/session-hint";
 import { ownerHintCookieHeaderFor } from "@/lib/auth/owner-hint";
 import { isOwnerEmail } from "@/lib/admin/owner";
 import { ANON_COOKIE, readCookie } from "@/lib/security/request";
+import { internalCookieHeader, isInternalEmail } from "@/lib/telemetry/internal";
 import { recordProductEvent } from "@/lib/analytics/first-party";
 
 // Fin de connexion commune aux deux formats de lien magique.
@@ -116,6 +117,13 @@ export async function completeSignIn(
     flashCookieHeader("connexion", process.env.NODE_ENV === "production"),
     ...(options.extraCookies ?? []),
   ];
+  // Mission #118 — se connecter avec une adresse interne marque ce navigateur,
+  // définitivement et même après déconnexion : c'est ce qui règle les cas 1 et
+  // 2 sans aucune manipulation, et le cas 3 par ricochet. Jamais retiré ici :
+  // une autre adresse qui se connecte ensuite sur MON téléphone ne rend pas ce
+  // téléphone à nouveau comptable. Seul /api/interne?retirer=1 le démarque.
+  const internal = isInternalEmail(session.user.email) ? internalCookieHeader() : null;
+  if (internal) cookies.push(internal);
   if (anonToken) cookies.push(expiredCookieHeader(ANON_COOKIE));
   // ?connexion=ok sert à la mesure d'audience, le paramètre est retiré côté client.
   // Il se place avant l'ancre éventuelle (#message, mission #067) : après, il
