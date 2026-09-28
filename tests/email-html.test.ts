@@ -107,7 +107,10 @@ describe("contenu", () => {
   it("confirmation d'achat sans montant reçu : le prix vient de la source unique des offres", () => {
     const email = purchaseConfirmationEmail({ to: "a@b.fr", plan: "pack", amount: null, currency: null, date, siteUrl: SITE });
     expect(email.text).toContain("Montant : 4,99 €");
-    expect(email.text).not.toContain("Whop");
+    // Mission #122 — l'assertion visait le REPLI (« voir le reçu Whop »), pas
+    // le mot : l'email dit désormais, à dessein, que le reçu est émis par Whop,
+    // revendeur. Ce qu'elle protège est inchangé : le prix vient de PLANS.
+    expect(email.text).not.toContain("voir le reçu Whop");
   });
 
   it("le pack n'annonce pas de résiliation", () => {

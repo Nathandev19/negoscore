@@ -38,12 +38,20 @@ function amountValue(plan: PlanKey, amount: number | null, currency: string | nu
   return currency && currency.toLowerCase() !== "eur" ? `${value} ${currency.toUpperCase()}` : `${value} €`;
 }
 
-// Aucune mention de TVA dans cet email (mission #048) : Whop, vendeur de
-// référence, affiche sa propre ligne de taxe au paiement. « Prix TTC. TVA non
-// applicable, article 293 B du CGI » contredisait ce que l'acheteur venait de
-// voir. Rien n'est affirmé à la place tant que le régime appliqué par Whop
-// n'est pas confirmé par écrit. Les CGV et mentions légales gardent la mention
-// 293 B, qui décrit le statut de l'entreprise.
+// Aucune mention de taxe dans cet email, et ce n'est plus une prudence mais un
+// fait établi (mission #122, réglage du compte Whop lu le 28/09 : « Whop
+// collecte et remet », « Type de taxe : Inclusif »).
+//
+// Whop est REVENDEUR (merchant of record) : c'est lui qui vend au client, lui
+// qui émet le reçu fiscal, lui qui collecte et reverse la taxe. Cet email n'est
+// donc pas un reçu et ne doit surtout pas s'en donner l'air : il confirme la
+// fourniture du service et l'accord sur la rétractation, rien de plus. Une
+// ligne de taxe ici doublerait — ou contredirait — le document qui fait foi.
+//
+// La mention 293 B décrit le régime fiscal de l'éditeur, pas la taxe supportée
+// par l'acheteur : elle n'a sa place que dans les mentions légales, et elle a
+// été retirée des CGV en #122. tests/email-html.test.ts interdit « 293 B »,
+// « TVA », « TTC » et « HT » dans les deux versions de cet email.
 
 export function purchaseConfirmationEmail(options: {
   to: string;
@@ -60,6 +68,11 @@ export function purchaseConfirmationEmail(options: {
   const cancelUrl = `${siteUrl}/resilier`;
   // ADDED (#044)
   const next = "Pour t'en servir, colle l'offre d'une marque sur la page Analyser un deal.";
+  // Mission #122 — cet email n'est pas un reçu, et il ne doit pas en avoir
+  // l'air. Il porte un montant et la signature de l'éditeur : sans cette
+  // phrase, il se lisait comme le document fiscal de l'achat, qui est émis par
+  // Whop. Aucune mention de taxe ici : voir le commentaire en tête de fichier.
+  const receipt = "Le reçu de cet achat t'est adressé par Whop, qui a conclu la vente. Cet email confirme la mise à disposition de ton accès.";
   const cancel =
     "Pour résilier ton abonnement : en ligne, à tout moment, sur la page Résilier. Il reste actif jusqu'à la fin de la période payée, puis aucun nouveau paiement n'est prélevé.";
 
@@ -73,6 +86,8 @@ export function purchaseConfirmationEmail(options: {
     `Date : ${DATE.format(date)}`,
     "",
     `Ce que tu as obtenu : ${PLAN_OBTAINED[plan]}`,
+    "",
+    receipt,
     "",
     `${next} ${analyseUrl}`,
     ...(plan === "pro" ? ["", `${cancel} ${cancelUrl}`] : []),
@@ -97,6 +112,7 @@ export function purchaseConfirmationEmail(options: {
         { label: "Ce que tu as obtenu", value: PLAN_OBTAINED[plan] },
       ],
     },
+    { kind: "paragraph", text: receipt },
     { kind: "paragraph", text: next },
     { kind: "button", label: "Analyser un deal", url: analyseUrl },
     ...(plan === "pro"

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { PaywallView } from "@/components/analytics/paywall-view";
 import { FirstPartyView } from "@/components/analytics/first-party-view";
+import { MERCHANT } from "@/lib/billing/merchant";
 import { OffersError } from "@/components/offers/offers-error";
 import { OffersList } from "@/components/offers/offers-list";
 import { SiteFooter } from "@/components/site-footer";
@@ -35,8 +36,14 @@ export default function PlansPage() {
         {/* Formules séparées par des filets, pas trois cartes identiques : une seule
             mise en avant, avec le seul bouton plein de la page. */}
         <OffersList />
+        {/* Mission #122 — « Prix TTC » n'existait que dans la balise meta de
+            cette page : Google le lisait, l'acheteur non. La page qui VEND est
+            la seule où ces deux faits comptent — ce que couvre le prix, et
+            sous quel nom le prélèvement apparaîtra. */}
         <p className="text-sm text-attenue">
-          Paiement opéré par Whop. Voir les <Link href="/cgv" className="link">conditions de vente</Link>.
+          Les prix affichés incluent la taxe applicable, collectée et reversée par Whop selon ton pays. Le paiement
+          apparaît sur ton relevé bancaire sous le libellé «&nbsp;{MERCHANT.statementDescriptor}&nbsp;». Voir les{" "}
+          <Link href="/cgv" className="link">conditions de vente</Link>.
         </p>
       </main>
       <SiteFooter />

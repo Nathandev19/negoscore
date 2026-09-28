@@ -77,10 +77,20 @@ export default function PrivacyPage() {
             "Vercel — hébergement de l'application — États-Unis.",
             "OpenAI — analyse automatisée du contenu des offres — États-Unis.",
             "Resend — envoi des emails — Union européenne.",
-            "Whop — encaissement des paiements — États-Unis.",
             "PostHog — mesure d'audience — Union européenne.",
           ]}
         />
+        {/* Mission #122 — Whop ne figure plus dans cette liste. Un sous-traitant
+            traite pour le compte du responsable ; Whop conclut la vente en son
+            propre nom (merchant of record), émet le reçu et collecte la taxe.
+            Il décide donc lui-même du traitement des données de la transaction,
+            ce qui en fait un responsable de traitement distinct. */}
+        <p>
+          Whop Inc. (États-Unis) n&apos;est pas un sous-traitant : il vend l&apos;accès au service en son propre nom.
+          Pour les données de la transaction — coordonnées bancaires, adresse de facturation, reçu — il est responsable
+          de traitement à part entière et applique sa propre politique de confidentialité, sur laquelle{" "}
+          {BRAND.name} n&apos;a pas la main.
+        </p>
       </LegalSection>
 
       <LegalSection title="Transferts hors Union européenne">

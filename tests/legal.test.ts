@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CONSENT_LINK_LABEL, CONSENT_TEXT, CONSENT_VERSION } from "@/lib/billing/consent";
+import { renderToStaticMarkup } from "react-dom/server";
 import { purchaseConfirmationEmail } from "@/lib/email/templates";
 
 const ROOT = process.cwd();
@@ -15,6 +16,10 @@ function filesIn(dir: string): string[] {
     .filter((entry) => entry.isFile())
     .map((entry) => path.join(entry.parentPath, entry.name));
 }
+
+// Le fichier est en .ts : la page est appelée comme une fonction, sans JSX.
+const render = (Page: () => React.ReactElement) =>
+  renderToStaticMarkup(Page()).replace(/&#x27;/g, "'").replace(/\s+/g, " ");
 
 const legalPages = {
   "mentions-legales": read("app/mentions-legales/page.tsx"),
@@ -54,6 +59,34 @@ describe("pages légales", () => {
     expect(page).toContain("le vendeur lui a fourni une confirmation de son accord sur support durable");
     expect(page).toContain("Résilier votre contrat");
     expect(page).toContain("Les négociations achetées séparément restent acquises.");
+  });
+
+  // Mission #122 — Whop est REVENDEUR (merchant of record) : réglage du compte
+  // lu le 28/09, « Whop collecte et remet », « Type de taxe : Inclusif ». Deux
+  // formulations sont désormais interdites dans les CGV, et les deux l'étaient
+  // encore la veille.
+  it("CGV : Whop n'est plus qualifié de prestataire de paiement", async () => {
+    const { default: TermsPage } = await import("@/app/cgv/page");
+    const rendu = render(TermsPage);
+    // Ni à l'écran, ni dans la source : un commentaire qui la citerait ferait
+    // croire à la formulation retirée en la relisant.
+    for (const texte of [legalPages.cgv.replace(/\s+/g, " "), rendu]) {
+      expect(texte).not.toMatch(/prestataire de paiement/i);
+    }
+    // Et ce qui la remplace est bien là.
+    expect(rendu).toContain("revendeur (merchant of record)");
+    expect(rendu).toContain("Éditeur du service");
+  });
+
+  it("CGV : la franchise en base de TVA n'y figure plus", async () => {
+    const { default: TermsPage } = await import("@/app/cgv/page");
+    const rendu = render(TermsPage);
+    for (const texte of [legalPages.cgv.replace(/\s+/g, " "), rendu]) {
+      expect(texte).not.toMatch(/293\s*B/);
+    }
+    // Elle décrit le régime de l'éditeur : elle reste dans les mentions légales.
+    const { default: LegalNoticePage } = await import("@/app/mentions-legales/page");
+    expect(render(LegalNoticePage)).toContain("293 B");
   });
 
   it("plus aucun marqueur d'inachèvement : la section Médiation est écrite", () => {

@@ -4,6 +4,7 @@ import { Facts, LegalPage, LegalSection } from "@/components/legal/legal-page";
 import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
 import { PRICE, PRO_PERIOD } from "@/lib/billing/plans";
 import { BRAND } from "@/lib/brand";
+import { MERCHANT } from "@/lib/billing/merchant";
 import { COPILOT_PROMISE, ESTIMATE_DISCLAIMER, negotiations, NEGOTIATIONS, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
 import { SELLER } from "@/lib/legal/identity";
 
@@ -13,22 +14,39 @@ export const metadata: Metadata = publicPageMetadata("/cgv");
 export default function TermsPage() {
   return (
     <LegalPage title="Conditions générales de vente" updated="16 septembre 2026">
-      <LegalSection title="Vendeur">
+      {/* Mission #122 — Whop est revendeur (merchant of record). Réglage lu le
+          28/09 dans le compte Whop : « Collecte de taxes : Whop collecte et
+          remet », « Type de taxe : Inclusif ». La section ne s'appelle donc
+          plus « Vendeur » : Nathan édite et exploite le service, Whop conclut
+          la vente au client final et émet le reçu.
+
+          La mention de franchise en base de TVA n'apparaît plus dans ces
+          conditions. Elle décrit le régime fiscal de l'éditeur, pas la taxe
+          supportée par l'acheteur, et la placer à côté d'un prix payé à Whop la
+          rendait trompeuse. Elle reste à sa place, exacte, dans les mentions
+          légales (SELLER.vatNotice). Aucun texte ni commentaire de ce fichier
+          ne doit la citer : tests/legal.test.ts le vérifie dans la source ET
+          dans la page rendue. */}
+      <LegalSection title="Éditeur du service">
+        <p>{BRAND.name} est édité et exploité par :</p>
         <p>
           {SELLER.name}, {SELLER.status}
           <br />
           {SELLER.address}
           <br />
           SIRET : {SELLER.siret} — {SELLER.email} — {SELLER.phone}
-          <br />
-          {SELLER.vatNotice}
+        </p>
+        <p>
+          La vente des négociations est conclue par {MERCHANT.legalName}, qui agit en qualité de revendeur (merchant of record) :
+          le contrat de vente est conclu entre toi et Whop, qui émet le reçu. {SELLER.name} fournit le service ainsi
+          acheté, et reste ton interlocuteur pour tout ce qui concerne ce service.
         </p>
       </LegalSection>
 
       <LegalSection title="Objet">
         <p>
-          Les présentes conditions régissent la vente des négociations proposées sur {BRAND.domain} à des
-          consommateurs.
+          Les présentes conditions régissent la fourniture des négociations proposées sur {BRAND.domain} à des
+          consommateurs. La vente en elle-même est conclue par Whop ; {SELLER.name} fournit le service acheté.
         </p>
         <p>{WHAT_IS_A_NEGOTIATION} {COPILOT_PROMISE} {ESTIMATE_DISCLAIMER}</p>
       </LegalSection>
@@ -49,15 +67,17 @@ export default function TermsPage() {
           ]}
         />
         <p>
-          Les prix sont indiqués en euros, toutes taxes comprises. La TVA n&apos;est pas applicable en application de
-          l&apos;article 293 B du CGI.
+          Les prix sont indiqués en euros et incluent la taxe éventuellement applicable. Cette taxe est déterminée,
+          collectée et reversée par Whop selon ton pays de résidence : le montant affiché est celui que tu paies, et le
+          reçu émis par Whop en détaille la composition.
         </p>
       </LegalSection>
 
       <LegalSection title="Paiement">
         <p>
-          Les paiements sont encaissés par Whop, qui agit en qualité de prestataire de paiement. {BRAND.name} ne reçoit
-          ni ne conserve aucune donnée bancaire.
+          Whop n&apos;est pas un simple encaisseur : il vend l&apos;accès en son nom, émet le reçu, et collecte puis
+          reverse la taxe applicable dans ton pays. Le paiement apparaît sur ton relevé bancaire sous le libellé
+          «&nbsp;{MERCHANT.statementDescriptor}&nbsp;». {BRAND.name} ne reçoit ni ne conserve aucune donnée bancaire.
         </p>
       </LegalSection>
 

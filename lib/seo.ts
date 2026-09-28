@@ -218,6 +218,15 @@ export function softwareApplicationJsonLd() {
         description: plan.summary,
         price,
         priceCurrency: "EUR",
+        // Mission #122 — le prix affiché inclut la taxe. Exact : le compte Whop
+        // est réglé sur « Type de taxe : Inclusif », et Whop, revendeur
+        // (merchant of record), la collecte et la reverse selon le pays de
+        // l'acheteur. Le montant publié est donc celui qui sera payé.
+        //
+        // AUCUN champ `seller` ici, et c'est délibéré : une absence n'affirme
+        // rien, un vendeur faux affirmerait quelque chose d'inexact sur une
+        // page publique. Le sujet se règle dans les CGV, en toutes lettres.
+        valueAddedTaxIncluded: true,
         url: `${CANONICAL_ORIGIN}/tarifs`,
         // Abonnement : la périodicité vient de PLANS (PRO_PERIOD), dite avec
         // la propriété prévue pour (référence : 1 période), et non plus dans
