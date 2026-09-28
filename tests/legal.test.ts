@@ -73,9 +73,11 @@ describe("pages légales", () => {
     for (const texte of [legalPages.cgv.replace(/\s+/g, " "), rendu]) {
       expect(texte).not.toMatch(/prestataire de paiement/i);
     }
-    // Et ce qui la remplace est bien là.
-    expect(rendu).toContain("revendeur (merchant of record)");
-    expect(rendu).toContain("Éditeur du service");
+    // Mission #123 — ce qui la remplace : Whop est merchant of record pour le
+    // RÈGLEMENT et pour la TAXE, et le titre de la section redevient
+    // « Vendeur », parce que le vendeur est bien l'éditeur.
+    expect(rendu).toContain("merchant of record pour le règlement par carte");
+    expect(rendu).toContain("Vendeur");
   });
 
   it("CGV : la franchise en base de TVA n'y figure plus", async () => {
