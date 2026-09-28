@@ -9,7 +9,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
-import { COPILOT_PROMISE, negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
+import { COPILOT_PROMISE, FULL_EXAMPLE, negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
 import { FAQ, STEPS, TRUST } from "@/lib/content/home";
 import { JsonLd } from "@/components/seo/json-ld";
 import { faqJsonLd, publicPageMetadata, softwareApplicationJsonLd } from "@/lib/seo";
@@ -100,8 +100,11 @@ export default function HomePage() {
                 et exclusivité. L&apos;offre est inventée, le chiffrage est celui du moteur actuel : ce n&apos;est pas une vraie
                 négociation en cours.
               </p>
-              <Link href="/analyse/demo" className="link w-fit">
-                Voir l&apos;exemple complet
+              {/* Mission #119 — le lien existait déjà ici, et ici seulement.
+                  Son libellé vient désormais du vocabulaire, le même que sur
+                  les trois guides : une seule formule pour une seule page. */}
+              <Link href={FULL_EXAMPLE.href} className="link w-fit">
+                {FULL_EXAMPLE.label}
               </Link>
             </div>
             {score ? (

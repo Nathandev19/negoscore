@@ -130,11 +130,11 @@ describe("C — une clé hostile se comporte comme une clé inconnue", () => {
     expect(shortPathTarget("/inconnu")).toBeNull();
   });
 
-  it("chemins courts : les six chemins légitimes sont inchangés", () => {
-    for (const [path, content] of Object.entries(SHORT_PATHS)) {
+  it("chemins courts : les chemins légitimes sont inchangés", () => {
+    for (const [path, entry] of Object.entries(SHORT_PATHS)) {
       const target = shortPathTarget(`/${path}`);
-      expect(target, path).toContain(`utm_content=${content}`);
-      expect(target, path).toContain("utm_source=tiktok");
+      expect(target, path).toContain(`utm_content=${entry.content}`);
+      expect(target, path).toContain(`utm_source=${entry.source}`);
       // Tolérance de casse et de barre oblique, comme avant.
       expect(shortPathTarget(`/${path.toUpperCase()}/`), path).toBe(target);
     }

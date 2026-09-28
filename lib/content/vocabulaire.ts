@@ -117,6 +117,22 @@ export function proInProgress(endsAt: string | null, cancelled: boolean): string
 
 export const PRO_OFFERED = "Ton accès Pro offert est en cours. Rien à payer.";
 
+// Mission #119 — le lien vers l'exemple chiffré, écrit une seule fois.
+//
+// La page /analyse/demo était indexée par Google et atteignable depuis le seul
+// accueil : les trois guides, qui sont les pages d'arrivée depuis la recherche,
+// n'y menaient pas. C'est pourtant la page qui montre le produit fini à
+// quelqu'un qui n'a rien à coller.
+//
+// Le libellé dit ce qu'on y trouve, jamais « démo » : personne ne clique sur
+// « démo », et le mot ne dit pas qu'il y a des euros au bout. « Analyse » est
+// employé au sens du vocabulaire de la mission #093 — une ÉTAPE de la
+// négociation, pas l'unité vendue : c'est exactement ce que la page montre.
+export const FULL_EXAMPLE = {
+  href: "/analyse/demo",
+  label: "Voir une analyse complète, sur un exemple chiffré",
+} as const;
+
 // Mission #104, A3 — les libellés de concept vivent dans lib/content/labels.ts
 // (module feuille, sans import) et sont ré-exportés ici : le vocabulaire reste
 // la porte d'entrée, sans entraîner la facturation dans le graphe d'imports de

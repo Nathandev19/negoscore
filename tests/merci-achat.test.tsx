@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mission #090 — la page « Merci » confirme CE QUI VIENT D'ÊTRE ACHETÉ, jamais
 // l'état du compte à la place. Constat de production : un Pack Deal acheté par
@@ -179,9 +179,19 @@ describe("A — la période Pro se prolonge, elle ne s'écrase plus", () => {
   const creditsRow = (over: Record<string, unknown>) => [{ user_id: USER, plan: "pro", balance: 0, period_end: null, cancelled_at: null, membership_id: null, ...over }];
   const written = () => db.writes.filter((w) => w.table === "credits").at(-1)?.row as Record<string, unknown>;
 
+  // Mission #119 — l'horloge est FIGÉE ici. `periodAfterActivation` recevait
+  // NOW en argument, mais `applyWhopEvent` lisait l'heure réelle : le report
+  // dépendait donc du jour où la suite tournait, et l'assertion du 3e test est
+  // passée au rouge toute seule le 28/09. Un test ne doit pas avoir de date de
+  // péremption.
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
     vi.stubEnv("WHOP_PLAN_PRO", "plan_pro_test");
     db.rows.set("profiles", [{ id: USER, email: "nina@exemple.test" }]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("A3 — aucun abonnement actif : la date annoncée par Whop", async () => {
@@ -209,8 +219,9 @@ describe("A — la période Pro se prolonge, elle ne s'écrase plus", () => {
     expect(kind).toBe("extended");
     expect(periodEnd).toBe("2026-11-15T12:00:00.000Z");
     await applyWhopEvent(membership("mem_2", "2026-10-22T12:00:00.000Z"));
-    const stored = String(written().period_end);
-    expect(new Date(stored).getTime()).toBeGreaterThan(Date.parse("2026-11-10T00:00:00.000Z"));
+    // Horloge figée : la date écrite est exactement celle que la fonction pure
+    // annonce, au lieu d'un « après le 10/11 » qui se périmait.
+    expect(written().period_end).toBe("2026-11-15T12:00:00.000Z");
     expect(written()).toMatchObject({ membership_id: "mem_2" });
   });
 

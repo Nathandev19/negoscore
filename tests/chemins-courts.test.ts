@@ -17,17 +17,19 @@ function params(location: string): Record<string, string> {
   return Object.fromEntries(new URL(location, ORIGIN).searchParams.entries());
 }
 
-const ATTENDU: Array<[string, string]> = [
-  ["/dm", "video_1_negociation"],
-  ["/verdicts", "video_2_verdicts"],
-  ["/produits", "video_3_produits"],
-  ["/capture", "video_4_capture"],
-  ["/niveau", "video_5_niveau"],
-  ["/tiktok", "bio"],
+// Mission #119 — le septième chemin, et le premier qui ne vient pas de TikTok.
+const ATTENDU: Array<[string, string, string]> = [
+  ["/dm", "tiktok", "video_1_negociation"],
+  ["/verdicts", "tiktok", "video_2_verdicts"],
+  ["/produits", "tiktok", "video_3_produits"],
+  ["/capture", "tiktok", "video_4_capture"],
+  ["/niveau", "tiktok", "video_5_niveau"],
+  ["/tiktok", "tiktok", "bio"],
+  ["/insta", "instagram", "bio_instagram"],
 ];
 
-describe("les six chemins redirigent vers l'accueil, UTM posés par le serveur", () => {
-  it.each(ATTENDU)("%s → accueil avec utm_content=%s", async (path, content) => {
+describe("les sept chemins redirigent vers l'accueil, UTM posés par le serveur", () => {
+  it.each(ATTENDU)("%s → accueil avec utm_source=%s et utm_content=%s", async (path, source, content) => {
     const response = await call(path);
     expect(response.status).toBe(307);
     const location = response.headers.get("location");
@@ -35,11 +37,24 @@ describe("les six chemins redirigent vers l'accueil, UTM posés par le serveur",
     const target = new URL(location as string, ORIGIN);
     expect(target.pathname).toBe("/");
     expect(params(location as string)).toEqual({
-      utm_source: "tiktok",
+      utm_source: source,
       utm_medium: "organic_social",
       utm_campaign: "lancement",
       utm_content: content,
     });
+  });
+
+  it("le trafic Instagram ne se range pas sous TikTok", async () => {
+    const insta = params((await call("/insta")).headers.get("location") as string);
+    const tiktok = params((await call("/tiktok")).headers.get("location") as string);
+    expect(insta.utm_source).toBe("instagram");
+    expect(insta.utm_source).not.toBe(tiktok.utm_source);
+    // Ni la même valeur de contenu : deux lignes distinctes dans le cockpit,
+    // même en ne regardant qu'une colonne.
+    expect(insta.utm_content).not.toBe(tiktok.utm_content);
+    // Le reste est commun : même mode, même campagne.
+    expect(insta.utm_medium).toBe(tiktok.utm_medium);
+    expect(insta.utm_campaign).toBe(tiktok.utm_campaign);
   });
 
   it("307 et non 308 : la table doit pouvoir changer", async () => {
@@ -74,16 +89,21 @@ describe("les six chemins redirigent vers l'accueil, UTM posés par le serveur",
 
 describe("la table est la seule source", () => {
   it("chaque entrée de la table donne un chemin, sans rien écrire ailleurs", async () => {
-    for (const [path, content] of Object.entries(SHORT_PATHS)) {
+    for (const [path, entry] of Object.entries(SHORT_PATHS)) {
       const response = await call(`/${path}`);
       expect(response.status, path).toBe(307);
-      expect(params(response.headers.get("location") as string).utm_content, path).toBe(content);
+      const posted = params(response.headers.get("location") as string);
+      expect(posted.utm_content, path).toBe(entry.content);
+      expect(posted.utm_source, path).toBe(entry.source);
     }
     expect(Object.keys(SHORT_PATHS)).toHaveLength(ATTENDU.length);
   });
 
   it("aucun utm_content n'est écrit en dur hors de la table", () => {
-    const valeurs = Object.values(SHORT_PATHS);
+    // Les contenus seulement : un nom de réseau (« tiktok », « instagram »)
+    // a de bonnes raisons d'apparaître ailleurs, dans les liens sociaux du
+    // SEO par exemple. Un utm_content, non.
+    const valeurs = Object.values(SHORT_PATHS).map((entry) => entry.content);
     const fichiers = ["proxy.ts", "next.config.ts", "app/sitemap.ts", "lib/seo.ts"];
     for (const fichier of fichiers) {
       const source = readFileSync(fichier, "utf8");
@@ -100,7 +120,7 @@ describe("la table est la seule source", () => {
 });
 
 describe("ce ne sont pas des pages", () => {
-  it("aucun des six n'est dans le sitemap", () => {
+  it("aucun des sept n'est dans le sitemap", () => {
     const urls = sitemap().map((entry) => new URL(entry.url).pathname.replace(/\/+$/, ""));
     for (const path of Object.keys(SHORT_PATHS)) expect(urls, path).not.toContain(`/${path}`);
   });

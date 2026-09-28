@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = publicPageMetadata("/combien-facturer");
@@ -187,6 +188,12 @@ export default function PricingGuidePage() {
           <Button asChild size="lg" className="mt-1 h-12 w-full text-base sm:w-fit">
             <Link href="/analyse">Analyser mon deal</Link>
           </Button>
+          {/* Mission #119 — une seconde sortie, pour qui n'a rien à coller
+              tout de suite. Un lien, pas un composant : la page reste entière
+              sans JavaScript (mission #074). */}
+          <Link href={FULL_EXAMPLE.href} className="link w-fit">
+            {FULL_EXAMPLE.label}
+          </Link>
         </Section>
       </main>
       <SiteFooter />
