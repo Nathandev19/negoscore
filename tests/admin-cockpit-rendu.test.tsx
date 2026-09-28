@@ -38,6 +38,8 @@ const APRES_MIGRATION: DashboardData = {
   counts: {},
   excluded: 234,
   internal: 12,
+  guides: [],
+  example: { total: 0, direct: 0 },
   paid_pro: 0,
   granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },
@@ -50,6 +52,20 @@ async function dashboard(value: DashboardData | "missing"): Promise<string> {
   data.dashboard = value;
   return renderToStaticMarkup(await AdminDashboard({ searchParams: Promise.resolve({}), params: Promise.resolve({}) }));
 }
+
+// Mission #120 — les pages d'arrivée depuis un moteur de recherche, une fois
+// qu'elles ont produit quelque chose.
+const AVEC_GUIDES: DashboardData = {
+  ...APRES_MIGRATION,
+  counts: { guide_view: 42, example_view: 9 },
+  excluded: 0,
+  internal: 0,
+  guides: [
+    { path: "/combien-facturer", views: 30, to_example: 6 },
+    { path: "/produits-offerts", views: 12, to_example: 1 },
+  ],
+  example: { total: 9, direct: 2 },
+};
 
 describe("le tableau de bord, tel qu'il s'affiche", () => {
   it("la ligne d'exclusions dit ce qui a été écarté, et les compteurs sont à zéro", async () => {
@@ -110,5 +126,28 @@ describe("la liste des utilisateurs", () => {
     expect(page).toContain("Compte Accès Crédits Dossiers Inscription");
     // Un dossier créé en local ne compte plus : la RPC ne rend que la production.
     expect(page).toContain("creatrice@exemple.test");
+  });
+});
+
+describe("mission #120 — guides et exemple chiffré", () => {
+  it("rien mesuré : le bloc n'apparaît pas du tout", async () => {
+    expect(text(await dashboard(APRES_MIGRATION))).not.toContain("Guides et exemple chiffré");
+  });
+
+  it("une ligne par guide, ses vues, ses clics vers l'exemple et la part", async () => {
+    const page = text(await dashboard(AVEC_GUIDES));
+    expect(page).toContain("Guides et exemple chiffré");
+    expect(page).toContain("/combien-facturer");
+    expect(page).toContain("/produits-offerts");
+    // 6 clics sur 30 vues, et 1 sur 12.
+    expect(page).toMatch(/\/combien-facturer 30 6 20 %/);
+    expect(page).toMatch(/\/produits-offerts 12 1 8 %/);
+  });
+
+  it("la ligne de synthèse distingue le lien du site de l'arrivée directe", async () => {
+    const page = text(await dashboard(AVEC_GUIDES));
+    expect(page).toContain("Exemple chiffré : 9 vue(s) au total");
+    expect(page).toContain("dont 7 depuis un lien du site");
+    expect(page).toContain("2 en arrivée directe");
   });
 });

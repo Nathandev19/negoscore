@@ -117,13 +117,19 @@ export default function PrivacyPage() {
 
       <LegalSection title="Mesure d'audience">
         <p>
-          La mesure d&apos;audience ne dépose ni ne lit rien sur ton appareil : aucun cookie, aucun stockage local,
-          aucun identifiant conservé d&apos;une visite à l&apos;autre. C&apos;est pourquoi aucune bannière de
-          consentement ne t&apos;est présentée.
+          La mesure d&apos;audience ne dépose rien sur ton appareil : aucun cookie, aucun stockage local, aucun
+          identifiant conservé d&apos;une visite à l&apos;autre. C&apos;est pourquoi aucune bannière de consentement ne
+          t&apos;est présentée. Le seul cookie qu&apos;elle lit est celui qui marque un appareil de l&apos;équipe du
+          site (ns_interne, décrit plus haut), pour écarter nos propres visites de nos statistiques.
+        </p>
+        <p>
+          Les pages publiques contiennent une image d&apos;un pixel, transparente, qui sert uniquement à compter la
+          page affichée. Elle ne dépose rien et ne permet pas de te reconnaître d&apos;une visite à l&apos;autre.
         </p>
         <p>
           Les statistiques d&apos;usage ne contiennent ni le texte des offres, ni les noms de marques, ni les montants
-          proposés, ni les adresses email. Le signal «&nbsp;Do Not Track&nbsp;» du navigateur est respecté.
+          proposés, ni les adresses email. Les signaux «&nbsp;Do Not Track&nbsp;» et «&nbsp;Global Privacy Control&nbsp;»
+          du navigateur sont respectés : rien n&apos;est enregistré.
         </p>
       </LegalSection>
 

@@ -164,7 +164,13 @@ describe("politique de confidentialité", () => {
       // Mission #047 : cookies et brouillon local.
       "Cookies et stockage dans ton navigateur",
       // Mission #049 : mesure d'audience sans stockage, donc sans bannière.
-      "La mesure d'audience ne dépose ni ne lit rien sur ton appareil : aucun cookie, aucun stockage local, aucun identifiant conservé d'une visite à l'autre. C'est pourquoi aucune bannière de consentement ne t'est présentée.",
+      // Mission #120 — « ni ne lit rien » était devenu faux depuis la mission
+      // #118 : la mesure LIT le cookie ns_interne pour écarter les visites de
+      // l'équipe. La phrase dit désormais ce qui se passe, et annonce l'image
+      // de mesure ajoutée sur les pages publiques.
+      "La mesure d'audience ne dépose rien sur ton appareil : aucun cookie, aucun stockage local, aucun identifiant conservé d'une visite à l'autre.",
+      "Le seul cookie qu'elle lit est celui qui marque un appareil de l'équipe du site (ns_interne, décrit plus haut), pour écarter nos propres visites de nos statistiques.",
+      "Les pages publiques contiennent une image d'un pixel, transparente, qui sert uniquement à compter la page affichée. Elle ne dépose rien et ne permet pas de te reconnaître d'une visite à l'autre.",
       "Il ne quitte pas ton appareil tant que tu ne lances pas l'analyse. Il est effacé dès qu'une analyse aboutit, ou au bout de 24 heures.",
       ...COOKIES,
     ]) {

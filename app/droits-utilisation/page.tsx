@@ -4,6 +4,8 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { BRAND } from "@/lib/brand";
+import { ViewPixel } from "@/components/analytics/view-pixel";
+import { exampleHrefFrom } from "@/lib/analytics/views";
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import { publicPageMetadata } from "@/lib/seo";
 
@@ -16,6 +18,7 @@ export default function UsageRightsPage() {
   return (
     <>
       <SiteHeader />
+      <ViewPixel page="/droits-utilisation" />
       <main id="contenu" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         <div className="flex flex-col gap-5">
           <h1 className="text-h1 font-extrabold">Droits d&apos;utilisation : ce que tu vends vraiment</h1>
@@ -155,7 +158,10 @@ export default function UsageRightsPage() {
           {/* Mission #119 — une seconde sortie, pour qui n'a rien à coller
               tout de suite. Un lien, pas un composant : la page reste entière
               sans JavaScript (mission #074). */}
-          <Link href={FULL_EXAMPLE.href} className="link w-fit">
+          {/* Mission #120 — le lien porte son origine : c'est la seule
+              façon de savoir combien de lecteurs d'un guide vont voir
+              l'exemple, sans lire le référent dans le navigateur. */}
+          <Link href={exampleHrefFrom("droits-utilisation")} className="link w-fit">
             {FULL_EXAMPLE.label}
           </Link>
         </Section>

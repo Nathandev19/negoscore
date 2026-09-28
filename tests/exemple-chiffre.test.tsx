@@ -40,16 +40,19 @@ async function render(path: string): Promise<string> {
 describe("le lien vers l'exemple chiffré", () => {
   it("les trois guides y mènent, avec le libellé du vocabulaire", async () => {
     for (const guide of GUIDES) {
-      const found = anchors(await render(guide)).filter((a) => a.href === FULL_EXAMPLE.href);
+      const found = anchors(await render(guide)).filter((a) => a.href.startsWith(FULL_EXAMPLE.href));
       expect(found, guide).toHaveLength(1);
       expect(found[0].text, guide).toBe(FULL_EXAMPLE.label);
+      // Mission #120 — et chacun dit d'où l'on vient.
+      expect(found[0].href, guide).toBe(`${FULL_EXAMPLE.href}?de=${guide.slice(1)}`);
     }
   });
 
   it("l'accueil aussi, et avec le MÊME libellé : une page, une formule", async () => {
-    const found = anchors(await render("/")).filter((a) => a.href === FULL_EXAMPLE.href);
+    const found = anchors(await render("/")).filter((a) => a.href.startsWith(FULL_EXAMPLE.href));
     expect(found).toHaveLength(1);
     expect(found[0].text).toBe(FULL_EXAMPLE.label);
+    expect(found[0].href).toBe(`${FULL_EXAMPLE.href}?de=accueil`);
   });
 
   it("le libellé dit ce qu'on y trouve, jamais « démo »", () => {

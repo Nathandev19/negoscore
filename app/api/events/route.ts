@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
+import { isRobot, refusesTracking } from "@/lib/analytics/robots";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,17 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return Response.json({ error: "invalid event" }, { status: 400 });
+  }
+  // Mission #120 — le moteur de rendu de Google exécute le JavaScript de la
+  // page : sans ce filtre, chaque exploration comptait comme une visite sur
+  // l'accueil et sur /tarifs. Écarté ici comme sur /api/vue, et la réponse ne
+  // change pas d'un octet : le client n'apprend rien de ce qui a été fait.
+  //
+  // Le refus de suivi est lu côté SERVEUR en plus du navigateur : le composant
+  // client vérifie navigator.doNotTrack, ce qui ne couvre que les visiteurs qui
+  // ont JavaScript. La page de confidentialité promet mieux que ça.
+  if (isRobot(request.headers.get("user-agent")) || refusesTracking(request.headers)) {
+    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   }
   await recordProductEvent({ event: parsed.data.event, attribution: parseAttribution(parsed.data.attribution) });
   return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });

@@ -4,6 +4,11 @@ import { withEnvironment } from "@/lib/telemetry/tagged";
 export const PRODUCT_EVENTS = [
   "landing_view", "pricing_view", "analysis_started", "analysis_completed", "feedback_submitted", "signup",
   "negotiation_started", "negotiation_turn", "negotiation_concluded", "checkout_started", "purchase_completed",
+  // Mission #120 — les pages d'arrivée depuis un moteur de recherche. UN SEUL
+  // nom pour les trois guides : `path` est déjà enregistré et les distingue,
+  // trois noms d'événement ne diraient rien de plus et rendraient chaque
+  // nouveau guide dépendant d'un changement de code.
+  "guide_view", "example_view",
 ] as const;
 export type ProductEventName = (typeof PRODUCT_EVENTS)[number];
 

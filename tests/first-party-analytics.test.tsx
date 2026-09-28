@@ -32,10 +32,14 @@ describe("attribution first-party", () => {
     expect(parsed.utm_source).toHaveLength(100);
   });
 
+  const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+
   it("l'endpoint public n'accepte que les vues prévues depuis la même origine", async () => {
     const { POST } = await import("@/app/api/events/route");
     const send = (event: string, origin = "http://localhost:3000", site = "same-origin") => POST(new Request("http://localhost:3000/api/events", {
-      method: "POST", headers: { origin, "sec-fetch-site": site, "content-type": "application/json" }, body: JSON.stringify({ event, attribution: { utm_source: "TikTok" } }),
+      // Mission #120 — un vrai navigateur annonce son User-Agent. Sans lui, la
+      // route considère la requête comme automatique et n'enregistre rien.
+      method: "POST", headers: { origin, "sec-fetch-site": site, "content-type": "application/json", "user-agent": UA }, body: JSON.stringify({ event, attribution: { utm_source: "TikTok" } }),
     }));
     expect((await send("landing_view")).status).toBe(204);
     expect(telemetry.calls).toEqual([expect.objectContaining({ event: "landing_view", attribution: expect.objectContaining({ utm_source: "tiktok" }) })]);
@@ -57,6 +61,8 @@ describe("fixture synthétique du dashboard", () => {
     // production. Elles ne pèsent sur aucun autre chiffre de cet objet.
     excluded: 218,
     internal: 9,
+    guides: [],
+    example: { total: 0, direct: 0 },
     paid_pro: 1,
     granted_pro: 1,
     feedback: { total: 5, fair: 3, not_fair: 2 },

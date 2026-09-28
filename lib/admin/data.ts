@@ -32,13 +32,19 @@ export type DashboardData = {
   purchases: { purchases: number; revenue_eur: number; revenue_covered: number };
   timeseries: Array<{ day: string; page_views: number; analyses: number; signups: number; purchases: number }>;
   acquisition: Array<{ source: string; campaign: string; content: string; visits: number; analyses: number; signups: number; purchases: number }>;
+  // Mission #120 — ce que les pages d'arrivée depuis un moteur de recherche
+  // produisent vraiment : une ligne par guide, ses vues, et combien de ses
+  // lecteurs sont allés voir l'exemple chiffré.
+  guides: Array<{ path: string; views: number; to_example: number }>;
+  // Vues de /analyse/demo, et la part arrivée sans passer par un lien du site.
+  example: { total: number; direct: number };
 };
 
 const EMPTY_DASHBOARD: DashboardData = {
   counts: {}, excluded: 0, internal: 0, paid_pro: 0, granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },
   purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
-  timeseries: [], acquisition: [],
+  timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 },
 };
 
 export async function loadDashboard(period: AdminPeriod): Promise<DashboardData | "missing"> {
@@ -46,7 +52,15 @@ export async function loadDashboard(period: AdminPeriod): Promise<DashboardData 
     const data = await rpc<DashboardData>("admin_dashboard_metrics", { p_since: sinceForPeriod(period) });
     // Migration #103 pas encore appliquée : la RPC ne renvoie pas encore le
     // compteur d'exclusions. Zéro plutôt qu'un affichage cassé.
-    return data ? { ...EMPTY_DASHBOARD, ...data, excluded: data.excluded ?? 0, internal: data.internal ?? 0 } : EMPTY_DASHBOARD;
+    // Migration #120 pas encore appliquée : la RPC ne renvoie ni `guides` ni
+    // `example`. Un tableau vide et deux zéros, plutôt qu'un affichage cassé.
+    return data
+      ? {
+          ...EMPTY_DASHBOARD, ...data,
+          excluded: data.excluded ?? 0, internal: data.internal ?? 0,
+          guides: data.guides ?? [], example: data.example ?? EMPTY_DASHBOARD.example,
+        }
+      : EMPTY_DASHBOARD;
   } catch {
     return "missing";
   }
@@ -103,6 +117,15 @@ export function excludedNotice(data: DashboardData): string {
 // illisibles.
 export function internalNotice(data: DashboardData): string {
   return `Dont ${count(data.internal)} événement(s) de production produits par un compte ou un appareil interne, exclus eux aussi.`;
+}
+
+// Mission #120 — la ligne sous le tableau des guides. Elle dit le total des
+// vues de l'exemple chiffré et ce qui n'est venu d'aucun lien du site : la
+// somme de la colonne « vers l'exemple » ne vaut donc jamais le total, et il
+// faut le dire plutôt que de laisser croire à une soustraction ratée.
+export function exampleNotice(data: DashboardData): string {
+  const attributed = data.guides.reduce((sum, row) => sum + row.to_example, 0);
+  return `Exemple chiffré : ${count(data.example.total)} vue(s) au total, dont ${count(attributed)} depuis un lien du site et ${count(data.example.direct)} en arrivée directe (moteur de recherche, lien partagé).`;
 }
 
 // Mission #112, A4 — les paiements que le produit n'a pas su rattacher à un

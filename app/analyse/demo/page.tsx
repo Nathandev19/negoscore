@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/lib/seo";
+import { ViewPixel } from "@/components/analytics/view-pixel";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -12,6 +13,10 @@ export default function DemoResultPage() {
   return (
     <>
       <SiteHeader tone="marque" />
+      {/* Mission #120 — la vue, et d'où vient le clic (?de=). Le
+          paramètre ne crée pas d'adresse dupliquée : la canonique
+          déclarée par publicPageMetadata reste /analyse/demo. */}
+      <ViewPixel page="/analyse/demo" />
       <AnalysisResult
         analysis={lockAnalysis(sampleAnalysis)}
         unlockHref="/connexion?next=%2Fanalyse"
