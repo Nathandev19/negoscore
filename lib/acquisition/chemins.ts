@@ -33,8 +33,22 @@ export type ShortPath = { source: string; content: string };
 // le genre de chiffre qu'on ne peut plus corriger après coup. Elle est donc
 // descendue dans la table, une ligne à la fois. Le reste ne bouge pas :
 // ajouter un chemin, c'est toujours ajouter UNE ligne ici, et rien ailleurs.
+//
+// Mission #124 — et la prospection par DM est une SOURCE À PART ENTIÈRE, au
+// même titre que la bio Instagram. Elle n'est pas du trafic de vidéo : une
+// créatrice à qui on écrit directement n'a rien vu, rien cherché, et son taux
+// de conversion n'a aucune raison de ressembler à celui d'une vidéo. Les
+// mélanger rendait les deux illisibles.
 export const SHORT_PATHS: Readonly<Record<string, ShortPath>> = {
-  dm: { source: "tiktok", content: "video_1_negociation" },
+  // Mission #124 — RÉPARATION. Ce chemin était l'ancien raccourci de la
+  // vidéo 1 TikTok (#106). Il sert depuis le 29/09 de lien envoyé en réponse
+  // aux DM de prospection Instagram, et aucune vidéo ne l'a jamais dicté : les
+  // vidéos se terminent sur « negoscore.fr » seul. Trois visites réelles de
+  // créatrices Instagram étaient donc déjà rangées sous TikTok.
+  dm: { source: "instagram", content: "dm_prospection" },
+  // La vidéo 1 récupère un chemin à elle, que `dm` lui tenait lieu. Les quatre
+  // autres avaient déjà le leur.
+  negociation: { source: "tiktok", content: "video_1_negociation" },
   verdicts: { source: "tiktok", content: "video_2_verdicts" },
   produits: { source: "tiktok", content: "video_3_produits" },
   capture: { source: "tiktok", content: "video_4_capture" },

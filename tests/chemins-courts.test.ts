@@ -18,8 +18,11 @@ function params(location: string): Record<string, string> {
 }
 
 // Mission #119 — le septième chemin, et le premier qui ne vient pas de TikTok.
+// Mission #124 — le huitième, et /dm change de source : il sert aux DM de
+// prospection Instagram, pas à la vidéo 1, qui récupère /negociation.
 const ATTENDU: Array<[string, string, string]> = [
-  ["/dm", "tiktok", "video_1_negociation"],
+  ["/dm", "instagram", "dm_prospection"],
+  ["/negociation", "tiktok", "video_1_negociation"],
   ["/verdicts", "tiktok", "video_2_verdicts"],
   ["/produits", "tiktok", "video_3_produits"],
   ["/capture", "tiktok", "video_4_capture"],
@@ -28,7 +31,7 @@ const ATTENDU: Array<[string, string, string]> = [
   ["/insta", "instagram", "bio_instagram"],
 ];
 
-describe("les sept chemins redirigent vers l'accueil, UTM posés par le serveur", () => {
+describe("les huit chemins redirigent vers l'accueil, UTM posés par le serveur", () => {
   it.each(ATTENDU)("%s → accueil avec utm_source=%s et utm_content=%s", async (path, source, content) => {
     const response = await call(path);
     expect(response.status).toBe(307);
@@ -42,6 +45,46 @@ describe("les sept chemins redirigent vers l'accueil, UTM posés par le serveur"
       utm_campaign: "lancement",
       utm_content: content,
     });
+  });
+
+  // Mission #124 — LE DÉFAUT QUI EST ARRIVÉ. /dm a été créé en #106 comme
+  // raccourci de la vidéo 1 TikTok, puis réemployé le 29/09 comme lien de
+  // réponse aux DM Instagram, sans que sa ligne de table ne bouge. Trois
+  // visites réelles de créatrices Instagram sont parties sous utm_source=tiktok
+  // avant qu'on s'en aperçoive. Elles restent en base : on ne réécrit pas une
+  // mesure passée.
+  it("le lien envoyé en DM n'est plus attribué à TikTok", async () => {
+    const posted = params((await call("/dm")).headers.get("location") as string);
+    expect(posted.utm_source).toBe("instagram");
+    expect(posted.utm_source).not.toBe("tiktok");
+    // Et il ne porte plus le contenu d'une vidéo : ce n'est pas du trafic vidéo.
+    expect(posted.utm_content).toBe("dm_prospection");
+    expect(posted.utm_content).not.toContain("video");
+    // La table est la seule source : la ligne elle-même est vérifiée.
+    expect(SHORT_PATHS.dm).toEqual({ source: "instagram", content: "dm_prospection" });
+  });
+
+  it("la vidéo 1 a repris un chemin à elle", async () => {
+    const response = await call("/negociation");
+    expect(response.status).toBe(307);
+    const posted = params(response.headers.get("location") as string);
+    expect(posted.utm_content).toBe("video_1_negociation");
+    expect(posted.utm_source).toBe("tiktok");
+    // Les cinq vidéos ont chacune leur chemin, et aucun ne partage son contenu.
+    const videos = Object.values(SHORT_PATHS).filter((entry) => entry.content.startsWith("video_"));
+    expect(videos).toHaveLength(5);
+    expect(new Set(videos.map((entry) => entry.content)).size).toBe(5);
+  });
+
+  it("chaque source du cockpit garde ses chemins séparés", () => {
+    const parSource = Object.values(SHORT_PATHS).reduce<Record<string, string[]>>((acc, entry) => {
+      (acc[entry.source] ??= []).push(entry.content);
+      return acc;
+    }, {});
+    expect(Object.keys(parSource).sort()).toEqual(["instagram", "tiktok"]);
+    // Deux chemins Instagram, qui ne disent pas la même chose : la bio et la
+    // prospection directe n'amènent pas les mêmes gens.
+    expect(parSource.instagram.sort()).toEqual(["bio_instagram", "dm_prospection"]);
   });
 
   it("le trafic Instagram ne se range pas sous TikTok", async () => {
@@ -120,7 +163,7 @@ describe("la table est la seule source", () => {
 });
 
 describe("ce ne sont pas des pages", () => {
-  it("aucun des sept n'est dans le sitemap", () => {
+  it("aucun des huit n'est dans le sitemap", () => {
     const urls = sitemap().map((entry) => new URL(entry.url).pathname.replace(/\/+$/, ""));
     for (const path of Object.keys(SHORT_PATHS)) expect(urls, path).not.toContain(`/${path}`);
   });
