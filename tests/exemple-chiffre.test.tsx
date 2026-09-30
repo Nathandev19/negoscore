@@ -215,13 +215,41 @@ describe("la page d'exemple mène à l'analyse", () => {
     for (const verrou of mur) expect(html.indexOf(verrou), verrou).toBeGreaterThan(-1);
   });
 
-  it("l'appel à l'action arrive à la FIN du résultat, pas avant", async () => {
+  // Mission #127 — L'APPEL À L'ACTION PASSE DEVANT LE MUR.
+  //
+  // #126 l'avait mis tout à la fin, après le bouton « Débloquer ». Or le but
+  // du produit n'est pas de collecter des adresses : c'est qu'une vraie offre
+  // soit collée. Zéro analyse réelle depuis le lancement. L'appel à l'action
+  // était donc placé derrière l'obstacle qui le concurrence.
+  it("l'appel à l'action arrive après tout le gratuit, et AVANT le mur", async () => {
     const html = await renderDemo();
     const cta = html.indexOf("Analyser mon deal");
-    expect(cta).toBeGreaterThan(html.indexOf("Ce qu&#x27;il faut négocier"));
-    expect(cta).toBeGreaterThan(html.indexOf("Bon à savoir côté loi française"));
-    // Et après le mur d'email : on montre tout, on demande, puis on invite.
-    expect(cta).toBeGreaterThan(html.indexOf("Ton message prêt à envoyer"));
+    expect(cta).toBeGreaterThan(-1);
+    // Après tout ce qu'on donne : la démonstration est faite avant d'inviter.
+    for (const gratuit of ["Ce qu&#x27;il faut négocier", "Le deal proposé", "Red flags", "Ce qui est bon", "Bon à savoir côté loi française"]) {
+      expect(html.indexOf(gratuit), gratuit).toBeLessThan(cta);
+    }
+    // Et avant le premier bloc verrouillé, en état verrouillé.
+    for (const verrou of ["Ta contre-offre chiffrée", "Ton message prêt à envoyer", "Débloquer — ton email suffit"]) {
+      expect(cta, verrou).toBeLessThan(html.indexOf(verrou));
+    }
+  });
+
+  // Mission #127 — les éléments passés en propriété portent une clé.
+  // La vraie page de résultat le fait déjà pour `afterMessage` ; la page
+  // d'exemple ne le faisait pour aucun des siens, et React le signalait à
+  // chaque chargement en développement.
+  it("chaque élément passé à AnalysisResult porte une clé explicite", () => {
+    const source = readFileSync("app/analyse/demo/page.tsx", "utf8");
+    for (const [prop, cle] of [
+      ["above", 'key="offre-source"'],
+      ["before", 'key="avertissement"'],
+      ["beforeUnlock", 'key="analyser-la-tienne"'],
+    ]) {
+      expect(source, prop).toContain(cle);
+    }
+    // Aucun élément passé sans clé : les trois propriétés en ont une.
+    expect(source).toContain("above={<SampleOfferQuote key=");
   });
 });
 

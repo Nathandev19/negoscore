@@ -64,6 +64,7 @@ export function AnalysisResult({
   unlockHref,
   above,
   before,
+  beforeUnlock,
   children,
   retry,
   afterMessage,
@@ -78,6 +79,16 @@ export function AnalysisResult({
   // une vraie analyse : rien ne change pour elle.
   above?: ReactNode;
   before?: ReactNode;
+  // Mission #127 — entre ce qui est gratuit et ce qui demande un email.
+  //
+  // L'objectif n'est pas de collecter des adresses : c'est qu'une créatrice
+  // colle une VRAIE offre. Placé après le bouton « Débloquer », l'appel à
+  // l'action était derrière l'obstacle qui le concurrence. Il passe donc
+  // avant — sans toucher à l'ordre du reste, qui reste celui de #126.
+  //
+  // Absent sur une vraie analyse : elle n'a personne à inviter à coller une
+  // offre, la personne vient de le faire.
+  beforeUnlock?: ReactNode;
   // Contenu sous les blocs (carte, avis, suppression).
   children?: ReactNode;
   // Offre incomplète : relance gratuite, juste sous la liste de ce qui manque.
@@ -248,6 +259,7 @@ export function AnalysisResult({
         <RedFlags items={redFlags.items} origin={redFlags.origin} />
         <GoodPoints items={goodPoints.items} origin={goodPoints.origin} />
         <LegalNotice legal={legal} />
+        {beforeUnlock}
         {origin.counter_offer ? (
           <CounterOffer
             offer={origin.counter_offer}

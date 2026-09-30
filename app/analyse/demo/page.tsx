@@ -12,6 +12,10 @@ import { sampleAnalysis } from "@/lib/sample-analysis";
 
 export const metadata: Metadata = publicPageMetadata("/analyse/demo");
 
+// Clés explicites sur les éléments passés en propriété (mission #127) : ce sont
+// des éléments SERVEUR remis à un composant client, et React signale sinon une
+// clé manquante en développement. Même raison, et même forme, que la clé
+// « echange » de app/analyse/resultat/[id]/page.tsx.
 export default function DemoResultPage() {
   return (
     <>
@@ -26,9 +30,9 @@ export default function DemoResultPage() {
       <AnalysisResult
         analysis={lockAnalysis(sampleAnalysis)}
         unlockHref="/connexion?next=%2Fanalyse"
-        above={<SampleOfferQuote />}
+        above={<SampleOfferQuote key="offre-source" />}
         before={
-          <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
+          <p key="avertissement" role="note" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
             Exemple, pas une vraie analyse : l&apos;offre est inventée, mais la fourchette, le score et la contre-offre
             sont calculés par le moteur actuel, comme pour ton offre. Pour chiffrer ton offre, colle-la sur la page{" "}
             {/* Mission #126 — c'était du TEXTE. La phrase disait où aller sans
@@ -40,24 +44,33 @@ export default function DemoResultPage() {
             .
           </p>
         }
-      >
-        {/* Mission #126 — LA PAGE MÈNE ENFIN QUELQUE PART.
-            Depuis #125 elle est une porte d'entrée : /exemple y conduit, et
-            c'est le lien qui part en DM. Elle n'avait pourtant aucun appel à
-            l'action dans son corps — il fallait remonter à la barre de
-            navigation, ou sur mobile ouvrir le menu. Il est ici, à la fin du
-            résultat, une fois la démonstration faite. */}
-        <section aria-label="Analyser ton offre" className="flex flex-col gap-3 border-t-4 border-marque pt-5">
-          <h2 className="text-h2 font-bold tracking-tight">Et la tienne, elle vaut combien&nbsp;?</h2>
-          <p className="measure">
-            Colle le message que la marque t&apos;a envoyé : tu obtiens le même résultat, sur ton offre à toi.
-            C&apos;est gratuit et sans compte.
-          </p>
-          <Button asChild size="lg" className="mt-1 h-12 w-full text-base sm:w-fit">
-            <Link href="/analyse">Analyser mon deal</Link>
-          </Button>
-        </section>
-      </AnalysisResult>
+        beforeUnlock={
+          /* Mission #126 — LA PAGE MÈNE ENFIN QUELQUE PART.
+             Depuis #125 elle est une porte d'entrée : /exemple y conduit, et
+             c'est le lien qui part en DM. Elle n'avait pourtant aucun appel à
+             l'action dans son corps — il fallait remonter à la barre de
+             navigation, ou sur mobile ouvrir le menu.
+
+             Mission #127 — et il passe AVANT le mur d'email. Le but du produit
+             n'est pas de collecter des adresses, c'est qu'une vraie offre soit
+             collée : le placer après « Débloquer » le mettait derrière
+             l'obstacle qui le concurrence. */
+          <section
+            key="analyser-la-tienne"
+            aria-label="Analyser ton offre"
+            className="flex flex-col gap-3 border-t-4 border-marque pt-5"
+          >
+            <h2 className="text-h2 font-bold tracking-tight">Et la tienne, elle vaut combien&nbsp;?</h2>
+            <p className="measure">
+              Colle le message que la marque t&apos;a envoyé : tu obtiens le même résultat, sur ton offre à toi.
+              C&apos;est gratuit et sans compte.
+            </p>
+            <Button asChild size="lg" className="mt-1 h-12 w-full text-base sm:w-fit">
+              <Link href="/analyse">Analyser mon deal</Link>
+            </Button>
+          </section>
+        }
+      />
       <SiteFooter />
     </>
   );
