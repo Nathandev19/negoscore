@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { publicPageMetadata } from "@/lib/seo";
 import { ViewPixel } from "@/components/analytics/view-pixel";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { SampleOfferQuote } from "@/components/result/sample-offer-quote";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
 import { lockAnalysis } from "@/lib/analysis/lock";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 
@@ -28,11 +30,34 @@ export default function DemoResultPage() {
         before={
           <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
             Exemple, pas une vraie analyse : l&apos;offre est inventée, mais la fourchette, le score et la contre-offre
-            sont calculés par le moteur actuel, comme pour ton offre. Pour chiffrer ton offre, colle-la sur la page
-            Analyser un deal.
+            sont calculés par le moteur actuel, comme pour ton offre. Pour chiffrer ton offre, colle-la sur la page{" "}
+            {/* Mission #126 — c'était du TEXTE. La phrase disait où aller sans
+                y mener : les seuls liens vers /analyse étaient ceux de la
+                navigation et du pied de page. Le texte, lui, ne change pas. */}
+            <Link href="/analyse" className="link">
+              Analyser un deal
+            </Link>
+            .
           </p>
         }
-      />
+      >
+        {/* Mission #126 — LA PAGE MÈNE ENFIN QUELQUE PART.
+            Depuis #125 elle est une porte d'entrée : /exemple y conduit, et
+            c'est le lien qui part en DM. Elle n'avait pourtant aucun appel à
+            l'action dans son corps — il fallait remonter à la barre de
+            navigation, ou sur mobile ouvrir le menu. Il est ici, à la fin du
+            résultat, une fois la démonstration faite. */}
+        <section aria-label="Analyser ton offre" className="flex flex-col gap-3 border-t-4 border-marque pt-5">
+          <h2 className="text-h2 font-bold tracking-tight">Et la tienne, elle vaut combien&nbsp;?</h2>
+          <p className="measure">
+            Colle le message que la marque t&apos;a envoyé : tu obtiens le même résultat, sur ton offre à toi.
+            C&apos;est gratuit et sans compte.
+          </p>
+          <Button asChild size="lg" className="mt-1 h-12 w-full text-base sm:w-fit">
+            <Link href="/analyse">Analyser mon deal</Link>
+          </Button>
+        </section>
+      </AnalysisResult>
       <SiteFooter />
     </>
   );

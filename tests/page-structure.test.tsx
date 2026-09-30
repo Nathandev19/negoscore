@@ -65,17 +65,27 @@ function detailsAround(markup: string, needle: string): { open: boolean } {
 }
 
 describe("étape 3 — l'ordre de la page", () => {
-  it("1. ce sur quoi elle doit agir vient avant ce qui le commente", () => {
+  // Mission #126 — L'ORDRE S'INVERSE, ET C'EST UN CHOIX.
+  //
+  // La mission #097 avait placé la contre-offre et le message AVANT les
+  // conseils : « ce sur quoi elle doit agir vient avant ce qui le commente ».
+  // Pour qui n'a pas encore donné son email, ces deux blocs sont VERROUILLÉS —
+  // ils apparaissaient donc au milieu de la page et laissaient croire que tout
+  // ce qui suit l'était aussi. Or tout ce qui suit est gratuit : les cinq
+  // points à négocier avec leurs montants, les signaux, les repères
+  // juridiques. L'ordre devient : tout ce qu'on donne, puis la seule chose qui
+  // demande un email.
+  it("1. tout ce qui est gratuit vient avant ce qui demande un email", () => {
     const markup = page();
     const order = [
       "Ce que ça vaut",
-      "Ta contre-offre chiffrée",
-      "Ton message prêt à envoyer",
       "Ce qu'il faut négocier",
       "Le deal proposé",
       "Red flags",
       "Ce qui est bon",
       "Bon à savoir côté loi française",
+      "Ta contre-offre chiffrée",
+      "Ton message prêt à envoyer",
     ];
     const positions = order.map((title) => at(markup, title));
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
@@ -83,10 +93,20 @@ describe("étape 3 — l'ordre de la page", () => {
     expect(at(markup, "Résultat de l'analyse de ton deal")).toBeLessThan(positions[0]);
   });
 
-  it("1 bis. la suite de l'échange reste collée au message, avant les commentaires", () => {
+  it("1 bis. les deux blocs verrouillés arrivent APRÈS les repères juridiques", () => {
+    const markup = page();
+    for (const gratuit of ["Ce qu'il faut négocier", "Red flags", "Bon à savoir côté loi française"]) {
+      expect(at(markup, gratuit), gratuit).toBeLessThan(at(markup, "Ta contre-offre chiffrée"));
+      expect(at(markup, gratuit), gratuit).toBeLessThan(at(markup, "Ton message prêt à envoyer"));
+    }
+  });
+
+  it("1 ter. la suite de l'échange reste collée au message", () => {
     const markup = page({ afterMessage: <section id="echange">La suite de l&apos;échange</section> });
+    // Ce qu'on fait APRÈS avoir envoyé le message n'a de sens qu'à côté de lui.
     expect(markup.indexOf('id="echange"')).toBeGreaterThan(at(markup, "Ton message prêt à envoyer"));
-    expect(markup.indexOf('id="echange"')).toBeLessThan(at(markup, "Ce qu'il faut négocier"));
+    // Et elle descend avec lui, sous les conseils.
+    expect(markup.indexOf('id="echange"')).toBeGreaterThan(at(markup, "Ce qu'il faut négocier"));
   });
 });
 

@@ -157,6 +157,74 @@ describe("l'offre source est visible sur la page d'exemple", () => {
   });
 });
 
+// Mission #126 — LA PAGE D'EXEMPLE DOIT MENER QUELQUE PART.
+//
+// Constat de #125 : les trois seuls liens vers /analyse étaient ceux de la
+// barre de navigation et du pied de page. Le seul appel à l'action du corps
+// menait à /connexion. Depuis #125, cette page est la porte d'entrée envoyée
+// en DM : elle ne peut pas être un cul-de-sac.
+describe("la page d'exemple mène à l'analyse", () => {
+  const renderDemo = async () => {
+    const { default: Page } = await import("@/app/analyse/demo/page");
+    return renderToStaticMarkup(Page());
+  };
+
+  it("le corps de la page porte un lien vers /analyse, hors navigation et pied de page", async () => {
+    const html = await renderDemo();
+    // La navigation et le pied de page sont retirés : ce qui reste est le corps.
+    const corps = html
+      .replace(/<header[\s\S]*?<\/header>/g, "")
+      .replace(/<footer[\s\S]*?<\/footer>/g, "");
+    const liens = [...corps.matchAll(/<a [^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => ({
+      href: m[1],
+      texte: m[2].replace(/<[^>]+>/g, "").replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ").trim(),
+    }));
+    const versAnalyse = liens.filter((lien) => lien.href === "/analyse");
+    expect(versAnalyse.length, JSON.stringify(liens)).toBeGreaterThanOrEqual(2);
+    // Un appel à l'action, formulé comme une invitation à coller son offre.
+    expect(versAnalyse.map((lien) => lien.texte)).toContain("Analyser mon deal");
+  });
+
+  it("« Analyser un deal » est un lien dans le paragraphe d'avertissement", async () => {
+    const html = await renderDemo();
+    // Le texte ne change pas : c'est le balisage autour qui change.
+    const lisible = html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ");
+    expect(lisible).toContain("Pour chiffrer ton offre, colle-la sur la page Analyser un deal .");
+    expect(html).toMatch(/<a [^>]*href="\/analyse"[^>]*>\s*Analyser un deal\s*<\/a>/);
+  });
+
+  // Mission #126 — VU PAR QUELQU'UN QUI N'A PAS DONNÉ SON EMAIL.
+  //
+  // tests/page-structure.test.tsx vérifie l'ordre sur une analyse DÉBLOQUÉE :
+  // les deux blocs y sont remplis, et les versions verrouillées ne s'y rendent
+  // jamais. C'est pourtant l'état verrouillé qui posait problème — le mur
+  // arrivait au milieu de la page et laissait croire que la suite l'était
+  // aussi. La page d'exemple est le seul endroit où on peut le vérifier.
+  it("le mur d'email arrive après TOUT ce qui est gratuit", async () => {
+    const html = await renderDemo();
+    const mur = ["Ta contre-offre chiffrée", "Ton message prêt à envoyer", "Débloquer — ton email suffit"];
+    const gratuit = ["Ce qu&#x27;il faut négocier", "Le deal proposé", "Red flags", "Ce qui est bon", "Bon à savoir côté loi française"];
+    for (const bloc of gratuit) {
+      const position = html.indexOf(bloc);
+      expect(position, bloc).toBeGreaterThan(-1);
+      for (const verrou of mur) expect(position, `${bloc} avant ${verrou}`).toBeLessThan(html.indexOf(verrou));
+    }
+    // Et le bouton reste là, avec sa destination : on ne l'a pas perdu en
+    // déplaçant le bloc.
+    expect(html).toMatch(/href="\/connexion\?next=%2Fanalyse"/);
+    for (const verrou of mur) expect(html.indexOf(verrou), verrou).toBeGreaterThan(-1);
+  });
+
+  it("l'appel à l'action arrive à la FIN du résultat, pas avant", async () => {
+    const html = await renderDemo();
+    const cta = html.indexOf("Analyser mon deal");
+    expect(cta).toBeGreaterThan(html.indexOf("Ce qu&#x27;il faut négocier"));
+    expect(cta).toBeGreaterThan(html.indexOf("Bon à savoir côté loi française"));
+    // Et après le mur d'email : on montre tout, on demande, puis on invite.
+    expect(cta).toBeGreaterThan(html.indexOf("Ton message prêt à envoyer"));
+  });
+});
+
 describe("rien d'autre n'a bougé", () => {
   it("les guides gardent leur appel à l'action principal", async () => {
     for (const guide of GUIDES) {

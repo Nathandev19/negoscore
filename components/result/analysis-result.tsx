@@ -234,9 +234,20 @@ export function AnalysisResult({
             <TierSelector tier={analysis.profile_tier} changeable={tierChangeAvailable(stored)} onChange={chooseTier} />
           </Estimate>
         )}
-        {/* Mission #097 — ce sur quoi elle doit agir vient avant ce qui le
-            commente : contre-offre et message d'abord, avec la suite de
-            l'échange ; les conseils et le commentaire ensuite. */}
+        {/* Mission #126 — TOUT CE QU'ON DONNE, PUIS CE QUI DEMANDE UN EMAIL.
+            La contre-offre et le message venaient AVANT les points à négocier,
+            les signaux et les repères juridiques (ordre décidé en #097 : « ce
+            sur quoi elle doit agir vient avant ce qui le commente »). Pour qui
+            n'a pas encore donné son email, cet ordre montrait deux blocs
+            verrouillés au milieu de la page et donnait l'impression que la
+            suite l'était aussi — alors que tout ce qui suit est gratuit.
+            L'ordre est le même pour une vraie analyse : c'est la même logique,
+            et deux ordres selon l'état rendraient la page imprévisible. */}
+        <NegotiateList items={negotiate.items} origin={negotiate.origin} />
+        <DealRecap deal={currentDeal} updatedAtTurn={negotiated?.turn ?? null} />
+        <RedFlags items={redFlags.items} origin={redFlags.origin} />
+        <GoodPoints items={goodPoints.items} origin={goodPoints.origin} />
+        <LegalNotice legal={legal} />
         {origin.counter_offer ? (
           <CounterOffer
             offer={origin.counter_offer}
@@ -255,12 +266,9 @@ export function AnalysisResult({
           <LockedMessagePlaceholder />
         )}
         {locked ? <UnlockCta href={unlockHref} /> : null}
+        {/* La suite de l'échange reste collée au message : c'est ce qu'on fait
+            APRÈS l'avoir envoyé, et elle n'aurait aucun sens ailleurs. */}
         {afterMessage}
-        <NegotiateList items={negotiate.items} origin={negotiate.origin} />
-        <DealRecap deal={currentDeal} updatedAtTurn={negotiated?.turn ?? null} />
-        <RedFlags items={redFlags.items} origin={redFlags.origin} />
-        <GoodPoints items={goodPoints.items} origin={goodPoints.origin} />
-        <LegalNotice legal={legal} />
         {children}
         </div>
       </main>
