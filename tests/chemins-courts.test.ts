@@ -29,22 +29,64 @@ const ATTENDU: Array<[string, string, string]> = [
   ["/niveau", "tiktok", "video_5_niveau"],
   ["/tiktok", "tiktok", "bio"],
   ["/insta", "instagram", "bio_instagram"],
+  // Mission #125 — le neuvième, et le premier à ne pas mener à l'accueil.
+  ["/exemple", "instagram", "dm_exemple"],
 ];
 
-describe("les huit chemins redirigent vers l'accueil, UTM posés par le serveur", () => {
-  it.each(ATTENDU)("%s → accueil avec utm_source=%s et utm_content=%s", async (path, source, content) => {
+// La destination attendue de chaque chemin. Tous l'accueil, sauf /exemple.
+const DESTINATION: Record<string, string> = { "/exemple": "/analyse/demo" };
+const destination = (path: string) => DESTINATION[path] ?? "/";
+
+describe("les neuf chemins redirigent avec les UTM posés par le serveur", () => {
+  it.each(ATTENDU)("%s → utm_source=%s et utm_content=%s", async (path, source, content) => {
     const response = await call(path);
     expect(response.status).toBe(307);
     const location = response.headers.get("location");
     expect(location).not.toBeNull();
     const target = new URL(location as string, ORIGIN);
-    expect(target.pathname).toBe("/");
+    expect(target.pathname, path).toBe(destination(path));
     expect(params(location as string)).toEqual({
       utm_source: source,
       utm_medium: "organic_social",
       utm_campaign: "lancement",
       utm_content: content,
     });
+  });
+
+  // Mission #125 — DEUX PORTES D'ENTRÉE, PAS UNE.
+  //
+  // Depuis le lancement, aucun visiteur n'a lancé d'analyse : l'accueil demande
+  // de coller le message d'une marque avant d'avoir rien montré. /exemple mène
+  // à un résultat complet, visible dès l'arrivée. /dm reste le lien « je veux
+  // tester la mienne ». Les deux portent un utm_content distinct : c'est la
+  // seule façon de savoir laquelle des deux fait entrer quelqu'un.
+  it("/exemple mène à la page d'exemple, pas à l'accueil", async () => {
+    const response = await call("/exemple");
+    expect(response.status).toBe(307);
+    const target = new URL(response.headers.get("location") as string, ORIGIN);
+    expect(target.pathname).toBe("/analyse/demo");
+    expect(params(target.toString())).toMatchObject({ utm_source: "instagram", utm_content: "dm_exemple" });
+  });
+
+  it("/dm continue de mener à l'accueil, et les deux ne se confondent pas", async () => {
+    const dm = new URL((await call("/dm")).headers.get("location") as string, ORIGIN);
+    const exemple = new URL((await call("/exemple")).headers.get("location") as string, ORIGIN);
+    expect(dm.pathname).toBe("/");
+    expect(dm.searchParams.get("utm_content")).toBe("dm_prospection");
+    // Même source, deux contenus : on pourra comparer les deux entrées.
+    expect(dm.searchParams.get("utm_source")).toBe(exemple.searchParams.get("utm_source"));
+    expect(dm.searchParams.get("utm_content")).not.toBe(exemple.searchParams.get("utm_content"));
+    expect(dm.pathname).not.toBe(exemple.pathname);
+  });
+
+  it("une destination ne s'écrit que dans la table, jamais ailleurs", () => {
+    const table = readFileSync("lib/acquisition/chemins.ts", "utf8");
+    expect(table).toContain('to: "/analyse/demo"');
+    // Le proxy ne connaît aucune adresse de destination : il lit la table.
+    expect(readFileSync("proxy.ts", "utf8")).not.toContain("/analyse/demo");
+    // Et les huit autres chemins n'ont pas de destination : ils gardent
+    // l'accueil par défaut.
+    expect([...table.matchAll(/to: "/g)]).toHaveLength(1);
   });
 
   // Mission #124 — LE DÉFAUT QUI EST ARRIVÉ. /dm a été créé en #106 comme
@@ -82,9 +124,9 @@ describe("les huit chemins redirigent vers l'accueil, UTM posés par le serveur"
       return acc;
     }, {});
     expect(Object.keys(parSource).sort()).toEqual(["instagram", "tiktok"]);
-    // Deux chemins Instagram, qui ne disent pas la même chose : la bio et la
-    // prospection directe n'amènent pas les mêmes gens.
-    expect(parSource.instagram.sort()).toEqual(["bio_instagram", "dm_prospection"]);
+    // Trois chemins Instagram, qui ne disent pas la même chose : la bio, la
+    // prospection directe, et le lien qui montre l'exemple chiffré (#125).
+    expect(parSource.instagram.sort()).toEqual(["bio_instagram", "dm_exemple", "dm_prospection"]);
   });
 
   it("le trafic Instagram ne se range pas sous TikTok", async () => {
@@ -163,7 +205,7 @@ describe("la table est la seule source", () => {
 });
 
 describe("ce ne sont pas des pages", () => {
-  it("aucun des huit n'est dans le sitemap", () => {
+  it("aucun des neuf n'est dans le sitemap", () => {
     const urls = sitemap().map((entry) => new URL(entry.url).pathname.replace(/\/+$/, ""));
     for (const path of Object.keys(SHORT_PATHS)) expect(urls, path).not.toContain(`/${path}`);
   });

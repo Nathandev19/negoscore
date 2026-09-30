@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import sampleExtraction from "@/lib/fixtures/sample-extraction.json";
+import { SAMPLE_OFFER, SAMPLE_OFFER_SOURCE, SAMPLE_OFFER_TEXT } from "@/lib/fixtures/sample-offer";
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import type { Analysis } from "@/lib/schema";
 
@@ -85,6 +87,73 @@ describe("le lien vers l'exemple chiffré", () => {
     const source = readFileSync("app/analyse/demo/page.tsx", "utf8");
     expect(source).toContain("Exemple, pas une vraie analyse");
     expect(source).toContain("l&apos;offre est inventée");
+  });
+});
+
+// Mission #125 — LE MESSAGE QUI A PRODUIT LE VERDICT.
+//
+// La page affichait « 300 € proposés, ces droits en valent 430 à 900 » sans
+// jamais montrer ce qu'elle avait lu. La promesse du produit est « je lis
+// l'offre et je la chiffre » : sans l'offre à l'écran, le chiffre est une
+// affirmation, pas une démonstration.
+describe("l'offre source est visible sur la page d'exemple", () => {
+  // La page d'exemple est rendue à part : elle ne porte pas le lien du
+  // vocabulaire, et le test de #119 balaie FICHIER en l'exigeant.
+  const renderDemo = async () => {
+    const { default: Page } = await import("@/app/analyse/demo/page");
+    return renderToStaticMarkup(Page());
+  };
+  // Le HTML échappe les apostrophes : les positions se comparent sur le texte
+  // lisible, celui qu'on lit à l'écran.
+  const lisible = (html: string) =>
+    html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace(/&#x2019;/g, "’").replace(/\s+/g, " ");
+
+  it("le message reçu est affiché, en entier, au-dessus du score", async () => {
+    const html = await renderDemo();
+    const texte = lisible(html);
+    expect(texte).toContain(SAMPLE_OFFER.body);
+    // Au-DESSUS du score : dans l'ordre de lecture, avant le bandeau de verdict.
+    expect(texte.indexOf(SAMPLE_OFFER.body)).toBeLessThan(texte.indexOf("/100"));
+    // Présenté comme un message reçu, pas comme un paragraphe de page web.
+    expect(html).toMatch(/<blockquote[^>]*>[^<]*Bonjour/);
+    expect(texte).toContain("Le message reçu");
+  });
+
+  it("ce message n'est pas réécrit : c'est la fixture d'évaluation d'origine", () => {
+    const source = readFileSync(SAMPLE_OFFER_SOURCE, "utf8").trimEnd();
+    expect(SAMPLE_OFFER_TEXT).toBe(source);
+    // Et tous ses termes se retrouvent dans le deal extrait qui produit le
+    // verdict : ce n'est pas un texte d'illustration posé à côté.
+    const deal = sampleExtraction.deal;
+    expect(SAMPLE_OFFER.body).toContain(`${deal.payment.amount_eur}€`);
+    expect(SAMPLE_OFFER.body).toContain(`${deal.deliverables[0].quantity} vidéos`);
+    expect(SAMPLE_OFFER.body).toContain(`${deal.usage.duration_months} mois`);
+    expect(SAMPLE_OFFER.body).toContain(`${deal.payment.terms_days} jours`);
+  });
+
+  it("la mention « offre inventée » reste, et au premier contact", async () => {
+    const texte = lisible(await renderDemo());
+    // Deux fois : à côté du message, et dans le paragraphe complet plus bas.
+    expect(texte).toContain("Exemple — offre inventée");
+    expect(texte).toContain("Exemple, pas une vraie analyse : l'offre est inventée");
+    // La première arrive AVANT le message : personne ne lit l'offre sans savoir.
+    expect(texte.indexOf("offre inventée")).toBeLessThan(texte.indexOf(SAMPLE_OFFER.body));
+  });
+
+  it("le résultat n'est pas repoussé : le score suit immédiatement le message", async () => {
+    const html = await renderDemo();
+    const texte = lisible(html);
+    // Rien d'autre entre le message et le score que la phrase de verdict.
+    const entre = texte.slice(texte.indexOf(SAMPLE_OFFER.body) + SAMPLE_OFFER.body.length, texte.indexOf("/100"));
+    expect(entre.trim().length, entre).toBeLessThan(120);
+    // La signature n'est pas affichée : elle nomme la marque autrement que
+    // « Le deal proposé » (voir lib/fixtures/sample-offer.ts). Comparé sur le
+    // TEXTE LISIBLE : le HTML échappe l'apostrophe, et la chercher dans le
+    // balisage brut ne prouverait rien.
+    expect(texte).not.toContain(SAMPLE_OFFER.signature);
+    expect(texte).not.toContain("Aubépine");
+    // Et le nom que la page affiche vraiment est celui de l'extraction.
+    expect(texte).toContain("Marque Exemple");
   });
 });
 

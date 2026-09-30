@@ -22,7 +22,15 @@ export const ACQUISITION_UTM = {
   campaign: "lancement",
 } as const;
 
-export type ShortPath = { source: string; content: string };
+// Mission #125 — une ligne peut désormais porter sa DESTINATION. Jusqu'ici
+// tous les chemins menaient à l'accueil, parce qu'ils sortaient tous d'une
+// vidéo qui disait « va sur negoscore.fr ». Le lien envoyé en DM, lui, doit
+// pouvoir arriver directement sur l'exemple chiffré. `to` absent = l'accueil,
+// donc les huit chemins existants ne changent pas d'un octet.
+export type ShortPath = { source: string; content: string; to?: string };
+
+// Destination par défaut : l'accueil.
+const DEFAULT_TARGET = "/";
 
 // chemin (sans barre oblique, en minuscules) → le réseau d'où vient la visite,
 // et ce qui l'a produite.
@@ -63,6 +71,18 @@ export const SHORT_PATHS: Readonly<Record<string, ShortPath>> = {
   // lignes du cockpit, mais deux chemins qui portent le même utm_content
   // deviennent indiscernables le jour où on ne regarde que cette colonne.
   insta: { source: "instagram", content: "bio_instagram" },
+  // Mission #125 — LE SEUL CHEMIN QUI NE MÈNE PAS À L'ACCUEIL.
+  //
+  // Constat : ~1 500 vues TikTok et 10 DM Instagram n'ont produit aucune
+  // analyse. L'accueil demande, comme première action, de coller le message
+  // d'une marque — plusieurs minutes d'effort réclamées avant d'avoir rien
+  // montré. /analyse/demo, elle, affiche un résultat complet dès l'arrivée,
+  // sans chargement. C'est cette page-là qu'on envoie en DM.
+  //
+  // `/dm` ne bouge pas : il reste le lien « je veux tester la mienne ». Les
+  // deux portent un utm_content distinct, pour qu'on puisse enfin comparer
+  // deux façons d'entrer dans le produit.
+  exemple: { source: "instagram", content: "dm_exemple", to: "/analyse/demo" },
 };
 
 // Un chemin tapé à la main ne respecte ni la casse ni la barre oblique finale :
@@ -88,5 +108,7 @@ export function shortPathTarget(pathname: string): string | null {
     utm_campaign: ACQUISITION_UTM.campaign,
     utm_content: entry.content,
   });
-  return `/?${params.toString()}`;
+  // La destination vient de la table, elle aussi : aucune condition ailleurs,
+  // aucune adresse écrite dans le proxy.
+  return `${entry.to ?? DEFAULT_TARGET}?${params.toString()}`;
 }

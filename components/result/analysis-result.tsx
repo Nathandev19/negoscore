@@ -62,6 +62,7 @@ const UNLOCKED_KEY = "debloque";
 export function AnalysisResult({
   analysis: stored,
   unlockHref,
+  above,
   before,
   children,
   retry,
@@ -72,6 +73,10 @@ export function AnalysisResult({
   analysis: ResultView;
   unlockHref: string;
   // Contenu au-dessus des blocs de lecture (bandeau d'exemple).
+  // Mission #125 — rendu DANS le bandeau, au-dessus du score. Sert à montrer
+  // le message de marque qui a produit le verdict (page d'exemple). Absent sur
+  // une vraie analyse : rien ne change pour elle.
+  above?: ReactNode;
   before?: ReactNode;
   // Contenu sous les blocs (carte, avis, suppression).
   children?: ReactNode;
@@ -186,6 +191,7 @@ export function AnalysisResult({
         <section aria-label="Verdict" className="on-marque grain bg-marque text-creme">
           <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-10 sm:px-6 lg:pt-10 lg:pb-14">
             <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>
+            {above}
             <ScoreBand key={replay.count} analysis={analysis} from={replay.from} showTier={!incomplete} />
           </div>
         </section>
