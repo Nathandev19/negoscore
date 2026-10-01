@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
-import { ACQUISITION_UTM, SHORT_PATHS, shortPathTarget } from "@/lib/acquisition/chemins";
+import { ACQUISITION_UTM, servedAttribution, shortPathAttribution, shortPathIsServed, SHORT_PATHS, shortPathTarget } from "@/lib/acquisition/chemins";
 import { proxy } from "@/proxy";
 import sitemap from "@/app/sitemap";
 
@@ -29,15 +29,19 @@ const ATTENDU: Array<[string, string, string]> = [
   ["/niveau", "tiktok", "video_5_niveau"],
   ["/tiktok", "tiktok", "bio"],
   ["/insta", "instagram", "bio_instagram"],
-  // Mission #125 — le neuvième, et le premier à ne pas mener à l'accueil.
-  ["/exemple", "instagram", "dm_exemple"],
 ];
+
+// Mission #125 — le neuvième chemin, et le premier à ne pas mener à
+// l'accueil. Mission #137 — il n'est plus REDIRIGÉ mais SERVI sur place :
+// il a donc ses propres vérifications, plus bas.
+const EXEMPLE: [string, string, string] = ["/exemple", "instagram", "dm_exemple"];
+const TOUS = [...ATTENDU, EXEMPLE];
 
 // La destination attendue de chaque chemin. Tous l'accueil, sauf /exemple.
 const DESTINATION: Record<string, string> = { "/exemple": "/analyse/demo" };
 const destination = (path: string) => DESTINATION[path] ?? "/";
 
-describe("les neuf chemins redirigent avec les UTM posés par le serveur", () => {
+describe("les huit chemins redirigés portent les UTM posés par le serveur", () => {
   it.each(ATTENDU)("%s → utm_source=%s et utm_content=%s", async (path, source, content) => {
     const response = await call(path);
     expect(response.status).toBe(307);
@@ -60,23 +64,59 @@ describe("les neuf chemins redirigent avec les UTM posés par le serveur", () =>
   // à un résultat complet, visible dès l'arrivée. /dm reste le lien « je veux
   // tester la mienne ». Les deux portent un utm_content distinct : c'est la
   // seule façon de savoir laquelle des deux fait entrer quelqu'un.
-  it("/exemple mène à la page d'exemple, pas à l'accueil", async () => {
+  // Mission #137 — /exemple SERT le contenu, il ne redirige plus.
+  //
+  // Mesuré en #134 : la redirection coûtait ~230 ms (TTFB 287 ms contre
+  // ~50 ms) sur la page envoyée en DM, avant même le premier octet de la
+  // page. Le navigateur reste donc sur /exemple, et c'est le contenu de
+  // /analyse/demo qui lui est rendu.
+  it("/exemple rend le contenu sur place, sans aller-retour", async () => {
     const response = await call("/exemple");
-    expect(response.status).toBe(307);
-    const target = new URL(response.headers.get("location") as string, ORIGIN);
-    expect(target.pathname).toBe("/analyse/demo");
-    expect(params(target.toString())).toMatchObject({ utm_source: "instagram", utm_content: "dm_exemple" });
+    // Ni 307, ni 308, ni 301 : aucune redirection.
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    // La page rendue est bien celle de l'exemple.
+    const reecrit = response.headers.get("x-middleware-rewrite");
+    expect(reecrit).not.toBeNull();
+    expect(new URL(reecrit as string, ORIGIN).pathname).toBe("/analyse/demo");
   });
 
+  it("l'attribution instagram · lancement · dm_exemple survit au service sur place", () => {
+    // Elle ne voyage plus dans l'adresse : elle est relue dans la table par
+    // /api/vue, à partir du référent. Une seule source de vérité, la même
+    // qu'avant — c'est ce que #124 a réparé et qu'on ne veut pas reperdre.
+    const attribution = shortPathAttribution("/exemple");
+    expect(attribution).toEqual({
+      to: "/analyse/demo",
+      utm_source: "instagram",
+      utm_medium: "organic_social",
+      utm_campaign: "lancement",
+      utm_content: "dm_exemple",
+    });
+    // Et c'est le SEUL chemin servi sur place : les autres redirigent.
+    expect(TOUS.filter(([chemin]) => shortPathIsServed(chemin)).map(([chemin]) => chemin)).toEqual(["/exemple"]);
+  });
+
+  it("une destination seule ne suffit pas : il faut le dire", () => {
+    // Garde pour demain : un chemin court qui gagnerait une destination sans
+    // être déclaré servi doit continuer de REDIRIGER. Sinon on servirait une
+    // page à une adresse qui n'a pas été prévue pour, et son attribution
+    // partirait sans que personne ne l'ait demandé.
+    expect(servedAttribution({ source: "tiktok", content: "video_x", to: "/tarifs" })).toBeNull();
+    expect(servedAttribution({ source: "tiktok", content: "video_x" })).toBeNull();
+    expect(servedAttribution(undefined)).toBeNull();
+    expect(servedAttribution({ source: "tiktok", content: "video_x", servi: true })).toBeNull();
+    expect(servedAttribution(SHORT_PATHS.exemple)).not.toBeNull();
+  });
   it("/dm continue de mener à l'accueil, et les deux ne se confondent pas", async () => {
     const dm = new URL((await call("/dm")).headers.get("location") as string, ORIGIN);
-    const exemple = new URL((await call("/exemple")).headers.get("location") as string, ORIGIN);
+    const exemple = shortPathAttribution("/exemple") as NonNullable<ReturnType<typeof shortPathAttribution>>;
     expect(dm.pathname).toBe("/");
     expect(dm.searchParams.get("utm_content")).toBe("dm_prospection");
     // Même source, deux contenus : on pourra comparer les deux entrées.
-    expect(dm.searchParams.get("utm_source")).toBe(exemple.searchParams.get("utm_source"));
-    expect(dm.searchParams.get("utm_content")).not.toBe(exemple.searchParams.get("utm_content"));
-    expect(dm.pathname).not.toBe(exemple.pathname);
+    expect(dm.searchParams.get("utm_source")).toBe(exemple.utm_source);
+    expect(dm.searchParams.get("utm_content")).not.toBe(exemple.utm_content);
+    expect(dm.pathname).not.toBe(exemple.to);
   });
 
   it("une destination ne s'écrit que dans la table, jamais ailleurs", () => {
@@ -176,12 +216,23 @@ describe("la table est la seule source", () => {
   it("chaque entrée de la table donne un chemin, sans rien écrire ailleurs", async () => {
     for (const [path, entry] of Object.entries(SHORT_PATHS)) {
       const response = await call(`/${path}`);
+      // Mission #137 — deux modes, une seule table : redirigé, ou servi sur
+      // place. Dans les deux cas l'attribution sort de la ligne, et de rien
+      // d'autre.
+      if (entry.servi) {
+        expect(response.status, path).toBe(200);
+        expect(shortPathAttribution(`/${path}`), path).toMatchObject({
+          utm_source: entry.source,
+          utm_content: entry.content,
+        });
+        continue;
+      }
       expect(response.status, path).toBe(307);
       const posted = params(response.headers.get("location") as string);
       expect(posted.utm_content, path).toBe(entry.content);
       expect(posted.utm_source, path).toBe(entry.source);
     }
-    expect(Object.keys(SHORT_PATHS)).toHaveLength(ATTENDU.length);
+    expect(Object.keys(SHORT_PATHS)).toHaveLength(TOUS.length);
   });
 
   it("aucun utm_content n'est écrit en dur hors de la table", () => {

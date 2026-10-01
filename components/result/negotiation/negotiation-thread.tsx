@@ -9,7 +9,11 @@ import { ThreadError, ThreadPending } from "@/components/result/negotiation/thre
 import { TurnCard } from "@/components/result/negotiation/turn-card";
 import { useTier } from "@/components/result/tier-selector";
 import { Button } from "@/components/ui/button";
-import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, TOO_SHORT_REPLY_MESSAGE, type Conclusion, type ThreadAccess, type TurnPayload } from "@/lib/negotiation/types";
+// Mission #137 — les valeurs viennent du module sans dépendance, les types
+// du module des schémas. Un `import type` est effacé à la compilation : il
+// ne fait entrer zod nulle part.
+import { FIRST_TURN, LAST_TURN, MAX_REPLY_LENGTH, MIN_REPLY_LENGTH, TOO_SHORT_REPLY_MESSAGE, type ThreadAccess } from "@/lib/negotiation/libelles";
+import type { Conclusion, TurnPayload } from "@/lib/negotiation/types";
 import { exchanges, NEGOTIATION_EXCHANGES } from "@/lib/content/vocabulaire";
 import { saveTurnWithoutJs, type TurnWithoutJsState } from "@/lib/forms/no-js-actions";
 import { clearThreadDraft, draftSurvives, readThreadKey, readThreadReply, saveThreadDraft, subscribeThreadDraft } from "@/lib/negotiation/draft";

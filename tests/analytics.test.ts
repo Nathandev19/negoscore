@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
@@ -22,10 +23,79 @@ beforeEach(() => {
   vi.stubGlobal("window", { doNotTrack: null });
 });
 
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #137 — posthog-js est chargé à la demande.
+//
+// Mesuré en #134 : 96,4 ko transférés et 290,2 ko décodés sur les quatre
+// pages, pour une bibliothèque qui ne s'initialisait qu'à 6 642 ms. Elle
+// arrive maintenant par import dynamique, après que la page est interactive.
+// Deux choses doivent rester vraies : rien n'est perdu entre-temps, et la
+// mesure PREMIÈRE PARTIE n'en dépend pas d'une ligne.
+describe("la mesure tierce arrive après coup, sans rien perdre", () => {
+  it("un événement émis avant le chargement part quand même, dans l'ordre", async () => {
+    const { initAnalytics, track } = await freshModule();
+    // Avant tout chargement : la bibliothèque n'existe pas encore.
+    track(ANALYTICS_EVENTS.analysisCompleted, { method: "paste" });
+    track(ANALYTICS_EVENTS.magicLinkClicked);
+    expect(posthog.capture).not.toHaveBeenCalled();
+
+    await initAnalytics();
+    expect(posthog.capture).toHaveBeenCalledTimes(2);
+    expect(posthog.capture.mock.calls.map((c) => c[0])).toEqual([
+      ANALYTICS_EVENTS.analysisCompleted,
+      ANALYTICS_EVENTS.magicLinkClicked,
+    ]);
+  });
+
+  it("sans clé, rien n'est mis en file et rien n'est chargé", async () => {
+    vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "");
+    const { initAnalytics, track } = await freshModule();
+    track(ANALYTICS_EVENTS.analysisCompleted, {});
+    await initAnalytics();
+    expect(posthog.init).not.toHaveBeenCalled();
+    expect(posthog.capture).not.toHaveBeenCalled();
+  });
+
+  it("refus de suivi : rien n'est chargé non plus", async () => {
+    vi.stubGlobal("navigator", { doNotTrack: "1" });
+    const { initAnalytics, track } = await freshModule();
+    track(ANALYTICS_EVENTS.analysisCompleted, {});
+    await initAnalytics();
+    expect(posthog.init).not.toHaveBeenCalled();
+    expect(posthog.capture).not.toHaveBeenCalled();
+  });
+
+  it("la bibliothèque n'est pas importée au chargement du module", () => {
+    const source = readFileSync("lib/analytics/client.ts", "utf8");
+    // Un import statique la remettrait dans le paquet de toutes les pages.
+    expect(source).not.toMatch(/^import posthog from "posthog-js";$/m);
+    expect(source).toContain('await import("posthog-js")');
+    // Le type, lui, est effacé à la compilation : il ne pèse rien.
+    expect(source).toContain('import type { PostHog } from "posthog-js";');
+  });
+
+  it("AUCUN événement première partie ne passe par cette bibliothèque", () => {
+    // C'est la condition posée par la mission : le cockpit lit /api/events et
+    // /api/vue, et ces deux chemins-là ne doivent rien devoir à PostHog.
+    for (const fichier of [
+      "components/analytics/first-party-view.tsx",
+      "components/analytics/view-pixel.tsx",
+      "components/result/tier-selector.tsx",
+      "app/api/events/route.ts",
+      "app/api/vue/route.ts",
+      "lib/analytics/first-party.ts",
+    ]) {
+      const source = readFileSync(fichier, "utf8");
+      expect(source, fichier).not.toContain("posthog");
+      expect(source, fichier).not.toContain("@/lib/analytics/client");
+    }
+  });
+});
+
 describe("mesure d'audience", () => {
   it("n'envoie que les propriétés fournies, sans donnée de deal ni email", async () => {
     const { initAnalytics, track } = await freshModule();
-    initAnalytics();
+    await initAnalytics();
     track(ANALYTICS_EVENTS.analysisCompleted, {
       method: "paste",
       latency_ms: 12000,
@@ -46,7 +116,7 @@ describe("mesure d'audience", () => {
 
   it("désactive l'enregistrement de session et masque les identifiants dans les URL", async () => {
     const { initAnalytics } = await freshModule();
-    initAnalytics();
+    await initAnalytics();
     const config = posthog.init.mock.calls[0][1] as {
       disable_session_recording: boolean;
       autocapture: boolean;
@@ -70,7 +140,7 @@ describe("mesure d'audience", () => {
   it("respecte Do Not Track : aucune initialisation, aucun envoi", async () => {
     vi.stubGlobal("navigator", { doNotTrack: "1" });
     const { initAnalytics, track } = await freshModule();
-    initAnalytics();
+    await initAnalytics();
     track(ANALYTICS_EVENTS.landingView);
     expect(posthog.init).not.toHaveBeenCalled();
     expect(posthog.capture).not.toHaveBeenCalled();
@@ -79,7 +149,7 @@ describe("mesure d'audience", () => {
   it("sans clé, l'application n'envoie rien", async () => {
     vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "");
     const { initAnalytics, track } = await freshModule();
-    initAnalytics();
+    await initAnalytics();
     track(ANALYTICS_EVENTS.landingView);
     expect(posthog.init).not.toHaveBeenCalled();
     expect(posthog.capture).not.toHaveBeenCalled();
@@ -124,14 +194,14 @@ describe("identifiant anonyme transmis au paiement", () => {
   it("expose l'identifiant du navigateur une fois la mesure initialisée", async () => {
     const { initAnalytics, analyticsDistinctId } = await freshModule();
     expect(analyticsDistinctId()).toBeNull();
-    initAnalytics();
+    await initAnalytics();
     expect(analyticsDistinctId()).toBe("01924f3a-anon-id");
   });
 
   it("ne renvoie rien quand la mesure est désactivée", async () => {
     vi.stubGlobal("navigator", { doNotTrack: "1" });
     const { initAnalytics, analyticsDistinctId } = await freshModule();
-    initAnalytics();
+    await initAnalytics();
     expect(analyticsDistinctId()).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { shortPathAttribution } from "@/lib/acquisition/chemins";
 import { isRobot, refusesTracking } from "@/lib/analytics/robots";
 import {
   EXAMPLE_ORIGIN_PARAM,
@@ -531,21 +532,26 @@ describe("ce que les pages rendent", () => {
 // chaîne entière — le chemin court, la redirection, l'image, les paramètres
 // enregistrés — au lieu de vérifier que la page existe.
 describe("le chemin complet de /exemple", () => {
-  it("chemin court → page d'exemple → événement avec les bons UTM", async () => {
+  // Mission #137 — /exemple ne redirige plus : il SERT le contenu de la page
+  // d'exemple, à son adresse. L'attribution ne voyage donc plus dans l'adresse,
+  // et c'est exactement ce qui doit continuer de marcher : elle est relue dans
+  // la table des chemins courts, à partir du référent.
+  it("chemin court servi sur place → événement avec les bons UTM", async () => {
     const { proxy } = await import("@/proxy");
     const { NextRequest } = await import("next/server");
 
-    // 1. Le chemin court redirige, et le serveur pose les UTM.
-    const redirection = await proxy(new NextRequest(`${ORIGIN}/exemple`));
-    expect(redirection.status).toBe(307);
-    const arrivee = new URL(redirection.headers.get("location") as string, ORIGIN);
-    expect(arrivee.pathname).toBe("/analyse/demo");
+    // 1. Aucun aller-retour : la page est rendue à l'adresse demandée.
+    const reponse = await proxy(new NextRequest(`${ORIGIN}/exemple`));
+    expect(reponse.status).toBe(200);
+    expect(reponse.headers.get("location")).toBeNull();
+    const servi = new URL(reponse.headers.get("x-middleware-rewrite") as string, ORIGIN);
+    expect(servi.pathname).toBe("/analyse/demo");
 
-    // 2. La page d'arrivée demande son image de mesure. Le référent est
-    //    l'adresse RÉELLEMENT affichée, UTM compris.
-    await ask({ page: "/analyse/demo", referer: arrivee.toString() });
+    // 2. Le navigateur est sur /exemple, et c'est de là que part l'image de
+    //    mesure. L'adresse ne porte aucun paramètre.
+    await ask({ page: "/analyse/demo", referer: `${ORIGIN}/exemple` });
 
-    // 3. Ce qui part en base.
+    // 3. Et la ligne écrite est la même qu'avant, mot pour mot.
     expect(recorded()).toMatchObject({
       event: "example_view",
       attribution: expect.objectContaining({
@@ -556,6 +562,20 @@ describe("le chemin complet de /exemple", () => {
         utm_content: "dm_exemple",
       }),
     });
+  });
+
+  it("l'arrivée directe sur /analyse/demo reste sans attribution", () => {
+    // Le service sur place n'invente pas d'attribution pour qui arrive
+    // directement : seule l'adresse /exemple en porte une.
+    expect(shortPathAttribution("/analyse/demo")).toBeNull();
+    expect(shortPathAttribution("/")).toBeNull();
+  });
+
+  it("une demande de pixel venue d'un chemin court NON servi n'est pas acceptée", async () => {
+    // /dm redirige vers l'accueil : il n'affiche jamais la page d'exemple, et
+    // ne peut donc pas en déclarer la vue.
+    await ask({ page: "/analyse/demo", referer: `${ORIGIN}/dm` });
+    expect(telemetry.calls).toEqual([]);
   });
 
   it("une visite sur la page d'exemple COMPTE comme une visite", async () => {

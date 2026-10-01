@@ -1,7 +1,8 @@
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { groupLabel } from "@/lib/negotiation/terms";
 import { topicsOf } from "@/lib/negotiation/topics";
-import { TERM_GROUPS, type Deal, type TermGroup } from "@/lib/negotiation/types";
+import { TERM_GROUPS, type TermGroup } from "@/lib/negotiation/libelles";
+import type { Deal } from "@/lib/negotiation/types";
 
 // Mission #084 — l'état actuel du deal, après les tours de négociation, et ce
 // qui a changé depuis l'offre d'origine. Aucune partie de la page ne doit

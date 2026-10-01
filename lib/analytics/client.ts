@@ -1,13 +1,38 @@
 "use client";
 
-import posthog from "posthog-js";
+import type { PostHog } from "posthog-js";
 import type { AnalyticsEvent, AnalyticsProperties } from "@/lib/analytics/events";
 
 // Mesure d'audience côté navigateur. Sans clé, l'application fonctionne
 // normalement et rien n'est envoyé. Aucune donnée de deal, aucun email :
 // seules les propriétés listées dans lib/analytics/events.ts sont émises.
+//
+// Mission #137 — CHARGÉE À LA DEMANDE, PAS AVANT.
+//
+// Mesuré en #134 : posthog-js pesait 96,4 ko transférés et 290,2 ko décodés
+// sur les quatre pages du site, et ne s'initialisait qu'à 6 642 ms. Six
+// secondes payées d'avance, pendant que le fil principal était déjà saturé.
+//
+// L'import est donc dynamique, et il part une fois la page interactive. Deux
+// conséquences à tenir :
+//   - `track` reste SYNCHRONE : les événements émis avant l'arrivée de la
+//     bibliothèque sont mis en file et envoyés ensuite, aucun n'est perdu ;
+//   - rien n'est mis en file quand la mesure est éteinte (pas de clé, refus
+//     de suivi) : la file ne grossit jamais pour rien.
+//
+// Ce module ne concerne QUE la mesure tierce. La mesure première partie — le
+// pixel /api/vue, les événements /api/events, tout ce que lit le cockpit —
+// n'en dépend pas d'une ligne : voir components/analytics/first-party-view.tsx
+// et components/result/tier-selector.tsx, qui n'importent rien d'ici.
 
+let posthog: PostHog | null = null;
 let ready = false;
+let chargement: Promise<void> | null = null;
+
+// Les événements émis avant l'arrivée de la bibliothèque. Bornée : si le
+// chargement échoue, cette file ne doit pas grandir indéfiniment.
+const ATTENTE_MAX = 20;
+const attente: Array<[AnalyticsEvent, AnalyticsProperties]> = [];
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
@@ -56,10 +81,26 @@ export function clearAnalyticsResidue(): void {
   }
 }
 
-export function initAnalytics(): void {
-  if (ready || typeof window === "undefined") return;
-  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  if (!key || doNotTrack()) return;
+// La mesure est-elle allumée ? Répond SANS charger quoi que ce soit : c'est
+// ce qui permet à `track` de décider en un instant s'il met en file ou s'il
+// jette.
+export function analyticsEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY) && !doNotTrack();
+}
+
+export function initAnalytics(): Promise<void> {
+  if (chargement) return chargement;
+  if (!analyticsEnabled()) return Promise.resolve();
+  chargement = charger();
+  return chargement;
+}
+
+async function charger(): Promise<void> {
+  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY as string;
+  // L'import dynamique crée un morceau à part, demandé seulement ici.
+  const bibliotheque = await import("posthog-js");
+  posthog = bibliotheque.default;
   posthog.init(key, {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com",
     // Mission #049 : aucun stockage sur l'appareil. Sans cookie, sans
@@ -88,11 +129,18 @@ export function initAnalytics(): void {
     },
   });
   ready = true;
+  // Ce qui a été émis pendant le chargement part maintenant, dans l'ordre.
+  for (const [event, properties] of attente.splice(0)) posthog.capture(event, properties);
 }
 
 export function track(event: AnalyticsEvent, properties: AnalyticsProperties = {}): void {
-  if (!ready) return;
-  posthog.capture(event, properties);
+  if (ready && posthog) {
+    posthog.capture(event, properties);
+    return;
+  }
+  // Mesure éteinte : rien à mettre en file, rien à envoyer plus tard.
+  if (!analyticsEnabled()) return;
+  if (attente.length < ATTENTE_MAX) attente.push([event, properties]);
 }
 
 // Sans stockage, PostHog n'a plus d'identifiant de navigateur : il renvoie ce
@@ -105,7 +153,7 @@ const COOKIELESS_SENTINEL = "$posthog_cookieless";
 // et, depuis la mission #049, en mode sans stockage : il n'y a plus rien à
 // relier côté navigateur.
 export function analyticsDistinctId(): string | null {
-  if (!ready) return null;
+  if (!ready || !posthog) return null;
   try {
     const id = posthog.get_distinct_id();
     return !id || id === COOKIELESS_SENTINEL ? null : id;

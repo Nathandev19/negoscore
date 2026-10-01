@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { shortPathTarget } from "@/lib/acquisition/chemins";
+import { shortPathIsServed, shortPathTarget } from "@/lib/acquisition/chemins";
 import { isDevZone, isOwnerEmail, isOwnerPath, ownerRefusal, ownerRefusalLog } from "@/lib/admin/owner";
 import { requiresAccount } from "@/lib/auth/account-pages";
 import { signedInRedirectPath } from "@/lib/auth/next-path";
@@ -79,7 +79,16 @@ export async function proxy(request: NextRequest) {
   // (307) : la table doit pouvoir changer sans qu'un navigateur ait mis
   // l'ancienne destination en cache pour toujours.
   const shortPath = shortPathTarget(request.nextUrl.pathname);
-  if (shortPath) return NextResponse.redirect(new URL(shortPath, request.url), 307);
+  if (shortPath) {
+    // Mission #137 — /exemple est SERVI sur place : le contenu de la page
+    // d'exemple est rendu à cette adresse, sans aller-retour. L'attribution
+    // ne voyage plus dans l'adresse ; elle est relue dans la table par
+    // /api/vue, à partir du référent. Les autres chemins redirigent, comme
+    // avant.
+    return shortPathIsServed(request.nextUrl.pathname)
+      ? NextResponse.rewrite(new URL(shortPath, request.url))
+      : NextResponse.redirect(new URL(shortPath, request.url), 307);
+  }
 
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;

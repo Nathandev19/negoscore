@@ -1,5 +1,6 @@
 import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
 import { isRobot, refusesTracking } from "@/lib/analytics/robots";
+import { shortPathAttribution } from "@/lib/acquisition/chemins";
 import { eventForPage, EXAMPLE_ORIGIN_PARAM, originPathFor } from "@/lib/analytics/views";
 
 export const runtime = "nodejs";
@@ -87,18 +88,24 @@ export async function GET(request: Request) {
   // trou : la mission #129 a déjà montré ce que coûte un nombre auquel on ne
   // peut pas se fier.
   const from = referringPage(request);
-  if (!from || from.pathname !== page) return image();
-  const query = from?.searchParams;
+  // Mission #137 — /exemple sert le contenu de /analyse/demo sans redirection.
+  // La page affichée est donc bien celle que le pixel déclare, même si
+  // l'adresse du navigateur est différente, et son attribution vient de la
+  // table des chemins courts plutôt que de paramètres d'adresse.
+  const court = from ? shortPathAttribution(from.pathname) : null;
+  const affichee = court ? court.to : from?.pathname;
+  if (!from || affichee !== page) return image();
+  const query = from.searchParams;
   const origin = event === "example_view" ? originPathFor(query?.get(EXAMPLE_ORIGIN_PARAM)) : undefined;
 
   await recordProductEvent({
     event,
     attribution: parseAttribution({
       path: page,
-      utm_source: query?.get("utm_source"),
-      utm_medium: query?.get("utm_medium"),
-      utm_campaign: query?.get("utm_campaign"),
-      utm_content: query?.get("utm_content"),
+      utm_source: court ? court.utm_source : query.get("utm_source"),
+      utm_medium: court ? court.utm_medium : query.get("utm_medium"),
+      utm_campaign: court ? court.utm_campaign : query.get("utm_campaign"),
+      utm_content: court ? court.utm_content : query.get("utm_content"),
     }),
     // D'où vient le clic vers l'exemple. `null` = arrivée directe, et c'est une
     // information, pas un trou.

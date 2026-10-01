@@ -1,5 +1,5 @@
 import { FREE_ANALYSES, PACK_ANALYSES, PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
-import { LAST_TURN } from "@/lib/negotiation/types";
+import { LAST_TURN } from "@/lib/negotiation/libelles";
 
 // Mission #093 — un seul vocabulaire pour tout ce qui est public : page,
 // métadonnées, données structurées, emails, CGV.

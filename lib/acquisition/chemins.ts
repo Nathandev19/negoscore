@@ -27,7 +27,13 @@ export const ACQUISITION_UTM = {
 // vidéo qui disait « va sur negoscore.fr ». Le lien envoyé en DM, lui, doit
 // pouvoir arriver directement sur l'exemple chiffré. `to` absent = l'accueil,
 // donc les huit chemins existants ne changent pas d'un octet.
-export type ShortPath = { source: string; content: string; to?: string };
+// Mission #137 — et une ligne peut être SERVIE SUR PLACE plutôt que
+// redirigée. Une redirection coûte un aller-retour complet : ~230 ms
+// mesurés en #134 sur le lien envoyé en DM, avant que la page ne commence
+// à se charger. `servi` dit « rends le contenu de `to` à cette adresse-ci,
+// sans déplacer le navigateur ». L'attribution ne change pas : elle vient
+// de cette table, et c'est /api/vue qui la relit (voir shortPathAttribution).
+export type ShortPath = { source: string; content: string; to?: string; servi?: boolean };
 
 // Destination par défaut : l'accueil.
 const DEFAULT_TARGET = "/";
@@ -82,7 +88,11 @@ export const SHORT_PATHS: Readonly<Record<string, ShortPath>> = {
   // `/dm` ne bouge pas : il reste le lien « je veux tester la mienne ». Les
   // deux portent un utm_content distinct, pour qu'on puisse enfin comparer
   // deux façons d'entrer dans le produit.
-  exemple: { source: "instagram", content: "dm_exemple", to: "/analyse/demo" },
+  //
+  // Mission #137 — et le SEUL qui soit servi sur place : l'adresse reste
+  // /exemple dans le navigateur, le contenu est celui de /analyse/demo, et
+  // il n'y a plus de redirection sur le chemin.
+  exemple: { source: "instagram", content: "dm_exemple", to: "/analyse/demo", servi: true },
 };
 
 // Un chemin tapé à la main ne respecte ni la casse ni la barre oblique finale :
@@ -99,6 +109,41 @@ function key(pathname: string): string {
 // héritées d'Object.prototype : /constructor et /__proto__ redirigeaient vers
 // l'accueil avec un utm_content fabriqué, au lieu de rendre 404 comme toute
 // autre adresse inconnue.
+// L'attribution d'un chemin court servi sur place, et la page qu'il affiche.
+// C'est ce que /api/vue relit : sur /exemple, l'adresse ne porte aucun
+// paramètre, et pourtant la visite est bien « instagram · lancement ·
+// dm_exemple ». Une seule source de vérité, la table ci-dessus.
+export type ShortPathAttribution = {
+  to: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  utm_content: string;
+};
+
+// Une ligne est servie sur place si elle le dit ET si elle a une destination.
+// Les deux conditions comptent : une destination seule reste une redirection
+// — c'est le cas de tout chemin qu'on ajouterait demain vers une autre page.
+export function servedAttribution(entry: ShortPath | undefined): ShortPathAttribution | null {
+  if (entry === undefined || !entry.servi || !entry.to) return null;
+  return {
+    to: entry.to,
+    utm_source: entry.source,
+    utm_medium: ACQUISITION_UTM.medium,
+    utm_campaign: ACQUISITION_UTM.campaign,
+    utm_content: entry.content,
+  };
+}
+
+export function shortPathAttribution(pathname: string): ShortPathAttribution | null {
+  return servedAttribution(entryFor(SHORT_PATHS, key(pathname)));
+}
+
+// Ce chemin est-il servi sur place plutôt que redirigé ?
+export function shortPathIsServed(pathname: string): boolean {
+  return shortPathAttribution(pathname) !== null;
+}
+
 export function shortPathTarget(pathname: string): string | null {
   const entry = entryFor(SHORT_PATHS, key(pathname));
   if (entry === undefined) return null;

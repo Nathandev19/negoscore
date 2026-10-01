@@ -1,9 +1,10 @@
 import type { ResultView } from "@/lib/analysis/lock";
-import type { FeedbackInput, StoredFeedback } from "@/lib/analysis/feedback-options";
+import type { StoredFeedback } from "@/lib/analysis/feedback-options";
+import type { FeedbackInput } from "@/lib/analysis/feedback-schema";
 import { isMissingColumn, isMissingRelation, selectRows, upsertRow } from "@/lib/supabase/server";
 import { withEnvironment } from "@/lib/telemetry/tagged";
 
-export { feedbackInputSchema } from "@/lib/analysis/feedback-options";
+export { feedbackInputSchema } from "@/lib/analysis/feedback-schema";
 
 // « Cette estimation te paraît juste ? » : modifiable.
 // Stocké avec un instantané de ce qui a été montré (version de la table, score,

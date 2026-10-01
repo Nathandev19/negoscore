@@ -10,11 +10,13 @@ import {
   TERM_GROUP_LABEL,
   UNVERIFIED_HINT,
   UNVERIFIED_LABEL,
-  type Ask,
   type AskStatus,
-  type Pricing,
   type TermGroup,
-  type TurnPayload,
+} from "@/lib/negotiation/libelles";
+import type {
+  Ask,
+  Pricing,
+  TurnPayload,
 } from "@/lib/negotiation/types";
 import { normalizeForQuote } from "@/lib/negotiation/quotes";
 import { groupLabel, offeredOf } from "@/lib/negotiation/terms";
