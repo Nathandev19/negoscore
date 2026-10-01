@@ -29,6 +29,35 @@ import { serverSalt } from "@/lib/security/request";
 // interne est vérifiée (connexion, ou passage du proxy sur une page de
 // compte), et à la demande par /api/interne.
 
+// Mission #135 — LE NAVIGATEUR DE MESURE S'ANNONCE.
+//
+// Les vérifications de #134 et #137 sont passées par un Chrome sans tête
+// piloté contre la production. Il remplaçait son User-Agent par celui d'un
+// téléphone Android pour mesurer les bonnes conditions — et il a donc été
+// compté comme un vrai visiteur. Au moins une visite `dm_exemple` du
+// cockpit vient de là.
+//
+// Le cookie de marquage ne peut pas servir : son secret vit dans Vercel et
+// n'en sort pas. Le jeton ci-dessous, lui, n'ouvre RIEN. Il ne donne aucun
+// droit, ne masque aucune donnée, et n'a donc pas à être secret : il dit
+// seulement « cette requête vient d'une mesure ». Quelqu'un qui le
+// copierait s'effacerait lui-même d'un tableau qu'il ne voit pas — la même
+// propriété que le cookie de #118.
+//
+// La ligne est ÉCRITE, marquée interne, jamais supprimée : on veut pouvoir
+// compter combien de requêtes de mesure ont eu lieu.
+//
+// Un seul endroit : scripts/mesure-pages.cjs le lit ici, et
+// tests/mesure-interne.test.ts refuse qu'ils divergent.
+export const MEASURE_AGENT_TOKEN = "NegoscoreMesure/1";
+
+// Le jeton est cherché tel quel, sans sensibilité à la casse : un
+// User-Agent est une chaîne libre, et on ne veut pas qu'une majuscule
+// décide si une mesure pollue le cockpit.
+export function isMeasurementAgent(userAgent: string | null | undefined): boolean {
+  return typeof userAgent === "string" && userAgent.toLowerCase().includes(MEASURE_AGENT_TOKEN.toLowerCase());
+}
+
 export const INTERNAL_COOKIE = "ns_interne";
 export const INTERNAL_EMAILS_ENV = "INTERNAL_EMAILS";
 export const INTERNAL_MARK_SECRET_ENV = "INTERNAL_MARK_SECRET";

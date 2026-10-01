@@ -23,14 +23,41 @@ import { seriesColor, SERIES_LABEL, type Series } from "@/lib/admin/series";
 
 const NUMBER = new Intl.NumberFormat("fr-FR");
 
-// Deux à quatre graduations, en nombres entiers, sans jamais inventer une
-// échelle plus haute que nécessaire. Un maximum nul garde une échelle de 1 :
-// la ligne de base reste visible, et les colonnes vides restent lisibles.
+// Mission #135 — LA GRADUATION HAUTE EST STRICTEMENT AU-DESSUS DU MAXIMUM.
+//
+// Vu à l'écran le 01/10 : sur « Visites », l'axe s'arrêtait à 18 et la barre
+// montait plus haut que la ligne ; sur « Analyses », maximum 2 et graduation
+// 2, la barre touchait la ligne du haut. Une donnée qui sort du cadre est une
+// erreur de lecture qui attend son heure — on ne sait plus si la barre vaut
+// le maximum ou le dépasse.
+//
+// On cherche donc le plus petit plafond PAIR, multiple d'un pas lisible, et
+// strictement supérieur au maximum. Pair, pour que la graduation du milieu
+// reste un entier.
+const PAS_LISIBLES = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 100000] as const;
+
+export function axisTop(max: number): number {
+  // Série vide ou illisible : une échelle de 2, pour que la ligne de base et
+  // la graduation du haut restent visibles.
+  if (!Number.isFinite(max) || max <= 0) return 2;
+  // Une marge d’au moins 8 % au-dessus du maximum : mesuré à l’écran, un
+  // plafond à « maximum + 1 » laissait la barre à 5 px de la ligne du haut, et
+  // on relisait « est-ce qu’elle la touche ? ». La question ne doit pas se
+  // poser.
+  const minimum = Math.max(max + 1, max * 1.08);
+  for (const pas of PAS_LISIBLES) {
+    const candidat = Math.ceil(minimum / (2 * pas)) * 2 * pas;
+    // Au plus quinze pas sous le plafond : au-delà, le pas suivant donne un
+    // nombre plus rond pour la même place.
+    if (candidat <= 30 * pas) return candidat;
+  }
+  return Math.ceil(minimum / 2) * 2;
+}
+
+// Trois graduations : le plafond, sa moitié, et zéro.
 export function axisTicks(max: number): number[] {
-  if (!Number.isFinite(max) || max <= 0) return [0];
-  if (max <= 2) return [max, 0];
-  const step = Math.ceil(max / 2);
-  return [step * 2, step, 0];
+  const haut = axisTop(max);
+  return [haut, haut / 2, 0];
 }
 
 const JOUR = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit" });
@@ -49,12 +76,29 @@ export function labelEvery(days: number): number {
   return Math.ceil(days / 10);
 }
 
+// Mission #135 — la géométrie, en un seul endroit.
+//
+// HAUTEUR : la hauteur utile du graphique. Une barre ne peut jamais
+// l'atteindre, puisque la graduation haute est strictement au-dessus du
+// maximum (axisTop).
+//
+// BARRE_MAX : au-delà, une barre cesse de se lire comme une marque et devient
+// un aplat. Deux jours donnent deux barres étroites bien espacées, trente
+// jours trente barres fines : dans les deux cas, un graphique.
+//
+// ESPACE : le fond VISIBLE entre deux barres voisines. Deux pixels, et ils
+// séparent des colonnes, pas des barres — c'est ce qui garantit l'écart même
+// quand les barres remplissent leur colonne.
+export const HAUTEUR = 150;
+export const BARRE_MAX = 56;
+export const ESPACE = 2;
+
 type Jour = { day: string; value: number };
 
 function BarChart({ series, days, total }: { series: Series; days: Jour[]; total: number }) {
   const max = Math.max(0, ...days.map((d) => d.value));
   const ticks = axisTicks(max);
-  const haut = ticks[0] || 1;
+  const haut = ticks[0];
   const every = labelEvery(days.length);
   const color = seriesColor(series);
   return (
@@ -69,7 +113,7 @@ function BarChart({ series, days, total }: { series: Series; days: Jour[]; total
         </span>
       </p>
       <div className="flex gap-3">
-        <div className="flex w-7 shrink-0 flex-col justify-between py-0 text-right text-xs text-attenue" style={{ height: 150 }}>
+        <div className="flex w-7 shrink-0 flex-col justify-between py-0 text-right text-xs text-attenue" style={{ height: HAUTEUR }}>
           {ticks.map((tick) => (
             <span key={tick}>{NUMBER.format(tick)}</span>
           ))}
@@ -79,25 +123,39 @@ function BarChart({ series, days, total }: { series: Series; days: Jour[]; total
               graduation, posée en absolu. Pas de dégradé — le produit n'en
               a aucun, et un fond répété se décale d'un pixel selon la
               hauteur. */}
-          <div className="relative flex items-end gap-0.5 border-b border-filet" style={{ height: 150 }}>
+          <div className="relative flex items-end border-b border-filet" style={{ height: HAUTEUR, gap: `${ESPACE}px` }}>
             {ticks.slice(0, -1).map((tick, rang) => (
               <span
                 key={tick}
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 border-t border-filet"
-                style={{ top: `${(rang * 150) / (ticks.length - 1 || 1)}px` }}
+                style={{ top: `${(rang * HAUTEUR) / (ticks.length - 1 || 1)}px` }}
               />
             ))}
             {days.map((jour) => (
-              <div
-                key={jour.day}
-                /* cockpit-bar porte la transition de hauteur (240 ms, ease-out)
-                   et son annulation sous prefers-reduced-motion. */
-                className="cockpit-bar min-w-0 flex-1 rounded-t-[4px]"
-                style={{ height: `${Math.round((jour.value / haut) * 150)}px`, background: color }}
-                /* Survol : la date et la valeur, sans compter de pixels. */
-                title={`${dayLabel(jour.day)} : ${NUMBER.format(jour.value)}`}
-              />
+              /* Mission #135 — LA COLONNE ET LA BARRE SONT DEUX CHOSES.
+
+                 Avant, la barre ÉTAIT la colonne : `flex-1` sur la barre
+                 elle-même. Sur « 24 h », deux jours donnaient deux barres de
+                 390 px — un aplat, plus un graphique.
+
+                 La colonne garde sa largeur (`flex-1`) : l'axe du temps reste
+                 honnête, chaque jour occupe la même place quel que soit le
+                 nombre de jours. La barre, elle, est plafonnée et centrée. */
+              <div key={jour.day} className="flex min-w-0 flex-1 justify-center">
+                <div
+                  /* cockpit-bar porte la transition de hauteur (240 ms,
+                     ease-out) et son annulation sous prefers-reduced-motion. */
+                  className="cockpit-bar w-full rounded-t-[4px]"
+                  style={{
+                    height: `${Math.round((jour.value / haut) * HAUTEUR)}px`,
+                    maxWidth: `${BARRE_MAX}px`,
+                    background: color,
+                  }}
+                  /* Survol : la date et la valeur, sans compter de pixels. */
+                  title={`${dayLabel(jour.day)} : ${NUMBER.format(jour.value)}`}
+                />
+              </div>
             ))}
           </div>
           {/* Les dates sont posées en ABSOLU, centrées sur leur colonne. Vu à

@@ -1,7 +1,18 @@
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { axisTicks, BarCell, Funnel, labelEvery, largeur, stepRate, TimeSeries } from "@/components/admin/charts";
+import {
+  axisTicks,
+  BarCell,
+  BARRE_MAX,
+  ESPACE,
+  Funnel,
+  HAUTEUR,
+  labelEvery,
+  largeur,
+  stepRate,
+  TimeSeries,
+} from "@/components/admin/charts";
 import {
   appliquerRafraichissement,
   Cockpit,
@@ -170,16 +181,25 @@ describe("le graphique tient avec 0, 1 et 2 jours", () => {
   });
 
   it("l'axe porte deux à quatre graduations, et jamais une échelle inventée", () => {
-    expect(axisTicks(0)).toEqual([0]);
-    expect(axisTicks(1)).toEqual([1, 0]);
-    expect(axisTicks(2)).toEqual([2, 0]);
-    expect(axisTicks(24)).toEqual([24, 12, 0]);
+    // Mission #135 — la graduation haute est STRICTEMENT au-dessus du
+    // maximum. Avant, max 18 donnait un axe à 18 et la barre dépassait la
+    // ligne ; max 2 donnait 2, et la barre la touchait.
+    expect(axisTicks(0)).toEqual([2, 1, 0]);
+    expect(axisTicks(1)).toEqual([2, 1, 0]);
+    expect(axisTicks(2)).toEqual([4, 2, 0]);
+    expect(axisTicks(18)).toEqual([20, 10, 0]);
     expect(axisTicks(7)).toEqual([8, 4, 0]);
-    for (const max of [0, 1, 2, 3, 9, 24, 100, 1234]) {
+    for (const max of [0, 1, 2, 3, 9, 18, 24, 100, 1234, 99999]) {
       const ticks = axisTicks(max);
-      expect(ticks.length, String(max)).toBeLessThanOrEqual(4);
-      expect(ticks[0], String(max)).toBeGreaterThanOrEqual(max);
+      expect(ticks.length, String(max)).toBe(3);
+      expect(ticks[0], `haut > max pour ${max}`).toBeGreaterThan(max);
+      // La graduation du milieu est un entier : un axe ne se lit pas en
+      // demi-visites.
+      expect(Number.isInteger(ticks[1]), String(max)).toBe(true);
+      expect(ticks[1] * 2, String(max)).toBe(ticks[0]);
       expect(ticks.at(-1)).toBe(0);
+      // Et le plafond ne s'envole pas : au plus le double du maximum.
+      if (max > 2) expect(ticks[0], `plafond raisonnable pour ${max}`).toBeLessThanOrEqual(max * 2);
     }
   });
 
@@ -357,6 +377,124 @@ describe("le rafraîchissement d'arrière-plan", () => {
     // `lent` : pas d'autre voile gris sur l'écran.
     expect(source).toContain('{lent ? "Mise à jour…" : ""}');
     expect(source).toContain('className={lent ? "cockpit-charge flex flex-col gap-10" : "flex flex-col gap-10"}');
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// MISSION #135 — LA GÉOMÉTRIE DES BARRES.
+//
+// Vu à l'écran le 01/10, période « 24 h » : chaque barre faisait 390 px, les
+// deux se touchaient, et la plus haute dépassait la graduation du haut.
+// L'audit DOM de #132 n'avait rien vu parce qu'il mesurait les chevauchements
+// d'étiquettes, pas la taille des marques.
+//
+// Ce qui suit mesure la GÉOMÉTRIE, sur 1, 2, 7 et 31 jours.
+describe("une barre reste une barre, quel que soit le nombre de jours", () => {
+  const serie = (jours: number, valeurs: (i: number) => number): DashboardData => ({
+    ...base,
+    timeseries: Array.from({ length: jours }, (_, i) => ({
+      day: new Date(Date.UTC(2026, 8, 1 + i)).toISOString().slice(0, 10),
+      page_views: valeurs(i),
+      analyses: 0,
+      signups: 0,
+      purchases: 0,
+    })),
+  });
+
+  // Les barres telles que le balisage les décrit : largeur plafond et hauteur.
+  function barres(html: string) {
+    return [...html.matchAll(/<div class="cockpit-bar[^"]*" style="([^"]*)"/g)].map((m) => {
+      const style = m[1].replace(/&#x27;|&quot;/g, "");
+      return {
+        hauteur: Number(/height:\s*([\d.]+)px/.exec(style)?.[1] ?? NaN),
+        plafond: Number(/max-width:\s*([\d.]+)px/.exec(style)?.[1] ?? NaN),
+      };
+      // Seules les barres du graphique temporel portent un plafond de
+      // largeur : celles des tableaux et du funnel sont horizontales.
+    }).filter((b) => Number.isFinite(b.plafond));
+  }
+
+  for (const jours of [1, 2, 7, 31]) {
+    it(`${jours} jour(s) : aucune barre ne dépasse le plafond ni le haut du graphique`, () => {
+      const data = serie(jours, (i) => (i % 3) * 6 + 1);
+      const rendu = barres(cockpit(data));
+      // Une barre par jour, par série — le graphique « Visites » et le
+      // graphique « Analyses ».
+      expect(rendu.length, `${jours} jours`).toBe(jours * 2);
+      for (const b of rendu) {
+        expect(b.plafond, `plafond ${jours} jours`).toBe(BARRE_MAX);
+        // STRICTEMENT inférieure à la hauteur utile : une donnée ne sort
+        // jamais du cadre.
+        expect(b.hauteur, `hauteur ${jours} jours`).toBeLessThan(HAUTEUR);
+        expect(b.hauteur, `hauteur ${jours} jours`).toBeGreaterThanOrEqual(0);
+      }
+    });
+  }
+
+  it("le plafond de largeur reste celui d'une BARRE, pas d'un aplat", () => {
+    // 56 px : mesuré à l'écran, c'est la largeur à laquelle une marque se lit
+    // encore comme une barre. Au-delà de 80, deux jours redonnent l'aplat
+    // constaté le 01/10 — 390 px de large sur un graphique de 780.
+    expect(BARRE_MAX).toBeGreaterThanOrEqual(24);
+    expect(BARRE_MAX).toBeLessThanOrEqual(80);
+  });
+
+  it("la plus haute barre laisse une marge VISIBLE sous la ligne du haut", () => {
+    // Il ne suffit pas que le plafond dépasse le maximum d'une unité : à
+    // 29 sur 30, la barre s'arrêtait à 5 px de la ligne et on relisait pour
+    // savoir si elle la touchait. Mesuré à l'écran après correction : 90 %
+    // au plus, soit 15 px de fond au-dessus de la plus haute barre.
+    for (const max of [1, 2, 7, 18, 24, 29, 59, 100, 1234]) {
+      const part = max / axisTicks(max)[0];
+      expect(part, `maximum ${max}`).toBeLessThanOrEqual(0.93);
+    }
+    // Et la marge ne devient pas absurde : l'échelle reste utile.
+    for (const max of [7, 18, 24, 100, 1234]) {
+      expect(max / axisTicks(max)[0], `maximum ${max}`).toBeGreaterThanOrEqual(0.5);
+    }
+  });
+
+  it("la colonne garde sa place, et la barre est centrée dedans", () => {
+    const source = readFileSync("components/admin/charts.tsx", "utf8");
+    // La colonne porte `flex-1` — chaque jour occupe la même place, l'axe du
+    // temps reste honnête. La barre, elle, est centrée et plafonnée.
+    expect(source).toContain('className="flex min-w-0 flex-1 justify-center"');
+    expect(source).toContain("maxWidth: `${BARRE_MAX}px`");
+    // Et la barre n'est plus elle-même la colonne.
+    expect(source).not.toContain('className="cockpit-bar min-w-0 flex-1');
+  });
+
+  it("deux barres voisines sont séparées par du fond visible", () => {
+    const source = readFileSync("components/admin/charts.tsx", "utf8");
+    // L'écart est posé entre les COLONNES : il tient donc même quand les
+    // barres remplissent leur colonne, à 31 jours comme à 2.
+    expect(ESPACE).toBeGreaterThanOrEqual(2);
+    expect(source).toContain("gap: `${ESPACE}px`");
+  });
+
+  it("la plus haute barre reste sous la ligne du haut, sur des données réelles", () => {
+    // Le cas vu à l'écran : 18 visites sur deux jours.
+    const data = serie(2, (i) => (i === 0 ? 4 : 18));
+    const rendu = barres(cockpit(data));
+    const plusHaute = Math.max(...rendu.map((b) => b.hauteur));
+    expect(plusHaute).toBeLessThan(HAUTEUR);
+    // 18 sur une échelle de 20 : neuf dixièmes de la hauteur.
+    expect(plusHaute).toBe(Math.round((18 / 20) * HAUTEUR));
+  });
+
+  it("les en-têtes de colonnes des tableaux sont séparés", () => {
+    const source = readFileSync("components/admin/cockpit.tsx", "utf8");
+    // « ANALYSES » et « ACHATS » se touchaient : aucune colonne n'avait
+    // d'espacement horizontal. Mesuré au DOM après correction : 16 px entre
+    // les deux mots, contre 0.
+    const entetes = [...source.matchAll(/<th className="([^"]*)"/g)].map((m) => m[1]);
+    expect(entetes.length).toBeGreaterThanOrEqual(8);
+    // Chaque en-tête porte un espacement horizontal, du côté opposé à son
+    // alignement : à gauche pour une colonne alignée à droite, à droite sinon.
+    for (const classe of entetes) {
+      const attendu = classe.includes("text-right") ? /\bpl-\d/ : /\bpr-\d/;
+      expect(classe, classe).toMatch(attendu);
+    }
   });
 });
 

@@ -289,10 +289,10 @@ function Chiffres({ data }: { data: DashboardData }) {
             <table className="w-full text-left text-small">
               <thead>
                 <tr className="text-xs tracking-wide text-attenue uppercase">
-                  <th className="pb-2.5 font-normal">Source · campagne · contenu</th>
-                  <th className="pb-2.5 font-normal">Visites</th>
-                  <th className="pb-2.5 text-right font-normal">Analyses</th>
-                  <th className="pb-2.5 text-right font-normal">Achats</th>
+                  <th className="pb-2.5 pr-3 font-normal">Source · campagne · contenu</th>
+                  <th className="pb-2.5 pr-3 font-normal">Visites</th>
+                  <th className="pb-2.5 pl-4 text-right font-normal">Analyses</th>
+                  <th className="pb-2.5 pl-4 text-right font-normal">Achats</th>
                 </tr>
               </thead>
               <tbody>
@@ -308,8 +308,8 @@ function Chiffres({ data }: { data: DashboardData }) {
                     <td className="w-[45%] py-3.5 pr-3">
                       <BarCell value={row.visits} max={maxVisites} />
                     </td>
-                    <td className={`figures py-3.5 text-right ${row.analyses === 0 ? "text-attenue" : ""}`}>{row.analyses}</td>
-                    <td className={`figures py-3.5 text-right ${row.purchases === 0 ? "text-attenue" : ""}`}>{row.purchases}</td>
+                    <td className={`figures py-3.5 pl-4 text-right ${row.analyses === 0 ? "text-attenue" : ""}`}>{row.analyses}</td>
+                    <td className={`figures py-3.5 pl-4 text-right ${row.purchases === 0 ? "text-attenue" : ""}`}>{row.purchases}</td>
                   </tr>
                 ))}
               </tbody>
@@ -346,10 +346,10 @@ function Chiffres({ data }: { data: DashboardData }) {
           <table className="w-full text-left text-small">
             <thead>
               <tr className="text-xs tracking-wide text-attenue uppercase">
-                <th className="pb-2.5 font-normal">Page</th>
-                <th className="pb-2.5 font-normal">Vues</th>
-                <th className="pb-2.5 text-right font-normal">Vers l’exemple</th>
-                <th className="pb-2.5 text-right font-normal">Part</th>
+                <th className="pb-2.5 pr-3 font-normal">Page</th>
+                <th className="pb-2.5 pr-3 font-normal">Vues</th>
+                <th className="pb-2.5 pl-4 text-right font-normal">Vers l’exemple</th>
+                <th className="pb-2.5 pl-4 text-right font-normal">Part</th>
               </tr>
             </thead>
             <tbody>
@@ -359,8 +359,8 @@ function Chiffres({ data }: { data: DashboardData }) {
                   <td className="w-[45%] py-3.5 pr-3">
                     <BarCell value={row.views} max={maxVues} />
                   </td>
-                  <td className={`figures py-3.5 text-right ${row.to_example === 0 ? "text-attenue" : ""}`}>{row.to_example}</td>
-                  <td className="figures py-3.5 text-right text-attenue">{share(row.to_example, row.views) ?? "—"}</td>
+                  <td className={`figures py-3.5 pl-4 text-right ${row.to_example === 0 ? "text-attenue" : ""}`}>{row.to_example}</td>
+                  <td className="figures py-3.5 pl-4 text-right text-attenue">{share(row.to_example, row.views) ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

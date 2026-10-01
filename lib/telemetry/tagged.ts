@@ -1,7 +1,7 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { isMissingColumn, selectRows } from "@/lib/supabase/server";
 import { currentEnvironment, type TelemetryEnvironment } from "@/lib/telemetry/environment";
-import { INTERNAL_COOKIE, internalList, internalSecret, internalTokenValid, isInternalEmail } from "@/lib/telemetry/internal";
+import { INTERNAL_COOKIE, internalList, internalSecret, internalTokenValid, isInternalEmail, isMeasurementAgent } from "@/lib/telemetry/internal";
 
 // Mission #103 — écrire une ligne en lui attachant son environnement.
 // Mission #118 — et en disant si elle vient de l'intérieur.
@@ -51,9 +51,24 @@ export async function withEnvironment<T>(
 //    purchase_completed depuis une requête de Whop, qui ne porte évidemment
 //    pas mon cookie. Sans cette seconde source, un paiement de test
 //    continuerait d'être compté comme un revenu réel.
+// 3. LE NAVIGATEUR DE MESURE (mission #135). Il ne peut porter ni cookie ni
+//    session : il vide tout avant chaque page, et le secret du cookie ne
+//    sort pas de Vercel. Il s'annonce donc dans son User-Agent, et la ligne
+//    est écrite comme interne plutôt que jetée — on veut pouvoir compter
+//    les passages de mesure.
 export async function internalTraffic(userId: string | null = null): Promise<boolean> {
   if (await internalBrowser()) return true;
+  if (await measurementBrowser()) return true;
   return internalAccount(userId);
+}
+
+async function measurementBrowser(): Promise<boolean> {
+  try {
+    return isMeasurementAgent((await headers()).get("user-agent"));
+  } catch {
+    // Hors du contexte d'une requête : pas d'en-tête, donc pas de mesure.
+    return false;
+  }
 }
 
 async function internalBrowser(): Promise<boolean> {
