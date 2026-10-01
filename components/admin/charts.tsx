@@ -1,4 +1,4 @@
-import type { DashboardData } from "@/lib/admin/data";
+import { visitCount, type DashboardData } from "@/lib/admin/data";
 
 export function TimeSeries({ rows }: { rows: DashboardData["timeseries"] }) {
   if (rows.length === 0) return <p className="text-small text-attenue">Aucun événement sur cette période.</p>;
@@ -16,7 +16,10 @@ export function TimeSeries({ rows }: { rows: DashboardData["timeseries"] }) {
 }
 
 export function Funnel({ data }: { data: DashboardData }) {
-  const steps = [["Visites", (data.counts.landing_view ?? 0)+(data.counts.pricing_view ?? 0)], ["Analyses lancées", data.counts.analysis_started ?? 0], ["Analyses terminées", data.counts.analysis_completed ?? 0], ["Inscriptions", data.counts.signup ?? 0], ["Checkout", data.counts.checkout_started ?? 0], ["Achats", data.counts.purchase_completed ?? 0]] as const;
+  // Mission #129 — « Visites » ici et « Visites mesurées » dans les tuiles
+  // doivent être le même nombre : c'est le même mot, sur le même écran.
+  // Le compte vient donc de lib/admin/data.ts, pas d'une addition recopiée.
+  const steps = [["Visites", visitCount(data)], ["Analyses lancées", data.counts.analysis_started ?? 0], ["Analyses terminées", data.counts.analysis_completed ?? 0], ["Inscriptions", data.counts.signup ?? 0], ["Checkout", data.counts.checkout_started ?? 0], ["Achats", data.counts.purchase_completed ?? 0]] as const;
   const max=Math.max(1,...steps.map(([,v])=>v));
   return <div className="flex flex-col gap-3">{steps.map(([label,value])=><div key={label}><div className="mb-1 flex justify-between text-small"><span>{label}</span><strong>{value}</strong></div><div className="h-5 bg-filet"><div className="h-full bg-encre" style={{width:`${Math.max(value?3:0,value/max*100)}%`}} /></div></div>)}<p className="text-xs text-attenue">Étapes agrégées, sans suivi individuel entre écrans : ce funnel mesure des volumes, pas une cohorte liée.</p></div>;
 }

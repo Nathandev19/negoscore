@@ -92,6 +92,20 @@ export type DashboardTile = { label: string; value: string };
 // elles ne peuvent pas diverger sans qu'un test échoue.
 export const VISIT_EVENTS = ["landing_view", "pricing_view", "guide_view", "example_view"] as const;
 
+// Mission #129 — ET UNE SEULE FONCTION POUR LES COMPTER.
+//
+// La tuile appliquait VISIT_EVENTS ; le funnel agrégé, lui, additionnait
+// encore `landing_view + pricing_view` dans son propre composant. Deux
+// nombres portant le même nom, « Visites », à deux endroits du même écran :
+// 100 dans la tuile, 84 dans le funnel, et rien pour dire lequel était le
+// bon. L'écart valait exactement les vues de guides et d'exemple.
+//
+// Le mot « visite » n'a donc plus qu'une définition, et un seul endroit où
+// elle se calcule. Les deux affichages appellent celui-là.
+export function visitCount(data: DashboardData): number {
+  return VISIT_EVENTS.reduce((sum, event) => sum + (data.counts[event] ?? 0), 0);
+}
+
 const NUMBER = new Intl.NumberFormat("fr-FR");
 const count = (value: number | undefined) => NUMBER.format(value ?? 0);
 
@@ -104,7 +118,7 @@ export function share(part: number, total: number): string | null {
 }
 
 export function dashboardTiles(data: DashboardData): DashboardTile[] {
-  const visits = VISIT_EVENTS.reduce((sum, event) => sum + (data.counts[event] ?? 0), 0);
+  const visits = visitCount(data);
   const revenue = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(data.purchases.revenue_eur);
   return [
     { label: "Visites mesurées", value: count(visits) },

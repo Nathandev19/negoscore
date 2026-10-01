@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { AdminUsersPage, DashboardData } from "@/lib/admin/data";
@@ -126,6 +127,55 @@ describe("la liste des utilisateurs", () => {
     expect(page).toContain("Compte Accès Crédits Dossiers Inscription");
     // Un dossier créé en local ne compte plus : la RPC ne rend que la production.
     expect(page).toContain("creatrice@exemple.test");
+  });
+});
+
+// Mission #129 — « VISITES » NE PEUT PAS VALOIR DEUX NOMBRES.
+//
+// Relevé en production le 01/10 : période « Tout », tuile 100, funnel 84 ;
+// période « 24 h », tuile 18, funnel 7. L'écart valait exactement les vues
+// de guides et d'exemple. La tuile appliquait VISIT_EVENTS, le funnel
+// additionnait encore landing_view + pricing_view dans son propre composant.
+//
+// Ce test compare les deux nombres RENDUS, pas deux constantes : il lit la
+// page comme on la lit à l'écran, et il échouerait de nouveau si l'un des
+// deux affichages reprenait un calcul à son compte.
+describe("mission #129 — un seul nombre pour « Visites »", () => {
+  // Le nombre affiché sous le libellé d'une tuile.
+  const tuile = (html: string, label: string): number => {
+    const depuis = html.indexOf(label);
+    expect(depuis, label).toBeGreaterThan(-1);
+    const trouve = /class="figures[^"]*">([^<]+)</.exec(html.slice(depuis));
+    expect(trouve, label).not.toBeNull();
+    return Number((trouve?.[1] ?? "").replace(/[^0-9]/g, ""));
+  };
+  // Le nombre affiché en face d'une étape du funnel.
+  const etape = (html: string, label: string): number => {
+    const trouve = new RegExp(`<span>${label}</span><strong>([0-9]+)</strong>`).exec(html);
+    expect(trouve, label).not.toBeNull();
+    return Number(trouve?.[1] ?? "-1");
+  };
+
+  const CAS: Array<[string, Record<string, number>, number]> = [
+    ["production, période Tout", { landing_view: 80, pricing_view: 4, guide_view: 12, example_view: 4 }, 100],
+    ["production, période 24 h", { landing_view: 6, pricing_view: 1, guide_view: 9, example_view: 2 }, 18],
+    ["aucune vue de guide ni d'exemple", { landing_view: 42, pricing_view: 8 }, 50],
+    ["uniquement des arrivées sur l'exemple", { example_view: 7 }, 7],
+    ["cockpit vide", {}, 0],
+  ];
+
+  it.each(CAS)("%s : la tuile et le funnel affichent le même nombre", async (_nom, counts, attendu) => {
+    const html = await dashboard({ ...APRES_MIGRATION, counts });
+    expect(tuile(html, "Visites mesurées")).toBe(etape(html, "Visites"));
+    expect(tuile(html, "Visites mesurées")).toBe(attendu);
+  });
+
+  it("le funnel ne recalcule rien lui-même", () => {
+    const source = readFileSync("components/admin/charts.tsx", "utf8");
+    // Aucune addition d'événements recopiée dans le composant : il appelle
+    // la seule fonction qui définit le mot.
+    expect(source).toContain("visitCount(data)");
+    expect(source).not.toMatch(/counts\.landing_view|counts\.pricing_view/);
   });
 });
 
