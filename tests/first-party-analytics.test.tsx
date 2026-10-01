@@ -39,7 +39,7 @@ describe("attribution first-party", () => {
     const send = (event: string, origin = "http://localhost:3000", site = "same-origin") => POST(new Request("http://localhost:3000/api/events", {
       // Mission #120 — un vrai navigateur annonce son User-Agent. Sans lui, la
       // route considère la requête comme automatique et n'enregistre rien.
-      method: "POST", headers: { origin, "sec-fetch-site": site, "content-type": "application/json", "user-agent": UA }, body: JSON.stringify({ event, attribution: { utm_source: "TikTok" } }),
+      method: "POST", headers: { origin, "sec-fetch-site": site, "content-type": "application/json", "user-agent": UA }, body: JSON.stringify({ event, attribution: { path: "/", utm_source: "TikTok" } }),
     }));
     expect((await send("landing_view")).status).toBe(204);
     expect(telemetry.calls).toEqual([expect.objectContaining({ event: "landing_view", attribution: expect.objectContaining({ utm_source: "tiktok" }) })]);

@@ -62,7 +62,7 @@ describe("le client n'a aucune autorité sur l'environnement", () => {
   it("le corps annonce « production » pendant un run de tests : la ligne vaut test", async () => {
     // VITEST est défini : c'est le cas réel de cette suite.
     expect(process.env.VITEST).toBeDefined();
-    const response = await send({ event: "landing_view", environment: "production" });
+    const response = await send({ event: "landing_view", environment: "production", attribution: { path: "/" } });
     expect(response.status).toBe(204);
     expect(written().environment).toBe("test");
   });
@@ -71,7 +71,7 @@ describe("le client n'a aucune autorité sur l'environnement", () => {
     vi.stubEnv("VITEST", undefined);
     vi.stubEnv("VERCEL_ENV", "production");
 
-    await send({ event: "pricing_view", environment: "development" });
+    await send({ event: "pricing_view", environment: "development", attribution: { path: "/tarifs" } });
     expect(written().environment).toBe("production");
   });
 

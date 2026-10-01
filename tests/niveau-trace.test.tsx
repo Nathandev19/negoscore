@@ -126,7 +126,7 @@ describe("le niveau consulté devient un événement", () => {
     expect(ecrits.at(-1)).toMatchObject({ event: "tier_changed", entityType: "niveau", entityId: "experienced" });
 
     // Une vue de page ne porte aucun niveau, même si le corps en annonce un.
-    expect((await envoyer({ event: "landing_view", tier: "experienced" })).status).toBe(204);
+    expect((await envoyer({ event: "landing_view", tier: "experienced", attribution: { path: "/" } })).status).toBe(204);
     expect(ecrits.at(-1)).toMatchObject({ event: "landing_view", entityType: null, entityId: null });
 
     // Un niveau inconnu fait refuser le corps entier, sans rien écrire.

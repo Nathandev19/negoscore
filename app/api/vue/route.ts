@@ -66,11 +66,28 @@ export async function GET(request: Request) {
   if (refusesTracking(request.headers)) return image();
   if (isRobot(request.headers.get("user-agent"))) return image();
 
-  // Le contexte vient du référent : les UTM de l'adresse réellement affichée,
-  // et l'origine du clic pour la page d'exemple. Référent absent : la vue est
-  // enregistrée quand même, sans attribution. Une visite sans paramètre est une
-  // visite valide, pas une erreur.
+  // Mission #136 — UNE VUE N'EST ENREGISTRÉE QUE SI LA PAGE EST AFFICHÉE.
+  //
+  // Le pixel partait sur un PRÉCHARGEMENT : React 19 émet une consigne de
+  // préchargement d'image pour toute image rendue côté serveur, Next l'embarque
+  // dans la charge RSC, et le navigateur l'applique au document COURANT quand
+  // il précharge un guide depuis le pied de page. Trois vues par arrivée sur
+  // l'accueil, sur des guides que personne n'avait ouverts.
+  //
+  // Le composant n'émet plus d'image préchargeable (components/analytics/
+  // view-pixel.tsx). Cette garde-ci est la seconde barrière, et elle est la
+  // seule que le navigateur ne peut pas contourner : l'adresse de la page qui
+  // demande le pixel doit être CELLE QU'IL DÉCLARE. Un préchargement depuis
+  // l'accueil porte le référent de l'accueil : il ne correspond pas, il ne
+  // compte pas.
+  //
+  // Référent absent : on n'enregistre plus. C'est un choix, et il coûte
+  // quelque chose — un navigateur configuré pour ne jamais envoyer de référent
+  // ne sera plus compté. Entre un trou connu et un chiffre faux, on prend le
+  // trou : la mission #129 a déjà montré ce que coûte un nombre auquel on ne
+  // peut pas se fier.
   const from = referringPage(request);
+  if (!from || from.pathname !== page) return image();
   const query = from?.searchParams;
   const origin = event === "example_view" ? originPathFor(query?.get(EXAMPLE_ORIGIN_PARAM)) : undefined;
 

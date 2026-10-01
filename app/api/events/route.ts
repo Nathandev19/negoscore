@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { entryFor } from "@/lib/lookup";
 import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
 import { isRobot, refusesTracking } from "@/lib/analytics/robots";
 import { TIERS } from "@/lib/rates/tier";
@@ -6,6 +7,15 @@ import { TIERS } from "@/lib/rates/tier";
 export const runtime = "nodejs";
 
 const PUBLIC_EVENTS = ["landing_view", "pricing_view", "tier_changed"] as const;
+
+// Mission #136 — la page d'où part un événement de vue.
+//
+// Ces deux-là sont émis par un composant client, dans un useEffect : un
+// préchargement ne monte rien, donc ils n'ont jamais eu le défaut du pixel des
+// guides (vérifié). Mais rien n'empêchait un corps de déclarer « pricing_view »
+// depuis n'importe quelle page. Même règle que partout : l'événement nomme sa
+// page, le serveur la vérifie, et un désaccord n'écrit rien.
+const VIEW_PAGES: Readonly<Record<string, string>> = { landing_view: "/", pricing_view: "/tarifs" };
 
 // Mission #130 — le niveau vient du navigateur, mais il ne peut valoir que
 // l'une des trois entrées de TIERS. Même règle que partout ailleurs : le
@@ -54,12 +64,20 @@ export async function POST(request: Request) {
   if (isRobot(request.headers.get("user-agent")) || refusesTracking(request.headers)) {
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   }
+  const attribution = parseAttribution(parsed.data.attribution);
+  // Mission #136 — une vue qui ne vient pas de sa page n'est pas une vue. La
+  // réponse ne change pas d'un octet : le client n'apprend rien de ce qui a
+  // été fait de sa requête.
+  const attendue = entryFor(VIEW_PAGES, parsed.data.event);
+  if (attendue !== undefined && attribution.path !== attendue) {
+    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  }
   // Le niveau consulté voyage dans entity_type/entity_id, les deux colonnes
   // prévues pour ça : aucune nouvelle colonne, aucun champ libre.
   const niveau = parsed.data.event === "tier_changed" ? (parsed.data.tier ?? null) : null;
   await recordProductEvent({
     event: parsed.data.event,
-    attribution: parseAttribution(parsed.data.attribution),
+    attribution,
     entityType: niveau ? "niveau" : null,
     entityId: niveau,
   });

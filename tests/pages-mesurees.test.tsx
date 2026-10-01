@@ -144,14 +144,21 @@ describe("l'image de mesure enregistre la vue", () => {
     expect(recorded()?.attribution).toMatchObject({ utm_source: "instagram", utm_content: "bio_instagram" });
   });
 
-  it("aucun référent : la vue est comptée quand même, sans attribution", async () => {
+  // Mission #136 — ces deux-là ont CHANGÉ DE RÉPONSE, volontairement.
+  //
+  // Avant, une image demandée sans référent était comptée : « une visite sans
+  // paramètre est une visite valide ». C'était vrai tant que seule une vraie
+  // page demandait l'image. Depuis qu'on sait qu'un préchargement la demande
+  // aussi, le référent est la seule chose qui distingue une page affichée
+  // d'une page préchargée. Sans lui, on ne sait pas : on n'écrit pas.
+  it("aucun référent : on ne peut pas savoir, donc on n'écrit pas", async () => {
     await ask({ referer: null });
-    expect(recorded()).toMatchObject({ event: "guide_view", attribution: expect.objectContaining({ path: "/combien-facturer", utm_source: null }) });
+    expect(telemetry.calls).toEqual([]);
   });
 
-  it("un référent d'un autre site n'apporte aucune attribution", async () => {
+  it("un référent d'un autre site : ce n'est pas la page, rien n'est enregistré", async () => {
     await ask({ referer: "https://evil.test/x?utm_source=piege" });
-    expect(recorded()?.attribution).toMatchObject({ utm_source: null });
+    expect(telemetry.calls).toEqual([]);
   });
 
   it("page inconnue, image demandée hors d'une page : rien n'est enregistré", async () => {
@@ -172,6 +179,103 @@ describe("l'image de mesure enregistre la vue", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
+// MISSION #136 — UNE VUE N'EXISTE QUE SI LA PAGE EST AFFICHÉE.
+//
+// Constaté en production le 01/10 : /api/vue partait par paquets de trois,
+// un par guide, alors que le visiteur était sur l'accueil. Les trois guides
+// affichaient exactement 17 vues chacun — le même nombre, parce qu'aucune de
+// ces vues n'était une vraie lecture.
+//
+// CAUSE : React 19 émet une consigne de préchargement pour toute image rendue
+// côté serveur. Next l'embarque dans la charge RSC d'une page, sous la forme
+// :HL["/api/vue?p=…","image"], et l'applique à la page COURANTE quand il
+// précharge un lien. Les trois guides sont dans le pied de page, donc sur
+// tout le site.
+//
+// Deux barrières, et chacune suffirait : le pixel n'est plus une image
+// préchargeable, et le serveur refuse une vue dont le référent n'est pas la
+// page qu'elle déclare.
+describe("un préchargement n'est pas une vue", () => {
+  it("le pixel n'est pas une balise que React peut précharger", () => {
+    const source = readFileSync("components/analytics/view-pixel.tsx", "utf8");
+    // C'est la balise <img> rendue côté serveur qui déclenchait la consigne de
+    // préchargement. Il n'y en a plus — on lit le code, commentaires retirés.
+    const code = source.replace(/\/\/[^\n]*/g, "");
+    expect(code).not.toMatch(/<img/);
+    expect(code).toContain("backgroundImage");
+  });
+
+
+  it("une demande venue d'une AUTRE page n'enregistre rien", async () => {
+    // Exactement le cas de production : le navigateur est sur l'accueil, et
+    // demande le pixel des trois guides.
+    for (const guide of GUIDE_PATHS) {
+      await ask({ page: guide, referer: `${ORIGIN}/` });
+    }
+    await ask({ page: "/analyse/demo", referer: `${ORIGIN}/` });
+    expect(telemetry.calls).toEqual([]);
+  });
+
+  it("un affichage réel en enregistre exactement un, et un seul", async () => {
+    for (const guide of GUIDE_PATHS) {
+      await ask({ page: guide, referer: `${ORIGIN}${guide}` });
+    }
+    expect(telemetry.calls).toHaveLength(GUIDE_PATHS.length);
+    expect(telemetry.calls.map((c) => (c.attribution as { path: string }).path)).toEqual([...GUIDE_PATHS]);
+  });
+
+  it("le référent est comparé à la page déclarée, pas seulement au site", async () => {
+    // Même site, mauvaise page : c'est le cas du préchargement, et c'est
+    // aussi celui d'une image recopiée ailleurs sur le site.
+    await ask({ page: "/combien-facturer", referer: `${ORIGIN}/droits-utilisation` });
+    await ask({ page: "/combien-facturer", referer: `${ORIGIN}/tarifs` });
+    await ask({ page: "/analyse/demo", referer: `${ORIGIN}/analyse` });
+    expect(telemetry.calls).toEqual([]);
+    // Et la bonne page, avec ses paramètres, passe toujours.
+    await ask({ page: "/combien-facturer", referer: `${ORIGIN}/combien-facturer?utm_source=google` });
+    expect(telemetry.calls).toHaveLength(1);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+describe("la mesure côté navigateur déclare sa page, elle aussi", () => {
+  const envoyer = async (corps: unknown) => {
+    const { POST } = await import("@/app/api/events/route");
+    return POST(
+      new Request(`${ORIGIN}/api/events`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: ORIGIN, "sec-fetch-site": "same-origin", "user-agent": UA },
+        body: JSON.stringify(corps),
+      }),
+    );
+  };
+
+  it("landing_view depuis l'accueil, pricing_view depuis les tarifs", async () => {
+    await envoyer({ event: "landing_view", attribution: { path: "/" } });
+    await envoyer({ event: "pricing_view", attribution: { path: "/tarifs" } });
+    expect(telemetry.calls.map((c) => c.event)).toEqual(["landing_view", "pricing_view"]);
+  });
+
+  it("une vue déclarée depuis une autre page n'écrit rien", async () => {
+    // Ces deux-là n'ont jamais eu le défaut du pixel : elles partent d'un
+    // useEffect, qu'un préchargement ne monte pas. Mais rien n'empêchait un
+    // corps de déclarer une vue de tarifs depuis n'importe où.
+    const refus = await envoyer({ event: "pricing_view", attribution: { path: "/combien-facturer" } });
+    await envoyer({ event: "landing_view", attribution: { path: "/tarifs" } });
+    await envoyer({ event: "landing_view" });
+    expect(telemetry.calls).toEqual([]);
+    // La réponse ne dit rien de ce qui a été fait : même code qu'un succès.
+    expect(refus.status).toBe(204);
+  });
+
+  it("tier_changed n'est pas une vue : aucune page ne lui est imposée", async () => {
+    await envoyer({ event: "tier_changed", tier: "experienced", attribution: { path: "/analyse/resultat/x" } });
+    expect(telemetry.calls).toHaveLength(1);
+    expect(telemetry.calls[0]).toMatchObject({ event: "tier_changed", entityType: "niveau", entityId: "experienced" });
+  });
+});
+
 describe("les robots et le refus de suivi", () => {
   const ROBOTS = [
     "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
@@ -233,7 +337,8 @@ describe("les robots et le refus de suivi", () => {
             ...(ua === null ? {} : { "user-agent": ua }),
             ...extra,
           },
-          body: JSON.stringify({ event: "landing_view" }),
+          // Mission #136 — l'événement nomme sa page, et le serveur la vérifie.
+          body: JSON.stringify({ event: "landing_view", attribution: { path: "/" } }),
         }),
       );
     expect((await send(UA)).status).toBe(204);
@@ -367,16 +472,32 @@ describe("ce que les pages rendent", () => {
     return renderToStaticMarkup(Page());
   }
 
-  it("chaque page mesurée porte son image, une seule fois, invisible", async () => {
+  it("chaque page mesurée porte son pixel, une seule fois, invisible", async () => {
     for (const page of Object.keys(FICHIER)) {
       const html = await render(page);
-      const images = [...html.matchAll(/<img [^>]*>/g)].map((m) => m[0]).filter((tag) => tag.includes(VIEW_PIXEL_PATH));
-      expect(images, page).toHaveLength(1);
-      expect(images[0], page).toContain(`src="${viewPixelSrc(page)}"`);
-      // Rien à annoncer, rien à lire, rien à décaler.
-      expect(images[0], page).toContain('alt=""');
-      expect(images[0], page).toContain('aria-hidden="true"');
-      expect(images[0], page).toContain("opacity-0");
+      const pixels = [...html.matchAll(/<div [^>]*>/g)].map((m) => m[0]).filter((tag) => tag.includes(VIEW_PIXEL_PATH));
+      expect(pixels, page).toHaveLength(1);
+      // Mission #136 — une image de FOND, pas une balise <img> : React
+      // précharge les images rendues côté serveur, et c'est ce préchargement
+      // qui comptait des vues sur des pages que personne n'avait ouvertes.
+      expect(pixels[0], page).toContain(`background-image:url(&quot;${viewPixelSrc(page)}&quot;)`);
+      expect(html, page).not.toContain(`<img src="${viewPixelSrc(page)}"`);
+      // Et rien ne précharge cette adresse : c'est la consigne de préchargement,
+      // émise par React pour une image rendue, qui partait depuis une autre page.
+      expect(html, page).not.toMatch(new RegExp(`rel="preload"[^>]*${VIEW_PIXEL_PATH}`));
+      // Rien à annoncer, rien à décaler. Et surtout rien qui empêche le rendu :
+      // un élément non rendu ne télécharge pas son fond.
+      expect(pixels[0], page).toContain('aria-hidden="true"');
+      // Ni `hidden`, ni `invisible`, ni `display:none` : les trois empêchent
+      // le rendu de l'élément, donc le téléchargement de son fond, donc la
+      // mesure. On lit la LISTE de classes et non la chaîne entière :
+      // `aria-hidden` contient le mot « hidden » et fausserait la lecture.
+      const classes = (pixels[0].match(/ class="([^"]*)"/)?.[1] ?? "").split(" ");
+      expect(classes, page).toContain("opacity-0");
+      for (const interdite of ["hidden", "invisible", "sr-only"]) {
+        expect(classes, `${page} / ${interdite}`).not.toContain(interdite);
+      }
+      expect(pixels[0], page).not.toMatch(/display:\s*none/);
     }
   });
 
