@@ -1,5 +1,5 @@
 import { adminAccess, adminError } from "@/lib/admin/access";
-import { loadDashboard, parsePeriod } from "@/lib/admin/data";
+import { loadDashboardMesure, parsePeriod } from "@/lib/admin/data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,9 +25,14 @@ export async function GET(request: Request) {
   if (!access.ok) return adminError(access);
 
   const period = parsePeriod(new URL(request.url).searchParams.get("period"));
-  const data = await loadDashboard(period);
-  if (data === "missing") {
-    return Response.json({ error: "missing" }, { status: 503, headers: { "Cache-Control": "no-store" } });
+  const mesure = await loadDashboardMesure(period);
+  // Mission #133 — les deux durées serveur sont publiées. Si les outils de
+  // développement montrent 2 500 ms quand `total` en annonce 110, le temps
+  // n'est pas dans cette fonction : il est dans le réseau ou dans le
+  // démarrage à froid. On ne cherchera pas au mauvais endroit.
+  const chrono = { "Server-Timing": `rpc;dur=${mesure.rpc_ms}, total;dur=${mesure.total_ms}` };
+  if (mesure.data === "missing") {
+    return Response.json({ error: "missing" }, { status: 503, headers: { "Cache-Control": "no-store", ...chrono } });
   }
-  return Response.json({ period, data }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ period, data: mesure.data }, { headers: { "Cache-Control": "no-store", ...chrono } });
 }

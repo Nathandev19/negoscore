@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cockpit } from "@/components/admin/cockpit";
-import { loadDashboard, loadUnattachedPayments, parsePeriod } from "@/lib/admin/data";
+import { ADMIN_PERIODS, loadDashboards, loadUnattachedPayments, parsePeriod } from "@/lib/admin/data";
+import type { CockpitCaches } from "@/components/admin/cockpit";
 
 export const metadata: Metadata = { title: "Cockpit", robots: { index: false, follow: false } };
 
@@ -10,20 +11,31 @@ export const metadata: Metadata = { title: "Cockpit", robots: { index: false, fo
 // plus rien (components/admin/cockpit.tsx) : les graphiques restent montés et
 // seules leurs valeurs changent.
 //
+// Mission #133 — et il embarque les QUATRE périodes, pas seulement celle de
+// l'adresse. Mesuré (app/dev/mesure-cockpit/route.dev.ts) : quatre RPC
+// lancées ensemble coûtent 154 ms contre 110 ms pour une seule — 45 ms de
+// plus sur le premier rendu — et pèsent 6,4 ko. En échange, changer de
+// période ne traverse plus le réseau du tout.
+//
 // Les paiements non rattachés restent rendus ici : ils ne dépendent pas de la
 // période, et les recharger à chaque clic n'apprendrait rien.
 export default async function AdminDashboard({ searchParams }: PageProps<"/admin">) {
   const params = await searchParams;
   const period = parsePeriod(params.period);
-  const [data, unattached] = await Promise.all([loadDashboard(period), loadUnattachedPayments()]);
+  const [parPeriode, unattached] = await Promise.all([loadDashboards(), loadUnattachedPayments()]);
+  // Une période dont la RPC a échoué n'entre pas en mémoire : le cockpit dira
+  // qu'elle manque plutôt que d'afficher les chiffres d'une autre.
+  const caches: CockpitCaches = Object.fromEntries(
+    ADMIN_PERIODS.filter((p) => parPeriode[p] !== "missing").map((p) => [p, parPeriode[p]]),
+  );
   return (
     <main id="contenu" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6 md:py-14">
-      {data === "missing" ? (
+      {parPeriode[period] === "missing" ? (
         <p role="alert" className="alert-bad">
           Le cockpit attend la migration admin 20260923000030.
         </p>
       ) : (
-        <Cockpit initial={data} period={period} />
+        <Cockpit initial={caches} period={period} />
       )}
       {/* Mission #112, A4 — un paiement qu'on n'a pas su rattacher se voit ici,
           pas seulement dans les journaux. Le bloc n'apparaît que s'il y en a. */}

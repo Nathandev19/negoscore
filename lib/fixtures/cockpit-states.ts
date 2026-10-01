@@ -1,4 +1,4 @@
-import type { DashboardData } from "@/lib/admin/data";
+import { ADMIN_PERIODS, type AdminPeriod, type DashboardData } from "@/lib/admin/data";
 
 // Mission #132 — les états du cockpit qu'on ne peut pas attendre de la base.
 //
@@ -111,4 +111,35 @@ const ETATS: Record<CockpitPreview, DashboardData> = {
 
 export function cockpitPreview(etat: CockpitPreview): DashboardData {
   return ETATS[etat];
+}
+
+// Mission #133 — les quatre périodes d'un état, pour regarder un CHANGEMENT
+// de période et non une période.
+//
+// Le cockpit tient désormais les quatre en mémoire : un aperçu qui n'en
+// fournit qu'une ne permet pas de juger ce que la mission demande, à savoir
+// que les barres bougent au clic. Chaque période garde les derniers jours de
+// la série, et ses compteurs sont ramenés à la même proportion : des chiffres
+// faux entre eux rendraient l'aperçu inutilisable pour juger à l'œil.
+export function cockpitPreviewCaches(etat: CockpitPreview): Record<AdminPeriod, DashboardData> {
+  const base = ETATS[etat];
+  const jours: Record<AdminPeriod, number> = { "24h": 1, "7d": 7, "30d": 30, all: base.timeseries.length };
+  return Object.fromEntries(ADMIN_PERIODS.map((period) => [period, derniersJours(base, jours[period])])) as Record<
+    AdminPeriod,
+    DashboardData
+  >;
+}
+
+function derniersJours(base: DashboardData, nombre: number): DashboardData {
+  const garde = base.timeseries.slice(Math.max(0, base.timeseries.length - nombre));
+  const total = base.timeseries.reduce((somme, jour) => somme + jour.page_views, 0);
+  const retenu = garde.reduce((somme, jour) => somme + jour.page_views, 0);
+  const part = total === 0 ? 1 : retenu / total;
+  return {
+    ...base,
+    timeseries: garde,
+    counts: Object.fromEntries(Object.entries(base.counts).map(([nom, valeur]) => [nom, Math.round(valeur * part)])),
+    acquisition: base.acquisition.map((row) => ({ ...row, visits: Math.round(row.visits * part) })),
+    guides: base.guides.map((row) => ({ ...row, views: Math.round(row.views * part) })),
+  };
 }

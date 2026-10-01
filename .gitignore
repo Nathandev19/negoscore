@@ -46,3 +46,6 @@ next-env.d.ts
 
 # rendu Chromium local (profil, temporaires)
 /.cache/
+
+# maquette de référence du cockpit (#132), gardée hors du dépôt
+/maquette-cockpit.html

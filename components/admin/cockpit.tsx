@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BarCell, Funnel, TimeSeries } from "@/components/admin/charts";
 import {
   ADMIN_PERIODS,
@@ -24,75 +24,148 @@ import { BRAND } from "@/lib/brand";
 //
 // Ici, les graphiques RESTENT MONTÉS. Seules leurs valeurs changent, et les
 // barres se déplacent vers la nouvelle hauteur (app/globals.css, .cockpit-bar).
-// Quatre règles qui ne se négocient pas :
-//   1. jamais d'écran vide : les données précédentes restent affichées pendant
-//      le chargement, avec un retrait d'opacité et un mot discret ;
-//   2. le bouton cliqué devient actif IMMÉDIATEMENT, avant la réponse ;
-//   3. l'adresse suit (?period=…), pour qu'on puisse la copier et revenir en
-//      arrière avec le navigateur ;
-//   4. si la requête échoue, les chiffres PRÉCÉDENTS restent, avec l'erreur à
-//      côté. On n'efface jamais un chiffre pour montrer une erreur.
+//
+// Mission #133 — ET IL EST INSTANTANÉ.
+//
+// #132 avait supprimé le rechargement, pas l'attente : le clic partait
+// chercher les chiffres sur le réseau, et il s'écoulait 2 à 3 secondes avant
+// que les barres ne bougent. La pastille répondait, l'écran se figeait, puis
+// rattrapait d'un coup.
+//
+// Mesuré avant de corriger (app/dev/mesure-cockpit/route.dev.ts) : la RPC
+// Postgres représente la totalité du temps serveur — 92 à 242 ms en local, et
+// la mise en forme 0,1 ms. Les quatre périodes ensemble pèsent 6,4 ko. Il n'y
+// a donc aucune raison d'attendre un réseau pour changer d'onglet : les
+// QUATRE périodes sont embarquées dans le premier rendu, et le clic lit la
+// mémoire.
+//
+// Les règles qui ne se négocient pas :
+//   1. le clic affiche la période demandée TOUT DE SUITE, depuis la mémoire,
+//      sans aucun appel réseau sur le chemin ;
+//   2. le rafraîchissement en arrière-plan est OBLIGATOIRE : une valeur en
+//      mémoire qui diverge de la base est pire qu'une valeur lente ;
+//   3. si le chiffre rafraîchi est identique, rien n'est écrit : rien ne
+//      bouge à l'écran pour dire que rien n'a changé ;
+//   4. l'indicateur n'apparaît qu'au-delà de 400 ms — en usage normal on ne
+//      le voit jamais ;
+//   5. l'adresse suit (?period=…) et le retour arrière fonctionne ;
+//   6. si le rafraîchissement échoue, les chiffres affichés RESTENT, avec
+//      l'erreur à côté. On n'efface jamais un chiffre pour montrer une
+//      erreur.
 
 const LABELS: Record<AdminPeriod, string> = { "24h": "24 h", "7d": "7 jours", "30d": "30 jours", all: "Tout" };
 
-export function Cockpit({ initial, period: initialPeriod }: { initial: DashboardData; period: AdminPeriod }) {
-  const [data, setData] = useState(initial);
+// Au-delà de ce délai, et seulement au-delà, le rafraîchissement se montre.
+export const SEUIL_INDICATEUR_MS = 400;
+
+// Les chiffres déjà connus, par période. Partiel : si une des quatre RPC du
+// premier rendu a échoué, sa période manque, et on le dit plutôt que de
+// montrer ceux d'une autre.
+export type CockpitCaches = Partial<Record<AdminPeriod, DashboardData>>;
+
+// Deux jeux de chiffres sont « les mêmes » si leur sérialisation est
+// identique : ils sortent de la même RPC et de la même mise en forme, donc
+// l'ordre des clés est stable.
+export function memeDonnees(connu: DashboardData | undefined, recu: DashboardData): boolean {
+  return connu !== undefined && JSON.stringify(connu) === JSON.stringify(recu);
+}
+
+// Un corps de réponse n'est accepté que s'il ressemble vraiment à des chiffres
+// de cockpit. Mesuré en patchant la réponse à `null` : sans ce contrôle, un
+// corps inattendu effaçait l'écran. Les chiffres en mémoire valent mieux qu'un
+// écran vide, donc une réponse qu'on ne reconnaît pas est traitée comme une
+// panne : on garde, et on le dit.
+export function estDonnees(recu: unknown): recu is DashboardData {
+  if (typeof recu !== "object" || recu === null) return false;
+  const candidat = recu as Partial<DashboardData>;
+  return typeof candidat.counts === "object" && candidat.counts !== null && Array.isArray(candidat.timeseries);
+}
+
+// Rafraîchissement reçu. Rien n'a changé : on rend le MÊME objet, et React ne
+// repasse pas par un rendu. Quelque chose a changé : la période concernée est
+// remplacée, les trois autres sont intactes.
+export function appliquerRafraichissement(
+  caches: CockpitCaches,
+  period: AdminPeriod,
+  recu: DashboardData,
+): CockpitCaches {
+  if (memeDonnees(caches[period], recu)) return caches;
+  return { ...caches, [period]: recu };
+}
+
+export function Cockpit({ initial, period: initialPeriod }: { initial: CockpitCaches; period: AdminPeriod }) {
+  const [caches, setCaches] = useState<CockpitCaches>(initial);
   const [period, setPeriod] = useState(initialPeriod);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [charge, demarrer] = useTransition();
+  // Vrai seulement si le rafraîchissement dépasse le seuil.
+  const [lent, setLent] = useState(false);
   // La dernière demande gagne : deux clics rapides ne doivent pas laisser la
   // réponse la plus lente écraser la plus récente.
   const demande = useRef(0);
 
+  // Rafraîchissement EN ARRIÈRE-PLAN, après l'affichage. Il ne bloque rien :
+  // quand il part, les chiffres demandés sont déjà à l'écran.
+  const rafraichir = useCallback(async (cible: AdminPeriod) => {
+    const ticket = ++demande.current;
+    const minuteur = window.setTimeout(() => {
+      if (ticket === demande.current) setLent(true);
+    }, SEUIL_INDICATEUR_MS);
+    try {
+      const response = await fetch(`/api/admin/cockpit?period=${cible}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(String(response.status));
+      const recu = (await response.json()) as { period: AdminPeriod; data: unknown };
+      if (!estDonnees(recu.data)) throw new Error("corps inattendu");
+      // Réponse d'une demande dépassée : on la jette plutôt que d'afficher des
+      // chiffres qui ne correspondent plus à la pastille active.
+      if (ticket !== demande.current) return;
+      const recues = recu.data;
+      setCaches((actuels) => appliquerRafraichissement(actuels, cible, recues));
+      setErreur(null);
+    } catch {
+      if (ticket !== demande.current) return;
+      setErreur("Les chiffres n’ont pas pu être rafraîchis. Ceux affichés sont les derniers obtenus.");
+    } finally {
+      window.clearTimeout(minuteur);
+      if (ticket === demande.current) setLent(false);
+    }
+    // Aucune dépendance : la fonction n'utilise que des setters d'état et une
+    // référence, tous stables. Elle peut donc servir de dépendance à l'effet
+    // du retour arrière sans le relancer à chaque rendu.
+  }, []);
+
+  // Afficher une période : un changement d'état local, rien d'autre. Aucun
+  // `await` avant que l'écran ne soit à jour — c'est là que se gagnent les
+  // 2 à 3 secondes.
+  const montrer = useCallback(
+    (cible: AdminPeriod, pousser: boolean) => {
+      setPeriod(cible);
+      if (pousser) window.history.pushState(null, "", `/admin?period=${cible}`);
+      void rafraichir(cible);
+    },
+    [rafraichir],
+  );
+
   // Retour arrière du navigateur : l'adresse fait foi, et les valeurs suivent.
+  // Instantané aussi : la période visée est déjà en mémoire.
   useEffect(() => {
     const onPop = () => {
       const cible = new URLSearchParams(window.location.search).get("period");
       const valide = ADMIN_PERIODS.find((p) => p === cible) ?? "7d";
-      setPeriod(valide);
-      void charger(valide, false);
+      montrer(valide, false);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
-
-  async function charger(cible: AdminPeriod, pousser: boolean) {
-    const ticket = ++demande.current;
-    if (pousser) {
-      window.history.pushState(null, "", `/admin?period=${cible}`);
-    }
-    try {
-      const response = await fetch(`/api/admin/cockpit?period=${cible}`, { cache: "no-store" });
-      if (!response.ok) throw new Error(String(response.status));
-      const recu = (await response.json()) as { period: AdminPeriod; data: DashboardData };
-      // Réponse d'une demande dépassée : on la jette plutôt que d'afficher des
-      // chiffres qui ne correspondent plus au bouton actif.
-      if (ticket !== demande.current) return;
-      demarrer(() => {
-        setData(recu.data);
-        setErreur(null);
-      });
-    } catch {
-      if (ticket !== demande.current) return;
-      setErreur("Les chiffres n’ont pas pu être rechargés. Ceux affichés sont ceux de la période précédente.");
-    }
-  }
+  }, [montrer]);
 
   function choisir(cible: AdminPeriod) {
     if (cible === period) return;
-    // L'état actif part AVANT la réponse : le bouton répond au doigt.
-    setPeriod(cible);
-    void charger(cible, true);
+    montrer(cible, true);
   }
 
-  const tiles = dashboardTiles(data);
-  const principales = tiles.filter((tile) => tile.series);
-  const secondaires = tiles.filter((tile) => !tile.series);
-  const maxVisites = Math.max(0, ...data.acquisition.map((row) => row.visits));
-  const maxVues = Math.max(0, ...data.guides.map((row) => row.views));
+  const data = caches[period];
 
   return (
-    <div className={charge ? "cockpit-charge flex flex-col gap-10" : "flex flex-col gap-10"}>
+    <div className={lent ? "cockpit-charge flex flex-col gap-10" : "flex flex-col gap-10"}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-small font-semibold tracking-widest text-marque uppercase">Aujourd’hui et tendances</p>
@@ -118,9 +191,11 @@ export function Cockpit({ initial, period: initialPeriod }: { initial: Dashboard
               {LABELS[p]}
             </a>
           ))}
-          {/* Indicateur discret, à sa place : pas de voile gris sur l'écran. */}
+          {/* Indicateur discret, à sa place : pas de voile gris sur l'écran. En
+              usage normal il reste vide, le rafraîchissement étant plus court
+              que le seuil. */}
           <span role="status" aria-live="polite" className="text-xs text-attenue">
-            {charge ? "Mise à jour…" : ""}
+            {lent ? "Mise à jour…" : ""}
           </span>
         </div>
       </div>
@@ -131,6 +206,32 @@ export function Cockpit({ initial, period: initialPeriod }: { initial: Dashboard
         </p>
       ) : null}
 
+      {data ? (
+        <Chiffres data={data} />
+      ) : (
+        // Cas rare : la RPC de cette période a échoué au premier rendu. On ne
+        // montre pas les chiffres d'une autre période sous une pastille qui
+        // dit celle-ci.
+        <p role="status" className="text-small text-attenue">
+          Les chiffres de cette période n’ont pas été chargés. Rafraîchissement en cours…
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Les chiffres d'UNE période. Le composant reste monté d'une période à
+// l'autre — seules ses props changent, donc les barres glissent au lieu de
+// disparaître.
+function Chiffres({ data }: { data: DashboardData }) {
+  const tiles = dashboardTiles(data);
+  const principales = tiles.filter((tile) => tile.series);
+  const secondaires = tiles.filter((tile) => !tile.series);
+  const maxVisites = Math.max(0, ...data.acquisition.map((row) => row.visits));
+  const maxVues = Math.max(0, ...data.guides.map((row) => row.views));
+
+  return (
+    <>
       <section aria-label="Indicateurs" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {principales.map((tile) => (
           <div key={tile.label} className="rounded-control border border-filet bg-creme p-5">
@@ -284,6 +385,6 @@ export function Cockpit({ initial, period: initialPeriod }: { initial: Dashboard
           fournit montant et devise.
         </p>
       </div>
-    </div>
+    </>
   );
 }

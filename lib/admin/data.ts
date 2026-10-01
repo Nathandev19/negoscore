@@ -53,14 +53,30 @@ const EMPTY_DASHBOARD: DashboardData = {
   timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 }, tier_changes: [],
 };
 
-export async function loadDashboard(period: AdminPeriod): Promise<DashboardData | "missing"> {
+// Mission #133 — le temps passé est mesuré ici, à la source.
+//
+// Le constat était « 2 à 3 secondes entre le clic et le mouvement des
+// barres », sans savoir où elles passaient. Trois durées différentes se
+// confondaient : la RPC Postgres, la fonction serveur, l'aller-retour vu du
+// navigateur. On ne peut pas choisir une correction sans les séparer, donc
+// `loadDashboard` rend désormais ses deux premières, et /api/admin/cockpit
+// les publie en en-tête `Server-Timing` — lisible dans les outils de
+// développement du navigateur, sur la production, sans rien rebrancher.
+export type DashboardMesure = { data: DashboardData | "missing"; rpc_ms: number; total_ms: number };
+
+export async function loadDashboardMesure(period: AdminPeriod): Promise<DashboardMesure> {
+  const debut = performance.now();
+  let apresRpc = debut;
+  const fin = () => Math.round((performance.now() - debut) * 10) / 10;
+  const rpcMs = () => Math.round((apresRpc - debut) * 10) / 10;
   try {
     const data = await rpc<DashboardData>("admin_dashboard_metrics", { p_since: sinceForPeriod(period) });
+    apresRpc = performance.now();
     // Migration #103 pas encore appliquée : la RPC ne renvoie pas encore le
     // compteur d'exclusions. Zéro plutôt qu'un affichage cassé.
     // Migration #120 pas encore appliquée : la RPC ne renvoie ni `guides` ni
     // `example`. Un tableau vide et deux zéros, plutôt qu'un affichage cassé.
-    return data
+    const complet = data
       ? {
           ...EMPTY_DASHBOARD, ...data,
           excluded: data.excluded ?? 0, internal: data.internal ?? 0,
@@ -68,9 +84,26 @@ export async function loadDashboard(period: AdminPeriod): Promise<DashboardData 
           tier_changes: data.tier_changes ?? [],
         }
       : EMPTY_DASHBOARD;
+    return { data: complet, rpc_ms: rpcMs(), total_ms: fin() };
   } catch {
-    return "missing";
+    apresRpc = performance.now();
+    return { data: "missing", rpc_ms: rpcMs(), total_ms: fin() };
   }
+}
+
+export async function loadDashboard(period: AdminPeriod): Promise<DashboardData | "missing"> {
+  return (await loadDashboardMesure(period)).data;
+}
+
+// Les QUATRE périodes d'un coup, en parallèle. Quatre RPC lancées ensemble
+// coûtent le temps de la plus lente, pas la somme des quatre : c'est ce qui
+// rend possible d'embarquer tout le cockpit dans le premier rendu, et donc
+// de changer de période sans attendre le réseau.
+export type DashboardParPeriode = Record<AdminPeriod, DashboardData | "missing">;
+
+export async function loadDashboards(): Promise<DashboardParPeriode> {
+  const resultats = await Promise.all(ADMIN_PERIODS.map((period) => loadDashboard(period)));
+  return Object.fromEntries(ADMIN_PERIODS.map((period, index) => [period, resultats[index]])) as DashboardParPeriode;
 }
 
 // Mission #103 — les tuiles du cockpit, décidées ici pour être vérifiables.

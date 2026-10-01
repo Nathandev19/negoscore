@@ -2,7 +2,13 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { axisTicks, BarCell, Funnel, labelEvery, largeur, stepRate, TimeSeries } from "@/components/admin/charts";
-import { Cockpit } from "@/components/admin/cockpit";
+import {
+  appliquerRafraichissement,
+  Cockpit,
+  estDonnees,
+  memeDonnees,
+  SEUIL_INDICATEUR_MS,
+} from "@/components/admin/cockpit";
 import { ADMIN_PERIODS, dashboardTiles, visitCount, type AdminPeriod, type DashboardData } from "@/lib/admin/data";
 import { SERIES, SERIES_COLOR } from "@/lib/admin/series";
 
@@ -64,7 +70,7 @@ const lisible = (html: string) =>
 const espaces = (valeur: string) => valeur.replace(/[\s\u00a0\u202f]+/g, " ");
 
 const cockpit = (data: DashboardData, period: AdminPeriod = "7d") =>
-  renderToStaticMarkup(<Cockpit initial={data} period={period} />);
+  renderToStaticMarkup(<Cockpit initial={{ [period]: data }} period={period} />);
 
 // ───────────────────────────────────────────────────────────────────────────
 describe("aucun chiffre ne change", () => {
@@ -238,6 +244,122 @@ describe("les tableaux ont un poids visuel", () => {
 // ───────────────────────────────────────────────────────────────────────────
 // ───────────────────────────────────────────────────────────────────────────
 // ───────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #133 — le changement de période ne traverse plus le réseau.
+//
+// Mesuré avant de corriger : la RPC Postgres fait la totalité du temps
+// serveur (92 à 242 ms en local, mise en forme à 0,1 ms), et les quatre
+// périodes pèsent 6,4 ko ensemble. Le clic lit donc la mémoire, et le réseau
+// ne sert plus qu'à vérifier après coup.
+describe("changer de période lit la mémoire, pas le réseau", () => {
+  it("les quatre périodes sont embarquées par le premier rendu", () => {
+    const page = readFileSync("app/admin/page.tsx", "utf8");
+    // Les quatre d'un coup, en parallèle : quatre RPC ensemble coûtent la plus
+    // lente, pas la somme des quatre.
+    expect(page).toContain("loadDashboards()");
+    expect(page).not.toMatch(/loadDashboard\(period\)/);
+    const data = readFileSync("lib/admin/data.ts", "utf8");
+    expect(data).toContain("Promise.all(ADMIN_PERIODS.map((period) => loadDashboard(period)))");
+  });
+
+  it("le clic affiche la période demandée sans aucun await avant", () => {
+    const source = readFileSync("components/admin/cockpit.tsx", "utf8");
+    const montrer = source.slice(source.indexOf("const montrer = useCallback("), source.indexOf("[rafraichir],"));
+    // L'état change, l'adresse suit, et le rafraîchissement part SANS être
+    // attendu. Un `await` ici, et on réintroduit les 2 à 3 secondes.
+    expect(montrer).toContain("setPeriod(cible)");
+    expect(montrer).toContain("void rafraichir(cible)");
+    expect(montrer).not.toContain("await");
+    // Et `fetch` n'apparaît que dans le rafraîchissement d'arrière-plan.
+    const fetchs = source.match(/fetch\(/g) ?? [];
+    expect(fetchs).toHaveLength(1);
+    const raf = source.slice(source.indexOf("const rafraichir = useCallback("), source.indexOf("const montrer = useCallback("));
+    expect(raf).toContain("fetch(");
+  });
+
+  it("les quatre périodes rendues depuis la mémoire portent chacune ses propres chiffres", () => {
+    // Les quatre en mémoire d'un côté, une seule de l'autre : le même écran
+    // doit sortir. C'est ce qui garantit que le composant lit la période
+    // active et ne mélange pas deux périodes.
+    const parPeriode = {
+      "24h": { ...complet, counts: { ...complet.counts, landing_view: 11 } },
+      "7d": { ...complet, counts: { ...complet.counts, landing_view: 22 } },
+      "30d": { ...complet, counts: { ...complet.counts, landing_view: 33 } },
+      all: { ...complet, counts: { ...complet.counts, landing_view: 44 } },
+    } as const;
+    for (const period of ADMIN_PERIODS) {
+      const memoire = renderToStaticMarkup(<Cockpit initial={parPeriode} period={period} />);
+      const seule = renderToStaticMarkup(<Cockpit initial={{ [period]: parPeriode[period] }} period={period} />);
+      expect(memoire, period).toBe(seule);
+      // Et le chiffre affiché est bien celui de CETTE période.
+      expect(espaces(lisible(memoire)), period).toContain(
+        espaces(dashboardTiles(parPeriode[period]).find((tile) => tile.label === "Visites mesurées")!.value),
+      );
+    }
+  });
+
+  it("une période absente de la mémoire ne montre pas les chiffres d'une autre", () => {
+    const html = renderToStaticMarkup(<Cockpit initial={{ "7d": complet }} period="24h" />);
+    expect(html).toContain("Les chiffres de cette période n’ont pas été chargés");
+    // Et surtout : aucune tuile, donc aucun chiffre emprunté à « 7 jours ».
+    expect(html).not.toContain('aria-label="Indicateurs"');
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+describe("le rafraîchissement d'arrière-plan", () => {
+  it("une valeur différente remplace la période concernée, et elle seule", () => {
+    const caches = { "24h": complet, "7d": complet };
+    const change = { ...complet, counts: { ...complet.counts, landing_view: 4242 } };
+    const apres = appliquerRafraichissement(caches, "24h", change);
+    expect(apres).not.toBe(caches);
+    expect(apres["24h"]).toBe(change);
+    expect(apres["7d"]).toBe(complet);
+    // Et le nouveau chiffre arrive bien à l'écran.
+    expect(espaces(lisible(renderToStaticMarkup(<Cockpit initial={apres} period="24h" />)))).toContain(
+      espaces(dashboardTiles(change).find((tile) => tile.label === "Visites mesurées")!.value),
+    );
+  });
+
+  it("une valeur identique n'écrit rien : rien ne bouge pour dire que rien n'a changé", () => {
+    const caches = { "24h": complet };
+    // Même contenu, autre objet : c'est le cas réel d'un rafraîchissement.
+    const copie = JSON.parse(JSON.stringify(complet)) as typeof complet;
+    expect(memeDonnees(complet, copie)).toBe(true);
+    expect(appliquerRafraichissement(caches, "24h", copie)).toBe(caches);
+    // Une période encore inconnue, elle, est toujours écrite.
+    expect(memeDonnees(undefined, copie)).toBe(false);
+    expect(appliquerRafraichissement(caches, "7d", copie)).not.toBe(caches);
+  });
+
+  it("un corps inattendu est traité comme une panne, pas comme des chiffres", () => {
+    // Trouvé en patchant la réponse à `null` dans le navigateur : sans ce
+    // contrôle, l'écran se vidait.
+    expect(estDonnees(null)).toBe(false);
+    expect(estDonnees({})).toBe(false);
+    expect(estDonnees({ counts: {} })).toBe(false);
+    expect(estDonnees({ counts: null, timeseries: [] })).toBe(false);
+    expect(estDonnees(complet)).toBe(true);
+    const source = readFileSync("components/admin/cockpit.tsx", "utf8");
+    expect(source).toContain("if (!estDonnees(recu.data)) throw new Error");
+  });
+
+  it("l'indicateur ne se montre qu'au-delà de 400 ms", () => {
+    expect(SEUIL_INDICATEUR_MS).toBe(400);
+    const source = readFileSync("components/admin/cockpit.tsx", "utf8");
+    // Un seul minuteur, armé à ce seuil, et c'est lui seul qui allume
+    // l'indicateur. Vérifié à l'écran : réponse en 150 ms, jamais vu ;
+    // réponse en 700 ms, apparu entre 250 et 550 ms, reparti ensuite.
+    expect(source).toContain("}, SEUIL_INDICATEUR_MS);");
+    expect(source.match(/setLent\(true\)/g) ?? []).toHaveLength(1);
+    expect(source).toContain("if (ticket === demande.current) setLent(true);");
+    // L'affichage de l'indicateur et du retrait d'opacité ne dépend que de
+    // `lent` : pas d'autre voile gris sur l'écran.
+    expect(source).toContain('{lent ? "Mise à jour…" : ""}');
+    expect(source).toContain('className={lent ? "cockpit-charge flex flex-col gap-10" : "flex flex-col gap-10"}');
+  });
+});
+
 describe("quand le rechargement échoue", () => {
   // Exigence de la mission : « Si la requête échoue, les données PRÉCÉDENTES
   // restent affichées. » Donc le chemin d'erreur n'a pas le droit de toucher
@@ -248,10 +370,15 @@ describe("quand le rechargement échoue", () => {
     expect(apres, "aucun bloc catch").toBeDefined();
     const bloc = apres.split("\n    }")[0];
     expect(bloc).toContain("setErreur(");
-    expect(bloc).not.toContain("setData(");
+    expect(bloc).not.toContain("setCaches(");
+    expect(bloc).not.toContain("setPeriod(");
     // Et le message dit ce que le lecteur a sous les yeux : les chiffres de la
     // période précédente, pas ceux qu'il vient de demander.
-    expect(bloc).toContain("Ceux affichés sont ceux de la période précédente.");
+    // Mission #133 — la formulation a changé avec le mécanisme : les chiffres
+    // affichés sont désormais ceux de la période DEMANDÉE, pris en mémoire, et
+    // simplement pas rafraîchis. Dire « ceux de la période précédente » serait
+    // devenu faux.
+    expect(bloc).toContain("Ceux affichés sont les derniers obtenus.");
   });
 
   it("une réponse dépassée est jetée, dans les deux chemins", () => {
@@ -289,10 +416,10 @@ describe("ce qui a été vu à l'écran, et corrigé", () => {
   });
 
   it("les quatre états d'aperçu existent, pour regarder ce que la base ne produit pas", async () => {
-    const { COCKPIT_PREVIEWS, cockpitPreview } = await import("@/lib/fixtures/cockpit-states");
+    const { COCKPIT_PREVIEWS, cockpitPreview, cockpitPreviewCaches } = await import("@/lib/fixtures/cockpit-states");
     expect([...COCKPIT_PREVIEWS]).toEqual(["lancement", "vide", "un-jour", "mois"]);
     for (const etat of COCKPIT_PREVIEWS) {
-      const html = renderToStaticMarkup(<Cockpit initial={cockpitPreview(etat)} period="7d" />);
+      const html = renderToStaticMarkup(<Cockpit initial={cockpitPreviewCaches(etat)} period="7d" />);
       expect(html, etat).toContain("Cockpit");
       expect(html, etat).not.toContain("NaN");
       expect(html, etat).not.toContain("undefined");
@@ -319,7 +446,7 @@ describe("le changement de période ne recharge pas la page", () => {
     const source = readFileSync("components/admin/cockpit.tsx", "utf8");
     // Les données vivent dans un état, et le composant est rendu sans
     // condition : il n'est jamais retiré de l'arbre pendant un chargement.
-    expect(source).toContain("useState(initial)");
+    expect(source).toContain("useState<CockpitCaches>(initial)");
     expect(source).toContain("<TimeSeries rows={data.timeseries} />");
     expect(source).toContain("<Funnel data={data} />");
     expect(source).not.toMatch(/charge \? null :|charge \? <|if \(charge\) return/);
@@ -331,9 +458,9 @@ describe("le changement de période ne recharge pas la page", () => {
   it("une erreur n'efface jamais un chiffre", () => {
     const source = readFileSync("components/admin/cockpit.tsx", "utf8");
     // Le bloc `catch` pose un message et ne touche pas aux données.
-    const bloc = source.slice(source.indexOf("} catch {"), source.indexOf("function choisir"));
+    const bloc = source.slice(source.indexOf("} catch {"), source.indexOf("function montrer"));
     expect(bloc).toContain("setErreur");
-    expect(bloc).not.toContain("setData");
+    expect(bloc).not.toContain("setCaches");
   });
 
   it("sous prefers-reduced-motion, aucune transition n'est appliquée", () => {

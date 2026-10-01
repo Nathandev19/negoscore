@@ -16,11 +16,22 @@ const data = vi.hoisted(() => ({
   users: null as AdminUsersPage | "missing" | null,
 }));
 
-vi.mock("@/lib/admin/data", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/admin/data")>()),
-  loadDashboard: async () => data.dashboard,
-  loadAdminUsers: async () => data.users,
-}));
+vi.mock("@/lib/admin/data", async (importOriginal) => {
+  const vrai = await importOriginal<typeof import("@/lib/admin/data")>();
+  return {
+    ...vrai,
+    loadDashboard: async () => data.dashboard,
+    // Mission #133 — /admin charge les QUATRE périodes d'un coup. Le faux rend
+    // les mêmes chiffres pour chacune : ce qui est vérifié ici, c'est ce que la
+    // page AFFICHE pour des données données, pas le découpage des périodes.
+    loadDashboards: async () =>
+      Object.fromEntries(vrai.ADMIN_PERIODS.map((period) => [period, data.dashboard])) as Record<
+        import("@/lib/admin/data").AdminPeriod,
+        DashboardData | "missing"
+      >,
+    loadAdminUsers: async () => data.users,
+  };
+});
 
 const { default: AdminDashboard } = await import("@/app/admin/page");
 const { default: AdminUsers } = await import("@/app/admin/users/page");
