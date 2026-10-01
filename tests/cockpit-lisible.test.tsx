@@ -458,7 +458,9 @@ describe("une barre reste une barre, quel que soit le nombre de jours", () => {
     const source = readFileSync("components/admin/charts.tsx", "utf8");
     // La colonne porte `flex-1` — chaque jour occupe la même place, l'axe du
     // temps reste honnête. La barre, elle, est centrée et plafonnée.
-    expect(source).toContain('className="flex min-w-0 flex-1 justify-center"');
+    expect(source).toContain('className="relative flex min-w-0 flex-1 justify-center"');
+    // Mission #131, 6B — `relative` met la colonne DEVANT la grille, qui est
+    // posée en absolu : la graduation du milieu ne traverse plus les barres.
     expect(source).toContain("maxWidth: `${BARRE_MAX}px`");
     // Et la barre n'est plus elle-même la colonne.
     expect(source).not.toContain('className="cockpit-bar min-w-0 flex-1');

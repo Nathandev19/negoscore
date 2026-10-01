@@ -26,6 +26,22 @@ export const SOURCE_TEXT_PURGE_AFTER_DAYS = 29;
 export const IP_HASH_RETENTION_DAYS = 30;
 export const IP_HASH_PURGE_AFTER_DAYS = 29;
 export const PAYMENT_RECORD_RETENTION_YEARS = 5;
+
+// Mission #131 — LE SEL DU JOUR, ET LES COLONNES DE DIAGNOSTIC.
+//
+// Le sel sert à calculer l'empreinte d'un appareil pour UNE journée. On garde
+// celui d'hier le temps qu'une journée se termine partout (fuseaux, écritures
+// en retard), et pas un jour de plus : une fois le sel détruit, plus rien ne
+// peut relier deux journées, y compris pour nous. C'est ce qui rend
+// l'empreinte acceptable sans bandeau de consentement.
+export const SALT_RETENTION_DAYS = 2;
+
+// L'empreinte, la raison d'exclusion et la famille de navigateur ne servent
+// qu'au diagnostic RÉCENT : « ce +1 d'hier, c'est qui ». Passé une semaine, la
+// question ne se pose plus, et le sel qui donnait un sens à l'empreinte
+// n'existe de toute façon plus. Les compteurs du cockpit, eux, ne lisent
+// aucune de ces trois colonnes : les effacer ne change pas un chiffre.
+export const EVENT_DIAGNOSTIC_RETENTION_DAYS = 7;
 // Analyses lancées sans compte (mission #061) : le navigateur qui les a lancées
 // n'y a accès que 30 jours (durée du cookie deal_anon_token). Passé ce délai,
 // personne ne peut plus les consulter ni les supprimer, alors qu'elles portent
@@ -65,6 +81,8 @@ export type PurgeReport = {
   checkout_consents: number;
   login_claims: number;
   brand_replies: number;
+  salts: number;
+  event_diagnostic: number;
 };
 
 export function purgeCutoffs(now: Date) {
@@ -76,6 +94,8 @@ export function purgeCutoffs(now: Date) {
     usageGuard: new Date(now.getTime() - IP_HASH_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
     anonAnalyses: new Date(now.getTime() - ANON_ANALYSIS_PURGE_AFTER_DAYS * DAY_MS).toISOString(),
     paymentRecords: years.toISOString(),
+    salts: new Date(now.getTime() - SALT_RETENTION_DAYS * DAY_MS).toISOString().slice(0, 10),
+    eventDiagnostic: new Date(now.getTime() - EVENT_DIAGNOSTIC_RETENTION_DAYS * DAY_MS).toISOString(),
   };
 }
 
@@ -211,6 +231,25 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
   const replyScope = scopeFilter(scope, scope?.brandReplyTurnIds, "id");
   const brandReplies = replyScope === null ? [] : await purgeBrandReplies(cutoffs.sourceTexts, replyScope);
 
+  // Mission #131 — le sel d'avant-hier, et le diagnostic d'il y a plus d'une
+  // semaine. Les deux tolèrent l'absence : tant que la migration
+  // 20261002000036 n'est pas appliquée, il n'y a ni table ni colonnes, et la
+  // purge ne doit pas échouer pour autant.
+  const saltScope = scopeFilter(scope, undefined, "day");
+  const salts =
+    scope !== undefined || saltScope === null
+      ? []
+      : await deleteRowsReturning("telemetry_salts", `day=lt.${encodeURIComponent(cutoffs.salts)}`, "day").catch(() => []);
+
+  const diagnostic =
+    scope !== undefined
+      ? []
+      : await updateRows<{ id: string }>(
+          "product_events",
+          `visitor=not.is.null&occurred_at=lt.${encodeURIComponent(cutoffs.eventDiagnostic)}&select=id`,
+          { visitor: null, internal_reason: null, agent_family: null },
+        ).catch(() => []);
+
   return {
     documents,
     files_removed: filesRemoved,
@@ -221,5 +260,7 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
     checkout_consents: consents.length,
     login_claims: loginClaims.length,
     brand_replies: brandReplies.length,
+    salts: salts.length,
+    event_diagnostic: diagnostic.length,
   };
 }

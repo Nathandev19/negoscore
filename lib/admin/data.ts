@@ -1,5 +1,5 @@
 import { isUuid } from "@/lib/security/request";
-import { rpc, selectRows } from "@/lib/supabase/server";
+import { countRows, isMissingColumn, rpc, selectRows } from "@/lib/supabase/server";
 import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
 import type { Series } from "@/lib/admin/series";
 
@@ -275,13 +275,89 @@ export type AdminAnalysisRow = {
   offered_amount: string | null; estimate_low: string | null; estimate_high: string | null;
   profile_tier: string | null; feedback: string | null; turns: number; concluded: boolean;
 };
-export type AdminAnalysesPage = { total: number; items: AdminAnalysisRow[] };
+// Mission #131, étape 6A — la liste des analyses est filtrée depuis #118
+// (`where a.environment='production' and not a.internal`) et ne le disait
+// nulle part. On cherchait des analyses de septembre écartées en silence.
+// Les deux compteurs viennent d'ici, pas de la RPC : aucune migration.
+export type AdminAnalysesPage = { total: number; items: AdminAnalysisRow[]; excluded?: number; internal?: number };
 
 export async function loadAdminAnalyses(page = 1): Promise<AdminAnalysesPage | "missing"> {
   try {
-    return await rpc<AdminAnalysesPage>("admin_analyses_page", { p_offset: (Math.max(1, page) - 1) * ADMIN_PAGE_SIZE, p_limit: ADMIN_PAGE_SIZE });
+    const [data, excluded, internal] = await Promise.all([
+      rpc<AdminAnalysesPage>("admin_analyses_page", { p_offset: (Math.max(1, page) - 1) * ADMIN_PAGE_SIZE, p_limit: ADMIN_PAGE_SIZE }),
+      // Colonnes absentes (migrations #103/#118 pas encore passées) : zéro,
+      // comme partout ailleurs. Un compteur muet vaut mieux qu'un écran cassé.
+      countRows("analyses", "environment=neq.production&select=id").catch(() => 0),
+      countRows("analyses", "environment=eq.production&internal=is.true&select=id").catch(() => 0),
+    ]);
+    return { ...data, excluded, internal };
   } catch {
     return "missing";
+  }
+}
+
+// La même phrase que la section Guides du cockpit, avec les mêmes mots : on
+// ne veut pas deux formulations pour une seule règle.
+export function analysesNotice(page: AdminAnalysesPage): string {
+  return `Production uniquement. ${count(page.excluded ?? 0)} analyse(s) hors production exclue(s) (local, prévisualisation, tests, historique), et ${count(
+    page.internal ?? 0,
+  )} produite(s) par un compte ou un appareil interne.`;
+}
+
+// Mission #131 — LES ÉVÉNEMENTS UN PAR UN.
+//
+// Le cockpit ne montre que des totaux : quand une ligne bouge, on ne sait ni
+// qui l'a produite, ni quand, ni si deux lignes viennent de la même personne.
+//
+// Cette lecture-ci ne filtre RIEN : les lignes internes et hors production y
+// sont, marquées. C'est le seul moyen de vérifier que le marquage de #118 et
+// le jeton de mesure de #135 font ce qu'on croit — une ligne écartée et une
+// ligne absente se ressemblent beaucoup trop.
+export const RECENT_EVENTS_LIMIT = 200;
+
+export type AdminEventRow = {
+  id: string;
+  occurred_at: string;
+  event_name: string;
+  path: string | null;
+  utm_source: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  environment: string | null;
+  internal: boolean | null;
+  // Les trois colonnes de la migration 20261002000036. Absentes tant qu'elle
+  // n'est pas appliquée : la vue le dit plutôt que d'afficher des tirets
+  // qu'on prendrait pour des mesures manquantes.
+  visitor?: string | null;
+  internal_reason?: string | null;
+  agent_family?: string | null;
+};
+
+export type AdminEvents = { rows: AdminEventRow[]; detail: boolean };
+
+const EVENT_COLUMNS = "id,occurred_at,event_name,path,utm_source,utm_campaign,utm_content,environment,internal";
+const DETAIL_COLUMNS = `${EVENT_COLUMNS},visitor,internal_reason,agent_family`;
+
+export async function loadRecentEvents(limit = RECENT_EVENTS_LIMIT): Promise<AdminEvents | "missing"> {
+  const borne = Math.min(Math.max(1, limit), 500);
+  try {
+    const rows = await selectRows<AdminEventRow>(
+      "product_events",
+      `select=${DETAIL_COLUMNS}&order=occurred_at.desc&limit=${borne}`,
+    );
+    return { rows, detail: true };
+  } catch (caught) {
+    // Migration de diagnostic pas encore appliquée : on sert ce qui existe.
+    if (!isMissingColumn(caught)) return "missing";
+    try {
+      const rows = await selectRows<AdminEventRow>(
+        "product_events",
+        `select=${EVENT_COLUMNS}&order=occurred_at.desc&limit=${borne}`,
+      );
+      return { rows, detail: false };
+    } catch {
+      return "missing";
+    }
   }
 }
 

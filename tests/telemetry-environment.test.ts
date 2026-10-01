@@ -120,8 +120,22 @@ describe("le client n'a aucune autorité sur l'environnement", () => {
       [
         "dedupe_key", "entity_id", "entity_type", "environment", "event_name", "internal", "metadata",
         "path", "referrer_host", "user_id", "utm_campaign", "utm_content", "utm_medium", "utm_source",
+        // Mission #131 — trois colonnes de DIAGNOSTIC, décidées par le
+        // serveur comme l'environnement : le corps ne peut en poser aucune.
+        "visitor", "internal_reason", "agent_family",
       ].sort(),
     );
+    // Et le client ne décide d'aucune des trois, même en les annonçant.
+    const injecte = await send({
+      event: "landing_view",
+      visitor: "aaaaaa",
+      internal_reason: "compte",
+      agent_family: "chrome",
+    });
+    expect(injecte.status).toBe(204);
+    expect(written().visitor).not.toBe("aaaaaa");
+    expect(written().internal_reason).toBeNull();
+    expect(written().agent_family).not.toBe("chrome");
   });
 
   it("un champ environment dans le corps ne change rien à la réponse : il est ignoré en silence", async () => {

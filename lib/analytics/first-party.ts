@@ -52,10 +52,12 @@ export async function recordProductEvent(input: {
         utm_content: a.utm_content ?? null, entity_type: input.entityType ?? null, entity_id: input.entityId ?? null,
         metadata: input.metadata ?? {}, dedupe_key: input.dedupeKey ?? null,
       }),
+      // Mission #131 — et le diagnostic (empreinte, raison, famille d'agent),
+      // qui n'existe que sur cette table.
       // Mission #118 — le compte qui produit l'événement, pour les écritures
       // sans navigateur : le webhook Whop écrit purchase_completed depuis une
       // requête de Whop, qui ne porte pas le cookie interne.
-      { userId: input.userId ?? null },
+      { userId: input.userId ?? null, diagnostic: true },
     );
   } catch (error) {
     console.error(JSON.stringify({ event: "product_telemetry_error", name: input.event, detail: error instanceof Error ? error.message.slice(0, 120) : "inconnu" }));

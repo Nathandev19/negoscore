@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import { isMissingColumn, selectRows } from "@/lib/supabase/server";
 import { currentEnvironment, type TelemetryEnvironment } from "@/lib/telemetry/environment";
 import { INTERNAL_COOKIE, internalList, internalSecret, internalTokenValid, isInternalEmail, isMeasurementAgent } from "@/lib/telemetry/internal";
+import { agentFamily, clientIp, dailySalt, visitorFingerprint, type AgentFamily } from "@/lib/telemetry/visiteur";
 
 // Mission #103 — écrire une ligne en lui attachant son environnement.
 // Mission #118 — et en disant si elle vient de l'intérieur.
@@ -17,14 +18,49 @@ import { INTERNAL_COOKIE, internalList, internalSecret, internalTokenValid, isIn
 // la ligne n'est jamais comptée comme production, et jamais marquée interne
 // (marquer à tort effacerait du cockpit un vrai visiteur).
 
-export type TelemetryTag = { environment?: TelemetryEnvironment; internal?: boolean };
+// Mission #131 — trois champs de diagnostic s'ajoutent, et un seul mot les
+// décrit : ils servent à LIRE une ligne, jamais à décider quoi que ce soit.
+// `visitor` dit si deux lignes viennent du même appareil, `internal_reason`
+// pourquoi une ligne est écartée, `agent_family` d'où elle vient.
+export type InternalReason = "cookie" | "compte" | "mesure";
 
+export type TelemetryTag = {
+  environment?: TelemetryEnvironment;
+  internal?: boolean;
+  visitor?: string | null;
+  internal_reason?: InternalReason | null;
+  agent_family?: AgentFamily | null;
+};
+
+// `diagnostic` : les trois colonnes de la mission #131, qui n'existent que
+// sur product_events. Les quatre autres tables marquées (analyses, deals,
+// purchases, analysis_feedback) ne les ont pas et n'en ont pas l'usage : les
+// leur envoyer coûterait un aller-retour perdu à chaque écriture.
 export async function withEnvironment<T>(
   write: (extra: TelemetryTag) => Promise<T>,
-  options: { userId?: string | null } = {},
+  options: { userId?: string | null; diagnostic?: boolean } = {},
 ): Promise<T> {
   const environment = currentEnvironment();
-  const internal = await internalTraffic(options.userId ?? null);
+  const raison = await internalReason(options.userId ?? null);
+  const internal = raison !== null;
+  if (!options.diagnostic) return writeWithFallback(write, environment, internal);
+  const diagnostic = await diagnosticTag();
+  try {
+    return await write({ environment, internal, internal_reason: raison, ...diagnostic });
+  } catch (caught) {
+    if (!isMissingColumn(caught)) throw caught;
+    console.warn(JSON.stringify({ event: "telemetry_colonne_absente", champ: "diagnostic" }));
+    return writeWithFallback(write, environment, internal);
+  }
+}
+
+// Le repli d'origine (#103, #118), inchangé : internal d'abord, puis
+// l'environnement, puis rien. Le code peut précéder sa migration.
+async function writeWithFallback<T>(
+  write: (extra: TelemetryTag) => Promise<T>,
+  environment: TelemetryEnvironment,
+  internal: boolean,
+): Promise<T> {
   try {
     return await write({ environment, internal });
   } catch (caught) {
@@ -37,6 +73,24 @@ export async function withEnvironment<T>(
       console.warn(JSON.stringify({ event: "telemetry_environment_colonne_absente" }));
       return write({});
     }
+  }
+}
+
+// L'empreinte du jour et la famille de navigateur. Hors contexte de requête
+// (webhook rejoué, tâche planifiée), il n'y a ni adresse ni agent : les deux
+// champs restent vides, et c'est une information en soi.
+async function diagnosticTag(): Promise<{ visitor: string | null; agent_family: AgentFamily | null }> {
+  try {
+    const entetes = await headers();
+    const agent = entetes.get("user-agent");
+    // L'adresse n'existe que dans cette expression : elle entre dans le hash
+    // et n'en ressort jamais.
+    return {
+      visitor: visitorFingerprint(await dailySalt(), clientIp(entetes), agent),
+      agent_family: agentFamily(agent),
+    };
+  } catch {
+    return { visitor: null, agent_family: null };
   }
 }
 
@@ -56,10 +110,18 @@ export async function withEnvironment<T>(
 //    sort pas de Vercel. Il s'annonce donc dans son User-Agent, et la ligne
 //    est écrite comme interne plutôt que jetée — on veut pouvoir compter
 //    les passages de mesure.
+// Mission #131 — la source est NOMMÉE, pas seulement comptée. Sans elle, on
+// ne peut pas vérifier que le marquage de #118 et le jeton de #135 font ce
+// qu'on croit : une ligne écartée ressemble à une ligne absente.
+export async function internalReason(userId: string | null = null): Promise<InternalReason | null> {
+  if (await internalBrowser()) return "cookie";
+  if (await measurementBrowser()) return "mesure";
+  if (await internalAccount(userId)) return "compte";
+  return null;
+}
+
 export async function internalTraffic(userId: string | null = null): Promise<boolean> {
-  if (await internalBrowser()) return true;
-  if (await measurementBrowser()) return true;
-  return internalAccount(userId);
+  return (await internalReason(userId)) !== null;
 }
 
 async function measurementBrowser(): Promise<boolean> {

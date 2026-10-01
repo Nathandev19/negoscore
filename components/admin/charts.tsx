@@ -142,7 +142,12 @@ function BarChart({ series, days, total }: { series: Series; days: Jour[]; total
                  La colonne garde sa largeur (`flex-1`) : l'axe du temps reste
                  honnête, chaque jour occupe la même place quel que soit le
                  nombre de jours. La barre, elle, est plafonnée et centrée. */
-              <div key={jour.day} className="flex min-w-0 flex-1 justify-center">
+              /* Mission #131, 6B — `relative` : la grille est posée en ABSOLU,
+                 donc elle peignait PAR-DESSUS les barres, et la graduation du
+                 milieu faisait une couture blanche au travers d’une barre
+                 pleine. Deux éléments positionnés se peignent dans l’ordre du
+                 balisage : la colonne vient après la grille, elle passe devant. */
+              <div key={jour.day} className="relative flex min-w-0 flex-1 justify-center">
                 <div
                   /* cockpit-bar porte la transition de hauteur (240 ms,
                      ease-out) et son annulation sous prefers-reduced-motion. */

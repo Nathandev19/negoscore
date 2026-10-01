@@ -57,11 +57,37 @@ describe("portée de la purge", () => {
     expect(db.selects).toHaveLength(1);
     expect(db.selects[0]).not.toContain("id=in.");
     // login_claims : réclamations de connexion expirées (mission #067).
-    expect(db.deletes.map((d) => d.table)).toEqual(["usage_guard", "deals", "whop_events", "checkout_consents", "login_claims"]);
+    // telemetry_salts : le sel d'avant-hier (mission #131). Une fois détruit,
+    // les empreintes de ce jour-là ne peuvent plus être reliées à rien.
+    expect(db.deletes.map((d) => d.table)).toEqual([
+      "usage_guard",
+      "deals",
+      "whop_events",
+      "checkout_consents",
+      "login_claims",
+      "telemetry_salts",
+    ]);
     for (const { filter } of db.deletes) expect(filter).not.toMatch(/(^|&)(id|event_id)=in\./);
-    // Texte des offres, puis réponses de marque collées (mission #080).
-    expect(db.updates.map((u) => u.table)).toEqual(["deals", "negotiation_turns"]);
+    // Texte des offres, réponses de marque collées (mission #080), puis les
+    // trois colonnes de diagnostic de plus d'une semaine (mission #131).
+    expect(db.updates.map((u) => u.table)).toEqual(["deals", "negotiation_turns", "product_events"]);
     for (const update of db.updates) expect(update.filter).not.toContain("id=in.");
+  });
+
+  it("mission #131 : le diagnostic des événements s'efface au bout d'une semaine", async () => {
+    await runPurge(NOW);
+    const diagnostic = db.updates.find((u) => u.table === "product_events");
+    // Les trois colonnes partent ensemble : une empreinte sans sa famille de
+    // navigateur ne répond plus à la question qu'on lui posait.
+    expect(diagnostic?.patch).toEqual({ visitor: null, internal_reason: null, agent_family: null });
+    expect(diagnostic?.filter).toContain("visitor=not.is.null");
+    expect(decodeURIComponent(diagnostic?.filter ?? "")).toContain("occurred_at=lt.2026-09-10T03:00:00.000Z");
+    // La LIGNE reste : les compteurs du cockpit ne lisent aucune de ces trois
+    // colonnes, et effacer l'événement changerait les chiffres.
+    expect(db.deletes.map((d) => d.table)).not.toContain("product_events");
+    // Le sel, lui, est supprimé, pas vidé.
+    const sels = db.deletes.find((d) => d.table === "telemetry_salts");
+    expect(decodeURIComponent(sels?.filter ?? "")).toContain("day=lt.2026-09-15");
   });
 
   it("mission #080 : réponses de marque collées effacées au bout de 30 jours, le tour reste", async () => {
@@ -114,7 +140,9 @@ describe("portée de la purge", () => {
     expect(dealsSupprimes).toHaveLength(1);
     expect(dealsSupprimes[0].filter).toContain("user_id=is.null");
     expect(decodeURIComponent(dealsSupprimes[0].filter)).toContain("created_at=lt.2026-08-19T03:00:00.000Z");
-    const dealUpdates = db.updates.filter((u) => u.table !== "negotiation_turns");
+    // product_events : la purge du diagnostic (#131) n'a pas de portée, elle
+    // ne part donc qu'au premier appel.
+    const dealUpdates = db.updates.filter((u) => u.table === "deals");
     expect(dealUpdates).toHaveLength(2);
     for (const update of dealUpdates) {
       expect(update.table).toBe("deals");
