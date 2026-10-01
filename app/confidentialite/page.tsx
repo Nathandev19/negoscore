@@ -27,6 +27,7 @@ export default function PrivacyPage() {
             "Analyses produites — affichage et historique — exécution du contrat.",
             "Niveau choisi pour le calcul des tarifs (je débute, déjà des collabs payées, c'est mon métier) — préférence de calcul, gardée dans un cookie du navigateur et, avec un compte, sur le compte — exécution du contrat — jusqu'à ce que tu en changes, ou à la suppression du compte (cookie : 12 mois).",
             "Adresse IP sous forme hachée — limitation des abus et de l'usage gratuit — intérêt légitime — conservée 30 jours au maximum.",
+            "Empreinte technique d'un appareil, calculée à partir de l'adresse IP et du navigateur avec une valeur aléatoire renouvelée chaque jour — distinguer deux visites d'une même journée dans les statistiques — intérêt légitime — l'adresse IP n'est jamais conservée, et l'empreinte cesse d'avoir un sens dès le lendemain.",
             "Demande de lien de connexion faite depuis un navigateur qui a lancé une analyse sans compte : l'adresse demandée, le jeton anonyme de ce navigateur et l'empreinte d'un code glissé dans le lien (le code lui-même n'est pas gardé) — rattacher cette analyse à ton compte, même si tu ouvres le lien dans un autre navigateur — exécution du contrat.",
             "Email de l'acheteur, montant et formule achetée — preuve de la transaction et suivi des paiements — obligation légale et intérêt légitime.",
             `Coordonnées bancaires — traitées exclusivement par Whop, jamais reçues ni conservées par ${BRAND.name}.`,
@@ -46,6 +47,7 @@ export default function PrivacyPage() {
             "Avis sur une estimation (réponse et commentaire facultatif de 200 caractères au plus, que tu rédiges toi-même) : conservés tant que l'analyse existe, et supprimés avec elle, que tu supprimes l'analyse ou ton compte.",
             "Journal des paiements et preuves de consentement : 5 ans, y compris après la suppression du compte.",
             "Adresses IP hachées : 30 jours au maximum.",
+            "Empreinte technique d'appareil : 7 jours. La valeur aléatoire qui permet de la calculer est détruite au bout de 2 jours : passé ce délai, deux journées ne peuvent plus être rapprochées.",
             "Demande de lien de connexion : effacée dès que le lien sert. Sinon, elle ne sert plus au bout de 2 heures, et la purge quotidienne l'efface au plus tard le lendemain.",
             "Données de facturation détenues par Whop : selon ses propres durées.",
           ]}
@@ -131,14 +133,17 @@ export default function PrivacyPage() {
 
       <LegalSection title="Mesure d'audience">
         <p>
-          La mesure d&apos;audience ne dépose rien sur ton appareil : aucun cookie, aucun stockage local, aucun
-          identifiant conservé d&apos;une visite à l&apos;autre. C&apos;est pourquoi aucune bannière de consentement ne
-          t&apos;est présentée. Le seul cookie qu&apos;elle lit est celui qui marque un appareil de l&apos;équipe du
-          site (ns_interne, décrit plus haut), pour écarter nos propres visites de nos statistiques.
+          La mesure d&apos;audience ne dépose rien sur ton appareil : aucun cookie, aucun stockage local. Pour
+          distinguer deux visites d&apos;une même journée, une empreinte technique est calculée à partir de ton
+          adresse IP et de ton navigateur, avec une valeur aléatoire renouvelée chaque jour et détruite ensuite :
+          elle ne permet pas de te reconnaître d&apos;un jour à l&apos;autre, et ton adresse IP n&apos;est conservée
+          nulle part. C&apos;est pourquoi aucune bannière de consentement ne t&apos;est présentée. Le seul cookie
+          qu&apos;elle lit est celui qui marque un appareil de l&apos;équipe du site (ns_interne, décrit plus haut),
+          pour écarter nos propres visites de nos statistiques.
         </p>
         <p>
           Les pages publiques contiennent une image d&apos;un pixel, transparente, qui sert uniquement à compter la
-          page affichée. Elle ne dépose rien et ne permet pas de te reconnaître d&apos;une visite à l&apos;autre.
+          page affichée. Elle ne dépose rien et ne permet pas de te reconnaître d&apos;un jour à l&apos;autre.
         </p>
         <p>
           Les statistiques d&apos;usage ne contiennent ni le texte des offres, ni les noms de marques, ni les montants

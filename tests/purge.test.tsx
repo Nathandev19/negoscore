@@ -168,14 +168,29 @@ describe("politique de confidentialité", () => {
       // #118 : la mesure LIT le cookie ns_interne pour écarter les visites de
       // l'équipe. La phrase dit désormais ce qui se passe, et annonce l'image
       // de mesure ajoutée sur les pages publiques.
-      "La mesure d'audience ne dépose rien sur ton appareil : aucun cookie, aucun stockage local, aucun identifiant conservé d'une visite à l'autre.",
+      //
+      // Mission #139 — et « aucun identifiant conservé d'une visite à l'autre »
+      // serait devenu faux à la première empreinte écrite (mission #131) :
+      // l'empreinte DISTINGUE deux visites d'une même journée. La page le dit
+      // maintenant, avec ce qu'elle ne permet pas — relier deux jours.
+      "La mesure d'audience ne dépose rien sur ton appareil : aucun cookie, aucun stockage local. Pour distinguer deux visites d'une même journée, une empreinte technique est calculée à partir de ton adresse IP et de ton navigateur, avec une valeur aléatoire renouvelée chaque jour et détruite ensuite : elle ne permet pas de te reconnaître d'un jour à l'autre, et ton adresse IP n'est conservée nulle part. C'est pourquoi aucune bannière de consentement ne t'est présentée.",
       "Le seul cookie qu'elle lit est celui qui marque un appareil de l'équipe du site (ns_interne, décrit plus haut), pour écarter nos propres visites de nos statistiques.",
-      "Les pages publiques contiennent une image d'un pixel, transparente, qui sert uniquement à compter la page affichée. Elle ne dépose rien et ne permet pas de te reconnaître d'une visite à l'autre.",
+      "Les pages publiques contiennent une image d'un pixel, transparente, qui sert uniquement à compter la page affichée. Elle ne dépose rien et ne permet pas de te reconnaître d'un jour à l'autre.",
+      // Les deux lignes déclarées, dans « Données traitées » et dans
+      // « Durées de conservation ».
+      "Empreinte technique d'un appareil, calculée à partir de l'adresse IP et du navigateur avec une valeur aléatoire renouvelée chaque jour — distinguer deux visites d'une même journée dans les statistiques — intérêt légitime — l'adresse IP n'est jamais conservée, et l'empreinte cesse d'avoir un sens dès le lendemain.",
+      "Empreinte technique d'appareil : 7 jours. La valeur aléatoire qui permet de la calculer est détruite au bout de 2 jours : passé ce délai, deux journées ne peuvent plus être rapprochées.",
       "Il ne quitte pas ton appareil tant que tu ne lances pas l'analyse. Il est effacé dès qu'une analyse aboutit, ou au bout de 24 heures.",
       ...COOKIES,
     ]) {
       expect(html.replace(/\s+/g, " "), text).toContain(text);
     }
+    // Mission #139 — les deux phrases devenues fausses ont disparu. Un texte
+    // légal qui promet plus que ce que fait le produit est pire qu'un texte
+    // absent : il se lit comme un engagement.
+    const lisible = html.replace(/\s+/g, " ");
+    expect(lisible).not.toContain("aucun identifiant conservé d'une visite à l'autre");
+    expect(lisible).not.toContain("ne permet pas de te reconnaître d'une visite à l'autre");
     expect(html).not.toContain("Données de paiement");
     expect(html).not.toContain("durée de prescription");
     expect(html.indexOf("Durées de conservation")).toBeLessThan(html.indexOf("Suppression de ton compte"));
