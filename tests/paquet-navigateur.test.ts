@@ -108,11 +108,15 @@ describe("ce que le navigateur n'a pas à télécharger", () => {
     expect(chemins.map(court)).toEqual([]);
   });
 
-  it("aucun module du navigateur n'importe posthog-js au chargement", () => {
-    // Il arrive par import dynamique, une fois la page interactive
-    // (lib/analytics/client.ts). Un import statique le remettrait partout.
+  it("aucun module du navigateur n'atteint posthog-js, et la dépendance n'existe plus", () => {
+    // Mission #142 — il n'est plus différé, il est RETIRÉ : ~380 ms de
+    // blocage et 96,7 ko sur chaque page, pour une mesure que personne ne
+    // lisait. La règle du projet depuis #103 est « on lit /admin, jamais
+    // PostHog ».
     const chemins = CLIENTS.map((c) => cheminVers("posthog-js", c)).filter((c): c is string[] => c !== null);
     expect(chemins.map(court)).toEqual([]);
+    const paquet = JSON.parse(readFileSync(path.join(RACINE, "package.json"), "utf8"));
+    expect({ ...paquet.dependencies, ...paquet.devDependencies }).not.toHaveProperty("posthog-js");
   });
 
   it("les trois modules partagés par l'écran n'ont aucune dépendance", () => {

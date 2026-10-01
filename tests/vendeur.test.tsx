@@ -186,8 +186,12 @@ describe("la politique de confidentialité", () => {
     const { default: PrivacyPage } = await import("@/app/confidentialite/page");
     const html = renderToStaticMarkup(<PrivacyPage />);
     expect(texte(html)).not.toContain("Whop — encaissement des paiements");
+    expect(texte(html)).not.toContain("PostHog");
     // Les vrais sous-traitants, eux, sont toujours là.
-    for (const reste of ["Supabase —", "Vercel —", "OpenAI —", "Resend —", "PostHog —"]) {
+    // Mission #142 — PostHog est sorti de la liste : la bibliothèque est
+    // retirée du produit. Déclarer un sous-traitant qui n'existe plus est
+    // aussi faux que d'en oublier un.
+    for (const reste of ["Supabase —", "Vercel —", "OpenAI —", "Resend —"]) {
       expect(texte(html), reste).toContain(reste);
     }
   });

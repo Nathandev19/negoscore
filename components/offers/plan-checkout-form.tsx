@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { analyticsDistinctId, track } from "@/lib/analytics/client";
-import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import Link from "next/link";
 import { CONSENT_LINK_LABEL, CONSENT_TEXT } from "@/lib/billing/consent";
 import { Button } from "@/components/ui/button";
@@ -33,12 +31,14 @@ export function PlanCheckoutForm({ plan, label }: { plan: "pack" | "pro"; label:
   const [sending, setSending] = useState(false);
   // Identifiant anonyme de la mesure d'audience, écrit directement dans le
   // champ caché : vide si la mesure est désactivée (DNT, pas de clé).
-  const distinctIdField = useRef<HTMLInputElement>(null);
   const attributionField = useRef<HTMLInputElement>(null);
   const id = `consent-${plan}`;
 
-  function fillDistinctId() {
-    if (distinctIdField.current) distinctIdField.current.value = analyticsDistinctId() ?? "";
+  // Mission #142 — l'identifiant anonyme de PostHog ne voyage plus : il
+  // n'existait que pour relier un achat au parcours DANS PostHog. Le
+  // rattachement première partie, lui, passe par l'attribution ci-dessous,
+  // qui est écrite dans product_events par /api/checkout.
+  function fillAttribution() {
     if (attributionField.current) attributionField.current.value = JSON.stringify(currentAttribution());
   }
 
@@ -52,11 +52,10 @@ export function PlanCheckoutForm({ plan, label }: { plan: "pack" | "pro"; label:
     }
     sentRef.current = true;
     setSending(true);
-    fillDistinctId();
-    track(ANALYTICS_EVENTS.checkoutStarted, { plan });
+    fillAttribution();
   }
 
-  useEffect(fillDistinctId, []);
+  useEffect(fillAttribution, []);
 
   // Retour arrière depuis la page de paiement : la page est restaurée telle
   // quelle par le navigateur. Le formulaire redevient utilisable.
@@ -73,7 +72,6 @@ export function PlanCheckoutForm({ plan, label }: { plan: "pack" | "pro"; label:
   return (
     <form action="/api/checkout" method="post" className="flex flex-col gap-3" onSubmit={onSubmit}>
       <input type="hidden" name="plan" value={plan} />
-      <input type="hidden" name="ph_distinct_id" ref={distinctIdField} defaultValue="" />
       <input type="hidden" name="attribution" ref={attributionField} defaultValue="" />
       <label htmlFor={id} className="flex items-start gap-2 text-xs">
         <input

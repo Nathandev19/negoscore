@@ -10,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
-import { track } from "@/lib/analytics/client";
-import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { currentAttribution } from "@/components/analytics/first-party-view";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
@@ -35,12 +33,10 @@ const GENERIC_ERROR =
 // ce n'est pas la connexion de l'utilisateur qui est en cause.
 const SERVER_ERROR = "L'analyse est momentanément indisponible. Rien n'a été décompté, réessaie dans quelques minutes.";
 const UPLOAD_ERROR = "Le fichier n'a pas pu être envoyé. Vérifie ta connexion et réessaie.";
-const METHOD = { text: "paste", photo: "photo", pdf: "pdf" } as const;
 // Copié au build depuis ANALYSIS_PAUSED (next.config.ts).
 const PAUSED = process.env.NEXT_PUBLIC_ANALYSIS_PAUSED === "1";
 
 type Mode = "text" | FileKind;
-type AnalysisMeta = { latency_ms: number; confidence: string; score_band: string; has_price: boolean };
 type Outcome =
   | { ok: true; analysisId: string }
   | { ok: false; message: string; paywall: boolean; signIn: boolean };
@@ -229,7 +225,6 @@ export function DealInput({ note }: { note?: string } = {}) {
   function markInputStarted(current: Mode) {
     if (startedRef.current[current]) return;
     startedRef.current[current] = true;
-    track(ANALYTICS_EVENTS.inputStarted, { method: METHOD[current] });
   }
 
   function selectFile(kind: FileKind, file: File) {
@@ -300,7 +295,6 @@ export function DealInput({ note }: { note?: string } = {}) {
         outcomeRef.current = { ok: true, analysisId: decision.analysisId };
         finish("reprise");
       } else if (decision.action === "echec") {
-        track(ANALYTICS_EVENTS.analysisFailed, { reason: "arriere_plan" });
         outcomeRef.current = { ok: false, message: RESUME_FAILED, paywall: false, signIn: false };
         finish("reprise");
       }
@@ -334,8 +328,6 @@ export function DealInput({ note }: { note?: string } = {}) {
     setRespondedAt(null);
     setRunningMode(current);
     setLoading(true);
-    const method = METHOD[current];
-    track(ANALYTICS_EVENTS.analysisSubmitted, { method });
     try {
       const selected = current === "text" ? null : files[current];
       const source = selected && current !== "text" ? { storagePath: await uploadFile(current, selected.file) } : { text };
@@ -353,19 +345,16 @@ export function DealInput({ note }: { note?: string } = {}) {
         // demande à ne pas être suivi. Il n'ajoute rien : il retire.
         doNotTrack: navigator.doNotTrack === "1",
       };
-      const { analysisId, meta } = await withNetworkRetry(() => postJson("/api/analyse", payload));
+      const { analysisId } = await withNetworkRetry(() => postJson("/api/analyse", payload));
       if (typeof analysisId === "string") {
-        const info = meta as AnalysisMeta | undefined;
-        track(ANALYTICS_EVENTS.analysisCompleted, {
-          method,
-          latency_ms: info?.latency_ms ?? 0,
-          confidence: info?.confidence ?? "inconnue",
-          score_band: info?.score_band ?? "inconnu",
-          has_price: info?.has_price ?? false,
-        });
+        // Mission #142 — la réponse porte aussi des mesures (latence,
+        // confiance, fourchette) qui ne servaient qu'à décrire l'analyse à la
+        // mesure tierce. Les deux événements de l'analyse, eux, sont écrits par
+        // le SERVEUR (app/api/analyse/route.ts) : ils n'ont jamais dépendu
+        // d'ici, et le test de #084 interdit que leurs noms apparaissent dans
+        // ce fichier.
         outcomeRef.current = { ok: true, analysisId };
       } else {
-        track(ANALYTICS_EVENTS.analysisFailed, { reason: "reponse_invalide" });
         outcomeRef.current = { ok: false, message: GENERIC_ERROR, paywall: false, signIn: false };
       }
     } catch (caught) {
@@ -373,8 +362,6 @@ export function DealInput({ note }: { note?: string } = {}) {
         caught instanceof FlowError
           ? { ok: false as const, message: caught.message, paywall: caught.paywall, reason: caught.reason }
           : { ok: false as const, message: GENERIC_ERROR, paywall: false, reason: "reseau" };
-      track(ANALYTICS_EVENTS.analysisFailed, { reason: failure.reason });
-      if (failure.reason === "free_used") track(ANALYTICS_EVENTS.secondAnalysisAttempt, { method });
       outcomeRef.current = {
         ok: false,
         message: failure.message,

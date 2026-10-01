@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -134,12 +134,22 @@ describe("politique de confidentialité", () => {
 
   // Mission #049 : la mesure d'audience ne dépose plus rien. Si un cookie ou un
   // stockage PostHog revient, la page ne l'annonce plus : ce test échoue avant.
-  it("la mesure d'audience tourne sans rien écrire sur l'appareil", () => {
-    const client = readFileSync(path.join(process.cwd(), "lib/analytics/client.ts"), "utf8");
-    expect(client).toContain('cookieless_mode: "always"');
-    // Aucune option qui rétablirait un stockage : persistence, cookie, opt-in.
-    expect(client).not.toMatch(/persistence\s*:|set_cookie|opt_in_capturing|cookieless_mode:\s*"on_reject"/);
+  it("plus aucune mesure tierce n'existe dans le navigateur", () => {
+    // Mission #142 — PostHog est retiré : il coûtait ~380 ms de blocage et
+    // 96,7 ko sur chaque page, pour une mesure que personne ne lisait. La
+    // question « écrit-elle sur l'appareil » ne se pose plus : il n'y a plus
+    // de mesure tierce du tout.
+    expect(existsSync(path.join(process.cwd(), "lib/analytics/client.ts"))).toBe(false);
+    expect(existsSync(path.join(process.cwd(), "lib/analytics/server.ts"))).toBe(false);
+    expect(JSON.parse(readFileSync(path.join(process.cwd(), "package.json"), "utf8")).dependencies).not.toHaveProperty(
+      "posthog-js",
+    );
+    // Et aucun cookie de mesure n'est déclaré : il n'y en a plus à déclarer.
     expect(COOKIES.join(" ")).not.toMatch(/ph_|posthog/i);
+    // Le nettoyage des résidus laissés AVANT la mission #049, lui, reste :
+    // ces cookies ne s'effaceraient pas seuls avant un an.
+    const nettoyage = readFileSync(path.join(process.cwd(), "components/arrival-cleanup.tsx"), "utf8");
+    expect(nettoyage).toContain("clearAnalyticsResidue");
   });
 
   it("reprend le texte fourni", async () => {

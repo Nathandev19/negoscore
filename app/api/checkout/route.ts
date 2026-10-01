@@ -1,4 +1,3 @@
-import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
 import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { CONSENT_TEXT, CONSENT_VERSION } from "@/lib/billing/consent";
 import { isProActive, type PlanState } from "@/lib/billing/plan-access";
@@ -73,8 +72,6 @@ export async function POST(request: Request) {
     return redirect(checkoutUrlForConfiguration(recent.checkout_configuration_id));
   }
 
-  // Identifiant de mesure d'audience : transmis s'il est propre, ignoré sinon.
-  const analyticsId = sanitizeDistinctId(form?.get("ph_distinct_id"));
   const attribution = checkoutAttribution(form?.get("attribution") ?? null);
   const origin = configuredSiteUrl() ?? originFromHeaders(request.headers);
   const redirectUrl = `${origin}/merci?formule=${plan}`;
@@ -83,7 +80,7 @@ export async function POST(request: Request) {
     const checkout = await createCheckoutUrl({
       plan: plan as PlanKey,
       metadata: {
-        user_id: user.id, plan, ...(analyticsId ? { ph_distinct_id: analyticsId } : {}),
+        user_id: user.id, plan,
         ...Object.fromEntries(Object.entries(attribution).filter(([, value]) => value !== null)),
       },
       redirectUrl,
@@ -119,7 +116,7 @@ export async function POST(request: Request) {
       dedupeKey: `checkout:${checkout.checkoutConfigurationId}`,
     });
     console.log(
-      JSON.stringify({ event: "checkout_started", plan, attached: "metadata", analytics_id: analyticsId !== null }),
+      JSON.stringify({ event: "checkout_started", plan, attached: "metadata" }),
     );
     return redirect(checkout.url);
   } catch (caught) {

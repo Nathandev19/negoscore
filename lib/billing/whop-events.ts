@@ -1,4 +1,3 @@
-import { sanitizeDistinctId } from "@/lib/analytics/distinct-id";
 import { furthestPeriodEnd, isProActive } from "@/lib/billing/plan-access";
 import { PACK_ANALYSES } from "@/lib/billing/plans";
 import { recordPurchase } from "@/lib/billing/purchases";
@@ -26,7 +25,6 @@ export type EventOutcome = {
   pending?: boolean;
   userId?: string;
   userEmail?: string | null;
-  analyticsId?: string | null;
   plan?: PlanKey;
   amount?: number | null;
   currency?: string | null;
@@ -425,8 +423,6 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
     JSON.stringify({ event: "whop_rattachement", event_id: event.id, type, billing_reason: billingReason(source), how: attached.how }),
   );
   const current = await credits(user.id);
-  // Identifiant anonyme posé au checkout : il relie l'achat au parcours mesuré.
-  const analyticsId = sanitizeDistinctId(record(source.metadata).ph_distinct_id);
   const attribution = parseAttribution(source.metadata);
 
   if (type === "payment.succeeded" && plan === "pack") {
@@ -462,7 +458,6 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       reason: `+${PACK_ANALYSES} analyses (rattachement par ${attached.how})`,
       userId: user.id,
       userEmail: user.email,
-      analyticsId,
       plan,
       amount: total,
       currency: text(source.currency),
@@ -495,7 +490,6 @@ export async function applyWhopEvent(event: WhopEvent): Promise<EventOutcome> {
       reason: `paiement Pro enregistré (rattachement par ${attached.how})`,
       userId: user.id,
       userEmail: user.email,
-      analyticsId,
       plan,
       amount: total,
       currency: text(source.currency),

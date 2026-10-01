@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { track } from "@/lib/analytics/client";
-import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { Button } from "@/components/ui/button";
 
 // Action primaire de la page débloquée : copier le message.
@@ -27,7 +25,6 @@ export function CopyButton({ text, onCopied }: { text: string; onCopied?: (text:
         try {
           await navigator.clipboard.writeText(text);
           setCopied(true);
-          track(ANALYTICS_EVENTS.messageCopied);
           onCopied?.(text);
         } catch {
           setCopied(false);

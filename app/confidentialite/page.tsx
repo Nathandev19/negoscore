@@ -31,7 +31,7 @@ export default function PrivacyPage() {
             "Demande de lien de connexion faite depuis un navigateur qui a lancé une analyse sans compte : l'adresse demandée, le jeton anonyme de ce navigateur et l'empreinte d'un code glissé dans le lien (le code lui-même n'est pas gardé) — rattacher cette analyse à ton compte, même si tu ouvres le lien dans un autre navigateur — exécution du contrat.",
             "Email de l'acheteur, montant et formule achetée — preuve de la transaction et suivi des paiements — obligation légale et intérêt légitime.",
             `Coordonnées bancaires — traitées exclusivement par Whop, jamais reçues ni conservées par ${BRAND.name}.`,
-            "Mesure d'audience — statistiques d'usage anonymes — intérêt légitime.",
+            "Mesure d'audience — statistiques d'usage anonymes, calculées et conservées par le site lui-même, sans aucun outil tiers — intérêt légitime.",
           ]}
         />
       </LegalSection>
@@ -79,7 +79,6 @@ export default function PrivacyPage() {
             "Vercel — hébergement de l'application — États-Unis.",
             "OpenAI — analyse automatisée du contenu des offres — États-Unis.",
             "Resend — envoi des emails — Union européenne.",
-            "PostHog — mesure d'audience — Union européenne.",
           ]}
         />
         {/* Mission #122, corrigée par #123 — Whop ne figure plus dans cette
@@ -137,9 +136,10 @@ export default function PrivacyPage() {
           distinguer deux visites d&apos;une même journée, une empreinte technique est calculée à partir de ton
           adresse IP et de ton navigateur, avec une valeur aléatoire renouvelée chaque jour et détruite ensuite :
           elle ne permet pas de te reconnaître d&apos;un jour à l&apos;autre, et ton adresse IP n&apos;est conservée
-          nulle part. C&apos;est pourquoi aucune bannière de consentement ne t&apos;est présentée. Le seul cookie
-          qu&apos;elle lit est celui qui marque un appareil de l&apos;équipe du site (ns_interne, décrit plus haut),
-          pour écarter nos propres visites de nos statistiques.
+          nulle part. C&apos;est pourquoi aucune bannière de consentement ne t&apos;est présentée. Elle est calculée
+          et conservée par le site lui-même : aucun outil de mesure extérieur n&apos;est chargé, et rien n&apos;est
+          transmis à un tiers. Le seul cookie qu&apos;elle lit est celui qui marque un appareil de l&apos;équipe du
+          site (ns_interne, décrit plus haut), pour écarter nos propres visites de nos statistiques.
         </p>
         <p>
           Les pages publiques contiennent une image d&apos;un pixel, transparente, qui sert uniquement à compter la

@@ -5,11 +5,6 @@ import { configured, createUser, deleteUser, insert, service, type TestUser } fr
 
 // Webhooks Whop contre la vraie base : charges fabriquées et signées ici,
 // jamais un achat réel. La mesure d'audience est neutralisée.
-const analytics = vi.hoisted(() => ({ capture: vi.fn() }));
-vi.mock("@/lib/analytics/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/analytics/server")>();
-  return { ...actual, captureServerEvent: analytics.capture };
-});
 
 // L'email de confirmation est intercepté : aucun envoi réel pendant les tests.
 const mail = vi.hoisted(() => ({
@@ -144,63 +139,13 @@ describe.skipIf(!ready)("webhook Whop", () => {
     expect((rows.body as Array<{ processed_at: string | null }>)[0].processed_at).not.toBeNull();
   });
 
-  it("le pack s'ajoute au solde existant, et le revenu est mesuré côté serveur", async () => {
-    analytics.capture.mockClear();
+  // Mission #142 — le revenu était mesuré DEUX fois : dans product_events,
+  // que lit le cockpit, et dans PostHog, que personne ne lisait. La seconde
+  // est partie avec la bibliothèque. Ce test garde la première.
+  it("le pack s'ajoute au solde existant", async () => {
     const buyer = await user("pack", 2);
     await send(envelope("payment.succeeded", payment(PACK, { user_id: buyer.id })));
     expect(await credits(buyer.id)).toMatchObject({ balance: 5, plan: "pack" });
-    // Sans identifiant navigateur : identifiant aléatoire, jamais le compte ni l'email.
-    expect(analytics.capture).toHaveBeenCalledWith("purchase_completed", expect.any(String), {
-      plan: "pack",
-      amount: 4.99,
-      currency: "eur",
-      attribution: "account",
-    });
-    const [, distinctId] = analytics.capture.mock.calls.at(-1) as [string, string];
-    expect(distinctId).not.toBe(buyer.id);
-    expect(distinctId).not.toContain(buyer.email);
-    expect(distinctId).not.toContain("@");
-    expect(distinctId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-  });
-
-  it("rattache l'achat au parcours quand le navigateur a transmis son identifiant", async () => {
-    analytics.capture.mockClear();
-    const buyer = await user("free");
-    const distinctId = "01924f3a-7c21-7a4e-8f3e-anon_id";
-    await send(
-      envelope("payment.succeeded", payment(PACK, { user_id: buyer.id, ph_distinct_id: distinctId })),
-    );
-
-    // distinct_id du navigateur, pas celui du compte : le funnel se referme.
-    expect(analytics.capture).toHaveBeenCalledWith("purchase_completed", distinctId, {
-      plan: "pack",
-      amount: 4.99,
-      currency: "eur",
-      attribution: "browser",
-    });
-    expect(await credits(buyer.id)).toMatchObject({ balance: 3, plan: "pack" });
-  });
-
-  it("ignore un identifiant de mesure douteux, sans jamais retomber sur le compte", async () => {
-    analytics.capture.mockClear();
-    const buyer = await user("free");
-    await send(
-      envelope("payment.succeeded", payment(PACK, { user_id: buyer.id, ph_distinct_id: "lea@exemple.fr" })),
-    );
-    expect(analytics.capture).toHaveBeenCalledWith(
-      "purchase_completed",
-      expect.any(String),
-      expect.objectContaining({ attribution: "account" }),
-    );
-    const [, distinctId] = analytics.capture.mock.calls.at(-1) as [string, string];
-    expect(distinctId).not.toBe(buyer.id);
-    expect(distinctId).not.toBe("lea@exemple.fr");
-    expect(distinctId).not.toContain(buyer.email);
-
-    // Deux achats sans identifiant navigateur ne partagent pas d'identifiant.
-    await send(envelope("payment.succeeded", payment(PACK, { user_id: buyer.id })));
-    const [, second] = analytics.capture.mock.calls.at(-1) as [string, string];
-    expect(second).not.toBe(distinctId);
   });
 
   it("pack acheté sur un Pro expiré : le compte redevient Pack", async () => {

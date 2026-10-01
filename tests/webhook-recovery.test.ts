@@ -24,10 +24,6 @@ const db = vi.hoisted(() => ({
   failApply: false,
 }));
 
-vi.mock("@/lib/analytics/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/analytics/server")>()),
-  captureServerEvent: async () => undefined,
-}));
 vi.mock("@/lib/email/send", () => ({ sendEmail: async () => ({ sent: true, attempts: 1 }) }));
 
 vi.mock("@/lib/supabase/server", async (importOriginal) => {

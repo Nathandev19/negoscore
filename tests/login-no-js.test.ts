@@ -63,12 +63,15 @@ beforeEach(() => {
 });
 
 describe("envoi sans JavaScript", () => {
-  it("le formulaire pointe directement vers l'action serveur, et la mesure d'audience ne peut pas bloquer", () => {
+  it("le formulaire pointe directement vers l'action serveur", () => {
     const source = readFileSync(path.join(process.cwd(), "app/connexion/login-form.tsx"), "utf8");
     expect(source).toMatch(/<form action=\{action\}/);
     expect(source).not.toMatch(/action=\{\(formData\)/);
-    // La mesure est entourée d'un try : son échec est avalé.
-    expect(source).toMatch(/try \{\s*track\(ANALYTICS_EVENTS\.emailSubmitted\);\s*\} catch/);
+    // Mission #142 — la mesure tierce entourée d'un try n'existe plus : la
+    // bibliothèque est partie, et avec elle le risque qu'elle bloque un
+    // envoi. Plus rien ne s'exécute entre le clic et l'action serveur.
+    expect(source).not.toContain("track(");
+    expect(source).not.toContain("posthog");
   });
 
   it("la destination est reprise de l'adresse de la page, et gardée dans l'état « lien envoyé »", async () => {

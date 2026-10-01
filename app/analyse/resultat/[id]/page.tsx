@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { TrackView } from "@/components/analytics/track-view";
 import { AnalysisResult } from "@/components/result/analysis-result";
 import { EstimateFeedback } from "@/components/result/estimate-feedback";
 import { NegotiationThread } from "@/components/result/negotiation/negotiation-thread";
@@ -11,7 +10,6 @@ import { ShareCardLink } from "@/components/result/share-card-link";
 import { SessionUnavailable } from "@/components/session-unavailable";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { lastJudgedRange, readFeedback, shouldAskFeedback } from "@/lib/analysis/feedback";
 import { judgedRanges } from "@/lib/analysis/judged-ranges";
 import { loadResultForViewer } from "@/lib/analysis/load";
@@ -88,8 +86,6 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   return (
     <>
       <SiteHeader tone="marque" />
-      <TrackView event={ANALYTICS_EVENTS.resultViewed} />
-      {result.unlocked ? null : <TrackView event={ANALYTICS_EVENTS.paywallEmailShown} />}
       <AnalysisResult
         analysis={result.analysis}
         // Retour sur le message prêt à envoyer, une fois débloqué (mission #067).

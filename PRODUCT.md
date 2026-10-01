@@ -28,7 +28,7 @@ Compte avec mot de passe, historique, app mobile, anglais, rédaction de contrat
 À décider. Hypothèse de départ : analyse gratuite, contre-offre et message débloqués par email, offre payante via Whop. Aucun prix affiché avant validation.
 
 ## Stack
-Next.js App Router, TypeScript strict, Tailwind CSS, shadcn/ui, Zod, Vitest. Prévu : Supabase, Whop, Resend, PostHog, Vercel Pro. Modèle IA non choisi (benchmark mission #002).
+Next.js App Router, TypeScript strict, Tailwind CSS, shadcn/ui, Zod, Vitest. Prévu : Supabase, Whop, Resend, Vercel Pro. (PostHog retiré en mission #142 : la mesure est première partie, lue dans /admin.) Modèle IA non choisi (benchmark mission #002).
 
 ## Métriques
 - Activation : % de visiteurs landing qui lancent une analyse.

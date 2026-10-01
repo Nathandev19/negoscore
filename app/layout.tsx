@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Familjen_Grotesk } from "next/font/google";
-import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
+import { ArrivalCleanup } from "@/components/arrival-cleanup";
 import { DraftExpiry } from "@/components/draft-expiry";
 import { FlashBanner } from "@/components/flash-banner";
 import { ShownOnceTracker } from "@/components/shown-once-tracker";
@@ -91,7 +91,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Aller au contenu
         </a>
-        <AnalyticsProvider />
+        {/* Mission #142 — ce composant portait la mesure tierce. Il ne fait
+            plus que deux nettoyages : les résidus d'une ancienne
+            configuration, et le paramètre ?connexion=ok de l'adresse. */}
+        <ArrivalCleanup />
         {/* Voit chaque changement de page : un message montré une fois ne
             revient pas quand on revient sur sa page (mission #068). */}
         <ShownOnceTracker />

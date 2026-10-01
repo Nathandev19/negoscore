@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { ANALYTICS_EVENTS, captureServerEvent } from "@/lib/analytics/server";
 import { applyWhopEvent, type WhopEvent } from "@/lib/billing/whop-events";
 import { sendEmail } from "@/lib/email/send";
 import { purchaseConfirmationEmail } from "@/lib/email/templates";
@@ -89,17 +87,10 @@ export async function POST(request: Request) {
         metadata: { plan: outcome.plan, amount: outcome.amount ?? null, currency: outcome.currency ?? null },
         dedupeKey: `purchase:${parsed.id}`,
       });
-      // Revenu mesuré côté serveur, jamais depuis le navigateur. L'identifiant
-      // anonyme du navigateur rattache l'achat au parcours mesuré. À défaut, un
-      // identifiant aléatoire à usage unique : jamais l'identifiant de compte ni
-      // l'email, la mesure d'audience reste anonyme. L'achat n'est alors pas
-      // rattaché au parcours ; attribution « account » signale ce cas.
-      await captureServerEvent(ANALYTICS_EVENTS.purchaseCompleted, outcome.analyticsId ?? randomUUID(), {
-        plan: outcome.plan,
-        amount: outcome.amount ?? null,
-        currency: outcome.currency ?? null,
-        attribution: outcome.analyticsId ? "browser" : "account",
-      });
+      // Mission #142 — le revenu était ÉGALEMENT envoyé à PostHog, avec un
+      // identifiant anonyme transporté du navigateur jusqu'ici. PostHog est
+      // parti : la ligne ci-dessus, écrite dans product_events, est la seule
+      // et c'est elle que lit le cockpit. Rien n'est perdu.
 
       // Confirmation d'achat sur support durable : troisième condition de
       // l'article L221-28 13°. Un échec est journalisé, jamais bloquant :

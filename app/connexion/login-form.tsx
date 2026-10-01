@@ -3,8 +3,6 @@
 import { Suspense, useActionState, useId, type FormEvent } from "react";
 import { requestMagicLink, type LoginState } from "@/app/connexion/actions";
 import { NextFromUrl } from "@/app/connexion/login-from-url";
-import { track } from "@/lib/analytics/client";
-import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { safeNextPath } from "@/lib/auth/next-path";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +37,6 @@ export function LoginForm() {
       return;
     }
     try {
-      track(ANALYTICS_EVENTS.emailSubmitted);
     } catch {
       // mesure indisponible : la connexion passe avant
     }

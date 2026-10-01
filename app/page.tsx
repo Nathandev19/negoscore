@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { TrackView } from "@/components/analytics/track-view";
 import { FirstPartyView } from "@/components/analytics/first-party-view";
 import { DealInput } from "@/components/deal-input";
 import { ScoreBand } from "@/components/result/score-band";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { ANALYTICS_EVENTS } from "@/lib/analytics/events";
 import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
 import { exampleHrefFrom } from "@/lib/analytics/views";
 import { COPILOT_PROMISE, FULL_EXAMPLE, negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
@@ -39,7 +37,6 @@ export default function HomePage() {
       {/* La FAQ affichée plus bas, balisée mot pour mot : même source (FAQ). */}
       <JsonLd data={faqJsonLd()} />
       <SiteHeader />
-      <TrackView event={ANALYTICS_EVENTS.landingView} />
       <FirstPartyView event="landing_view" />
       <main id="contenu" className="flex-1">
         {/* C1 — le champ reste au-dessus de la ligne de flottaison sur mobile. */}
