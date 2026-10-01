@@ -38,6 +38,15 @@
   --color-encre-douce: #3b362a; /* corps */
   --color-attenue: #6e6759; /* légendes, bouton désactivé */
   --color-filet: #e4dcc9;
+  /* Mission #132 — les quatre séries du cockpit. Assignation FIXE : une
+     série garde sa couleur même si une autre disparaît du graphique.
+     Vérifiées sur le fond crème : bande de clarté, plancher de chroma,
+     séparation daltonienne des paires adjacentes, contraste >= 3:1. Elles
+     ne se recomposent pas (lib/admin/series.ts). */
+  --color-serie-visites: #1f3cff;
+  --color-serie-analyses: #c77d00;
+  --color-serie-inscriptions: #0f9b8e;
+  --color-serie-achats: #b5179e;
 
   /* Bandes : couleur de référence, puis les deux aplats réellement affichés.
      on-marque : ≥ 3:1 contre le bleu, grain compris (pire pixel).
@@ -332,5 +341,32 @@ summary::-webkit-details-marker {
     animation: none;
     outline: 3px solid var(--color-marque);
     outline-offset: 6px;
+  }
+}
+
+/* ── Mission #132 — le cockpit change de période sans recharger ─────────── */
+/* Les barres se déplacent vers leur nouvelle valeur ; elles ne clignotent
+   pas, et le composant n'est jamais démonté puis remonté. 240 ms, ease-out :
+   assez pour voir le sens du changement, trop court pour attendre. */
+.cockpit-bar {
+  transition:
+    height 240ms cubic-bezier(0, 0, 0.2, 1),
+    width 240ms cubic-bezier(0, 0, 0.2, 1);
+}
+/* Les chiffres changent par un fondu court, jamais par un défilement de
+   compteur : un chiffre à moitié animé est un chiffre FAUX à l'écran. */
+.cockpit-valeur {
+  transition: opacity 120ms ease-out;
+}
+/* Pendant le chargement, les données précédentes restent lisibles. Pas de
+   voile gris, pas d'écran vide : seulement un retrait discret. */
+.cockpit-charge .cockpit-valeur {
+  opacity: 0.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Obligation, pas option : le changement devient instantané. */
+  .cockpit-bar,
+  .cockpit-valeur {
+    transition: none;
   }
 }

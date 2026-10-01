@@ -52,7 +52,16 @@ describe("filtres de période du cockpit", () => {
     const page = await AdminDashboard({ params: Promise.resolve({}), searchParams: Promise.resolve({ period: "30d" }) });
     const html = renderToStaticMarkup(page);
     for (const period of ["24h", "7d", "30d", "all"]) expect(html).toContain(`href="/admin?period=${period}"`);
-    expect(html).toMatch(/<a aria-current="page"[^>]+href="\/admin\?period=30d">30 jours<\/a>/);
+    // Mission #132 — l'ordre des attributs n'est pas une propriété du
+    // produit : ce qui compte est que la période de l'adresse soit la seule
+    // marquée active, et que les quatre restent des LIENS (sans JavaScript,
+    // ils naviguent ; avec, le cockpit met à jour sur place).
+    const liens = [...html.matchAll(/<a ([^>]*)>([^<]*)<\/a>/g)].filter((m) => m[1].includes("/admin?period="));
+    expect(liens).toHaveLength(4);
+    const actifs = liens.filter((m) => m[1].includes('aria-current="page"'));
+    expect(actifs).toHaveLength(1);
+    expect(actifs[0][1]).toContain('href="/admin?period=30d"');
+    expect(actifs[0][2]).toBe("30 jours");
     expect(supabase.rpc).toHaveBeenCalledWith("admin_dashboard_metrics", { p_since: "2026-08-24T12:00:00.000Z" });
   });
 

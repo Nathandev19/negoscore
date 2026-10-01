@@ -153,11 +153,20 @@ describe("migration admin : transactions, audit, idempotence et confinement", ()
     expect(paidHtml).not.toBe(grantHtml);
   });
 
-  it("confine le graphique large dans son propre scroll sur mobile", () => {
-    const dashboard = readFileSync(path.join(process.cwd(), "app/admin/page.tsx"), "utf8");
+  // Mission #132 — LE GRAPHIQUE NE DÉFILE PLUS, IL S'ADAPTE.
+  //
+  // L'ancien SVG avait une largeur minimale de 640 px et sa propre barre de
+  // défilement : avec deux jours de données, on voyait un cadre vide à 97 %
+  // sous une barre de défilement, et le graphique avait l'air cassé. Les
+  // barres sont maintenant en flux et se partagent la largeur disponible.
+  it("le graphique s'adapte à la largeur, sans défilement horizontal", () => {
     const charts = readFileSync(path.join(process.cwd(), "components/admin/charts.tsx"), "utf8");
-    expect(charts).toContain('className="overflow-x-auto"');
-    expect(charts).toContain('className="min-w-[640px] w-full"');
-    expect(dashboard).toContain('className="min-w-0 border-t-4 border-marque pt-4"');
+    expect(charts).not.toContain("overflow-x-auto");
+    expect(charts).not.toMatch(/min-w-\[\d+px\]/);
+    // Chaque colonne se partage la largeur, et rien ne force un minimum.
+    expect(charts).toContain("min-w-0 flex-1");
+    // Les colonnes du cockpit ne poussent pas la page non plus.
+    const cockpit = readFileSync(path.join(process.cwd(), "components/admin/cockpit.tsx"), "utf8");
+    expect(cockpit).toContain("min-w-0");
   });
 });

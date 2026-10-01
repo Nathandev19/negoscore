@@ -179,7 +179,9 @@ describe("ce que le cockpit affiche", () => {
   });
 
   it("la ligne est affichée dans le cockpit", async () => {
-    const page = readFileSync("app/admin/page.tsx", "utf8");
+    // Mission #132 — le cockpit est devenu un composant client, pour changer
+    // de période sans recharger. La ligne y est rendue, pas dans la page.
+    const page = readFileSync("components/admin/cockpit.tsx", "utf8");
     expect(page).toContain("tierChangesNotice(data)");
     // Migration pas encore appliquée : un tableau vide, pas un affichage cassé.
     expect(readFileSync("lib/admin/data.ts", "utf8")).toContain("tier_changes: data.tier_changes ?? []");

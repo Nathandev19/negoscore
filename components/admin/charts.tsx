@@ -1,25 +1,263 @@
 import { visitCount, type DashboardData } from "@/lib/admin/data";
+import { seriesColor, SERIES_LABEL, type Series } from "@/lib/admin/series";
 
+// Mission #132 — RENDRE LE COCKPIT LISIBLE.
+//
+// Les graphiques précédents ont produit deux erreurs de lecture réelles le
+// 01/10 : une ligne de zéros prise pour une absence, et deux chiffres
+// différents sous le même mot. Ce qui est corrigé ici :
+//   - des barres d'un pixel dans un SVG à défilement horizontal, vide à 97 % →
+//     des barres en flux, épaisses, qui s'adaptent à la plage ;
+//   - une légende en PHRASE (« Bleu : visites, Brun : analyses ») où la couleur
+//     portait seule l'identité → une pastille À CÔTÉ DU NOM, sur chaque
+//     graphique ;
+//   - deux ordres de grandeur sur un seul axe (24 contre 2) → deux graphiques
+//     empilés, chacun avec son échelle. Jamais deux axes sur un graphique ;
+//   - aucun taux de passage dans le funnel, la seule chose qu'on lui demande →
+//     il est écrit en toutes lettres entre deux étapes ;
+//   - aucune valeur au survol → un title sur chaque barre et chaque étape.
+//
+// Les transitions sont en CSS (app/globals.css, .cockpit-bar) : aucune
+// bibliothèque de graphiques, aucune bibliothèque d'animation. Sous
+// prefers-reduced-motion, elles sont désactivées.
+
+const NUMBER = new Intl.NumberFormat("fr-FR");
+
+// Deux à quatre graduations, en nombres entiers, sans jamais inventer une
+// échelle plus haute que nécessaire. Un maximum nul garde une échelle de 1 :
+// la ligne de base reste visible, et les colonnes vides restent lisibles.
+export function axisTicks(max: number): number[] {
+  if (!Number.isFinite(max) || max <= 0) return [0];
+  if (max <= 2) return [max, 0];
+  const step = Math.ceil(max / 2);
+  return [step * 2, step, 0];
+}
+
+const JOUR = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit" });
+
+export function dayLabel(day: string): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? day : JOUR.format(date);
+}
+
+// Les dates se chevauchent au-delà d'une quinzaine de colonnes : on en affiche
+// une sur deux, jamais inclinée. La DERNIÈRE est toujours montrée — c'est la
+// plus récente, celle qu'on cherche.
+export function labelEvery(days: number): number {
+  if (days <= 10) return 1;
+  if (days <= 20) return 2;
+  return Math.ceil(days / 10);
+}
+
+type Jour = { day: string; value: number };
+
+function BarChart({ series, days, total }: { series: Series; days: Jour[]; total: number }) {
+  const max = Math.max(0, ...days.map((d) => d.value));
+  const ticks = axisTicks(max);
+  const haut = ticks[0] || 1;
+  const every = labelEvery(days.length);
+  const color = seriesColor(series);
+  return (
+    <div className="flex flex-col gap-2">
+      {/* La pastille accompagne TOUJOURS le nom : la couleur ne porte jamais
+          seule l'identité de la série. */}
+      <p className="flex flex-wrap items-center gap-2 text-small">
+        <span aria-hidden className="inline-block size-2.5 rounded-[2px]" style={{ background: color }} />
+        <span className="font-semibold text-encre">{SERIES_LABEL[series]}</span>
+        <span className="text-attenue">
+          — {NUMBER.format(total)} sur {days.length} jour{days.length > 1 ? "s" : ""}
+        </span>
+      </p>
+      <div className="flex gap-3">
+        <div className="flex w-7 shrink-0 flex-col justify-between py-0 text-right text-xs text-attenue" style={{ height: 150 }}>
+          {ticks.map((tick) => (
+            <span key={tick}>{NUMBER.format(tick)}</span>
+          ))}
+        </div>
+        <div className="min-w-0 flex-1">
+          {/* Grille très discrète DERRIÈRE les barres : une ligne par
+              graduation, posée en absolu. Pas de dégradé — le produit n'en
+              a aucun, et un fond répété se décale d'un pixel selon la
+              hauteur. */}
+          <div className="relative flex items-end gap-0.5 border-b border-filet" style={{ height: 150 }}>
+            {ticks.slice(0, -1).map((tick, rang) => (
+              <span
+                key={tick}
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 border-t border-filet"
+                style={{ top: `${(rang * 150) / (ticks.length - 1 || 1)}px` }}
+              />
+            ))}
+            {days.map((jour) => (
+              <div
+                key={jour.day}
+                /* cockpit-bar porte la transition de hauteur (240 ms, ease-out)
+                   et son annulation sous prefers-reduced-motion. */
+                className="cockpit-bar min-w-0 flex-1 rounded-t-[4px]"
+                style={{ height: `${Math.round((jour.value / haut) * 150)}px`, background: color }}
+                /* Survol : la date et la valeur, sans compter de pixels. */
+                title={`${dayLabel(jour.day)} : ${NUMBER.format(jour.value)}`}
+              />
+            ))}
+          </div>
+          {/* Les dates sont posées en ABSOLU, centrées sur leur colonne. Vu à
+              l'écran sur 31 jours : en flux, chaque étiquette était bornée à la
+              largeur d'une colonne (12 px) et se coupait en « 0… ». Ici elle
+              déborde sans pousser personne, et `labelEvery` espace assez pour
+              qu'elles ne se chevauchent pas. Jamais inclinées. */}
+          <div className="relative mt-2 h-4 text-xs text-attenue">
+            {days.map((jour, index) => {
+              const dernier = index === days.length - 1;
+              // Espacement compté À REBOURS : la dernière date est toujours sur la
+              // grille, donc jamais collée à la précédente.
+              if ((days.length - 1 - index) % every !== 0) return null;
+              // Centre de la colonne, en pourcentage de la largeur totale.
+              const centre = ((index + 0.5) / days.length) * 100;
+              return (
+                <span
+                  key={jour.day}
+                  className={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${dernier ? "font-semibold text-encre" : ""}`}
+                  style={{ left: `${centre}%` }}
+                >
+                  {dayLabel(jour.day)}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Les deux mesures de l'activité. Visites et analyses n'ont pas le même ordre
+// de grandeur : un seul axe écraserait la petite, et deux axes sur un même
+// graphique font lire un croisement qui n'existe pas.
 export function TimeSeries({ rows }: { rows: DashboardData["timeseries"] }) {
-  if (rows.length === 0) return <p className="text-small text-attenue">Aucun événement sur cette période.</p>;
-  const max = Math.max(1, ...rows.flatMap((r) => [r.page_views, r.analyses, r.signups, r.purchases]));
-  return <div><ul aria-label="Légende" className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-attenue"><li>Bleu : visites</li><li>Brun : analyses</li><li>Gris : inscriptions</li><li>Noir : achats</li></ul><div className="overflow-x-auto"><svg role="img" aria-label="Activité par jour" viewBox={`0 0 ${Math.max(640, rows.length * 50)} 220`} className="min-w-[640px] w-full">
-    {rows.map((row,index) => { const x=index*50+24; return <g key={row.day}>
-      <rect className="text-marque" x={x} y={190-row.page_views/max*160} width="8" height={row.page_views/max*160} fill="currentColor"><title>{row.day}: {row.page_views} visites</title></rect>
-      <rect className="text-encre-douce" x={x+9} y={190-row.analyses/max*160} width="8" height={row.analyses/max*160} fill="currentColor"><title>{row.day}: {row.analyses} analyses</title></rect>
-      <rect className="text-attenue" x={x+18} y={190-row.signups/max*160} width="8" height={row.signups/max*160} fill="currentColor"><title>{row.day}: {row.signups} inscriptions</title></rect>
-      <rect className="text-encre" x={x+27} y={190-row.purchases/max*160} width="8" height={row.purchases/max*160} fill="currentColor"><title>{row.day}: {row.purchases} achats</title></rect>
-      <text x={x} y="210" fontSize="9">{row.day.slice(5)}</text>
-    </g>;})}
-    <line className="text-attenue" x1="16" y1="190" x2={Math.max(630,rows.length*50)} y2="190" stroke="currentColor" />
-  </svg></div></div>;
+  if (rows.length === 0) {
+    return <p className="text-small text-attenue">Aucun événement sur cette période.</p>;
+  }
+  const visites = rows.map((row) => ({ day: row.day, value: row.page_views }));
+  const analyses = rows.map((row) => ({ day: row.day, value: row.analyses }));
+  const vides = rows.filter((row) => row.page_views === 0 && row.analyses === 0).length;
+  const somme = (jours: Jour[]) => jours.reduce((sum, jour) => sum + jour.value, 0);
+  return (
+    <div className="flex flex-col gap-7">
+      <BarChart series="visites" days={visites} total={somme(visites)} />
+      <BarChart series="analyses" days={analyses} total={somme(analyses)} />
+      {/* ÉTAT VIDE ET PRESQUE VIDE : un zéro doit se lire comme un zéro. La
+          ligne de base reste là, les colonnes vides aussi, et cette phrase dit
+          combien de jours n'ont rien produit. */}
+      <p className="border-l-2 border-filet py-2 pl-3 text-xs text-attenue">
+        {vides === 0
+          ? `Tous les jours de la période ont de l'activité.`
+          : `${NUMBER.format(vides)} jour${vides > 1 ? "s" : ""} sans activité sur la période. La ligne de base reste visible : un zéro se lit comme un zéro, pas comme un graphique cassé.`}
+      </p>
+    </div>
+  );
+}
+
+// Largeur d'une barre, en pourcentage du maximum. Une valeur non nulle ne
+// descend jamais sous 1,5 % : plus bas, elle n'est plus visible et se lit
+// comme une absence. Zéro, lui, reste zéro — c'est l'erreur de lecture du
+// 01/10 qu'on ne veut pas refaire dans l'autre sens.
+export function largeur(value: number, max: number): number {
+  if (value <= 0 || max <= 0) return 0;
+  return Math.max(1.5, Math.round((value / max) * 1000) / 10);
+}
+
+// Accord en nombre : en français, zéro et un prennent le singulier.
+function pluriel(n: number, singulier: string, pluriel_: string): string {
+  return `${NUMBER.format(n)} ${Math.abs(n) >= 2 ? pluriel_ : singulier}`;
+}
+
+// Le taux de passage d'une étape à la suivante, écrit en clair : c'est la
+// seule chose qu'on demande à un funnel, et il fallait la déduire de deux
+// barres. null quand le dénominateur est vide — on n'écrit pas « 0 % de 0 ».
+//
+// Chaque étape porte DEUX noms : celui qu'elle prend comme numérateur
+// (« 2 analyses ») et celui qu'elle prend comme dénominateur (« sur 2
+// lancées »). C'est ce qui fait lire la phrase comme une phrase.
+// Les deux formes d'un nom : singulier, pluriel.
+export type Nom = readonly [string, string];
+
+export function stepRate(current: number, next: number, numerateur: Nom, denominateur: Nom): string | null {
+  if (current <= 0) return null;
+  const atteint = Math.min(next, current);
+  const percent = Math.round((atteint / current) * 100);
+  return `${pluriel(next, numerateur[0], numerateur[1])} sur ${pluriel(current, denominateur[0], denominateur[1])} — ${percent} %`;
 }
 
 export function Funnel({ data }: { data: DashboardData }) {
   // Mission #129 — « Visites » ici et « Visites mesurées » dans les tuiles
   // doivent être le même nombre : c'est le même mot, sur le même écran.
   // Le compte vient donc de lib/admin/data.ts, pas d'une addition recopiée.
-  const steps = [["Visites", visitCount(data)], ["Analyses lancées", data.counts.analysis_started ?? 0], ["Analyses terminées", data.counts.analysis_completed ?? 0], ["Inscriptions", data.counts.signup ?? 0], ["Checkout", data.counts.checkout_started ?? 0], ["Achats", data.counts.purchase_completed ?? 0]] as const;
-  const max=Math.max(1,...steps.map(([,v])=>v));
-  return <div className="flex flex-col gap-3">{steps.map(([label,value])=><div key={label}><div className="mb-1 flex justify-between text-small"><span>{label}</span><strong>{value}</strong></div><div className="h-5 bg-filet"><div className="h-full bg-encre" style={{width:`${Math.max(value?3:0,value/max*100)}%`}} /></div></div>)}<p className="text-xs text-attenue">Étapes agrégées, sans suivi individuel entre écrans : ce funnel mesure des volumes, pas une cohorte liée.</p></div>;
+  const steps: Array<{ label: string; value: number; num: Nom; den: Nom }> = [
+    { label: "Visites", value: visitCount(data), num: ["visite", "visites"], den: ["visite", "visites"] },
+    { label: "Analyses lancées", value: data.counts.analysis_started ?? 0, num: ["analyse", "analyses"], den: ["lancée", "lancées"] },
+    { label: "Analyses terminées", value: data.counts.analysis_completed ?? 0, num: ["terminée", "terminées"], den: ["analyse", "analyses"] },
+    { label: "Inscriptions", value: data.counts.signup ?? 0, num: ["inscription", "inscriptions"], den: ["inscription", "inscriptions"] },
+    { label: "Checkout", value: data.counts.checkout_started ?? 0, num: ["checkout", "checkouts"], den: ["checkout", "checkouts"] },
+    { label: "Achats", value: data.counts.purchase_completed ?? 0, num: ["achat", "achats"], den: ["achat", "achats"] },
+  ];
+  const max = Math.max(1, ...steps.map((step) => step.value));
+  // UNE SEULE MESURE, donc UNE SEULE TEINTE. Pas d'arc-en-ciel : les étapes ne
+  // sont pas des séries différentes, c'est la même population qui se réduit.
+  const bleu = seriesColor("visites");
+  return (
+    <div className="flex flex-col">
+      {steps.map((step, index) => {
+        const suivant = steps[index + 1];
+        const taux = suivant ? stepRate(step.value, suivant.value, suivant.num, step.den) : null;
+        return (
+          <div key={step.label} className="flex flex-col">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className={`text-small font-medium ${step.value === 0 ? "text-attenue" : "text-encre"}`}>{step.label}</span>
+              <strong className={`figures text-xl ${step.value === 0 ? "text-attenue" : "text-encre"}`}>
+                {NUMBER.format(step.value)}
+              </strong>
+            </div>
+            <div className="mt-1.5 h-5 rounded-[4px] bg-filet">
+              <div
+                className="cockpit-bar h-full rounded-[4px]"
+                // Plancher de 1,5 % pour une valeur NON NULLE : 2 sur 100
+                // ferait une barre invisible, et une étape atteinte ne doit
+                // jamais se lire comme une étape vide. Zéro reste zéro : la
+                // piste est là, la barre non.
+                style={{ width: `${largeur(step.value, max)}%`, background: bleu }}
+                title={`${step.label} : ${NUMBER.format(step.value)}`}
+              />
+            </div>
+            {taux ? (
+              <p className="my-1.5 ml-2.5 border-l border-filet py-2 pl-3 text-xs text-attenue">{taux}</p>
+            ) : (
+              <div className="h-5" />
+            )}
+          </div>
+        );
+      })}
+      <p className="mt-3 text-xs text-attenue">
+        Étapes agrégées, sans suivi individuel entre écrans : ce funnel mesure des volumes, pas une cohorte liée.
+      </p>
+    </div>
+  );
+}
+// La barre derrière le chiffre, dans les tableaux. Une ligne à 12 doit se voir
+// immédiatement à côté d'une ligne à 1 ; une ligne à zéro reste une ligne, pas
+// une absence — c'est l'erreur de lecture du 01/10.
+export function BarCell({ value, max }: { value: number; max: number }) {
+  const part = largeur(value, max);
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="h-2.5 min-w-10 flex-1 rounded-[3px] bg-filet">
+        <div
+          className="cockpit-bar h-full rounded-[3px]"
+          style={{ width: `${part}%`, background: seriesColor("visites") }}
+        />
+      </div>
+      <span className={`figures w-8 shrink-0 text-right text-small ${value === 0 ? "text-attenue" : "font-semibold text-encre"}`}>
+        {NUMBER.format(value)}
+      </span>
+    </div>
+  );
 }

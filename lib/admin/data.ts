@@ -1,6 +1,7 @@
 import { isUuid } from "@/lib/security/request";
 import { rpc, selectRows } from "@/lib/supabase/server";
 import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
+import type { Series } from "@/lib/admin/series";
 
 export const ADMIN_PAGE_SIZE = 25;
 export const ADMIN_PERIODS = ["24h", "7d", "30d", "all"] as const;
@@ -81,7 +82,14 @@ export async function loadDashboard(period: AdminPeriod): Promise<DashboardData 
 //     événements : il affichait 505 %, il est supprimé, et rien ne le remplace
 //     tant qu'on ne peut pas relier une analyse lancée à sa complétion ;
 //   - un dénominateur nul n'affiche jamais 0 % ni NaN, mais « — ».
-export type DashboardTile = { label: string; value: string };
+// Mission #132 — une tuile peut porter sa SÉRIE et une précision.
+//   series : la pastille de couleur, jamais seule — elle accompagne un nom.
+//            Les quatre tuiles qui en ont une sont celles des graphiques.
+//   hint   : la ligne sous le chiffre. Elle dit d'où vient le nombre ou ce
+//            qu'il recouvre, pour qu'un zéro se lise comme un zéro.
+// Les libellés et les valeurs ne changent pas : c'est un travail
+// d'affichage, et un test compare les valeurs rendues avant et après.
+export type DashboardTile = { label: string; value: string; series?: Series; hint?: string };
 
 // Mission #127 — CE QUI COMPTE COMME UNE VISITE.
 //
@@ -126,15 +134,16 @@ export function share(part: number, total: number): string | null {
 export function dashboardTiles(data: DashboardData): DashboardTile[] {
   const visits = visitCount(data);
   const revenue = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(data.purchases.revenue_eur);
+  const completed = data.counts.analysis_completed ?? 0;
   return [
-    { label: "Visites mesurées", value: count(visits) },
+    { label: "Visites mesurées", value: count(visits), series: "visites", hint: "accueil · tarifs · guides · exemple" },
     // Deux compteurs bruts, côte à côte, sans ratio entre eux : voir plus haut.
-    { label: "Analyses lancées", value: count(data.counts.analysis_started) },
+    { label: "Analyses lancées", value: count(data.counts.analysis_started), series: "analyses", hint: `${count(completed)} terminée${completed > 1 ? "s" : ""}` },
     { label: "Analyses terminées", value: count(data.counts.analysis_completed) },
-    { label: "Inscriptions", value: count(data.counts.signup) },
+    { label: "Inscriptions", value: count(data.counts.signup), series: "inscriptions", hint: (data.counts.signup ?? 0) === 0 ? "le mur d'email n'a jamais été franchi" : "comptes créés sur la période" },
     { label: "Feedbacks", value: count(data.feedback.total) },
     { label: "Estimations jugées justes", value: share(data.feedback.fair, data.feedback.total) ?? "—" },
-    { label: "Achats", value: count(data.purchases.purchases) },
+    { label: "Achats", value: count(data.purchases.purchases), series: "achats", hint: revenue },
     { label: `Revenu EUR couvert (${data.purchases.revenue_covered}/${data.purchases.purchases})`, value: revenue },
     { label: "Pro payants", value: count(data.paid_pro) },
     { label: "Pro offerts", value: count(data.granted_pro) },

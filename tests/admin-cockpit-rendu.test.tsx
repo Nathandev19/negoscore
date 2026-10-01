@@ -146,15 +146,21 @@ describe("mission #129 — un seul nombre pour « Visites »", () => {
   const tuile = (html: string, label: string): number => {
     const depuis = html.indexOf(label);
     expect(depuis, label).toBeGreaterThan(-1);
-    const trouve = /class="figures[^"]*">([^<]+)</.exec(html.slice(depuis));
+    // Mission #132 — la classe `figures` n'est plus en tête de l'attribut
+    // (`cockpit-valeur figures …`) : on la cherche où qu'elle soit.
+    const trouve = /class="[^"]*\bfigures\b[^"]*">([^<]+)</.exec(html.slice(depuis));
     expect(trouve, label).not.toBeNull();
     return Number((trouve?.[1] ?? "").replace(/[^0-9]/g, ""));
   };
   // Le nombre affiché en face d'une étape du funnel.
   const etape = (html: string, label: string): number => {
-    const trouve = new RegExp(`<span>${label}</span><strong>([0-9]+)</strong>`).exec(html);
+    // Mission #132 — les deux balises portent maintenant des classes : on
+    // vise le libelle puis le premier nombre en gras qui le suit.
+    const depuis = html.indexOf(`>${label}</span>`);
+    expect(depuis, label).toBeGreaterThan(-1);
+    const trouve = /<strong[^>]*>([^<]+)<\/strong>/.exec(html.slice(depuis));
     expect(trouve, label).not.toBeNull();
-    return Number(trouve?.[1] ?? "-1");
+    return Number((trouve?.[1] ?? "-1").replace(/[^0-9-]/g, ""));
   };
 
   const CAS: Array<[string, Record<string, number>, number]> = [

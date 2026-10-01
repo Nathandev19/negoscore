@@ -610,7 +610,8 @@ describe("le cockpit", () => {
 
   it("le compteur s'affiche, même si la migration n'est pas encore appliquée", async () => {
     const { internalNotice } = await import("@/lib/admin/data");
-    const page = readFileSync("app/admin/page.tsx", "utf8");
+    // Mission #132 — rendu par le composant client du cockpit.
+    const page = readFileSync("components/admin/cockpit.tsx", "utf8");
     expect(page).toContain("internalNotice(data)");
     // RPC d'avant la migration : pas de champ `internal`, et zéro plutôt
     // qu'un affichage cassé.
