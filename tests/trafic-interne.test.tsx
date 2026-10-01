@@ -10,6 +10,8 @@ import {
   internalToken,
   internalTokenValid,
   isInternalEmail,
+  markSecret,
+  markSecretValid,
   parseInternalEmails,
 } from "@/lib/telemetry/internal";
 
@@ -61,7 +63,8 @@ vi.mock("@/lib/billing/free-usage", () => ({ mergeFreeUsage: async () => undefin
 vi.mock("@/lib/analytics/first-party", () => ({ recordProductEvent: async () => undefined }));
 
 const { withEnvironment, forgetInternalAccounts } = await import("@/lib/telemetry/tagged");
-const { GET: porte } = await import("@/app/api/interne/route");
+const { GET: porte, POST: marquer } = await import("@/app/api/interne/route");
+const { default: InternalBrowserPage } = await import("@/app/interne/page");
 const { completeSignIn } = await import("@/lib/auth/sign-in");
 
 beforeEach(() => {
@@ -339,6 +342,149 @@ describe("la porte : /api/interne", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+// Mission #127, partie B — MARQUER UN NAVIGATEUR QUI NE PEUT PAS SE CONNECTER.
+//
+// Les navigateurs intégrés d'Instagram et de TikTok n'ont pas de barre
+// d'adresse modifiable : on n'y atteint une page qu'en cliquant un lien, et s'y
+// connecter demande d'ouvrir un email ailleurs. Vérifier un lien depuis ces
+// applications comptait donc comme une vraie visite de créatrice.
+//
+// C'est le MÊME marquage que celui du reste de ce fichier — le même cookie, lu
+// par le même chemin — ouvert par un secret au lieu d'une session.
+describe("marquer ce navigateur par un secret", () => {
+  const CLE = "un-secret-de-test-assez-long";
+  const page = (cle: string | null) =>
+    InternalBrowserPage({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve(cle === null ? {} : { cle }),
+    });
+  const html = async (cle: string) => renderToStaticMarkup(await page(cle)).replace(/&#x27;|&#39;/g, "'");
+  const post = (champs: Record<string, string>) => {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(champs)) form.append(k, v);
+    return marquer(new Request("https://negoscore.fr/api/interne", { method: "POST", body: form }));
+  };
+  const poses = (r: Response) => r.headers.getSetCookie().filter((c) => c.startsWith(`${INTERNAL_COOKIE}=`));
+
+  beforeEach(() => {
+    vi.stubEnv("INTERNAL_MARK_SECRET", CLE);
+  });
+
+  it("sans le bon secret, la page n'existe pas — 404, jamais 401", async () => {
+    for (const mauvais of [null, "", "autre", CLE.slice(0, -1), `${CLE} `]) {
+      await expect(page(mauvais), String(mauvais)).rejects.toThrow(/NEXT_(HTTP_ERROR_FALLBACK|NOT_FOUND)/);
+    }
+  });
+
+  it("variable non configurée : personne ne peut marquer, même avec une clé", async () => {
+    vi.stubEnv("INTERNAL_MARK_SECRET", "");
+    await expect(page(CLE)).rejects.toThrow();
+    expect((await post({ cle: CLE, action: "marquer" })).status).toBe(404);
+    expect((await post({ cle: "", action: "marquer" })).status).toBe(404);
+  });
+
+  // Un secret par défaut serait un secret public : variable absente, AUCUNE
+  // valeur n'ouvre la porte, pas même celles qu'on essaierait en premier.
+  it("aucune valeur de repli : la variable absente ferme la porte à tout le monde", async () => {
+    for (const vide of ["", "   "]) {
+      vi.stubEnv("INTERNAL_MARK_SECRET", vide);
+      expect(markSecret()).toBeNull();
+      for (const essai of ["defaut", "default", "interne", "negoscore", "secret", "1", "true", CLE]) {
+        expect(markSecretValid(essai), essai).toBe(false);
+        expect((await post({ cle: essai, action: "marquer" })).status, essai).toBe(404);
+      }
+    }
+  });
+
+  it("la page dit en toutes lettres que ce navigateur n'est PAS marqué", async () => {
+    jar.value = null;
+    const rendu = await html(CLE);
+    expect(rendu).toContain("n’est PAS marqué");
+    expect(rendu).not.toContain("EST marqué comme interne");
+    // Et le bouton propose de le marquer.
+    expect(rendu).toContain("Marquer ce navigateur comme interne");
+  });
+
+  it("la page dit en toutes lettres qu'il EST marqué, et propose de retirer", async () => {
+    jar.value = internalToken(SEL);
+    const rendu = await html(CLE);
+    expect(rendu).toContain("Ce navigateur EST marqué comme interne");
+    expect(rendu).toContain("Retirer la marque");
+    expect(rendu).not.toContain("n’est PAS marqué");
+  });
+
+  it("un cookie forgé ne fait pas dire à la page qu'il est marqué", async () => {
+    jar.value = "1";
+    expect(await html(CLE)).toContain("n’est PAS marqué");
+  });
+
+  it("marquer : le cookie est posé, signé, pour deux ans, et on revient sur la page", async () => {
+    const response = await post({ cle: CLE, action: "marquer" });
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe(`/interne?cle=${encodeURIComponent(CLE)}`);
+    const [cookie] = poses(response);
+    expect(cookie).toBeDefined();
+    expect(internalTokenValid(/ns_interne=([^;]+)/.exec(cookie)?.[1], SEL)).toBe(true);
+    // Deux ans, et les attributs demandés.
+    expect(cookie).toContain(`Max-Age=${60 * 60 * 24 * 730}`);
+    expect(cookie).toContain("SameSite=Lax");
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("Path=/");
+    vi.stubEnv("NODE_ENV", "production");
+    expect(poses(await post({ cle: CLE, action: "marquer" }))[0]).toContain("Secure");
+  });
+
+  it("retirer : le cookie est effacé, et rien n'est reposé", async () => {
+    const response = await post({ cle: CLE, action: "retirer" });
+    expect(response.status).toBe(303);
+    expect(poses(response)[0]).toContain("Max-Age=0");
+  });
+
+  it("mauvais secret sur le formulaire : 404, et aucun cookie", async () => {
+    for (const mauvais of ["", "autre", CLE.slice(0, -1)]) {
+      const response = await post({ cle: mauvais, action: "marquer" });
+      expect(response.status, mauvais).toBe(404);
+      expect(poses(response), mauvais).toEqual([]);
+    }
+    // Sans aucun champ non plus.
+    expect((await post({})).status).toBe(404);
+  });
+
+  it("la page ne produit aucun événement de visite", async () => {
+    const source = readFileSync("app/interne/page.tsx", "utf8");
+    // Aucun IMPORT des deux émetteurs : le commentaire de la page les nomme
+    // pour dire qu'elle n'en a pas, ce qui n'est pas la même chose.
+    const imports = source.split(/\r?\n/).filter((ligne) => ligne.startsWith("import"));
+    for (const emetteur of ["view-pixel", "first-party-view", "track-view"]) {
+      expect(imports.join(" "), emetteur).not.toContain(emetteur);
+    }
+    expect(source).not.toMatch(/<(ViewPixel|FirstPartyView|TrackView)\b/);
+    const { MEASURED_PAGES } = await import("@/lib/analytics/views");
+    expect(Object.keys(MEASURED_PAGES)).not.toContain("/interne");
+    // Ni indexée, ni dans le sitemap : ce n'est pas une page publique.
+    expect(source).toMatch(/robots:\s*\{\s*index:\s*false/);
+    const { PUBLIC_PAGES } = await import("@/lib/seo");
+    expect(PUBLIC_PAGES.map((p) => p.path)).not.toContain("/interne");
+  });
+
+  it("un navigateur marqué est interne SUR TOUTES LES PAGES, pas seulement dans /admin", async () => {
+    const cookie = /ns_interne=([^;]+)/.exec(poses(await post({ cle: CLE, action: "marquer" }))[0])?.[1];
+    jar.value = cookie ?? null;
+    // C'est le même chemin d'écriture que tous les événements du produit :
+    // landing_view, analyse, avis, achat passent tous par withEnvironment.
+    expect(await tag()).toEqual({ environment: "test", internal: true });
+  });
+
+  it("le secret n'est jamais écrit dans le dépôt", () => {
+    for (const fichier of ["lib/telemetry/internal.ts", "app/interne/page.tsx", "app/api/interne/route.ts"]) {
+      const source = readFileSync(fichier, "utf8");
+      // Le nom de la variable, oui. Une valeur par défaut, jamais.
+      expect(source, fichier).not.toMatch(/INTERNAL_MARK_SECRET\s*(\|\||\?\?)/);
+    }
+    expect(readFileSync("lib/telemetry/internal.ts", "utf8")).toContain("INTERNAL_MARK_SECRET");
+  });
+});
+
 describe("le marquage automatique", () => {
   const jwt = (exp: number) => `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({ exp })).toString("base64url")}.sig`;
   const FRESH = jwt(4102444800);

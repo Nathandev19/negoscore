@@ -1,5 +1,5 @@
 import { getRequestSession } from "@/lib/auth/request-user";
-import { expiredInternalCookieHeader, internalCookieHeader, internalSecret, isInternalEmail } from "@/lib/telemetry/internal";
+import { expiredInternalCookieHeader, internalCookieHeader, internalSecret, isInternalEmail, markSecretValid } from "@/lib/telemetry/internal";
 
 export const runtime = "nodejs";
 
@@ -51,4 +51,39 @@ export async function GET(request: Request) {
     { interne: true, message: "Ce navigateur ne compte plus dans les chiffres du cockpit." },
     { status: 200, headers: { "Cache-Control": "no-store", "Set-Cookie": cookie } },
   );
+}
+
+// Mission #127, partie B — le même marquage, demandé depuis la page /interne.
+//
+// La voie du dessus (GET, compte interne connecté) reste la normale. Celle-ci
+// existe pour les navigateurs intégrés d'Instagram et de TikTok, où se
+// connecter n'est pas praticable : le secret d'INTERNAL_MARK_SECRET tient lieu
+// de preuve, et il voyage dans le corps du formulaire, pas dans l'adresse.
+//
+// Mauvais secret, secret absent, variable non configurée : 404. Jamais 401 —
+// une erreur d'autorisation dirait qu'il y a une porte ici.
+export async function POST(request: Request) {
+  const form = await request.formData().catch(() => null);
+  const cle = form?.get("cle");
+  if (!markSecretValid(typeof cle === "string" ? cle : null)) return NOT_FOUND();
+
+  const retirer = form?.get("action") === "retirer";
+  const cookie = retirer ? expiredInternalCookieHeader() : internalCookieHeader(internalSecret());
+  if (!cookie) {
+    // Aucun sel serveur : on ne pose pas un cookie constant, il serait
+    // falsifiable (lib/telemetry/internal.ts).
+    console.error(JSON.stringify({ event: "interne_secret_absent" }));
+    return NOT_FOUND();
+  }
+  // 303 : le navigateur revient en GET sur la page, qui relit le cookie et
+  // affiche l'état réel. Sans JavaScript, et sans renvoyer le formulaire si la
+  // personne recharge.
+  return new Response(null, {
+    status: 303,
+    headers: {
+      Location: `/interne?cle=${encodeURIComponent(typeof cle === "string" ? cle : "")}`,
+      "Cache-Control": "no-store",
+      "Set-Cookie": cookie,
+    },
+  });
 }

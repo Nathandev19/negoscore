@@ -77,6 +77,21 @@ export async function loadDashboard(period: AdminPeriod): Promise<DashboardData 
 //   - un dénominateur nul n'affiche jamais 0 % ni NaN, mais « — ».
 export type DashboardTile = { label: string; value: string };
 
+// Mission #127 — CE QUI COMPTE COMME UNE VISITE.
+//
+// Constat du 01/10 : un clic réel sur /exemple depuis le navigateur intégré
+// d'Instagram n'apparaissait nulle part. L'événement était bien écrit — le
+// serveur l'insère sans erreur — mais le cockpit ne comptait comme « visite »
+// que `landing_view` et `pricing_view`. Une arrivée sur la page d'exemple ou
+// sur un guide valait donc zéro visite, et sa ligne d'acquisition affichait
+// 0 partout : invisible dans la tuile, invisible dans la courbe, invisible
+// dans le tableau par source.
+//
+// Une visite est une visite. Les quatre pages d'arrivée du produit comptent
+// ici, et la même liste est reprise par la RPC (migration 20261001000034) :
+// elles ne peuvent pas diverger sans qu'un test échoue.
+export const VISIT_EVENTS = ["landing_view", "pricing_view", "guide_view", "example_view"] as const;
+
 const NUMBER = new Intl.NumberFormat("fr-FR");
 const count = (value: number | undefined) => NUMBER.format(value ?? 0);
 
@@ -89,7 +104,7 @@ export function share(part: number, total: number): string | null {
 }
 
 export function dashboardTiles(data: DashboardData): DashboardTile[] {
-  const visits = (data.counts.landing_view ?? 0) + (data.counts.pricing_view ?? 0);
+  const visits = VISIT_EVENTS.reduce((sum, event) => sum + (data.counts[event] ?? 0), 0);
   const revenue = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(data.purchases.revenue_eur);
   return [
     { label: "Visites mesurées", value: count(visits) },

@@ -402,6 +402,66 @@ describe("ce que les pages rendent", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+// Mission #127, partie A — DE BOUT EN BOUT, /exemple PRODUIT UNE LIGNE.
+//
+// Constat du 01/10 : un clic réel depuis le navigateur intégré d'Instagram n'a
+// rien produit de visible dans /admin. L'événement était pourtant écrit : ce
+// qui manquait, c'est qu'il soit COMPTÉ comme une visite. Ce test suit la
+// chaîne entière — le chemin court, la redirection, l'image, les paramètres
+// enregistrés — au lieu de vérifier que la page existe.
+describe("le chemin complet de /exemple", () => {
+  it("chemin court → page d'exemple → événement avec les bons UTM", async () => {
+    const { proxy } = await import("@/proxy");
+    const { NextRequest } = await import("next/server");
+
+    // 1. Le chemin court redirige, et le serveur pose les UTM.
+    const redirection = await proxy(new NextRequest(`${ORIGIN}/exemple`));
+    expect(redirection.status).toBe(307);
+    const arrivee = new URL(redirection.headers.get("location") as string, ORIGIN);
+    expect(arrivee.pathname).toBe("/analyse/demo");
+
+    // 2. La page d'arrivée demande son image de mesure. Le référent est
+    //    l'adresse RÉELLEMENT affichée, UTM compris.
+    await ask({ page: "/analyse/demo", referer: arrivee.toString() });
+
+    // 3. Ce qui part en base.
+    expect(recorded()).toMatchObject({
+      event: "example_view",
+      attribution: expect.objectContaining({
+        path: "/analyse/demo",
+        utm_source: "instagram",
+        utm_medium: "organic_social",
+        utm_campaign: "lancement",
+        utm_content: "dm_exemple",
+      }),
+    });
+  });
+
+  it("une visite sur la page d'exemple COMPTE comme une visite", async () => {
+    const { VISIT_EVENTS, dashboardTiles } = await import("@/lib/admin/data");
+    expect([...VISIT_EVENTS]).toContain("example_view");
+    expect([...VISIT_EVENTS]).toContain("guide_view");
+    const tuiles = dashboardTiles({
+      counts: { landing_view: 3, pricing_view: 1, guide_view: 2, example_view: 4 },
+      excluded: 0, internal: 0, paid_pro: 0, granted_pro: 0,
+      feedback: { total: 0, fair: 0, not_fair: 0 },
+      purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
+      timeseries: [], acquisition: [], guides: [], example: { total: 4, direct: 4 },
+    });
+    expect(tuiles.find((t) => t.label === "Visites mesurées")?.value).toBe("10");
+  });
+
+  it("la RPC compte exactement les mêmes événements que le cockpit", async () => {
+    const { VISIT_EVENTS } = await import("@/lib/admin/data");
+    const sql = readFileSync("supabase/migrations/20261001000034_visites_toutes_pages.sql", "utf8");
+    const liste = `(${VISIT_EVENTS.map((event) => `'${event}'`).join(",")})`;
+    // Les deux endroits où la RPC compte une visite : la courbe et le tableau
+    // par source. Aucun ne doit diverger de VISIT_EVENTS.
+    expect(sql.split(`event_name in ${liste}`).length - 1, liste).toBe(2);
+    expect(sql).not.toMatch(/event_name in \('landing_view','pricing_view'\)/);
+  });
+});
+
 describe("ce que le cockpit montre", () => {
   const base = {
     counts: { guide_view: 42, example_view: 9 },

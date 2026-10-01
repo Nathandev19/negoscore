@@ -31,6 +31,7 @@ import { serverSalt } from "@/lib/security/request";
 
 export const INTERNAL_COOKIE = "ns_interne";
 export const INTERNAL_EMAILS_ENV = "INTERNAL_EMAILS";
+export const INTERNAL_MARK_SECRET_ENV = "INTERNAL_MARK_SECRET";
 
 // Deux ans : on ne veut pas remarquer ses appareils tous les mois. Le cookie
 // ne porte aucune autorisation, sa durée n'est pas un risque.
@@ -109,6 +110,38 @@ export function internalTokenValid(value: string | null | undefined, secret: str
   // taille est donc décidée avant, et elle ne révèle rien qu'on ne sache déjà.
   if (expected.length !== given.length) return false;
   return timingSafeEqual(expected, given);
+}
+
+// ─── Marquer un navigateur qui ne peut pas se connecter ────────────────────
+//
+// Mission #127 — les navigateurs intégrés d'Instagram et de TikTok n'ont pas de
+// barre d'adresse modifiable : on n'y atteint une page qu'en cliquant un lien,
+// et s'y connecter demande de recevoir un email, de l'ouvrir ailleurs, et de
+// perdre la session. Vérifier un lien depuis ces applications comptait donc
+// comme une vraie visite de créatrice.
+//
+// Le marquage par compte interne de la mission #118 reste la voie normale.
+// Celle-ci est la même marque — le même cookie, lu par le même chemin — ouverte
+// par un SECRET dans l'adresse, puisque c'est tout ce qu'on peut transmettre à
+// ces navigateurs-là.
+//
+// Le secret vit dans INTERNAL_MARK_SECRET, jamais dans le dépôt et jamais dans
+// le code envoyé au navigateur. Variable absente ou vide : personne ne peut
+// marquer, et la page répond comme une adresse inexistante. On ne se replie sur
+// AUCUNE valeur par défaut — un secret par défaut serait un secret public.
+export function markSecret(configured: string | undefined = process.env.INTERNAL_MARK_SECRET): string | null {
+  const value = (configured ?? "").trim();
+  return value === "" ? null : value;
+}
+
+// Comparaison à temps constant, et la longueur est traitée avant : une
+// différence de taille ne dit rien qu'un essai ne dirait déjà.
+export function markSecretValid(given: string | null | undefined, expected: string | null = markSecret()): boolean {
+  if (!given || !expected) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 
 function secureFlag(): string {
