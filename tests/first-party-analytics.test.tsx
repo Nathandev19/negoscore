@@ -63,6 +63,7 @@ describe("fixture synthétique du dashboard", () => {
     internal: 9,
     guides: [],
     example: { total: 0, direct: 0 },
+    tier_changes: [],
     paid_pro: 1,
     granted_pro: 1,
     feedback: { total: 5, fair: 3, not_fair: 2 },

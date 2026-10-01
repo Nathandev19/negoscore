@@ -72,7 +72,11 @@ const cookieOf = (tier: "starter" | "confirmed" | "experienced", at: number) => 
 const browser = vi.hoisted(() => ({
   signedIn: false,
   tierCookie: null as string | null,
+  // Mission #130 — deux destinations, deux listes. `posts` reste ce que
+  // ces tests surveillent depuis #064 : ce qui part vers le COMPTE.
   posts: [] as Array<{ tier: string; at: number }>,
+  // Le signalement du niveau consulté, qui part pour tout le monde.
+  events: [] as Array<{ event: string; tier: string }>,
   answer: "ok" as "ok" | "503" | "network",
 }));
 
@@ -89,6 +93,7 @@ beforeEach(() => {
   browser.signedIn = false;
   browser.tierCookie = null;
   browser.posts = [];
+  browser.events = [];
   browser.answer = "ok";
   warnings = [];
   logs = [];
@@ -106,8 +111,10 @@ beforeEach(() => {
   });
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (_url: string, init: RequestInit) => {
-      browser.posts.push(JSON.parse(String(init.body)));
+    vi.fn(async (url: string, init: RequestInit) => {
+      const corps = JSON.parse(String(init.body));
+      if (String(url).includes("/api/events")) browser.events.push(corps);
+      else browser.posts.push(corps);
       if (browser.answer === "network") throw new TypeError("Failed to fetch");
       return new Response(null, { status: browser.answer === "503" ? 503 : 204 });
     }),
@@ -234,6 +241,10 @@ describe("#064 — 3. sans compte, le cookie seul", () => {
     rememberTier("confirmed", T2);
     await settle();
     expect(browser.posts).toEqual([]);
+    // Mission #130 — rien ne part vers le COMPTE, mais le niveau consulté
+    // est signalé : c'est la seule trace d'un changement de niveau, et elle
+    // ne dépend pas d'avoir un compte.
+    expect(browser.events).toEqual([expect.objectContaining({ event: "tier_changed", tier: "confirmed" })]);
     expect(browser.tierCookie).toBe(cookieOf("confirmed", T2));
     expect(await preferredTier(request(browser.tierCookie), null)).toBe("confirmed");
   });

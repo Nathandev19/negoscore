@@ -1,5 +1,6 @@
 import { isUuid } from "@/lib/security/request";
 import { rpc, selectRows } from "@/lib/supabase/server";
+import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
 
 export const ADMIN_PAGE_SIZE = 25;
 export const ADMIN_PERIODS = ["24h", "7d", "30d", "all"] as const;
@@ -38,13 +39,17 @@ export type DashboardData = {
   guides: Array<{ path: string; views: number; to_example: number }>;
   // Vues de /analyse/demo, et la part arrivée sans passer par un lien du site.
   example: { total: number; direct: number };
+  // Mission #130 — les niveaux consultés depuis une page de résultat, et
+  // combien de fois chacun. Le niveau enregistré sur une analyse, lui, reste
+  // celui du calcul : c'est la colonne « Niveau initial » de /admin/analyses.
+  tier_changes: Array<{ tier: string; changes: number }>;
 };
 
 const EMPTY_DASHBOARD: DashboardData = {
   counts: {}, excluded: 0, internal: 0, paid_pro: 0, granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },
   purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
-  timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 },
+  timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 }, tier_changes: [],
 };
 
 export async function loadDashboard(period: AdminPeriod): Promise<DashboardData | "missing"> {
@@ -59,6 +64,7 @@ export async function loadDashboard(period: AdminPeriod): Promise<DashboardData 
           ...EMPTY_DASHBOARD, ...data,
           excluded: data.excluded ?? 0, internal: data.internal ?? 0,
           guides: data.guides ?? [], example: data.example ?? EMPTY_DASHBOARD.example,
+          tier_changes: data.tier_changes ?? [],
         }
       : EMPTY_DASHBOARD;
   } catch {
@@ -155,6 +161,23 @@ export function internalNotice(data: DashboardData): string {
 export function exampleNotice(data: DashboardData): string {
   const attributed = data.guides.reduce((sum, row) => sum + row.to_example, 0);
   return `Exemple chiffré : ${count(data.example.total)} vue(s) au total, dont ${count(attributed)} depuis un lien du site et ${count(data.example.direct)} en arrivée directe (moteur de recherche, lien partagé).`;
+}
+
+// Mission #130 — ce que le cockpit dit du changement de niveau.
+//
+// Constat du 01/10 : les huit analyses enregistrées affichaient toutes
+// « starter ». C'est exact et ce n'est pas un défaut : le niveau d'une
+// analyse est celui avec lequel elle a été CALCULÉE, et changer de niveau
+// sur la page de résultat recalcule tout dans le navigateur sans rien
+// écrire. Ce que personne ne pouvait savoir, c'est si quelqu'un avait
+// seulement essayé. Cette ligne-là répond.
+export function tierChangesNotice(data: DashboardData): string {
+  const total = data.tier_changes.reduce((sum, row) => sum + row.changes, 0);
+  if (total === 0) return `Aucun changement de niveau sur la période. Le niveau d'une analyse reste celui de son calcul.`;
+  const detail = data.tier_changes
+    .map((row) => `${TIER_LABEL[row.tier as Tier]?.short ?? row.tier} : ${count(row.changes)}`)
+    .join(" · ");
+  return `${count(total)} changement(s) de niveau sur la période — ${detail}. Le niveau enregistré sur l'analyse, lui, reste celui de son calcul.`;
 }
 
 // Mission #112, A4 — les paiements que le produit n'a pas su rattacher à un

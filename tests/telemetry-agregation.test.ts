@@ -18,7 +18,7 @@ function dashboard(patch: Partial<DashboardData> = {}): DashboardData {
     counts: {}, excluded: 0, internal: 0, paid_pro: 0, granted_pro: 0,
     feedback: { total: 0, fair: 0, not_fair: 0 },
     purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
-    timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 },
+    timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 }, tier_changes: [],
     ...patch,
   };
 }

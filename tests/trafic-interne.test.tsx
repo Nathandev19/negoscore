@@ -600,7 +600,7 @@ describe("le cockpit", () => {
       counts: {}, excluded: 218, internal: 37, paid_pro: 0, granted_pro: 0,
       feedback: { total: 0, fair: 0, not_fair: 0 },
       purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
-      timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 },
+      timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 }, tier_changes: [],
     };
     expect(excludedNotice(data)).toContain("218 événement(s) hors production");
     expect(internalNotice(data)).toContain("37 événement(s)");
@@ -620,7 +620,7 @@ describe("le cockpit", () => {
       counts: {}, excluded: 0, internal: 0, paid_pro: 0, granted_pro: 0,
       feedback: { total: 0, fair: 0, not_fair: 0 },
       purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
-      timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 },
+      timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 }, tier_changes: [],
     })).toBeTruthy();
   });
 });

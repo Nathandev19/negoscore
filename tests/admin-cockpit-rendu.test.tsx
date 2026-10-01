@@ -41,6 +41,7 @@ const APRES_MIGRATION: DashboardData = {
   internal: 12,
   guides: [],
   example: { total: 0, direct: 0 },
+  tier_changes: [],
   paid_pro: 0,
   granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },

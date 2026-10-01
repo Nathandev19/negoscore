@@ -1,10 +1,16 @@
 import { z } from "zod";
 import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
 import { isRobot, refusesTracking } from "@/lib/analytics/robots";
+import { TIERS } from "@/lib/rates/tier";
 
 export const runtime = "nodejs";
 
-const PUBLIC_EVENTS = ["landing_view", "pricing_view"] as const;
+const PUBLIC_EVENTS = ["landing_view", "pricing_view", "tier_changed"] as const;
+
+// Mission #130 — le niveau vient du navigateur, mais il ne peut valoir que
+// l'une des trois entrées de TIERS. Même règle que partout ailleurs : le
+// client ne choisit pas une valeur, il choisit une ENTRÉE d'une table
+// fermée. Un niveau inconnu fait refuser le corps entier.
 
 // Mission #103 — ce que le navigateur a le droit d'envoyer, et rien d'autre.
 // Schéma STRIPPANT (comportement par défaut de zod) : un champ inattendu du
@@ -17,6 +23,7 @@ const PUBLIC_EVENTS = ["landing_view", "pricing_view"] as const;
 // client un moyen de sonder le comportement en comparant les réponses.
 export const bodySchema = z.object({
   event: z.enum(PUBLIC_EVENTS),
+  tier: z.enum(TIERS).optional(),
   attribution: z.unknown().optional(),
 });
 
@@ -47,6 +54,14 @@ export async function POST(request: Request) {
   if (isRobot(request.headers.get("user-agent")) || refusesTracking(request.headers)) {
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   }
-  await recordProductEvent({ event: parsed.data.event, attribution: parseAttribution(parsed.data.attribution) });
+  // Le niveau consulté voyage dans entity_type/entity_id, les deux colonnes
+  // prévues pour ça : aucune nouvelle colonne, aucun champ libre.
+  const niveau = parsed.data.event === "tier_changed" ? (parsed.data.tier ?? null) : null;
+  await recordProductEvent({
+    event: parsed.data.event,
+    attribution: parseAttribution(parsed.data.attribution),
+    entityType: niveau ? "niveau" : null,
+    entityId: niveau,
+  });
   return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
 }

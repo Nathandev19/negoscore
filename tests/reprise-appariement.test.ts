@@ -306,8 +306,14 @@ describe("B — le navigateur n'émet aucun des deux", () => {
       expect(source, file).not.toContain("analysis_started");
       expect(source, file).not.toContain("analysis_completed");
     }
-    // L'endpoint public n'accepte toujours que les deux vues de page.
-    expect(readFileSync("app/api/events/route.ts", "utf8")).toContain('["landing_view", "pricing_view"]');
+    // L'endpoint public n'accepte TOUJOURS PAS les deux événements d'analyse.
+    // Mission #130 : la liste s'est allongée (tier_changed), ce qui compte est
+    // qu'elle n'admette aucun événement que le serveur seul doit écrire.
+    const publics = /const PUBLIC_EVENTS = \[([^\]]*)\]/.exec(readFileSync("app/api/events/route.ts", "utf8"))?.[1] ?? "";
+    expect(publics).not.toBe("");
+    for (const serveur of ["analysis_started", "analysis_completed", "signup", "purchase_completed", "checkout_started", "feedback_submitted"]) {
+      expect(publics, serveur).not.toContain(serveur);
+    }
     const route = readFileSync("app/api/analyse/route.ts", "utf8");
     expect(route).toContain("const runId = crypto.randomUUID();");
     expect(route).toContain("dedupeKey: `${event}:${runId}`");

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Funnel, TimeSeries } from "@/components/admin/charts";
-import { ADMIN_PERIODS, dashboardTiles, exampleNotice, excludedNotice, internalNotice, loadDashboard, loadUnattachedPayments, parsePeriod, share } from "@/lib/admin/data";
+import { ADMIN_PERIODS, dashboardTiles, exampleNotice, excludedNotice, internalNotice, loadDashboard, loadUnattachedPayments, parsePeriod, share, tierChangesNotice } from "@/lib/admin/data";
 import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Cockpit", robots: { index: false, follow: false } };
@@ -45,6 +45,9 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
           {unattached.map((row)=><tr key={row.event_id} className="border-b"><td className="py-3">{new Date(row.paid_at).toLocaleString("fr-FR")}</td><td>{row.plan}</td><td className="tabular-nums">{row.amount === null ? "—" : `${row.amount} ${row.currency ?? ""}`}</td><td>{row.email ?? "—"}</td><td>{row.resolution === "abandonne" ? "Abandonné" : row.resolution === "rattache" ? "Rattaché" : "En attente"}</td><td className="font-mono text-xs">{row.event_id}</td></tr>)}
         </tbody></table></div>
       </section> : null}
+      {/* Mission #130 — la seule trace d'un changement de niveau. L'analyse,
+          elle, garde le niveau de son calcul : voir /admin/analyses. */}
+      <p className="text-small text-attenue">{tierChangesNotice(data)}</p>
       <p className="text-small text-attenue">{excludedNotice(data)}</p>
       <p className="text-small text-attenue">{internalNotice(data)}</p>
       <p className="text-xs text-attenue">« Analyses lancées » et « Analyses terminées » sont deux compteurs bruts : aucun taux n’est calculé entre eux, faute d’un identifiant commun permettant de suivre une même analyse du lancement à sa fin.</p>

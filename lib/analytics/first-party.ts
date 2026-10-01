@@ -9,6 +9,11 @@ export const PRODUCT_EVENTS = [
   // trois noms d'événement ne diraient rien de plus et rendraient chaque
   // nouveau guide dépendant d'un changement de code.
   "guide_view", "example_view",
+  // Mission #130 — le niveau choisi sur une page de résultat. Le payload
+  // de l'analyse, lui, ne bouge pas : il porte la fourchette, le score et
+  // la contre-offre calculés AU niveau qu'il déclare, et y réécrire le
+  // niveau sans recalculer le reste rendrait la ligne fausse.
+  "tier_changed",
 ] as const;
 export type ProductEventName = (typeof PRODUCT_EVENTS)[number];
 

@@ -446,7 +446,7 @@ describe("le chemin complet de /exemple", () => {
       excluded: 0, internal: 0, paid_pro: 0, granted_pro: 0,
       feedback: { total: 0, fair: 0, not_fair: 0 },
       purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
-      timeseries: [], acquisition: [], guides: [], example: { total: 4, direct: 4 },
+      timeseries: [], acquisition: [], guides: [], example: { total: 4, direct: 4 }, tier_changes: [],
     });
     expect(tuiles.find((t) => t.label === "Visites mesurées")?.value).toBe("10");
   });
@@ -473,7 +473,7 @@ describe("ce que le cockpit montre", () => {
       { path: "/combien-facturer", views: 30, to_example: 6 },
       { path: "/produits-offerts", views: 12, to_example: 1 },
     ],
-    example: { total: 9, direct: 2 },
+    example: { total: 9, direct: 2 }, tier_changes: [],
   };
 
   it("la ligne sous le tableau dit le total, l'attribué et le direct", async () => {

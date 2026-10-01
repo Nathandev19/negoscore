@@ -229,7 +229,12 @@ describe("A2 — changer de niveau n'appelle ni le modèle ni le serveur", () =>
     // Déclenché par le bouton « Copier le message », jamais par un changement
     // de niveau (vérifié ci-dessous : seul onCopied l'appelle).
     expect(fetches.sort()).toEqual([
+      // Mission #130 — le niveau consulté est signalé à /api/events, par le
+      // sélecteur et par le composant de vue. Aucun des deux n'est attendu :
+      // le recalcul a déjà eu lieu quand ils partent.
+      "/components/analytics/first-party-view.tsx /api/events",
       "/components/result/negotiation/sent-message.tsx /api/analyses/${analysisId}/message-envoye",
+      "/components/result/tier-selector.tsx /api/events",
       "/components/result/tier-selector.tsx /api/niveau",
     ]);
     const sent = readFileSync(path.join(ROOT, "components/result/negotiation/sent-message.tsx"), "utf8");

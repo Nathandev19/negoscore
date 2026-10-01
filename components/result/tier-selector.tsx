@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useId } from "react";
+import { currentAttribution } from "@/components/analytics/first-party-view";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 import { encodeTierCookie, TIER_COOKIE, TIER_COOKIE_MAX_AGE, TIER_LABEL, TIERS, type Tier } from "@/lib/rates/tier";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,11 @@ export function useTier(): Tier | null {
 // Un échec de l'envoi n'est pas montré : le cookie reste la référence, et la
 // prochaine analyse rattrape le compte (lib/rates/tier-preference.ts).
 export function rememberTier(tier: Tier, now: number = Date.now()) {
+  // Mission #130 — la trace du changement, avant tout le reste : c'est la
+  // seule chose qui dise, dans le cockpit, que quelqu'un a touché à ce
+  // réglage. Elle vaut pour tout le monde, connecté ou non, puisque le
+  // recalcul, lui, n'écrit rien nulle part.
+  reportTierChange(tier);
   let signedIn = false;
   try {
     // Lu AVANT l'écriture du cookie de niveau.
@@ -45,6 +51,23 @@ export function rememberTier(tier: Tier, now: number = Date.now()) {
       if (!response.ok) warn(`HTTP ${response.status}`);
     })
     .catch(() => warn("réseau"));
+}
+
+// Signale le niveau consulté. Le signal « ne pas me suivre » est respecté
+// ici comme dans le composant de vue (components/analytics/first-party-view).
+// Un échec n'est jamais montré : ce n'est pas le travail de la personne.
+function reportTierChange(tier: Tier) {
+  try {
+    if (navigator.doNotTrack === "1") return;
+  } catch {
+    return;
+  }
+  void fetch("/api/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+    body: JSON.stringify({ event: "tier_changed", tier, attribution: currentAttribution() }),
+  }).catch(() => undefined);
 }
 
 // Trois choix, près de la fourchette. Changer de niveau recalcule la page dans
