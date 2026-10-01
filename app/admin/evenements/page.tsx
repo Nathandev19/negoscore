@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { loadRecentEvents, RECENT_EVENTS_LIMIT, type AdminEventRow } from "@/lib/admin/data";
+import { heureParis, MENTION_FUSEAU } from "@/lib/admin/heure";
 import { AGENT_LABEL, type AgentFamily } from "@/lib/telemetry/visiteur";
 
 export const metadata: Metadata = { title: "Événements — cockpit", robots: { index: false, follow: false } };
@@ -27,13 +28,6 @@ const RAISON: Readonly<Record<string, string>> = {
   mesure: "jeton de mesure",
 };
 
-const HORODATAGE = new Intl.DateTimeFormat("fr-FR", {
-  day: "2-digit",
-  month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
 
 function attribution(row: AdminEventRow): string {
   const parts = [row.utm_source, row.utm_campaign, row.utm_content].map((v) => v ?? "non_attribue");
@@ -85,7 +79,11 @@ export default async function AdminEvents() {
               <table className="w-full min-w-[920px] text-left text-small">
                 <thead>
                   <tr className="text-xs tracking-wide text-attenue uppercase">
-                    <th className="pb-2.5 pr-4 font-normal">Date et heure</th>
+                    {/* Mission #140 — le fuseau est écrit, une fois, dans
+                        l'en-tête. Les journaux Vercel et les DM auxquels on
+                        compare ces lignes sont en heure de Paris ; le serveur,
+                        lui, tourne en UTC. */}
+                    <th className="pb-2.5 pr-4 font-normal">Date et heure ({MENTION_FUSEAU})</th>
                     <th className="pb-2.5 pr-4 font-normal">Appareil</th>
                     <th className="pb-2.5 pr-4 font-normal">Événement</th>
                     <th className="pb-2.5 pr-4 font-normal">Page</th>
@@ -97,7 +95,7 @@ export default async function AdminEvents() {
                 <tbody>
                   {data.rows.map((row) => (
                     <tr key={row.id} className={`border-t border-filet ${row.internal ? "text-attenue" : ""}`}>
-                      <td className="figures py-3 pr-4 whitespace-nowrap">{HORODATAGE.format(new Date(row.occurred_at))}</td>
+                      <td className="figures py-3 pr-4 whitespace-nowrap">{heureParis(row.occurred_at)}</td>
                       {/* Six caractères, en chasse fixe : deux lignes du même
                           appareil se repèrent d'un coup d'œil. */}
                       <td className="py-3 pr-4 font-mono text-xs">{row.visitor ?? "—"}</td>

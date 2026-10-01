@@ -60,7 +60,12 @@ export function axisTicks(max: number): number[] {
   return [haut, haut / 2, 0];
 }
 
-const JOUR = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit" });
+// Mission #140 — `day` est une DATE DE CALENDRIER (« 2026-10-01 »), pas un
+// instant : la RPC a déjà décidé à quelle journée appartient chaque événement.
+// On la lit et on l’affiche en UTC, donc telle quelle. La traduire en heure de
+// Paris la décalerait d’un jour la moitié de l’année — c’est le regroupement
+// côté base qui porte le fuseau (migration 20261002000037), pas l’étiquette.
+const JOUR = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
 
 export function dayLabel(day: string): string {
   const date = new Date(`${day}T00:00:00Z`);

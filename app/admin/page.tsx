@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cockpit } from "@/components/admin/cockpit";
 import { ADMIN_PERIODS, loadDashboards, loadUnattachedPayments, parsePeriod } from "@/lib/admin/data";
+import { dateHeureParis, MENTION_FUSEAU } from "@/lib/admin/heure";
 import type { CockpitCaches } from "@/components/admin/cockpit";
 
 export const metadata: Metadata = { title: "Cockpit", robots: { index: false, follow: false } };
@@ -50,7 +51,7 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
             <table className="w-full text-left text-small">
               <thead>
                 <tr className="border-b">
-                  <th className="py-2">Payé le</th>
+                  <th className="py-2">Payé le ({MENTION_FUSEAU})</th>
                   <th>Formule</th>
                   <th>Montant</th>
                   <th>Adresse de paiement</th>
@@ -61,7 +62,7 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
               <tbody>
                 {unattached.map((row) => (
                   <tr key={row.event_id} className="border-b">
-                    <td className="py-3">{new Date(row.paid_at).toLocaleString("fr-FR")}</td>
+                    <td className="py-3">{dateHeureParis(row.paid_at)}</td>
                     <td>{row.plan}</td>
                     <td className="tabular-nums">{row.amount === null ? "—" : `${row.amount} ${row.currency ?? ""}`}</td>
                     <td>{row.email ?? "—"}</td>
