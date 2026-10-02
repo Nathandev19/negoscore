@@ -29,6 +29,10 @@ const PAGE = readFileSync(path.join(process.cwd(), "app/admin/users/[id]/page.ts
 // sinon « plus aucun confirm() » échouerait sur sa propre explication.
 const SOURCE = FICHIER.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
+// Les formats français séparent la date de l'heure par une espace insécable :
+// on la ramène à l'espace ordinaire avant de comparer (comme heure-paris).
+const espaces = (valeur: string) => valeur.replace(/[\s  ]+/g, " ");
+
 // React échappe l'apostrophe et les guillemets dans le balisage rendu.
 const texte = (markup: string) =>
   markup.replaceAll("&#x27;", "'").replaceAll("&quot;", '"').replaceAll("&amp;", "&").replaceAll("&nbsp;", " ");
@@ -51,12 +55,33 @@ describe("le récapitulatif montre les quatre choses à vérifier", () => {
     const html = rendu(GRANT);
     expect(html).toContain("ellaetienne.cc@gmail.com");
     expect(html).toContain("Accorder Pro offert");
-    expect(html).toContain("15/10/2026 à 14:30");
+    expect(html).toContain("15/10/2026 14:30");
     expect(html).toContain("Test créatrice pilote");
-    // L'heure saisie part sans fuseau : c'est dit, pas supposé.
-    expect(html).toContain("sans fuseau horaire");
+    // Mission #146 — l'heure est annoncée comme une heure de Paris, parce que
+    // c'est désormais ainsi que le serveur la lit.
+    expect(html).toContain("heure de Paris");
+    expect(html).not.toContain("sans fuseau horaire");
     // Et surtout : la valeur affichée est bien celle qui sera envoyée.
     expect(html).not.toContain("2026-10-15T14:30");
+  });
+
+  // Mission #146 — la modale doit dire vrai des DEUX côtés du 25 octobre.
+  it("la date affichée est celle qui sera comprise, été comme hiver", () => {
+    for (const saisie of ["2026-10-20T23:59", "2026-11-01T23:59"]) {
+      const html = espaces(rendu({ ...GRANT, expiresAt: saisie }));
+      // Ce que la personne a tapé est ce qu'elle relit : c'est tout l'intérêt
+      // d'interpréter en heure de Paris plutôt qu'en heure du serveur.
+      expect(html, saisie).toContain(`${saisie.slice(8, 10)}/${saisie.slice(5, 7)}/2026 23:59`);
+      expect(html, saisie).toContain("heure de Paris");
+    }
+  });
+
+  it("une heure qui n'existe pas s'affiche là où elle tombera vraiment", () => {
+    // 29/03/2026 : 02:00 saute à 03:00. Afficher 02:30 serait afficher une
+    // heure que personne n'enregistrera.
+    const html = espaces(rendu({ ...GRANT, expiresAt: "2026-03-29T02:30" }));
+    expect(html).toContain("29/03/2026 03:30");
+    expect(html).not.toContain("02:30");
   });
 
   it("accorder sans date de fin : l'absence d'échéance est écrite, pas laissée vide", () => {
@@ -97,11 +122,12 @@ describe("le récapitulatif montre les quatre choses à vérifier", () => {
     }
   });
 
-  it("la date saisie est remise en ordre français, jamais réinterprétée", () => {
-    expect(dateSaisieLisible("2026-01-05T09:05")).toBe("05/01/2026 à 09:05");
-    expect(dateSaisieLisible("2026-10-15T14:30:00")).toBe("15/10/2026 à 14:30");
+  it("la date saisie est relue en heure de Paris", () => {
+    expect(espaces(dateSaisieLisible("2026-01-05T09:05"))).toBe("05/01/2026 09:05 (heure de Paris)");
+    expect(espaces(dateSaisieLisible("2026-10-15T14:30:00"))).toBe("15/10/2026 14:30 (heure de Paris)");
     expect(dateSaisieLisible(null)).toContain("sans échéance");
-    // Une valeur inattendue est rendue telle quelle : jamais de date inventée.
+    // Une valeur inattendue est rendue telle quelle : jamais de date inventée,
+    // et surtout jamais une mention « heure de Paris » sur une heure illisible.
     expect(dateSaisieLisible("n'importe quoi")).toBe("n'importe quoi");
   });
 });
@@ -129,7 +155,7 @@ describe("la question du navigateur ne revient pas", () => {
     expect(html).toContain(">Confirmer</button>");
     // Le récapitulatif est bien DANS la boîte, pas à côté.
     expect(html).toContain("ellaetienne.cc@gmail.com");
-    expect(html).toContain("15/10/2026 à 14:30");
+    expect(espaces(html)).toContain("15/10/2026 14:30");
     expect(html).toContain("Test créatrice pilote");
   });
 

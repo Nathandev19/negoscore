@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { dateHeureParis, instantDepuisParis, MENTION_FUSEAU } from "@/lib/admin/heure";
 
 // Mission #145 — LE GARDE-FOU QUI MONTRE CE QU'IL GARDE.
 //
@@ -32,38 +33,37 @@ export function titreDemande(demande: DemandeAdmin): string {
   return demande.action === "grant" ? "Accorder Pro offert" : "Retirer l'accès Pro offert";
 }
 
-// La date saisie dans le champ, rendue lisible SANS être réinterprétée.
+// La date saisie dans le champ, affichée TELLE QU'ELLE SERA COMPRISE.
 //
 // Le champ est un datetime-local : sa valeur (« 2026-10-15T14:30 ») ne porte
-// aucun fuseau. La passer par `new Date()` ici la daterait dans le fuseau du
-// navigateur, alors que le serveur la lit dans le sien — et la modale
-// afficherait une heure que personne n'enregistrera. On se contente donc de
-// remettre les chiffres saisis dans l'ordre français, et la modale dit
-// explicitement qu'ils partent sans fuseau.
+// aucun fuseau. Depuis la mission #146, le serveur la lit comme une heure
+// d'Europe/Paris — comme tout le reste de /admin depuis la #140. La modale
+// refait donc exactement la même lecture, puis réaffiche l'instant obtenu en
+// heure de Paris : ce qui est écrit ici est ce qui sera enregistré.
+//
+// Ce n'est pas un simple recopiage des chiffres saisis. Une heure qui n'existe
+// pas — 02:30 le matin du passage à l'heure d'été — s'affiche 03:30, c'est-à-
+// dire là où elle tombera vraiment.
 export function dateSaisieLisible(valeur: string | null): string {
   if (!valeur) return "aucune date de fin : accès sans échéance";
-  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(valeur);
-  if (!parts) return valeur;
-  const [, annee, mois, jour, heures, minutes] = parts;
-  return `${jour}/${mois}/${annee} à ${heures}:${minutes}`;
+  const instant = instantDepuisParis(valeur);
+  return instant ? `${dateHeureParis(instant)} (${MENTION_FUSEAU})` : valeur;
 }
 
 // La valeur exacte de l'action : la date de fin, ou le nombre de crédits.
 // C'est la ligne que window.confirm ne montrait pas.
-export function valeurDemande(demande: DemandeAdmin): { label: string; valeur: string; note: string | null } {
+export function valeurDemande(demande: DemandeAdmin): { label: string; valeur: string } {
   if (demande.kind === "credits") {
     const signe = demande.delta > 0 ? "+" : "−";
-    return { label: "Crédits", valeur: `${signe}${Math.abs(demande.delta)} crédit(s)`, note: null };
+    return { label: "Crédits", valeur: `${signe}${Math.abs(demande.delta)} crédit(s)` };
   }
   if (demande.action === "revoke") {
-    return { label: "Effet", valeur: "l'accès offert est retiré immédiatement", note: null };
+    return { label: "Effet", valeur: "l'accès offert est retiré immédiatement" };
   }
-  return {
-    label: "Fin de l'accès",
-    valeur: dateSaisieLisible(demande.expiresAt),
-    // Dit, parce que c'est vrai et que ça se vérifie avant de valider, pas après.
-    note: demande.expiresAt ? "Heure envoyée telle quelle, sans fuseau horaire." : null,
-  };
+  // Mission #146 — la ligne porte elle-même « heure de Paris ». La réserve
+  // d'avant (« envoyée telle quelle, sans fuseau ») n'a plus lieu d'être : le
+  // fuseau n'est plus laissé au hasard du serveur, il est choisi.
+  return { label: "Fin de l'accès", valeur: dateSaisieLisible(demande.expiresAt) };
 }
 
 // Le récapitulatif seul, sans l'enveloppe de la modale : un composant pur, que
@@ -77,10 +77,7 @@ export function RecapitulatifDemande({ demande, email }: { demande: DemandeAdmin
       <dt className="text-attenue">Action</dt>
       <dd className="font-semibold text-encre">{titreDemande(demande)}</dd>
       <dt className="text-attenue">{valeur.label}</dt>
-      <dd className="font-semibold text-encre">
-        {valeur.valeur}
-        {valeur.note ? <span className="block font-normal text-attenue">{valeur.note}</span> : null}
-      </dd>
+      <dd className="font-semibold text-encre">{valeur.valeur}</dd>
       <dt className="text-attenue">Motif</dt>
       <dd className="break-words text-encre">{demande.reason}</dd>
     </dl>

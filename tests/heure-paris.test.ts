@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { dateHeureParis, dateParis, FUSEAU, heureParis, MENTION_FUSEAU } from "@/lib/admin/heure";
+import { dateHeureParis, dateParis, FUSEAU, heureParis, instantDepuisParis, MENTION_FUSEAU } from "@/lib/admin/heure";
 
 // Mission #140 — /admin affiche l'heure de Paris.
 //
@@ -71,8 +71,15 @@ describe("l'heure affichée est celle de Paris", () => {
 
   it("le fuseau est nommé, jamais un décalage fixe", () => {
     expect(FUSEAU).toBe("Europe/Paris");
-    const source = readFileSync("lib/admin/heure.ts", "utf8");
-    expect(source).not.toMatch(/UTC\+|\+0[12]:00|GMT\+/);
+    // Mission #146 — on retire les commentaires avant de chercher. Ils citent
+    // volontairement « UTC+2 » et « UTC+1 » pour expliquer POURQUOI ces
+    // décalages ne sont écrits nulle part ; la règle porte sur le code exécuté,
+    // comme pour le SQL de la migration plus bas.
+    const execute = readFileSync("lib/admin/heure.ts", "utf8")
+      .split("\n")
+      .filter((ligne) => !ligne.trimStart().startsWith("//"))
+      .join("\n");
+    expect(execute).not.toMatch(/UTC\+|\+0[12]:00|GMT\+/);
   });
 });
 
@@ -140,5 +147,79 @@ describe("le regroupement par jour de la courbe", () => {
     // Paris la décalerait d'un jour la moitié de l'année.
     expect(source).toContain('timeZone: "UTC"');
     expect(source).not.toContain('timeZone: "Europe/Paris"');
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #146 — le chemin INVERSE : une heure murale de Paris vers l'instant.
+//
+// Le champ « date de fin » d'un accès Pro offert est un datetime-local : il
+// envoie « 2026-11-01T23:59 », sans fuseau. Le serveur le lisait avec
+// Date.parse(), donc dans SON fuseau — UTC sur Vercel. Une échéance saisie
+// 23:59 en pensant Paris était enregistrée une à deux heures trop tard.
+describe("une heure saisie est lue comme une heure de Paris", () => {
+  const iso = (valeur: string) => instantDepuisParis(valeur)?.toISOString() ?? null;
+
+  // LE CŒUR DE LA MISSION : les deux dates ne tombent pas sur le même
+  // décalage. Paris passe de UTC+2 à UTC+1 le 25 octobre 2026, en plein
+  // milieu de la période du grant en cours.
+  it("avant le 25 octobre : UTC+2", () => {
+    expect(iso("2026-10-20T23:59")).toBe("2026-10-20T21:59:00.000Z");
+  });
+
+  it("après le 25 octobre : UTC+1", () => {
+    expect(iso("2026-11-01T23:59")).toBe("2026-11-01T22:59:00.000Z");
+  });
+
+  it("lu en UTC, le même champ donnerait deux résultats faux, de deux ampleurs différentes", () => {
+    // C'est l'ancien comportement : la valeur partait telle quelle, et la base
+    // la castait en UTC. L'écart n'est pas constant, donc un « -1 h » ou un
+    // « -2 h » écrit en dur aurait été faux la moitié de l'année.
+    const ecart = (valeur: string) => (Date.parse(`${valeur}Z`) - (instantDepuisParis(valeur) as Date).getTime()) / 3_600_000;
+    expect(ecart("2026-10-20T23:59")).toBe(2);
+    expect(ecart("2026-11-01T23:59")).toBe(1);
+  });
+
+  it("le basculement lui-même, heure par heure", () => {
+    // 25/10/2026, 03:00 d'été devient 02:00 d'hiver.
+    expect(iso("2026-10-25T01:59")).toBe("2026-10-24T23:59:00.000Z");
+    expect(iso("2026-10-25T03:30")).toBe("2026-10-25T02:30:00.000Z");
+    // Une heure qui existe DEUX fois : on retient la première, celle d'été,
+    // et elle se relit bien 02:30 à Paris.
+    expect(iso("2026-10-25T02:30")).toBe("2026-10-25T01:30:00.000Z");
+    expect(espaces(dateHeureParis(instantDepuisParis("2026-10-25T02:30")))).toContain("02:30");
+  });
+
+  it("une heure qui n'existe pas tombe juste après le saut, elle ne se perd pas", () => {
+    // 29/03/2026 : 02:00 saute à 03:00. 02:30 n'existe pas à Paris ce jour-là.
+    expect(iso("2026-03-29T02:30")).toBe("2026-03-29T01:30:00.000Z");
+    expect(espaces(dateHeureParis(instantDepuisParis("2026-03-29T02:30")))).toContain("03:30");
+  });
+
+  it("ce qui n'est pas une heure murale valide ne devient jamais une date", () => {
+    // Refusé, jamais deviné : l'appelant doit pouvoir distinguer « pas
+    // d'échéance » de « échéance illisible ».
+    for (const mauvais of ["", "   ", "n'importe quoi", "2026-10-20", "2026-13-01T10:00", "2026-10-20T25:00", "2026-02-31T10:00", null, undefined]) {
+      expect(instantDepuisParis(mauvais), JSON.stringify(mauvais)).toBeNull();
+    }
+  });
+
+  it("aller-retour : ce qui est saisi est ce qui se relit, été comme hiver", () => {
+    for (const saisie of ["2026-01-15T12:00", "2026-07-15T12:00", "2026-10-20T23:59", "2026-11-01T23:59", "2026-12-31T23:59"]) {
+      const relu = espaces(dateHeureParis(instantDepuisParis(saisie)));
+      expect(relu, saisie).toContain(saisie.slice(11, 16));
+      expect(relu, saisie).toContain(`${saisie.slice(8, 10)}/${saisie.slice(5, 7)}/${saisie.slice(0, 4)}`);
+    }
+  });
+
+  it("aucun décalage écrit en dur : c'est la zone nommée qui répond", () => {
+    const source = readFileSync("lib/admin/heure.ts", "utf8");
+    const execute = source
+      .split("\n")
+      .filter((ligne) => !ligne.trimStart().startsWith("//"))
+      .join("\n");
+    expect(execute).toContain("timeZone: FUSEAU");
+    // Ni « +01:00 », ni « +02:00 », ni une arithmétique d'heures en dur.
+    expect(execute).not.toMatch(/\+0?[12]:00|3_?600_?000\s*\*\s*[12]\b/);
   });
 });

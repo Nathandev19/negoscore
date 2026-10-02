@@ -89,6 +89,63 @@ describe("autorisation et mutations du cockpit", () => {
       { fn: "admin_adjust_credits", args: { p_actor: OWNER.id, p_user: TARGET, p_delta: 3, p_reason: "Geste support", p_idempotency_key: "admin-request-0002" } },
     ]);
   });
+
+  // Mission #146 — LA DATE DE FIN EST UNE HEURE DE PARIS.
+  //
+  // Le champ est un datetime-local : il envoie « 2026-11-01T23:59 », sans
+  // fuseau. La route la passait telle quelle à la base, qui la castait en UTC.
+  // Une échéance saisie 23:59 tombait donc à 01:59 le lendemain à Paris en
+  // été, 00:59 en hiver. Ce qui part maintenant est un INSTANT.
+  //
+  // Les deux dates ci-dessous sont de part et d'autre du 25 octobre 2026 : un
+  // décalage écrit en dur en ferait échouer une.
+  const expiration = async (expiresAt: string) => {
+    state.session = OWNER;
+    state.rpcCalls = [];
+    const response = await entitlement({ action: "grant", reason: "Partenariat", requestId: REQUEST_ID, expiresAt });
+    return { status: response.status, envoye: state.rpcCalls[0]?.args.p_expires_at };
+  };
+
+  it("une échéance saisie avant le 25 octobre part en UTC+2", async () => {
+    expect(await expiration("2026-10-20T23:59")).toEqual({ status: 200, envoye: "2026-10-20T21:59:00.000Z" });
+  });
+
+  it("la même heure saisie après le 25 octobre part en UTC+1", async () => {
+    expect(await expiration("2026-11-01T23:59")).toEqual({ status: 200, envoye: "2026-11-01T22:59:00.000Z" });
+  });
+
+  it("lue en UTC, chacune serait fausse — et pas du même nombre d'heures", async () => {
+    for (const [saisie, ecartAttendu] of [["2026-10-20T23:59", 2], ["2026-11-01T23:59", 1]] as const) {
+      const { envoye } = await expiration(saisie);
+      const ecart = (Date.parse(`${saisie}Z`) - Date.parse(envoye as string)) / 3_600_000;
+      expect(ecart, saisie).toBe(ecartAttendu);
+      // Et surtout : ce n'est plus la chaîne brute qui part vers la base.
+      expect(envoye, saisie).not.toBe(saisie);
+    }
+  });
+
+  it("une échéance illisible est refusée, jamais transformée en accès sans fin", async () => {
+    state.session = OWNER;
+    state.rpcCalls = [];
+    for (const mauvais of ["2026-13-01T10:00", "2026-02-31T10:00", "pas une date", "2026-10-20"]) {
+      const response = await entitlement({ action: "grant", reason: "Partenariat", requestId: REQUEST_ID, expiresAt: mauvais });
+      expect(response.status, mauvais).toBe(400);
+    }
+    // Une échéance déjà passée reste refusée, elle aussi.
+    expect((await entitlement({ action: "grant", reason: "Partenariat", requestId: REQUEST_ID, expiresAt: "2020-01-01T10:00" })).status).toBe(400);
+    expect(state.rpcCalls).toEqual([]);
+  });
+
+  it("l'accès sans échéance reste possible, et part toujours à null", async () => {
+    state.session = OWNER;
+    state.rpcCalls = [];
+    for (const vide of [null, ""]) {
+      state.rpcCalls = [];
+      const response = await entitlement({ action: "grant", reason: "Partenariat", requestId: REQUEST_ID, expiresAt: vide });
+      expect(response.status, JSON.stringify(vide)).toBe(200);
+      expect(state.rpcCalls[0]?.args.p_expires_at, JSON.stringify(vide)).toBeNull();
+    }
+  });
 });
 
 describe("abonnement payant et accès offert restent deux sources distinctes", () => {

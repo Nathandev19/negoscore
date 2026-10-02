@@ -39,7 +39,6 @@ vi.mock("@/lib/analytics/first-party", async (importOriginal) => ({
 }));
 
 vi.mock("@/components/deal-input", () => ({ DealInput: ({ note }: { note?: string }) => <form aria-label="saisie">{note}</form> }));
-vi.mock("@/components/analytics/track-view", () => ({ TrackView: () => null }));
 vi.mock("@/components/analytics/first-party-view", () => ({ FirstPartyView: () => null, currentAttribution: () => ({}) }));
 
 const { GET: pixel } = await import("@/app/api/vue/route");
