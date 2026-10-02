@@ -48,6 +48,54 @@ describe("attribution first-party", () => {
     expect((await send("landing_view", "pas une url")).status).toBe(403);
     expect(telemetry.calls).toHaveLength(1);
   });
+
+  // Mission #145 — LA BIO TIKTOK, DE BOUT EN BOUT.
+  //
+  // Le chemin court ne sert à rien si l'attribution n'arrive pas jusqu'à
+  // product_events. Ce test ne vérifie pas une constante : il enchaîne les
+  // trois maillons réels — le proxy qui ajoute les UTM, le navigateur qui les
+  // relit dans l'adresse affichée, et la route qui les enregistre. Il échoue
+  // si n'importe lequel des trois cesse de porter l'attribution.
+  //
+  // Le corps est construit DEPUIS la redirection du proxy, jamais écrit à la
+  // main : un utm_content qui changerait dans la table sans changer ici ne
+  // pourrait pas passer inaperçu.
+  it("/tiktok : l'attribution de la bio arrive jusqu'à l'enregistrement", async () => {
+    const { proxy } = await import("@/proxy");
+    const { NextRequest } = await import("next/server");
+    const { POST } = await import("@/app/api/events/route");
+
+    const redirection = await proxy(new NextRequest(new URL("/tiktok", "http://localhost:3000")));
+    expect(redirection.status).toBe(307);
+    const affichee = new URL(redirection.headers.get("location") as string, "http://localhost:3000");
+
+    // Ce que currentAttribution() lit dans l'adresse affichée
+    // (components/analytics/first-party-view.tsx) : le chemin, et les quatre UTM.
+    const lu = (cle: string) => affichee.searchParams.get(cle);
+    const response = await POST(new Request("http://localhost:3000/api/events", {
+      method: "POST",
+      headers: { origin: "http://localhost:3000", "sec-fetch-site": "same-origin", "content-type": "application/json", "user-agent": UA },
+      body: JSON.stringify({
+        event: "landing_view",
+        attribution: {
+          path: affichee.pathname, referrer_host: null,
+          utm_source: lu("utm_source"), utm_medium: lu("utm_medium"),
+          utm_campaign: lu("utm_campaign"), utm_content: lu("utm_content"),
+        },
+      }),
+    }));
+
+    expect(response.status).toBe(204);
+    expect(telemetry.calls).toEqual([
+      expect.objectContaining({
+        event: "landing_view",
+        attribution: {
+          path: "/", referrer_host: null,
+          utm_source: "tiktok", utm_medium: "organic_social", utm_campaign: "lancement", utm_content: "bio_tiktok",
+        },
+      }),
+    ]);
+  });
 });
 
 describe("fixture synthétique du dashboard", () => {

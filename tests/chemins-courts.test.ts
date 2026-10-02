@@ -27,7 +27,8 @@ const ATTENDU: Array<[string, string, string]> = [
   ["/produits", "tiktok", "video_3_produits"],
   ["/capture", "tiktok", "video_4_capture"],
   ["/niveau", "tiktok", "video_5_niveau"],
-  ["/tiktok", "tiktok", "bio"],
+  // Mission #145 — la bio TikTok porte enfin ce chemin, et son contenu le dit.
+  ["/tiktok", "tiktok", "bio_tiktok"],
   ["/insta", "instagram", "bio_instagram"],
 ];
 
@@ -167,6 +168,13 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
     // Trois chemins Instagram, qui ne disent pas la même chose : la bio, la
     // prospection directe, et le lien qui montre l'exemple chiffré (#125).
     expect(parSource.instagram.sort()).toEqual(["bio_instagram", "dm_exemple", "dm_prospection"]);
+    // Mission #145 — six chemins TikTok : les cinq vidéos, et la bio. Aucun ne
+    // s'appelle « bio » tout court : les deux bios sont nommées par leur
+    // réseau, sinon la colonne « Contenu » du cockpit les confond.
+    expect(parSource.tiktok.sort()).toEqual([
+      "bio_tiktok", "video_1_negociation", "video_2_verdicts", "video_3_produits", "video_4_capture", "video_5_niveau",
+    ]);
+    expect(Object.values(SHORT_PATHS).map((entry) => entry.content)).not.toContain("bio");
   });
 
   it("le trafic Instagram ne se range pas sous TikTok", async () => {

@@ -1,0 +1,182 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import {
+  ConfirmationAdmin,
+  dateSaisieLisible,
+  RecapitulatifDemande,
+  titreDemande,
+  valeurDemande,
+  type DemandeAdmin,
+} from "@/components/admin/user-actions";
+
+// Mission #145, partie B — la confirmation des actions admin.
+//
+// Le défaut : window.confirm("Accorder cet accès Pro offert ?") ne montrait ni
+// le compte, ni la date de fin, ni le motif. Sur une page qui ressemble à
+// toutes les autres fiches, il ne permettait pas de vérifier qu'on était sur le
+// bon compte : le garde-fou ne gardait rien.
+//
+// Ce que ces tests figent : les QUATRE lignes du récapitulatif, et le fait que
+// la question du navigateur ne revienne pas.
+
+const FICHIER = readFileSync(path.join(process.cwd(), "components/admin/user-actions.tsx"), "utf8");
+const PAGE = readFileSync(path.join(process.cwd(), "app/admin/users/[id]/page.tsx"), "utf8");
+
+// Les commentaires de ce fichier citent l'ancien appel pour expliquer ce qui a
+// été retiré. Les assertions portent donc sur le CODE, pas sur la prose :
+// sinon « plus aucun confirm() » échouerait sur sa propre explication.
+const SOURCE = FICHIER.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+// React échappe l'apostrophe et les guillemets dans le balisage rendu.
+const texte = (markup: string) =>
+  markup.replaceAll("&#x27;", "'").replaceAll("&quot;", '"').replaceAll("&amp;", "&").replaceAll("&nbsp;", " ");
+
+const rendu = (demande: DemandeAdmin, email: string | null = "ellaetienne.cc@gmail.com") =>
+  texte(renderToStaticMarkup(<RecapitulatifDemande demande={demande} email={email} />));
+
+const GRANT: DemandeAdmin = {
+  kind: "entitlement",
+  action: "grant",
+  reason: "Test créatrice pilote",
+  expiresAt: "2026-10-15T14:30",
+};
+const REVOKE: DemandeAdmin = { kind: "entitlement", action: "revoke", reason: "Fin de la période de test", expiresAt: null };
+const AJOUT: DemandeAdmin = { kind: "credits", delta: 10, reason: "Dédommagement analyse échouée" };
+const RETRAIT: DemandeAdmin = { kind: "credits", delta: -2, reason: "Crédits ajoutés par erreur" };
+
+describe("le récapitulatif montre les quatre choses à vérifier", () => {
+  it("accorder Pro offert : compte, action, date de fin, motif", () => {
+    const html = rendu(GRANT);
+    expect(html).toContain("ellaetienne.cc@gmail.com");
+    expect(html).toContain("Accorder Pro offert");
+    expect(html).toContain("15/10/2026 à 14:30");
+    expect(html).toContain("Test créatrice pilote");
+    // L'heure saisie part sans fuseau : c'est dit, pas supposé.
+    expect(html).toContain("sans fuseau horaire");
+    // Et surtout : la valeur affichée est bien celle qui sera envoyée.
+    expect(html).not.toContain("2026-10-15T14:30");
+  });
+
+  it("accorder sans date de fin : l'absence d'échéance est écrite, pas laissée vide", () => {
+    const html = rendu({ ...GRANT, expiresAt: null });
+    expect(html).toContain("accès sans échéance");
+    // Pas de mention de fuseau quand il n'y a aucune heure à interpréter.
+    expect(html).not.toContain("sans fuseau horaire");
+  });
+
+  it("retirer l'accès offert : l'effet immédiat est annoncé", () => {
+    const html = rendu(REVOKE);
+    expect(html).toContain("ellaetienne.cc@gmail.com");
+    expect(html).toContain("Retirer l'accès Pro offert");
+    expect(html).toContain("retiré immédiatement");
+    expect(html).toContain("Fin de la période de test");
+  });
+
+  it("ajuster les crédits : le nombre exact et son signe", () => {
+    expect(rendu(AJOUT)).toContain("+10 crédit(s)");
+    expect(rendu(AJOUT)).toContain("Ajouter des crédits");
+    expect(rendu(AJOUT)).toContain("Dédommagement analyse échouée");
+    // Un retrait ne doit pas pouvoir passer pour un ajout : le signe est porté.
+    expect(rendu(RETRAIT)).toContain("−2 crédit(s)");
+    expect(rendu(RETRAIT)).toContain("Retirer des crédits");
+    expect(rendu(RETRAIT)).not.toContain("+2");
+  });
+
+  it("un compte sans email le dit, au lieu d'afficher une ligne vide", () => {
+    expect(rendu(AJOUT, null)).toContain("Compte sans email");
+  });
+
+  it("les quatre intitulés sont présents dans chaque récapitulatif", () => {
+    for (const demande of [GRANT, REVOKE, AJOUT, RETRAIT]) {
+      const html = rendu(demande);
+      for (const intitule of ["Compte", "Action", "Motif", valeurDemande(demande).label]) {
+        expect(html, `${titreDemande(demande)} / ${intitule}`).toContain(intitule);
+      }
+    }
+  });
+
+  it("la date saisie est remise en ordre français, jamais réinterprétée", () => {
+    expect(dateSaisieLisible("2026-01-05T09:05")).toBe("05/01/2026 à 09:05");
+    expect(dateSaisieLisible("2026-10-15T14:30:00")).toBe("15/10/2026 à 14:30");
+    expect(dateSaisieLisible(null)).toContain("sans échéance");
+    // Une valeur inattendue est rendue telle quelle : jamais de date inventée.
+    expect(dateSaisieLisible("n'importe quoi")).toBe("n'importe quoi");
+  });
+});
+
+describe("la question du navigateur ne revient pas", () => {
+  it("plus aucun confirm() : c'est la modale de l'application qui demande", () => {
+    expect(SOURCE).not.toContain("window.confirm");
+    expect(SOURCE).not.toMatch(/\bconfirm\(/);
+  });
+
+  it("la boîte rendue est une modale annoncée, avec ses deux boutons", () => {
+    const html = texte(
+      renderToStaticMarkup(
+        <ConfirmationAdmin demande={GRANT} email="ellaetienne.cc@gmail.com" onAnnuler={() => {}} onConfirmer={() => {}} />,
+      ),
+    );
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('aria-modal="true"');
+    // Le titre nomme l'action, et c'est lui qui nomme la boîte.
+    expect(html).toContain('aria-labelledby="titre-confirmation-admin"');
+    expect(html).toContain('id="titre-confirmation-admin"');
+    expect(html).toContain("Confirmer : Accorder Pro offert");
+    // Les deux boutons existent, et l'annulation n'est pas un simple lien mort.
+    expect(html).toContain(">Annuler</button>");
+    expect(html).toContain(">Confirmer</button>");
+    // Le récapitulatif est bien DANS la boîte, pas à côté.
+    expect(html).toContain("ellaetienne.cc@gmail.com");
+    expect(html).toContain("15/10/2026 à 14:30");
+    expect(html).toContain("Test créatrice pilote");
+  });
+
+  // Mesuré sur 320 × 568 avec une adresse et un motif longs : sans borne de
+  // hauteur, la boîte montait à −156 px et la ligne « Compte » sortait par le
+  // haut, sans défilement possible (le voile est fixe). On validait donc sans
+  // pouvoir lire le compte — soit l'inverse de ce que cette modale apporte.
+  it("une boîte trop haute défile au lieu de sortir de l'écran", () => {
+    const html = renderToStaticMarkup(
+      <ConfirmationAdmin demande={GRANT} email="x@y.fr" onAnnuler={() => {}} onConfirmer={() => {}} />,
+    );
+    const boite = /<div role="dialog"[^>]*class="([^"]*)"/.exec(html)?.[1] ?? "";
+    expect(boite).toContain("overflow-y-auto");
+    expect(boite).toMatch(/max-h-/);
+  });
+
+  it("Échap ferme : l'écouteur est posé sur le document et retiré ensuite", () => {
+    expect(SOURCE).toContain('"Escape"');
+    expect(SOURCE).toContain('document.addEventListener("keydown"');
+    expect(SOURCE).toContain('document.removeEventListener("keydown"');
+    // Le focus va sur l'annulation, pas sur la validation : une touche Entrée
+    // réflexe doit renoncer, jamais accorder un accès.
+    expect(SOURCE).toContain("annulerRef.current?.focus()");
+  });
+
+  it("la fiche passe l'email à la modale : sans lui, le récapitulatif ne garde rien", () => {
+    expect(PAGE).toContain("email={data.profile.email}");
+  });
+});
+
+describe("rien d'autre ne change", () => {
+  it("la même route, le même corps, le même identifiant de requête", () => {
+    expect(SOURCE).toContain("`/api/admin/users/${userId}/${demande.kind}`");
+    expect(SOURCE).toContain("requestId: crypto.randomUUID()");
+    // Les deux corps, champ pour champ, comme avant la modale.
+    expect(SOURCE).toContain("{ delta: demande.delta, reason: demande.reason }");
+    expect(SOURCE).toContain("{ action: demande.action, reason: demande.reason, expiresAt: demande.expiresAt }");
+    // Et les deux messages d'issue, inchangés.
+    expect(SOURCE).toContain("Action enregistrée et auditée.");
+    expect(SOURCE).toContain("Service indisponible.");
+  });
+
+  it("les deux actions restent celles que la base connaît", () => {
+    expect(titreDemande(GRANT)).toBe("Accorder Pro offert");
+    expect(titreDemande(REVOKE)).toBe("Retirer l'accès Pro offert");
+    // Le corps n'invente aucune valeur d'action : grant et revoke, rien d'autre.
+    const actions = [...SOURCE.matchAll(/action: "(\w+)"/g)].map((m) => m[1]);
+    expect([...new Set(actions)].sort()).toEqual(["grant", "revoke"]);
+  });
+});

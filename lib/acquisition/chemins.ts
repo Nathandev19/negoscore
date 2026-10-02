@@ -68,7 +68,19 @@ export const SHORT_PATHS: Readonly<Record<string, ShortPath>> = {
   capture: { source: "tiktok", content: "video_4_capture" },
   niveau: { source: "tiktok", content: "video_5_niveau" },
   // Lien de profil, pour le jour où la bio devient cliquable.
-  tiktok: { source: "tiktok", content: "bio" },
+  //
+  // Mission #145 — ce jour est arrivé, et le contenu passe de `bio` à
+  // `bio_tiktok`. La bio TikTok portait « negoscore.fr » nu : aucune
+  // attribution, donc des visites rangées en « direct » alors qu'on sait d'où
+  // elles viennent. C'est ce chemin-ci qu'on y colle désormais.
+  //
+  // `bio_tiktok` et non `bio`, pour la raison déjà écrite sous `insta` : la
+  // source suffirait à distinguer les deux lignes du cockpit, mais deux
+  // chemins qui portent le même utm_content deviennent indiscernables le jour
+  // où on ne regarde que cette colonne. Les lignes déjà enregistrées sous
+  // `bio` restent sous `bio` — voir le rapport de la #145 pour le SQL qui les
+  // renomme, si tu veux une seule ligne au lieu de deux.
+  tiktok: { source: "tiktok", content: "bio_tiktok" },
   // Instagram autorise un lien cliquable en bio sans vérification
   // d'entreprise : c'est le seul canal qui ne dépend pas du numéro INSEE.
   // Le chemin reste tapable, pour le cas où il est dicté en story.
