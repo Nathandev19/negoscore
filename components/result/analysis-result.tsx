@@ -63,6 +63,7 @@ export function AnalysisResult({
   analysis: stored,
   unlockHref,
   above,
+  belowScore,
   before,
   beforeUnlock,
   children,
@@ -78,6 +79,13 @@ export function AnalysisResult({
   // le message de marque qui a produit le verdict (page d'exemple). Absent sur
   // une vraie analyse : rien ne change pour elle.
   above?: ReactNode;
+  // Mission #147 — DANS le bandeau bleu, juste sous le score et la phrase de
+  // verdict. C'est la seule place qui soit visible sans défiler sur un
+  // téléphone : tout ce qui suit le bandeau est sous la ligne de flottaison.
+  //
+  // Absent sur une vraie analyse : la personne vient de coller son offre, on
+  // ne lui propose pas d'en coller une.
+  belowScore?: ReactNode;
   before?: ReactNode;
   // Mission #127 — entre ce qui est gratuit et ce qui demande un email.
   //
@@ -204,6 +212,7 @@ export function AnalysisResult({
             <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>
             {above}
             <ScoreBand key={replay.count} analysis={analysis} from={replay.from} showTier={!incomplete} />
+            {belowScore}
           </div>
         </section>
         {/* Changement de niveau : tout est recalculé dans le navigateur, sans

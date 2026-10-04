@@ -12,6 +12,42 @@ import { sampleAnalysis } from "@/lib/sample-analysis";
 
 export const metadata: Metadata = publicPageMetadata("/analyse/demo");
 
+// Mission #147 — LA PAGE N'AVAIT PAS DE PORTE DE SORTIE.
+//
+// Constat du 04/10 : une créatrice à qui le lien venait d'être envoyé en DM a
+// ouvert la page, l'a lue, et s'est arrêtée là. Une seule ligne dans le
+// cockpit, aucune autre page, aucune analyse. Au-dessus de la ligne de
+// flottaison il n'y avait AUCUN bouton : le seul chemin vers l'analyse était
+// un lien en toutes lettres au milieu du paragraphe d'avertissement, plus bas,
+// et sur mobile le lien du menu est replié derrière « Menu ».
+//
+// Deux boutons, donc : un dans le bandeau bleu, visible sans défiler, et un en
+// bas de page pour qui a tout lu. Même libellé, même destination.
+//
+// La destination est celle du menu, pas une route à elle : « /analyse ».
+// tests/exemple-chiffre.test.tsx compare les deux et tombe si elles divergent.
+const ANALYSE_HREF = "/analyse";
+const ANALYSE_LABEL = "Analyser mon offre";
+
+// `sur` dit sur quel aplat le bouton est posé. Sur le bleu du bandeau, le
+// bouton principal (bleu plein) serait invisible : il passe en crème pleine,
+// texte encre — le même contraste que la pastille de verdict juste au-dessus.
+function AnalyserMonOffre({ sur }: { sur: "marque" | "creme" }) {
+  return (
+    <Button
+      asChild
+      size="lg"
+      className={
+        sur === "marque"
+          ? "h-12 w-full border-2 border-creme bg-creme text-base text-encre hover:border-creme hover:bg-creme/90 sm:w-fit"
+          : "h-12 w-full text-base sm:w-fit"
+      }
+    >
+      <Link href={ANALYSE_HREF}>{ANALYSE_LABEL}</Link>
+    </Button>
+  );
+}
+
 // Clés explicites sur les éléments passés en propriété (mission #127) : ce sont
 // des éléments SERVEUR remis à un composant client, et React signale sinon une
 // clé manquante en développement. Même raison, et même forme, que la clé
@@ -31,6 +67,13 @@ export default function DemoResultPage() {
         analysis={lockAnalysis(sampleAnalysis)}
         unlockHref="/connexion?next=%2Fanalyse"
         above={<SampleOfferQuote key="offre-source" />}
+        /* Mission #147 — la sortie, dans le bandeau, sous le score et la
+           phrase de verdict. C'est le seul endroit visible sans défiler. */
+        belowScore={
+          <div key="sortie-haut" className="mt-5">
+            <AnalyserMonOffre sur="marque" />
+          </div>
+        }
         before={
           <p key="avertissement" role="note" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
             Exemple, pas une vraie analyse : l&apos;offre est inventée, mais la fourchette, le score et la contre-offre
@@ -70,7 +113,14 @@ export default function DemoResultPage() {
             </Button>
           </section>
         }
-      />
+      >
+        {/* Mission #147 — la même sortie en bas de page, après la contre-offre
+            et le message : pour qui a tout lu, le geste suivant est là, sans
+            avoir à remonter. */}
+        <div key="sortie-bas">
+          <AnalyserMonOffre sur="creme" />
+        </div>
+      </AnalysisResult>
       <SiteFooter />
     </>
   );

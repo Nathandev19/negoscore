@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import sampleExtraction from "@/lib/fixtures/sample-extraction.json";
 import { SAMPLE_OFFER, SAMPLE_OFFER_SOURCE, SAMPLE_OFFER_TEXT } from "@/lib/fixtures/sample-offer";
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
+import { navItems } from "@/components/header-nav";
 import type { Analysis } from "@/lib/schema";
 
 // Mission #119, partie B — /analyse/demo cesse d'être orpheline.
@@ -15,7 +16,6 @@ import type { Analysis } from "@/lib/schema";
 // la recherche, n'y menaient pas.
 
 vi.mock("@/components/deal-input", () => ({ DealInput: ({ note }: { note?: string }) => <form aria-label="saisie">{note}</form> }));
-vi.mock("@/components/analytics/track-view", () => ({ TrackView: () => null }));
 vi.mock("@/components/analytics/first-party-view", () => ({ FirstPartyView: () => null, currentAttribution: () => ({}) }));
 
 const GUIDES = ["/combien-facturer", "/produits-offerts", "/droits-utilisation"] as const;
@@ -233,6 +233,58 @@ describe("la page d'exemple mène à l'analyse", () => {
     for (const verrou of ["Ta contre-offre chiffrée", "Ton message prêt à envoyer", "Débloquer — ton email suffit"]) {
       expect(cta, verrou).toBeLessThan(html.indexOf(verrou));
     }
+  });
+
+  // Mission #147 — LA PAGE N'AVAIT PAS DE PORTE DE SORTIE.
+  //
+  // Constat du 04/10 : une créatrice à qui le lien venait d'être envoyé en DM
+  // a ouvert la page, l'a lue, et s'est arrêtée. Une ligne dans le cockpit,
+  // rien d'autre. L'appel à l'action de #126/#127 existe — mais il est PLUS
+  // BAS que la contre-offre verrouillée, donc très loin sous la ligne de
+  // flottaison. Au-dessus, il n'y avait qu'un lien en toutes lettres au milieu
+  // du paragraphe d'avertissement.
+  const SORTIE = /<a [^>]*href="\/analyse"[^>]*>\s*Analyser mon offre\s*<\/a>/g;
+
+  it("un bouton vers l'analyse est rendu AVANT la contre-offre", async () => {
+    const html = await renderDemo();
+    const premier = html.search(SORTIE);
+    expect(premier, "aucun bouton « Analyser mon offre » dans la page").toBeGreaterThan(-1);
+    // Le bloc de contre-offre, verrouillé sur cette page.
+    const contreOffre = html.indexOf("Ta contre-offre chiffrée");
+    expect(contreOffre).toBeGreaterThan(-1);
+    expect(premier, "le bouton doit précéder la contre-offre").toBeLessThan(contreOffre);
+  });
+
+  it("ce bouton est dans le bandeau bleu, au-dessus du paragraphe d'avertissement", async () => {
+    const html = await renderDemo();
+    // Le bandeau est la section « Verdict » : le bouton doit être dedans, pas
+    // juste « quelque part avant ». C'est la seule place visible sans défiler.
+    const bandeau = /<section [^>]*aria-label="Verdict"[\s\S]*?<\/section>/.exec(html);
+    expect(bandeau, "section Verdict introuvable").not.toBeNull();
+    expect((bandeau as RegExpExecArray)[0]).toMatch(SORTIE);
+    // Et il arrive avant la mise en garde, qui est sous le bandeau.
+    expect(html.search(SORTIE)).toBeLessThan(html.indexOf("Exemple, pas une vraie analyse"));
+  });
+
+  it("il y en a un second en bas de page, et les deux mènent au même endroit que le menu", async () => {
+    const html = await renderDemo();
+    expect(html.match(SORTIE) ?? [], "deux boutons attendus : bandeau et bas de page").toHaveLength(2);
+    // Le second est après la contre-offre ET après le mur : c'est la sortie de
+    // qui a tout lu.
+    const dernier = html.lastIndexOf("Analyser mon offre");
+    expect(dernier).toBeGreaterThan(html.indexOf("Ta contre-offre chiffrée"));
+    expect(dernier).toBeGreaterThan(html.indexOf("Débloquer — ton email suffit"));
+    // Pas une nouvelle route : la destination est celle du menu.
+    expect(navItems(false).cta.href).toBe("/analyse");
+    for (const lien of html.match(SORTIE) ?? []) expect(lien).toContain(`href="${navItems(false).cta.href}"`);
+  });
+
+  it("le paragraphe d'avertissement est intact : on ajoute une sortie, on ne retire pas une mise en garde", async () => {
+    const html = await renderDemo();
+    const lisible = html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ");
+    expect(lisible).toContain(
+      "Exemple, pas une vraie analyse : l'offre est inventée, mais la fourchette, le score et la contre-offre sont calculés par le moteur actuel, comme pour ton offre. Pour chiffrer ton offre, colle-la sur la page Analyser un deal .",
+    );
   });
 
   // Mission #127 — les éléments passés en propriété portent une clé.
