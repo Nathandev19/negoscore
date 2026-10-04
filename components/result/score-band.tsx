@@ -47,7 +47,28 @@ export function ScoreBand({
       <p className="headline text-verdict text-balance text-creme lg:order-last">{verdictSentence(analysis)}</p>
       {scored && analysis.score ? (
         <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+          {/* Mission #150 — cette ligne ne s'enroule plus à partir de 360 px.
+              Mesuré en #148 : le compteur passe de 64 à 129 px quand il franchit
+              9 → 10, soit 64 px de largeur en plus d'un coup. À 375 px il ne
+              restait que 2 px de marge : la pastille basculait à la ligne par
+              moments, ce qui ajoute 64 px de hauteur et fait repasser le bouton
+              « Analyser mon offre » sous la ligne de flottaison dans le
+              navigateur d'Instagram.
+              Deux gestes, et deux seulement : la largeur finale du compteur est
+              RÉSERVÉE dès le premier rendu (--score-chiffres, voir plus bas et
+              globals.css), donc plus rien ne bouge pendant l'animation ; et la
+              ligne ne s'enroule plus dès 360 px, la pastille se comprimant si
+              besoin. Elle ne peut pas déborder pour autant : un élément flex ne
+              se réduit jamais sous sa largeur minimale de contenu, mesurée à
+              78 px. Sous 360 px l'enroulement reste autorisé — c'est la seule
+              issue, et 320 px est déjà hors critère.
+              L'écart horizontal passe de 20 à 16 px sur mobile : à 375 px il
+              manquait exactement 1 px pour que la pastille tienne sur une
+              ligne, et ces 4 px la lui rendent. Au-delà de 640 px, où la place
+              n'a jamais manqué, il reste à 20 px. Entre 360 et 374 px la
+              pastille se comprime sur deux lignes : c'est assumé, la ligne ne
+              s'enroule pas et rien ne bouge. */}
+          <div className="flex flex-wrap items-end gap-x-4 gap-y-3 min-[360px]:flex-nowrap sm:gap-x-5">
             <AnimatedScore score={analysis.score} animated={animated} from={from} />
             <VerdictPill band={analysis.score.band} />
           </div>

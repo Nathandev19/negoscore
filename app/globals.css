@@ -236,14 +236,38 @@ html:not([data-js]) [data-replie] {
     left: var(--marker-from, 2px); /* départ dans la piste, comme le repère à 0 */
   }
 }
+/* Mission #150 — LA BOÎTE DU COMPTEUR NE CHANGE PLUS DE TAILLE.
+   Sans cela, le compteur passait de 64 à 129 px en franchissant 9 → 10 :
+   64 px de largeur en plus au milieu de l'animation, qui faisaient basculer la
+   pastille de verdict à la ligne et descendre tout ce qui suit de 64 px.
+   La valeur FINALE est rendue dans ::before, invisible mais dans le flux :
+   c'est elle qui donne sa largeur et sa ligne de base à la boîte, exactement,
+   dans la même police et la même chasse. La valeur qui monte est posée par
+   ::after, en position absolue, donc sans effet sur la mise en page.
+   `ch` ne convient pas ici : il vaut l'avance du « 0 » proportionnel
+   (66,5 px), alors qu'un chiffre en chasse fixe en mesure 64,5 — 4 px de trop
+   par chiffre, assez pour reprendre à la pastille la place qu'on vient de lui
+   rendre. */
 .score-count {
   --score-now: var(--score-target);
-  counter-reset: score var(--score-now);
+  counter-reset: score var(--score-now) score-final var(--score-target);
   animation: score-count var(--duration-score) linear both;
   font-variant-numeric: tabular-nums;
+  position: relative;
 }
+.score-count::before {
+  content: counter(score-final);
+  visibility: hidden;
+}
+/* Calée à DROITE de la boîte réservée : le nombre reste collé au « /100 »
+   pendant qu'il monte, et les chiffres apparaissent vers la gauche, comme sur
+   un compteur. Calé à gauche, « 7 » se serait retrouvé séparé du « /100 » par
+   le vide réservé au second chiffre. */
 .score-count::after {
   content: counter(score);
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 .gauge-grow {
   animation: gauge-grow var(--duration-score) linear both;
