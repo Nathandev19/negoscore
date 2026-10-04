@@ -49,3 +49,8 @@ next-env.d.ts
 
 # maquette de référence du cockpit (#132), gardée hors du dépôt
 /maquette-cockpit.html
+
+# sorties de travail (briefs de marques, maquettes, PDF reçus). Mission #149 :
+# le dépôt est public depuis le 04/10, et un « git add . » y publierait des
+# documents qui n'ont rien à y faire. Le dossier n'était protégé par rien.
+/Claude outputs/
