@@ -108,9 +108,12 @@ export default function DemoResultPage() {
               Colle le message que la marque t&apos;a envoyé : tu obtiens le même résultat, sur ton offre à toi.
               C&apos;est gratuit et sans compte.
             </p>
-            <Button asChild size="lg" className="mt-1 h-12 w-full text-base sm:w-fit">
-              <Link href="/analyse">Analyser mon deal</Link>
-            </Button>
+            {/* Mission #148 — le même libellé que les deux autres sorties.
+                « Analyser mon deal » ici et « Analyser mon offre » ailleurs,
+                c'était deux formules pour un seul geste. */}
+            <div className="mt-1">
+              <AnalyserMonOffre sur="creme" />
+            </div>
           </section>
         }
       >

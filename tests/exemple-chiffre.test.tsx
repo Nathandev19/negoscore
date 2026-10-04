@@ -5,6 +5,7 @@ import sampleExtraction from "@/lib/fixtures/sample-extraction.json";
 import { SAMPLE_OFFER, SAMPLE_OFFER_SOURCE, SAMPLE_OFFER_TEXT } from "@/lib/fixtures/sample-offer";
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import { navItems } from "@/components/header-nav";
+import { SampleOfferQuote, SEUIL_REPLI_PX } from "@/components/result/sample-offer-quote";
 import type { Analysis } from "@/lib/schema";
 
 // Mission #119, partie B — /analyse/demo cesse d'être orpheline.
@@ -182,7 +183,8 @@ describe("la page d'exemple mène à l'analyse", () => {
     const versAnalyse = liens.filter((lien) => lien.href === "/analyse");
     expect(versAnalyse.length, JSON.stringify(liens)).toBeGreaterThanOrEqual(2);
     // Un appel à l'action, formulé comme une invitation à coller son offre.
-    expect(versAnalyse.map((lien) => lien.texte)).toContain("Analyser mon deal");
+    // Mission #148 — les trois sorties portent le même libellé.
+    expect(versAnalyse.map((lien) => lien.texte)).toContain("Analyser mon offre");
   });
 
   it("« Analyser un deal » est un lien dans le paragraphe d'avertissement", async () => {
@@ -223,7 +225,7 @@ describe("la page d'exemple mène à l'analyse", () => {
   // était donc placé derrière l'obstacle qui le concurrence.
   it("l'appel à l'action arrive après tout le gratuit, et AVANT le mur", async () => {
     const html = await renderDemo();
-    const cta = html.indexOf("Analyser mon deal");
+    const cta = html.indexOf('aria-label="Analyser ton offre"');
     expect(cta).toBeGreaterThan(-1);
     // Après tout ce qu'on donne : la démonstration est faite avant d'inviter.
     for (const gratuit of ["Ce qu&#x27;il faut négocier", "Le deal proposé", "Red flags", "Ce qui est bon", "Bon à savoir côté loi française"]) {
@@ -268,7 +270,8 @@ describe("la page d'exemple mène à l'analyse", () => {
 
   it("il y en a un second en bas de page, et les deux mènent au même endroit que le menu", async () => {
     const html = await renderDemo();
-    expect(html.match(SORTIE) ?? [], "deux boutons attendus : bandeau et bas de page").toHaveLength(2);
+    // Mission #148 — trois : bandeau, bloc « Et la tienne… », bas de page.
+    expect(html.match(SORTIE) ?? [], "trois boutons attendus").toHaveLength(3);
     // Le second est après la contre-offre ET après le mur : c'est la sortie de
     // qui a tout lu.
     const dernier = html.lastIndexOf("Analyser mon offre");
@@ -287,6 +290,111 @@ describe("la page d'exemple mène à l'analyse", () => {
     );
   });
 
+  // Mission #148 — LES TROIS SORTIES DISENT LA MÊME CHOSE.
+  //
+  // La page portait « Analyser mon offre » en haut et en bas, et « Analyser
+  // mon deal » au milieu : deux formules pour un seul geste.
+  it("les trois appels vers /analyse portent le même libellé", async () => {
+    const html = await renderDemo();
+    const corps = html.replace(/<header[\s\S]*?<\/header>/g, "").replace(/<footer[\s\S]*?<\/footer>/g, "");
+    const libelles = [...corps.matchAll(/<a [^>]*href="\/analyse"[^>]*>([\s\S]*?)<\/a>/g)].map((m) =>
+      m[1].replace(/<[^>]+>/g, "").replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ").trim(),
+    );
+    // Trois sorties : le bandeau, le bloc « Et la tienne… », le bas de page.
+    // Plus le lien en toutes lettres du paragraphe d'avertissement, qui n'est
+    // pas un bouton et garde sa formulation de phrase.
+    const boutons = libelles.filter((texte) => texte !== "Analyser un deal");
+    expect(boutons, JSON.stringify(libelles)).toHaveLength(3);
+    expect(new Set(boutons).size, `libellés divergents : ${JSON.stringify(boutons)}`).toBe(1);
+    expect(boutons[0]).toBe("Analyser mon offre");
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #148 — SOUS 400 px, LE MESSAGE REÇU SE REPLIE.
+//
+// Les créatrices arrivent du navigateur intégré d'Instagram, qui retire 120 à
+// 150 px de hauteur utile. Le bloc entier repoussait le bouton sous la ligne
+// de flottaison. On le replie à trois lignes — on ne le coupe pas.
+describe("le message reçu se replie sur les petits écrans", () => {
+  const rendu = () => renderToStaticMarkup(<SampleOfferQuote />);
+  const CSS = readFileSync("app/globals.css", "utf8");
+  const SOURCE = readFileSync("components/result/sample-offer-quote.tsx", "utf8");
+
+  it("le texte n'est ni raccourci ni réécrit : il est entier dans le balisage", () => {
+    const html = rendu();
+    const citation = /<blockquote[^>]*>([\s\S]*?)<\/blockquote>/.exec(html);
+    expect(citation).not.toBeNull();
+    const texte = (citation as RegExpExecArray)[1]
+      .replace(/<[^>]+>/g, "")
+      .replace(/&#x27;|&#39;/g, "'")
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"');
+    // Le corps de l'offre, au mot près, d'un seul tenant. Replier n'est pas
+    // couper : aucun « … » n'est écrit dans le balisage, c'est le CSS qui
+    // tronque l'affichage.
+    expect(texte).toBe(SAMPLE_OFFER.body);
+  });
+
+  it("replié à trois lignes sous 400 px, entier au-dessus", () => {
+    const html = rendu();
+    const classes = /<blockquote[^>]*class="([^"]*)"/.exec(html)?.[1] ?? "";
+    expect(classes).toContain("line-clamp-3");
+    expect(classes).toContain(`min-[${SEUIL_REPLI_PX}px]:line-clamp-none`);
+    // Le seuil n'est écrit qu'une fois comme valeur : la constante et les
+    // variantes Tailwind ne peuvent pas diverger.
+    expect(SEUIL_REPLI_PX).toBe(400);
+    for (const variante of [...SOURCE.matchAll(/min-\[(\d+)px\]:/g)]) {
+      expect(Number(variante[1]), variante[0]).toBe(SEUIL_REPLI_PX);
+    }
+  });
+
+  it("la taille du texte de la citation n'a pas changé", () => {
+    // tailwind-merge ne connaît pas l'utilitaire maison `text-small` et le
+    // prend pour une couleur : passer ces classes par cn() faisait disparaître
+    // la taille. Le piège a été vu une fois, il reste fermé.
+    expect(/<blockquote[^>]*class="([^"]*)"/.exec(rendu())?.[1] ?? "").toContain("text-small");
+  });
+
+  it("le contrôle annonce son état et désigne la citation", () => {
+    const html = rendu();
+    const bouton = /<button([^>]*)>([\s\S]*?)<\/button>/.exec(html);
+    expect(bouton, "aucun contrôle de repli").not.toBeNull();
+    const [, attributs, libelle] = bouton as RegExpExecArray;
+    expect(attributs).toContain('type="button"');
+    expect(attributs).toContain('aria-expanded="false"');
+    expect(libelle.trim()).toBe("Voir le message complet");
+    // aria-controls pointe sur la citation elle-même.
+    const cible = /aria-controls="([^"]*)"/.exec(attributs)?.[1];
+    expect(cible).toBeTruthy();
+    expect(html).toContain(`<blockquote id="${cible}"`);
+    // Au-dessus du seuil, il disparaît — display:none, donc hors du parcours
+    // clavier : au-dessus de 400 px, rien ne change.
+    expect(attributs).toContain(`min-[${SEUIL_REPLI_PX}px]:hidden`);
+  });
+
+  it("sans JavaScript, le contrôle est masqué ET le repli annulé", () => {
+    const html = rendu();
+    // Le contrôle ne pourrait rien déplier : il est masqué par la règle
+    // existante de globals.css (mission #076).
+    expect(/<button[^>]*data-avec-js/.test(html)).toBe(true);
+    // Et la citation est rendue en entier, sinon le message serait tronqué
+    // sans aucun moyen de le lire.
+    expect(html).toMatch(/<blockquote[^>]*data-replie/);
+    expect(CSS).toContain("html:not([data-js]) [data-replie]");
+    const regle = /html:not\(\[data-js\]\) \[data-replie\] \{([\s\S]*?)\}/.exec(CSS)?.[1] ?? "";
+    expect(regle).toContain("-webkit-line-clamp: unset !important");
+    expect(regle).toContain("display: block !important");
+  });
+
+  it("la mention « offre inventée » et le titre du bloc restent", () => {
+    const html = rendu();
+    expect(html).toContain("Le message reçu");
+    expect(html).toContain("Exemple — offre inventée");
+  });
+});
+
+describe("la page d'exemple mène à l'analyse (suite)", () => {
   // Mission #127 — les éléments passés en propriété portent une clé.
   // La vraie page de résultat le fait déjà pour `afterMessage` ; la page
   // d'exemple ne le faisait pour aucun des siens, et React le signalait à

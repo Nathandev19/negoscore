@@ -156,6 +156,17 @@ html:not([data-js]) [data-avec-js] {
   display: none !important;
 }
 
+/* Mission #148 — la citation repliée de /exemple
+   (components/result/sample-offer-quote.tsx). Le repli n'a de sens que si
+   quelque chose peut le déplier : sans JavaScript, le contrôle est masqué par
+   la règle ci-dessus, et le message doit donc rester lisible EN ENTIER. Hors
+   couche et !important, pour les mêmes raisons. */
+html:not([data-js]) [data-replie] {
+  display: block !important;
+  overflow: visible !important;
+  -webkit-line-clamp: unset !important;
+}
+
 /* Titres et chiffres : Bricolage Grotesque 800, serré, largeur maximale. */
 @utility headline {
   font-family: var(--font-display);
