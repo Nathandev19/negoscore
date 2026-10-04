@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { NavPending } from "@/components/nav-pending";
+import { exampleHrefFrom } from "@/lib/analytics/views";
 import { BRAND } from "@/lib/brand";
+import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import { SELLER } from "@/lib/legal/identity";
 
 type FooterLink = { href: string; label: string };
@@ -23,6 +25,12 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
       { href: "/combien-facturer", label: "Combien facturer" },
       { href: "/droits-utilisation", label: "Droits d'utilisation" },
       { href: "/produits-offerts", label: "Produits offerts" },
+      // Mission #152 — l'exemple chiffré, à côté des guides : c'est la même
+      // chose qu'eux, une page qui montre avant de demander. Le pied de page
+      // est sur toutes les pages, donc ce lien est le seul chemin vers
+      // l'exemple depuis /tarifs, /analyse ou un guide.
+      // `?de=` et pas d'utm : voir le commentaire de app/page.tsx.
+      { href: exampleHrefFrom("pied-de-page"), label: FULL_EXAMPLE.label },
     ],
   },
   {

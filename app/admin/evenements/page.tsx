@@ -29,6 +29,17 @@ const RAISON: Readonly<Record<string, string>> = {
 };
 
 
+// Mission #152 — D'OÙ VIENT LE CLIC, par opposition à d'où vient le
+// visiteur. Les deux ne se mélangent pas : l'attribution (colonne
+// précédente) dit par quel canal la personne est arrivée sur le site et ne
+// change jamais en cours de visite ; l'origine dit depuis quelle page elle
+// a cliqué pour atteindre celle-ci. Une vue de l'exemple sans origine vient
+// du lien envoyé en DM ; avec une origine, elle vient du site.
+function origine(row: AdminEventRow): string {
+  if (!row.entity_type && !row.entity_id) return "—";
+  return row.entity_type === "origine" ? `depuis ${row.entity_id ?? "?"}` : `${row.entity_type} : ${row.entity_id ?? "?"}`;
+}
+
 function attribution(row: AdminEventRow): string {
   const parts = [row.utm_source, row.utm_campaign, row.utm_content].map((v) => v ?? "non_attribue");
   return parts.every((v) => v === "non_attribue") ? "non_attribue" : parts.join(" · ");
@@ -88,6 +99,7 @@ export default async function AdminEvents() {
                     <th className="pb-2.5 pr-4 font-normal">Événement</th>
                     <th className="pb-2.5 pr-4 font-normal">Page</th>
                     <th className="pb-2.5 pr-4 font-normal">Source · campagne · contenu</th>
+                    <th className="pb-2.5 pr-4 font-normal">Origine du clic</th>
                     <th className="pb-2.5 pr-4 font-normal">Interne</th>
                     <th className="pb-2.5 font-normal">Navigateur</th>
                   </tr>
@@ -102,6 +114,7 @@ export default async function AdminEvents() {
                       <td className="py-3 pr-4 whitespace-nowrap">{row.event_name}</td>
                       <td className="py-3 pr-4 font-mono text-xs">{row.path ?? "—"}</td>
                       <td className="py-3 pr-4 text-xs">{attribution(row)}</td>
+                      <td className="py-3 pr-4 text-xs">{origine(row)}</td>
                       <td className="py-3 pr-4 whitespace-nowrap">
                         {interne(row)}
                         {row.environment && row.environment !== "production" ? ` · ${row.environment}` : ""}

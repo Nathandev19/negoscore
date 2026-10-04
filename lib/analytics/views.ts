@@ -56,6 +56,13 @@ export const EXAMPLE_ORIGINS: Readonly<Record<string, string>> = {
   "combien-facturer": "/combien-facturer",
   "produits-offerts": "/produits-offerts",
   "droits-utilisation": "/droits-utilisation",
+  // Mission #152 — le pied de page, présent sur toutes les pages. Ce n'est pas
+  // une page d'origine mais un EMPLACEMENT : on ne peut pas savoir depuis
+  // laquelle on a cliqué, et prétendre le contraire serait inventer une
+  // mesure. Ce qui compte est ailleurs : une arrivée qui porte une origine
+  // vient du site, une arrivée qui n'en porte pas vient d'un lien envoyé en
+  // DM. C'est toute la distinction demandée.
+  "pied-de-page": "/pied-de-page",
 };
 
 export function originPathFor(value: string | null | undefined): string | undefined {

@@ -325,6 +325,12 @@ export type AdminEventRow = {
   utm_content: string | null;
   environment: string | null;
   internal: boolean | null;
+  // Mission #152 — d'où vient le clic. Pour une vue de l'exemple chiffré,
+  // entity_type vaut « origine » et entity_id la page, ou l'emplacement,
+  // d'où on a cliqué. Les deux sont nuls sur une arrivée par lien envoyé en
+  // DM : c'est exactement ce qui distingue les deux chemins.
+  entity_type: string | null;
+  entity_id: string | null;
   // Les trois colonnes de la migration 20261002000036. Absentes tant qu'elle
   // n'est pas appliquée : la vue le dit plutôt que d'afficher des tirets
   // qu'on prendrait pour des mesures manquantes.
@@ -335,7 +341,8 @@ export type AdminEventRow = {
 
 export type AdminEvents = { rows: AdminEventRow[]; detail: boolean };
 
-const EVENT_COLUMNS = "id,occurred_at,event_name,path,utm_source,utm_campaign,utm_content,environment,internal";
+const EVENT_COLUMNS =
+  "id,occurred_at,event_name,path,utm_source,utm_campaign,utm_content,environment,internal,entity_type,entity_id";
 const DETAIL_COLUMNS = `${EVENT_COLUMNS},visitor,internal_reason,agent_family`;
 
 export async function loadRecentEvents(limit = RECENT_EVENTS_LIMIT): Promise<AdminEvents | "missing"> {

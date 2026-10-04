@@ -178,7 +178,15 @@ describe("page /combien-facturer", () => {
     expect(meta.title).toBe("Tarifs UGC : combien facturer une vidéo, une story, une photo");
     expect(sitemap().map((entry) => entry.url)).toContain(`${CANONICAL_ORIGIN}/combien-facturer`);
     const guides = FOOTER_COLUMNS.find((colonne) => colonne.title === "Guides");
-    expect(guides?.links.map((lien) => lien.href)).toEqual(["/combien-facturer", "/droits-utilisation", "/produits-offerts"]);
+    // Mission #152 — l'exemple chiffré rejoint la colonne : c'est le même
+    // usage que les guides, montrer avant de demander, et c'est le seul
+    // chemin vers lui depuis une page qui n'est pas l'accueil.
+        expect(guides?.links.map((lien) => lien.href)).toEqual([
+          "/combien-facturer",
+          "/droits-utilisation",
+          "/produits-offerts",
+          "/analyse/demo?de=pied-de-page",
+        ]);
     expect(FOOTER_COLUMNS.find((colonne) => colonne.title === "Produit")?.links.map((lien) => lien.href)).not.toContain(
       "/droits-utilisation",
     );

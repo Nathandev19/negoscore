@@ -78,7 +78,7 @@ describe("page /produits-offerts", () => {
     expect(corps(/href="\/droits-utilisation"/g)).toHaveLength(0);
   });
 
-  it("elle est publique : métadonnées, sitemap, colonne Guides à trois entrées", () => {
+  it("elle est publique : métadonnées, sitemap, colonne Guides, exemple compris", () => {
     const meta = publicPageMetadata("/produits-offerts");
     expect(meta.title).toBe("Collab contre produits offerts : ça vaut quoi ?");
     expect(meta.description).toBe(
@@ -86,10 +86,14 @@ describe("page /produits-offerts", () => {
     );
     expect(sitemap().map((entry) => entry.url)).toContain(`${CANONICAL_ORIGIN}/produits-offerts`);
     const guides = FOOTER_COLUMNS.find((colonne) => colonne.title === "Guides");
+    // Mission #152 — l'exemple chiffré rejoint la colonne : même usage que
+    // les guides, montrer avant de demander, et c'est le seul chemin vers lui
+    // depuis une page qui n'est pas l'accueil.
     expect(guides?.links.map((lien) => lien.href)).toEqual([
       "/combien-facturer",
       "/droits-utilisation",
       "/produits-offerts",
+      "/analyse/demo?de=pied-de-page",
     ]);
   });
 

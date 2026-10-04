@@ -155,6 +155,9 @@ const LIGNE = {
   visitor: "9f3a1c",
   internal_reason: null,
   agent_family: "instagram",
+  // Mission #152 — cette ligne-ci vient du lien envoyé en DM : pas d'origine.
+  entity_type: null,
+  entity_id: null,
 };
 
 const rendre = async () => renderToStaticMarkup(await AdminEvents());
@@ -167,7 +170,7 @@ beforeEach(() => {
 });
 
 describe("la vue des événements", () => {
-  it("rend les sept colonnes attendues", async () => {
+  it("rend les huit colonnes attendues", async () => {
     const lu = texte(await rendre());
     for (const colonne of [
       "Date et heure",
@@ -175,6 +178,7 @@ describe("la vue des événements", () => {
       "Événement",
       "Page",
       "Source · campagne · contenu",
+      "Origine du clic",
       "Interne",
       "Navigateur",
     ]) {
@@ -190,6 +194,44 @@ describe("la vue des événements", () => {
     expect(lu).toContain("/analyse/demo");
     expect(lu).toContain("instagram · lancement · dm_exemple");
     expect(lu).toContain("Navigateur intégré Instagram");
+  });
+
+  // Mission #152 — DM OU SITE, LA COLONNE LE DIT.
+  //
+  // Les deux chemins vers l'exemple chiffré se lisent sur la même ligne :
+  // celui du DM porte une attribution et aucune origine, celui du site porte
+  // une origine et aucune attribution — parce qu'un lien interne n'étiquette
+  // jamais l'acquisition de quelqu'un qui est déjà là.
+  // La vue rend ce qu'on lui donne ; encore faut-il que la requête aille le
+  // chercher. Sans ces deux colonnes, la colonne « Origine du clic »
+  // afficherait un tiret pour TOUT, y compris pour les vues venues du site,
+  // et on conclurait que personne n'y va.
+  it("la requête des événements demande bien les colonnes d'origine", () => {
+    const source = readFileSync("lib/admin/data.ts", "utf8");
+    const colonnes = /const EVENT_COLUMNS =\s*"?([^";]*)"/.exec(source.replace(/\n/g, " "))?.[1] ?? "";
+    expect(colonnes.split(",").map((c) => c.trim())).toEqual(expect.arrayContaining(["entity_type", "entity_id"]));
+  });
+
+  it("un exemple vu depuis le site affiche d'où le clic est parti", async () => {
+    donnees.rows = [
+      { ...LIGNE, utm_source: null, utm_campaign: null, utm_content: null, entity_type: "origine", entity_id: "/" },
+    ];
+    const lu = texte(await rendre());
+    expect(lu).toContain("depuis /");
+    // Et surtout : aucune attribution inventée pour autant.
+    expect(lu).toContain("non_attribue");
+  });
+
+  it("un exemple vu depuis le pied de page se distingue de l'accueil", async () => {
+    donnees.rows = [{ ...LIGNE, entity_type: "origine", entity_id: "/pied-de-page" }];
+    expect(texte(await rendre())).toContain("depuis /pied-de-page");
+  });
+
+  it("un exemple vu depuis un DM n'a pas d'origine, et garde son attribution", async () => {
+    const lu = texte(await rendre());
+    expect(lu).toContain("instagram · lancement · dm_exemple");
+    // Un tiret, pas une origine inventée.
+    expect(lu).toContain("—");
   });
 
   it("une visite sans attribution le dit, au lieu de laisser un blanc", async () => {

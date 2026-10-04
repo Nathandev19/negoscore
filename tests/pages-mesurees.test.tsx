@@ -682,3 +682,62 @@ describe("rien d'autre n'a bougé", () => {
     expect(range(gros, "starter")).toEqual([970, 2210]);
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #152 — UN LIEN INTERNE N'ÉCRASE JAMAIS L'ATTRIBUTION.
+//
+// /exemple est la destination des DM depuis la #125. Elle devient aussi
+// atteignable depuis le site : sous l'action principale de l'accueil, et dans
+// le pied de page. Le piège, c'est d'étiqueter ces liens internes avec des
+// utm : quelqu'un arrivé par bio_instagram deviendrait « site » au premier
+// clic, et on perdrait la seule chose que la mesure d'acquisition sait faire.
+//
+// Le paramètre `de=` existe depuis la #120 et répond exactement à ça : il dit
+// d'où vient le CLIC, il est lu dans une table fermée, et il n'entre dans
+// aucune colonne utm.
+describe("le chemin vers l'exemple depuis le site", () => {
+  it("un clic depuis l'accueil n'écrit aucune attribution d'acquisition", async () => {
+    await ask({ page: "/analyse/demo", referer: `${ORIGIN}/analyse/demo?de=accueil` });
+    const vue = recorded();
+    expect(vue).toMatchObject({ event: "example_view", entityType: "origine", entityId: "/" });
+    // Le point de la mission : AUCUNE colonne utm n'est remplie. Le lien
+    // interne ne raconte pas d'où vient le visiteur, il ne sait pas.
+    expect(vue?.attribution).toMatchObject({ utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null });
+  });
+
+  it("le pied de page se distingue de l'accueil, et reste sans utm", async () => {
+    await ask({ page: "/analyse/demo", referer: `${ORIGIN}/analyse/demo?de=pied-de-page` });
+    expect(recorded()).toMatchObject({ event: "example_view", entityType: "origine", entityId: "/pied-de-page" });
+    expect(recorded()?.attribution).toMatchObject({ utm_source: null, utm_content: null });
+  });
+
+  it("l'arrivée par le lien envoyé en DM garde son attribution, et n'a pas d'origine", async () => {
+    // /exemple est servi sur place : son attribution vient de la table des
+    // chemins courts, pas de l'adresse. C'est ce qui distingue les deux
+    // chemins dans /admin : une origine, ou une attribution.
+    await ask({ page: "/analyse/demo", referer: `${ORIGIN}/exemple` });
+    expect(recorded()).toMatchObject({
+      event: "example_view",
+      entityId: null,
+      attribution: expect.objectContaining({ utm_source: "instagram", utm_content: "dm_exemple" }),
+    });
+  });
+
+  it("une origine inventée ne devient jamais une ligne du cockpit", async () => {
+    for (const hostile of ["bio_instagram", "../admin", "__proto__", "site"]) {
+      await ask({ page: "/analyse/demo", referer: `${ORIGIN}/analyse/demo?de=${encodeURIComponent(hostile)}` });
+      expect(recorded(), hostile).toMatchObject({ event: "example_view", entityId: null });
+    }
+  });
+
+  it("aucun lien du site vers l'exemple ne porte d'utm", async () => {
+    const { default: Accueil } = await import("@/app/page");
+    const html = renderToStaticMarkup((Accueil as () => React.ReactElement)());
+    const vers = [...html.matchAll(/href="(\/analyse\/demo[^"]*)"/g)].map((m) => m[1]);
+    expect(vers.length, "aucun lien vers l'exemple sur l'accueil").toBeGreaterThanOrEqual(2);
+    for (const href of vers) {
+      expect(href, href).not.toContain("utm_");
+      expect(href, href).toMatch(/\?de=(accueil|pied-de-page)$/);
+    }
+  });
+});

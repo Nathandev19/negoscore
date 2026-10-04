@@ -55,6 +55,19 @@ export default function HomePage() {
           <div className="flex flex-col gap-2">
             {/* La phrase est masquée quand il ne reste aucun droit : elle serait fausse à ce moment-là. */}
             <DealInput note="Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et les messages." />
+            {/* Mission #152 — LA SORTIE POUR QUI N'A PAS D'OFFRE SOUS LA MAIN.
+                Le lien vers l'exemple existait déjà, mais dans la section C3,
+                trois écrans plus bas : quelqu'un qui arrive par la bio voit un
+                champ à remplir, rien d'autre, et repart s'il n'a rien à coller.
+                Ici c'est un LIEN, pas un bouton : il ne concurrence pas
+                l'action principale, il offre l'autre chemin.
+                Le libellé est celui du vocabulaire, le même partout (#119).
+                Et aucun paramètre utm : un lien interne ne doit jamais
+                réécrire l'attribution d'acquisition du visiteur. `?de=` ne dit
+                que d'où vient le clic, et n'entre pas dans les colonnes utm. */}
+            <Link href={exampleHrefFrom("accueil")} className="link w-fit text-small">
+              {FULL_EXAMPLE.label}
+            </Link>
           </div>
         </section>
 

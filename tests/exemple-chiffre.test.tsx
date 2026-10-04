@@ -41,9 +41,14 @@ async function render(path: string): Promise<string> {
 }
 
 describe("le lien vers l'exemple chiffré", () => {
+  // Mission #152 — le pied de page porte lui aussi un lien vers l'exemple.
+  // On regarde donc le CORPS seul : le lien du guide doit y être, unique, avec
+  // son origine à lui. Le pied de page est vérifié juste après, pour lui-même.
+  const corps = (html: string) => html.replace(/<footer[\s\S]*?<\/footer>/g, "");
+
   it("les trois guides y mènent, avec le libellé du vocabulaire", async () => {
     for (const guide of GUIDES) {
-      const found = anchors(await render(guide)).filter((a) => a.href.startsWith(FULL_EXAMPLE.href));
+      const found = anchors(corps(await render(guide))).filter((a) => a.href.startsWith(FULL_EXAMPLE.href));
       expect(found, guide).toHaveLength(1);
       expect(found[0].text, guide).toBe(FULL_EXAMPLE.label);
       // Mission #120 — et chacun dit d'où l'on vient.
@@ -51,11 +56,26 @@ describe("le lien vers l'exemple chiffré", () => {
     }
   });
 
-  it("l'accueil aussi, et avec le MÊME libellé : une page, une formule", async () => {
-    const found = anchors(await render("/")).filter((a) => a.href.startsWith(FULL_EXAMPLE.href));
+  it("le pied de page y mène aussi, avec le même libellé et sa propre origine", async () => {
+    const pied = /<footer[\s\S]*?<\/footer>/.exec(await render("/"));
+    expect(pied, "pied de page introuvable").not.toBeNull();
+    const found = anchors((pied as RegExpExecArray)[0]).filter((a) => a.href.startsWith(FULL_EXAMPLE.href));
     expect(found).toHaveLength(1);
     expect(found[0].text).toBe(FULL_EXAMPLE.label);
-    expect(found[0].href).toBe(`${FULL_EXAMPLE.href}?de=accueil`);
+    expect(found[0].href).toBe(`${FULL_EXAMPLE.href}?de=pied-de-page`);
+  });
+
+  it("l'accueil aussi, et avec le MÊME libellé : une page, une formule", async () => {
+    // Mission #152 — l'accueil en porte DEUX : celui de la section Exemple,
+    // qui existait, et celui posé sous l'action principale, pour qui n'a pas
+    // d'offre sous la main et repartirait sans rien avoir vu. Même formule et
+    // même origine pour les deux : une page, une formule.
+    const found = anchors(corps(await render("/"))).filter((a) => a.href.startsWith(FULL_EXAMPLE.href));
+    expect(found).toHaveLength(2);
+    for (const lien of found) {
+      expect(lien.text).toBe(FULL_EXAMPLE.label);
+      expect(lien.href).toBe(`${FULL_EXAMPLE.href}?de=accueil`);
+    }
   });
 
   it("le libellé dit ce qu'on y trouve, jamais « démo »", () => {
