@@ -30,7 +30,7 @@ const legalPages = {
 describe("pages légales", () => {
   it("reprennent l'identité du vendeur", () => {
     const identity = read("lib/legal/identity.ts");
-    for (const value of ["Nathan Pakou", "77 rue François Arago, 93100 Montreuil", "99960042200011", "contact@negoscore.fr", "07 53 10 30 76", "TVA non applicable, article 293 B du CGI."]) {
+    for (const value of ["Nathan Pakou Gakosso Owah", "77 rue François Arago, 93100 Montreuil", "99960042200011", "contact@negoscore.fr", "07 53 10 30 76", "TVA non applicable, article 293 B du CGI."]) {
       expect(identity).toContain(value);
     }
     expect(legalPages["mentions-legales"]).toContain("440 N Barranca Ave #4133, Covina, CA 91723");
@@ -153,7 +153,7 @@ describe("email de confirmation d'achat", () => {
       "Tes conditions générales de vente : https://www.negoscore.fr/cgv",
       "Une question : contact@negoscore.fr",
       "— Negoscore",
-      "Nathan Pakou, EI — 77 rue François Arago, 93100 Montreuil",
+      "Nathan Pakou Gakosso Owah, EI — 77 rue François Arago, 93100 Montreuil",
       "SIRET 99960042200011",
     ]) {
       expect(email.text).toContain(line);

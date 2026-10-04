@@ -299,7 +299,7 @@ describe("B — répartitions et liste", () => {
     session.email = OWNER;
     store.rows = [row({ analysis_id: "a1", rating: "too_low", comment: "La marque paie 800 € d'habitude", score: 38 })];
     const html = await render();
-    for (const expected of ["Trop basse", "La marque paie 800 € d&#x27;habitude", "Je débute", "38/100", "400", "600", "× ", 'href="/dev/retours/a1?tour=0"', "18 sept. 2026"]) {
+    for (const expected of ["Trop basse", "La marque paie 800 € d&#x27;habitude", "Je débute", "38/100", "400", "600", "× ", 'href="/dev/retours/a1?tour=0"', "18/09/2026"]) {
       expect(html, expected).toContain(expected);
     }
   });

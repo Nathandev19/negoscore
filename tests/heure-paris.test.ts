@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { dateHeureParis, dateParis, FUSEAU, heureParis, instantDepuisParis, MENTION_FUSEAU } from "@/lib/admin/heure";
 
@@ -221,5 +221,44 @@ describe("une heure saisie est lue comme une heure de Paris", () => {
     expect(execute).toContain("timeZone: FUSEAU");
     // Ni « +01:00 », ni « +02:00 », ni une arithmétique d'heures en dur.
     expect(execute).not.toMatch(/\+0?[12]:00|3_?600_?000\s*\*\s*[12]\b/);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #151 — AUCUNE SURFACE D'ADMIN NE FORMATE UNE HEURE SANS FUSEAU.
+//
+// La #140 a mis /admin à l'heure de Paris, mais rien n'empêchait un nouvel
+// écran d'y ramener un formateur muet : il prendrait alors le fuseau du
+// serveur, UTC sur Vercel, et afficherait deux heures d'écart sans le dire.
+// La règle porte sur TOUT le cockpit, pas sur un fichier.
+describe("tout ce que le cockpit affiche porte un fuseau nommé", () => {
+  const SURFACES = [
+    ...readdirSync("components/admin").map((f) => `components/admin/${f}`),
+    ...readdirSync("app/admin", { recursive: true, encoding: "utf8" }).map((f) => `app/admin/${f}`),
+  ].filter((f) => /\.tsx?$/.test(f) && statSync(f).isFile());
+
+  it("la liste des surfaces examinées n'est pas vide", () => {
+    expect(SURFACES.length).toBeGreaterThan(5);
+    expect(SURFACES).toContain("components/admin/feedback-report-view.tsx");
+  });
+
+  it.each(SURFACES)("%s : aucun formateur de date sans fuseau", (fichier) => {
+    const source = readFileSync(fichier, "utf8");
+    // Un Intl.DateTimeFormat doit déclarer son fuseau dans ses options.
+    for (const bloc of source.match(/new Intl\.DateTimeFormat\([\s\S]*?\)/g) ?? []) {
+      expect(bloc, `${fichier} : Intl.DateTimeFormat sans timeZone`).toContain("timeZone");
+    }
+    // Et les raccourcis du navigateur, qui prennent le fuseau de la machine,
+    // n'ont rien à faire ici : ils rendraient l'heure du serveur.
+    expect(source, `${fichier} : toLocale…String sans fuseau`).not.toMatch(
+      /\.toLocale(?:Date|Time)?String\(/,
+    );
+  });
+
+  it("le rapport de retours passe par le formateur commun, pas par le sien", () => {
+    const source = readFileSync("components/admin/feedback-report-view.tsx", "utf8");
+    expect(source).toContain("dateHeureParis");
+    // Plus de formateur local : le fuseau n'est plus déclaré à deux endroits.
+    expect(source).not.toContain("new Intl.DateTimeFormat");
   });
 });

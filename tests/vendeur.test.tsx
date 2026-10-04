@@ -177,7 +177,7 @@ describe("l'email de confirmation n'est pas un reçu", () => {
       expect(version).not.toMatch(/conclu la vente|vendu par Whop|Whop.{0,20}vendeur/i);
     }
     // L'identité du vendeur reste en signature.
-    expect(text).toContain("Nathan Pakou, EI");
+    expect(text).toContain("Nathan Pakou Gakosso Owah, EI");
   });
 });
 

@@ -2,20 +2,18 @@ import Link from "next/link";
 import type { Distribution, FeedbackEntry, FeedbackReport, Group } from "@/lib/admin/feedback-report";
 import { TIER_GROUP_LABEL } from "@/lib/admin/feedback-report";
 import { FEEDBACK_LABEL, FEEDBACK_RATINGS } from "@/lib/analysis/feedback-options";
+import { dateHeureParis } from "@/lib/admin/heure";
 import { formatEur, formatEurRange, formatNumber } from "@/lib/display";
 
 // Mission #077 — rendu des retours sur l'estimation (page /dev/retours,
 // réservée au propriétaire). Des nombres et des parts, jamais l'un sans
 // l'autre : à trois retours, « 67 % » seul ferait croire à une tendance.
 
-const DATE = new Intl.DateTimeFormat("fr-FR", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/Paris",
-});
+// Mission #151 — l'heure passe par le formateur commun de /admin
+// (lib/admin/heure.ts). Le fuseau était déjà nommé ici depuis la #077 ; ce
+// qu'on gagne, c'est qu'il n'est plus déclaré à deux endroits : une seule
+// règle décide de l'heure affichée dans tout le cockpit. L'affichage passe de
+// « 4 oct. 2026 18:44 » à « 04/10/2026 18:44 », comme partout ailleurs.
 
 // Part arrondie à l'unité, sans décimale trompeuse sur de petits effectifs.
 export function share(count: number, total: number): string {
@@ -105,7 +103,7 @@ export function EntryItem({ entry, link = true }: { entry: FeedbackEntry; link?:
     <li className="flex flex-col gap-3 border-t border-filet py-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="font-bold text-encre">{FEEDBACK_LABEL[entry.rating]}</p>
-        <p className="text-small text-attenue tabular-nums">{DATE.format(new Date(entry.answeredAt))}</p>
+        <p className="text-small text-attenue tabular-nums">{dateHeureParis(entry.answeredAt)}</p>
       </div>
       {entry.comment ? (
         <blockquote className="border-l-4 border-encre pl-3 text-encre">« {entry.comment} »</blockquote>

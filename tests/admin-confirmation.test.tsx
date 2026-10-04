@@ -37,7 +37,7 @@ const espaces = (valeur: string) => valeur.replace(/[\s  ]+/g, " ");
 const texte = (markup: string) =>
   markup.replaceAll("&#x27;", "'").replaceAll("&quot;", '"').replaceAll("&amp;", "&").replaceAll("&nbsp;", " ");
 
-const rendu = (demande: DemandeAdmin, email: string | null = "ellaetienne.cc@gmail.com") =>
+const rendu = (demande: DemandeAdmin, email: string | null = "creatrice@exemple.test") =>
   texte(renderToStaticMarkup(<RecapitulatifDemande demande={demande} email={email} />));
 
 const GRANT: DemandeAdmin = {
@@ -53,7 +53,7 @@ const RETRAIT: DemandeAdmin = { kind: "credits", delta: -2, reason: "Crédits aj
 describe("le récapitulatif montre les quatre choses à vérifier", () => {
   it("accorder Pro offert : compte, action, date de fin, motif", () => {
     const html = rendu(GRANT);
-    expect(html).toContain("ellaetienne.cc@gmail.com");
+    expect(html).toContain("creatrice@exemple.test");
     expect(html).toContain("Accorder Pro offert");
     expect(html).toContain("15/10/2026 14:30");
     expect(html).toContain("Test créatrice pilote");
@@ -93,7 +93,7 @@ describe("le récapitulatif montre les quatre choses à vérifier", () => {
 
   it("retirer l'accès offert : l'effet immédiat est annoncé", () => {
     const html = rendu(REVOKE);
-    expect(html).toContain("ellaetienne.cc@gmail.com");
+    expect(html).toContain("creatrice@exemple.test");
     expect(html).toContain("Retirer l'accès Pro offert");
     expect(html).toContain("retiré immédiatement");
     expect(html).toContain("Fin de la période de test");
@@ -141,7 +141,7 @@ describe("la question du navigateur ne revient pas", () => {
   it("la boîte rendue est une modale annoncée, avec ses deux boutons", () => {
     const html = texte(
       renderToStaticMarkup(
-        <ConfirmationAdmin demande={GRANT} email="ellaetienne.cc@gmail.com" onAnnuler={() => {}} onConfirmer={() => {}} />,
+        <ConfirmationAdmin demande={GRANT} email="creatrice@exemple.test" onAnnuler={() => {}} onConfirmer={() => {}} />,
       ),
     );
     expect(html).toContain('role="dialog"');
@@ -154,7 +154,7 @@ describe("la question du navigateur ne revient pas", () => {
     expect(html).toContain(">Annuler</button>");
     expect(html).toContain(">Confirmer</button>");
     // Le récapitulatif est bien DANS la boîte, pas à côté.
-    expect(html).toContain("ellaetienne.cc@gmail.com");
+    expect(html).toContain("creatrice@exemple.test");
     expect(espaces(html)).toContain("15/10/2026 14:30");
     expect(html).toContain("Test créatrice pilote");
   });
