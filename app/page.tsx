@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
 import { exampleHrefFrom } from "@/lib/analytics/views";
-import { COPILOT_PROMISE, FULL_EXAMPLE, negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
+import { FULL_EXAMPLE, negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
 import { FAQ, STEPS, TRUST } from "@/lib/content/home";
 import { JsonLd } from "@/components/seo/json-ld";
 import { faqJsonLd, publicPageMetadata, softwareApplicationJsonLd } from "@/lib/seo";
@@ -50,7 +50,12 @@ export default function HomePage() {
               Colle son message. On te dit ce que ça vaut vraiment, ce que tu cèdes, et quoi répondre — jusqu&apos;à la
               conclusion du deal.
             </p>
-            <p className="measure text-small text-attenue">{COPILOT_PROMISE}</p>
+            {/* Mission #153 — COPILOT_PROMISE a quitté le haut de page : 61 px
+                pour redire ce que les deux lignes au-dessus disent déjà. La
+                phrase n'est pas perdue pour autant — elle reste, mot pour mot,
+                dans la FAQ de cette même page (« Un copilote, pas un
+                décideur », lib/content/home.ts) et dans la description du
+                service aux CGV. */}
           </div>
           <div className="flex flex-col gap-2">
             {/* La phrase est masquée quand il ne reste aucun droit : elle serait fausse à ce moment-là. */}

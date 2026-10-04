@@ -130,7 +130,7 @@ export const PRO_OFFERED = "Ton accès Pro offert est en cours. Rien à payer.";
 // négociation, pas l'unité vendue : c'est exactement ce que la page montre.
 export const FULL_EXAMPLE = {
   href: "/analyse/demo",
-  label: "Voir une analyse complète, sur un exemple chiffré",
+  label: "Voir une analyse chiffrée, sur un exemple",
 } as const;
 
 // Mission #104, A3 — les libellés de concept vivent dans lib/content/labels.ts
