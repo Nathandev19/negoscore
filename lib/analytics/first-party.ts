@@ -44,12 +44,13 @@ export async function recordProductEvent(input: {
   entityId?: string | null; metadata?: Record<string, string | number | boolean | null>; dedupeKey?: string | null;
 }): Promise<void> {
   const a = input.attribution ?? {};
+  const referrerDomain = a.referrer_host == null ? null : normalizeReferrer(a.referrer_host, "");
   try {
     await withEnvironment((environment) =>
       insertEvent({
         ...environment,
-        event_name: input.event, user_id: input.userId ?? null, path: a.path ?? null, referrer_host: a.referrer_host ?? null,
-        ...(a.referrer_host ? { referrer_domain: normalizeReferrer(a.referrer_host, "") } : {}),
+        event_name: input.event, user_id: input.userId ?? null, path: a.path ?? null, referrer_host: referrerDomain,
+        ...(referrerDomain ? { referrer_domain: referrerDomain } : {}),
         utm_source: a.utm_source ?? null, utm_medium: a.utm_medium ?? null, utm_campaign: a.utm_campaign ?? null,
         utm_content: a.utm_content ?? null, entity_type: input.entityType ?? null, entity_id: input.entityId ?? null,
         metadata: input.metadata ?? {}, dedupe_key: input.dedupeKey ?? null,

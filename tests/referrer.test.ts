@@ -16,6 +16,13 @@ const { parseAttribution, recordProductEvent } = await import("@/lib/analytics/f
 
 const site = "www.negoscore.fr";
 
+async function eventWithReferrer(referrer: string): Promise<Record<string, unknown>> {
+  written.rows = [];
+  await recordProductEvent({ event: "landing_view", attribution: { path: "/", referrer_host: referrer } });
+  expect(written.rows).toHaveLength(1);
+  return written.rows[0];
+}
+
 describe("domaine du référent", () => {
   it("distingue une arrivée directe, une navigation interne et un site extérieur", () => {
     expect(normalizeReferrer("", site)).toBe("direct");
@@ -39,7 +46,50 @@ describe("domaine du référent", () => {
 
   it("conserve les autres domaines et ne garde jamais l'URL", () => {
     expect(normalizeReferrer("https://M.EXEMPLE.ORG:8443/offre?utm_source=x", site)).toBe("m.exemple.org");
-    expect(normalizeReferrer("javascript:alert(1)", site)).toBe("direct");
+    expect(normalizeReferrer("javascript:alert(1)", site)).toBeNull();
+    expect(normalizeReferrer(123 as unknown as string, site)).toBeNull();
+  });
+
+  it("un tiret bas invalide perd le référent sans perdre l'événement", async () => {
+    const raw = "https://foo_bar.example/offre";
+    expect(normalizeReferrer(raw, site)).toBeNull();
+    expect(await eventWithReferrer(raw)).toMatchObject({ referrer_host: null });
+    expect(written.rows[0]).not.toHaveProperty("referrer_domain");
+  });
+
+  it("une adresse IPv4 perd le référent sans perdre l'événement", async () => {
+    const raw = "https://192.0.2.1/offre";
+    expect(normalizeReferrer(raw, site)).toBeNull();
+    expect(await eventWithReferrer(raw)).toMatchObject({ referrer_host: null });
+    expect(written.rows[0]).not.toHaveProperty("referrer_domain");
+  });
+
+  it("une adresse IPv6 entre crochets perd le référent sans perdre l'événement", async () => {
+    const raw = "https://[2001:db8::1]/offre";
+    expect(normalizeReferrer(raw, site)).toBeNull();
+    expect(await eventWithReferrer(raw)).toMatchObject({ referrer_host: null });
+    expect(written.rows[0]).not.toHaveProperty("referrer_domain");
+  });
+
+  it("un domaine internationalisé est converti en punycode avant l'écriture", async () => {
+    const raw = "https://münchen.de/offre?secret=oui";
+    expect(normalizeReferrer(raw, site)).toBe("xn--mnchen-3ya.de");
+    expect(await eventWithReferrer(raw)).toMatchObject({
+      referrer_host: "xn--mnchen-3ya.de", referrer_domain: "xn--mnchen-3ya.de",
+    });
+  });
+
+  it("un port est retiré avant l'écriture", async () => {
+    const raw = "https://www.exemple.fr:8443/offre?secret=oui";
+    expect(normalizeReferrer(raw, site)).toBe("exemple.fr");
+    expect(await eventWithReferrer(raw)).toMatchObject({ referrer_host: "exemple.fr", referrer_domain: "exemple.fr" });
+  });
+
+  it("un hôte trop long n'est pas tronqué en une valeur rejetée par SQL", async () => {
+    const raw = `https://${`${"a".repeat(50)}.`.repeat(5)}com/offre`;
+    expect(normalizeReferrer(raw, site)).toBeNull();
+    expect(await eventWithReferrer(raw)).toMatchObject({ referrer_host: null });
+    expect(written.rows[0]).not.toHaveProperty("referrer_domain");
   });
 
   it("écrit le nouveau domaine à côté des UTM, sans remplir les anciennes lignes", async () => {

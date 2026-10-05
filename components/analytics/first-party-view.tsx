@@ -5,7 +5,7 @@ import { normalizeReferrer } from "@/lib/analytics/referrer";
 
 export type ClientAttribution = {
   path: string;
-  referrer_host: string;
+  referrer_host: string | null;
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;

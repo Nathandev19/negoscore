@@ -18,7 +18,7 @@ export function ViewPixel({ page }: { page: MeasuredPage }) {
     const image = new Image();
     pendingPixels.add(image);
     image.onload = image.onerror = () => pendingPixels.delete(image);
-    image.src = `${viewPixelSrc(page)}&r=${encodeURIComponent(referrer)}`;
+    image.src = `${viewPixelSrc(page)}${referrer === null ? "" : `&r=${encodeURIComponent(referrer)}`}`;
   }, [page]);
   return (
     <noscript>
