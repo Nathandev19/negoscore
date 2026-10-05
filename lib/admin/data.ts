@@ -33,7 +33,7 @@ export type DashboardData = {
   feedback: { total: number; fair: number; not_fair: number };
   purchases: { purchases: number; revenue_eur: number; revenue_covered: number };
   timeseries: Array<{ day: string; page_views: number; analyses: number; signups: number; purchases: number }>;
-  acquisition: Array<{ source: string; campaign: string; content: string; visits: number; analyses: number; signups: number; purchases: number }>;
+  acquisition: Array<{ source: string; campaign: string; content: string; visits: number; analyses: number; signups: number; purchases: number; referrers?: Array<{ referrer: string; visits: number; analyses: number; purchases: number }> | null }>;
   // Mission #120 — ce que les pages d'arrivée depuis un moteur de recherche
   // produisent vraiment : une ligne par guide, ses vues, et combien de ses
   // lecteurs sont allés voir l'exemple chiffré.
@@ -323,6 +323,7 @@ export type AdminEventRow = {
   utm_source: string | null;
   utm_campaign: string | null;
   utm_content: string | null;
+  referrer_domain?: string | null;
   environment: string | null;
   internal: boolean | null;
   // Mission #152 — d'où vient le clic. Pour une vue de l'exemple chiffré,
@@ -344,26 +345,46 @@ export type AdminEvents = { rows: AdminEventRow[]; detail: boolean };
 const EVENT_COLUMNS =
   "id,occurred_at,event_name,path,utm_source,utm_campaign,utm_content,environment,internal,entity_type,entity_id";
 const DETAIL_COLUMNS = `${EVENT_COLUMNS},visitor,internal_reason,agent_family`;
+const REFERRER_BASIC_COLUMNS = `${EVENT_COLUMNS},referrer_domain`;
+const REFERRER_COLUMNS = `${DETAIL_COLUMNS},referrer_domain`;
 
 export async function loadRecentEvents(limit = RECENT_EVENTS_LIMIT): Promise<AdminEvents | "missing"> {
   const borne = Math.min(Math.max(1, limit), 500);
   try {
     const rows = await selectRows<AdminEventRow>(
       "product_events",
-      `select=${DETAIL_COLUMNS}&order=occurred_at.desc&limit=${borne}`,
+      `select=${REFERRER_COLUMNS}&order=occurred_at.desc&limit=${borne}`,
     );
     return { rows, detail: true };
   } catch (caught) {
-    // Migration de diagnostic pas encore appliquée : on sert ce qui existe.
+    // La migration de diagnostic peut manquer alors que celle du référent
+    // existe déjà ; on garde ce dernier dans la lecture allégée.
     if (!isMissingColumn(caught)) return "missing";
     try {
       const rows = await selectRows<AdminEventRow>(
         "product_events",
-        `select=${EVENT_COLUMNS}&order=occurred_at.desc&limit=${borne}`,
+        `select=${REFERRER_BASIC_COLUMNS}&order=occurred_at.desc&limit=${borne}`,
       );
       return { rows, detail: false };
     } catch {
-      return "missing";
+      // Le code peut aussi précéder l'application de la nouvelle migration.
+      try {
+        const rows = await selectRows<AdminEventRow>(
+          "product_events",
+          `select=${DETAIL_COLUMNS}&order=occurred_at.desc&limit=${borne}`,
+        );
+        return { rows, detail: true };
+      } catch {
+        try {
+          const rows = await selectRows<AdminEventRow>(
+            "product_events",
+            `select=${EVENT_COLUMNS}&order=occurred_at.desc&limit=${borne}`,
+          );
+          return { rows, detail: false };
+        } catch {
+          return "missing";
+        }
+      }
     }
   }
 }

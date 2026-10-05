@@ -50,13 +50,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-type Ask = { page?: string | null; referer?: string | null; ua?: string | null; headers?: Record<string, string> };
+type Ask = { page?: string | null; referer?: string | null; referrer?: string | null; ua?: string | null; headers?: Record<string, string> };
 
-function ask({ page = "/combien-facturer", referer = `${ORIGIN}/combien-facturer`, ua = UA, headers = {} }: Ask = {}) {
+function ask({ page = "/combien-facturer", referer = `${ORIGIN}/combien-facturer`, referrer = null, ua = UA, headers = {} }: Ask = {}) {
   const head: Record<string, string> = { "sec-fetch-dest": "image", "sec-fetch-site": "same-origin", ...headers };
   if (ua !== null) head["user-agent"] = ua;
   if (referer !== null) head.referer = referer;
-  const query = page === null ? "" : `?p=${encodeURIComponent(page)}`;
+  const query = page === null ? "" : `?p=${encodeURIComponent(page)}${referrer === null ? "" : `&r=${encodeURIComponent(referrer)}`}`;
   return pixel(new Request(`${ORIGIN}${VIEW_PIXEL_PATH}${query}`, { headers: head }));
 }
 
@@ -116,6 +116,14 @@ describe("l'image de mesure enregistre la vue", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/gif");
     expect(recorded()).toMatchObject({ event: "guide_view", attribution: expect.objectContaining({ path: "/combien-facturer" }) });
+  });
+
+  it("un domaine transmis par le navigateur accompagne la vue sans changer les UTM", async () => {
+    await ask({ referrer: "l.instagram.com", referer: `${ORIGIN}/combien-facturer?utm_source=TikTok` });
+    expect(recorded()).toMatchObject({
+      event: "guide_view",
+      attribution: expect.objectContaining({ referrer_host: "instagram.com", utm_source: "tiktok" }),
+    });
   });
 
   it("l'image n'est jamais mise en cache : sinon la deuxième visite ne compte pas", async () => {
@@ -501,12 +509,13 @@ describe("ce que les pages rendent", () => {
     }
   });
 
-  it("aucun script n'est ajouté à ces pages : la garantie #074 tient", () => {
-    for (const fichier of [...Object.values(FICHIER), "components/analytics/view-pixel.tsx"]) {
+  it("les pages restent lisibles sans JavaScript et gardent le pixel dans noscript", () => {
+    for (const fichier of Object.values(FICHIER)) {
       const source = readFileSync(fichier, "utf8");
       expect(source, fichier).not.toMatch(/^\s*["']use client["']/m);
       expect(source, fichier).not.toMatch(/useEffect|onClick|window\.|document\./);
     }
+    expect(readFileSync("components/analytics/view-pixel.tsx", "utf8")).toContain("<noscript>");
   });
 
   it("la canonique de l'exemple reste /analyse/demo, malgré le paramètre", async () => {

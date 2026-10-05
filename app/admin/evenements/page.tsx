@@ -99,6 +99,7 @@ export default async function AdminEvents() {
                     <th className="pb-2.5 pr-4 font-normal">Événement</th>
                     <th className="pb-2.5 pr-4 font-normal">Page</th>
                     <th className="pb-2.5 pr-4 font-normal">Source · campagne · contenu</th>
+                    <th className="pb-2.5 pr-4 font-normal">Référent</th>
                     <th className="pb-2.5 pr-4 font-normal">Origine du clic</th>
                     <th className="pb-2.5 pr-4 font-normal">Interne</th>
                     <th className="pb-2.5 font-normal">Navigateur</th>
@@ -114,6 +115,7 @@ export default async function AdminEvents() {
                       <td className="py-3 pr-4 whitespace-nowrap">{row.event_name}</td>
                       <td className="py-3 pr-4 font-mono text-xs">{row.path ?? "—"}</td>
                       <td className="py-3 pr-4 text-xs">{attribution(row)}</td>
+                      <td className="py-3 pr-4 text-xs">{row.referrer_domain ?? "inconnu"}</td>
                       <td className="py-3 pr-4 text-xs">{origine(row)}</td>
                       <td className="py-3 pr-4 whitespace-nowrap">
                         {interne(row)}

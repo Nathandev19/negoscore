@@ -1,4 +1,5 @@
-import { insertIfAbsent } from "@/lib/supabase/server";
+import { insertIfAbsent, isMissingColumn } from "@/lib/supabase/server";
+import { normalizeReferrer } from "@/lib/analytics/referrer";
 import { withEnvironment } from "@/lib/telemetry/tagged";
 
 export const PRODUCT_EVENTS = [
@@ -32,7 +33,7 @@ export function parseAttribution(value: unknown): Attribution {
   const input = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   return {
     path: typeof input.path === "string" && input.path.startsWith("/") ? input.path.slice(0, 300) : null,
-    referrer_host: clean(input.referrer_host, 255),
+    referrer_host: typeof input.referrer_host === "string" ? normalizeReferrer(input.referrer_host, "") : null,
     utm_source: clean(input.utm_source, 100), utm_medium: clean(input.utm_medium, 100),
     utm_campaign: clean(input.utm_campaign, 150), utm_content: clean(input.utm_content, 150),
   };
@@ -45,9 +46,10 @@ export async function recordProductEvent(input: {
   const a = input.attribution ?? {};
   try {
     await withEnvironment((environment) =>
-      insertIfAbsent("product_events", {
+      insertEvent({
         ...environment,
         event_name: input.event, user_id: input.userId ?? null, path: a.path ?? null, referrer_host: a.referrer_host ?? null,
+        ...(a.referrer_host ? { referrer_domain: normalizeReferrer(a.referrer_host, "") } : {}),
         utm_source: a.utm_source ?? null, utm_medium: a.utm_medium ?? null, utm_campaign: a.utm_campaign ?? null,
         utm_content: a.utm_content ?? null, entity_type: input.entityType ?? null, entity_id: input.entityId ?? null,
         metadata: input.metadata ?? {}, dedupe_key: input.dedupeKey ?? null,
@@ -61,5 +63,17 @@ export async function recordProductEvent(input: {
     );
   } catch (error) {
     console.error(JSON.stringify({ event: "product_telemetry_error", name: input.event, detail: error instanceof Error ? error.message.slice(0, 120) : "inconnu" }));
+  }
+}
+
+async function insertEvent(row: Record<string, unknown>): Promise<void> {
+  try {
+    await insertIfAbsent("product_events", row);
+  } catch (error) {
+    // Le code peut être déployé avant que Nathan applique la migration à la
+    // main. Les événements continuent alors d'être écrits, sans ce champ.
+    if (!isMissingColumn(error)) throw error;
+    const { referrer_domain: _referrerDomain, ...previousSchema } = row;
+    await insertIfAbsent("product_events", previousSchema);
   }
 }

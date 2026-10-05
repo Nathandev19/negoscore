@@ -81,6 +81,22 @@ const AVEC_GUIDES: DashboardData = {
 };
 
 describe("le tableau de bord, tel qu'il s'affiche", () => {
+  it("ventile seulement non_attribue par domaine avec les trois compteurs", async () => {
+    const html = await dashboard({
+      ...APRES_MIGRATION,
+      acquisition: [
+        { source: "instagram", campaign: "lancement", content: "bio", visits: 4, analyses: 1, signups: 0, purchases: 0 },
+        { source: "non_attribue", campaign: "non_attribue", content: "non_attribue", visits: 10, analyses: 2, signups: 0, purchases: 1,
+          referrers: [{ referrer: "google", visits: 6, analyses: 1, purchases: 1 }, { referrer: "inconnu", visits: 4, analyses: 1, purchases: 0 }] },
+      ],
+    });
+    const page = text(html);
+    expect(page).toContain("↳ google 6 1 1");
+    expect(page).toContain("↳ inconnu 4 1 0");
+    expect(page).toContain("instagram lancement · bio");
+    expect(page).toContain("Les visites antérieures à cette mesure n’ont pas de référent enregistré");
+  });
+
   it("la ligne d'exclusions dit ce qui a été écarté, et les compteurs sont à zéro", async () => {
     const page = text(await dashboard(APRES_MIGRATION));
 

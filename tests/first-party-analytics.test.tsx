@@ -21,7 +21,7 @@ describe("attribution first-party", () => {
       path: "/tarifs?utm_source=TikTok", referrer_host: "WWW.TIKTOK.COM",
       utm_source: " TikTok ", utm_medium: "Organic Social", utm_campaign: "Launch Été", utm_content: "VIDEO 27 / test",
     })).toEqual({
-      path: "/tarifs?utm_source=TikTok", referrer_host: "www.tiktok.com",
+      path: "/tarifs?utm_source=TikTok", referrer_host: "tiktok.com",
       utm_source: "tiktok", utm_medium: "organic_social", utm_campaign: "launch_t_", utm_content: "video_27_test",
     });
   });

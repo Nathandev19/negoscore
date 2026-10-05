@@ -1,6 +1,7 @@
 import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
 import { isRobot, refusesTracking } from "@/lib/analytics/robots";
 import { shortPathAttribution } from "@/lib/acquisition/chemins";
+import { normalizeReferrer } from "@/lib/analytics/referrer";
 import { eventForPage, EXAMPLE_ORIGIN_PARAM, originPathFor } from "@/lib/analytics/views";
 
 export const runtime = "nodejs";
@@ -102,6 +103,9 @@ export async function GET(request: Request) {
     event,
     attribution: parseAttribution({
       path: page,
+      // `referer` est la page qui demande le pixel, pas la page qui lui a
+      // envoyé le visiteur. Seul le navigateur peut transmettre ce domaine.
+      referrer_host: params.has("r") ? normalizeReferrer(params.get("r"), new URL(request.url).hostname) : null,
       utm_source: court ? court.utm_source : query.get("utm_source"),
       utm_medium: court ? court.utm_medium : query.get("utm_medium"),
       utm_campaign: court ? court.utm_campaign : query.get("utm_campaign"),

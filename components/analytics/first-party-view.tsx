@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { normalizeReferrer } from "@/lib/analytics/referrer";
 
 export type ClientAttribution = {
   path: string;
-  referrer_host: string | null;
+  referrer_host: string;
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
@@ -15,12 +16,13 @@ const value = (params: URLSearchParams, key: string) => params.get(key)?.trim().
 
 export function currentAttribution(): ClientAttribution {
   const params = new URLSearchParams(window.location.search);
-  let referrer: string | null = null;
-  try {
-    referrer = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : null;
-  } catch {
-    referrer = null;
-  }
+  // Après une navigation côté client, document.referrer reste celui du premier
+  // document. Le chemin initial révèle que ce clic-ci vient du site.
+  const navigation = performance.getEntriesByType("navigation")[0];
+  const initialPath = navigation ? new URL(navigation.name).pathname : window.location.pathname;
+  const referrer = initialPath !== window.location.pathname
+    ? "interne"
+    : normalizeReferrer(document.referrer, window.location.hostname);
   return {
     path: window.location.pathname,
     referrer_host: referrer,

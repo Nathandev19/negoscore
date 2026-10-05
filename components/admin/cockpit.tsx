@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { BarCell, Funnel, TimeSeries } from "@/components/admin/charts";
 import {
   ADMIN_PERIODS,
@@ -297,24 +297,39 @@ function Chiffres({ data }: { data: DashboardData }) {
               </thead>
               <tbody>
                 {data.acquisition.map((row) => (
-                  <tr key={`${row.source}/${row.campaign}/${row.content}`} className="border-t border-filet">
-                    <td className="py-3.5 pr-3">
-                      <strong className="text-encre">{row.source}</strong>
-                      <br />
-                      <span className="text-xs text-attenue">
-                        {row.campaign} · {row.content}
-                      </span>
-                    </td>
-                    <td className="w-[45%] py-3.5 pr-3">
-                      <BarCell value={row.visits} max={maxVisites} />
-                    </td>
-                    <td className={`figures py-3.5 pl-4 text-right ${row.analyses === 0 ? "text-attenue" : ""}`}>{row.analyses}</td>
-                    <td className={`figures py-3.5 pl-4 text-right ${row.purchases === 0 ? "text-attenue" : ""}`}>{row.purchases}</td>
-                  </tr>
+                  <Fragment key={`${row.source}/${row.campaign}/${row.content}`}>
+                    <tr className="border-t border-filet">
+                      <td className="py-3.5 pr-3">
+                        <strong className="text-encre">{row.source}</strong>
+                        <br />
+                        <span className="text-xs text-attenue">
+                          {row.campaign} · {row.content}
+                        </span>
+                      </td>
+                      <td className="w-[45%] py-3.5 pr-3">
+                        <BarCell value={row.visits} max={maxVisites} />
+                      </td>
+                      <td className={`figures py-3.5 pl-4 text-right ${row.analyses === 0 ? "text-attenue" : ""}`}>{row.analyses}</td>
+                      <td className={`figures py-3.5 pl-4 text-right ${row.purchases === 0 ? "text-attenue" : ""}`}>{row.purchases}</td>
+                    </tr>
+                    {row.source === "non_attribue" && row.campaign === "non_attribue" && row.content === "non_attribue"
+                      ? row.referrers?.map((referrer) => (
+                        <tr key={referrer.referrer} className="border-t border-filet/60 text-xs">
+                          <td className="py-2 pl-5 pr-3 text-attenue">↳ {referrer.referrer}</td>
+                          <td className="py-2 pr-3"><BarCell value={referrer.visits} max={maxVisites} /></td>
+                          <td className="figures py-2 pl-4 text-right">{referrer.analyses}</td>
+                          <td className="figures py-2 pl-4 text-right">{referrer.purchases}</td>
+                        </tr>
+                      ))
+                      : null}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
           )}
+          <p className="mt-3 text-xs text-attenue">
+            Les visites antérieures à cette mesure n’ont pas de référent enregistré et apparaissent comme inconnues.
+          </p>
         </div>
         <div className="min-w-0">
           <div className="h-[3px] rounded-[2px] bg-encre" />

@@ -150,6 +150,7 @@ const LIGNE = {
   utm_source: "instagram",
   utm_campaign: "lancement",
   utm_content: "dm_exemple",
+  referrer_domain: "instagram.com",
   environment: "production",
   internal: false,
   visitor: "9f3a1c",
@@ -170,7 +171,7 @@ beforeEach(() => {
 });
 
 describe("la vue des événements", () => {
-  it("rend les huit colonnes attendues", async () => {
+  it("rend les neuf colonnes attendues, dont le référent après les UTM", async () => {
     const lu = texte(await rendre());
     for (const colonne of [
       "Date et heure",
@@ -178,12 +179,21 @@ describe("la vue des événements", () => {
       "Événement",
       "Page",
       "Source · campagne · contenu",
+      "Référent",
       "Origine du clic",
       "Interne",
       "Navigateur",
     ]) {
       expect(lu, colonne).toContain(colonne);
     }
+    expect(lu.indexOf("Source · campagne · contenu")).toBeLessThan(lu.indexOf("Référent"));
+    expect(lu.indexOf("Référent")).toBeLessThan(lu.indexOf("Interne"));
+  });
+
+  it("montre le domaine mesuré et l'historique inconnu", async () => {
+    expect(texte(await rendre())).toContain("instagram.com");
+    donnees.rows = [{ ...LIGNE, referrer_domain: null }];
+    expect(texte(await rendre())).toContain("inconnu");
   });
 
   it("une ligne dit l'heure à la seconde, l'empreinte, l'attribution et la famille", async () => {
