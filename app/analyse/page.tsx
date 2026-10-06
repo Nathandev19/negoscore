@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/lib/seo";
 import { DealInput } from "@/components/deal-input";
+import { ViewPixel } from "@/components/analytics/view-pixel";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -10,6 +11,7 @@ export default function AnalysePage() {
   return (
     <>
       <SiteHeader />
+      <ViewPixel page="/analyse" />
       <main id="contenu" className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 pt-6 pb-16 sm:px-6 md:pt-16 md:pb-24">
         <div className="flex flex-col gap-2">
           <h1 className="text-h1 font-extrabold">Montre-nous l&apos;offre</h1>

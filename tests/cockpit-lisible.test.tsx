@@ -234,8 +234,10 @@ describe("le taux de passage est écrit, pas à déduire", () => {
   });
 
   it("il est rendu entre deux étapes du funnel", () => {
-    const texte = lisible(renderToStaticMarkup(<Funnel data={complet} />));
-    expect(texte).toContain("2 analyses sur 100 visites — 2 %");
+    const avecArrivees = { ...complet, counts: { ...complet.counts, analysis_page_view: 4 } };
+    const texte = lisible(renderToStaticMarkup(<Funnel data={avecArrivees} />));
+    expect(texte).toContain("4 arrivées sur 100 visites — 4 %");
+    expect(texte).toContain("2 analyses sur 4 arrivées — 50 %");
     expect(texte).toContain("2 terminées sur 2 lancées — 100 %");
     expect(texte).toContain("0 inscription sur 2 analyses — 0 %");
     expect(texte).toContain("Étapes agrégées, sans suivi individuel entre écrans");

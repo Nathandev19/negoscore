@@ -28,6 +28,7 @@ export const MEASURED_PAGES: Readonly<Record<string, ProductEventName>> = {
   "/produits-offerts": "guide_view",
   "/droits-utilisation": "guide_view",
   "/analyse/demo": "example_view",
+  "/analyse": "analysis_page_view",
 };
 
 export type MeasuredPage = keyof typeof MEASURED_PAGES;
@@ -49,7 +50,8 @@ export function eventForPage(page: string | null | undefined): ProductEventName 
 // /analyse/demo?de=combien-facturer. Table fermée là aussi — une valeur
 // inconnue vaut « origine inconnue », jamais une erreur et jamais une ligne
 // inventée dans le cockpit.
-export const EXAMPLE_ORIGIN_PARAM = "de";
+export const INTERNAL_ORIGIN_PARAM = "de";
+export const EXAMPLE_ORIGIN_PARAM = INTERNAL_ORIGIN_PARAM;
 
 export const EXAMPLE_ORIGINS: Readonly<Record<string, string>> = {
   accueil: "/",
@@ -67,6 +69,16 @@ export const EXAMPLE_ORIGINS: Readonly<Record<string, string>> = {
 
 export function originPathFor(value: string | null | undefined): string | undefined {
   return value ? entryFor(EXAMPLE_ORIGINS, value) : undefined;
+}
+
+// L'emplacement du bouton fixe, distinct de la page que la visiteuse lisait.
+// Comme pour « pied-de-page », l'origine désigne ici un emplacement du site.
+export const ANALYSIS_ORIGINS: Readonly<Record<string, string>> = {
+  "bouton-mobile": "/bouton-mobile",
+};
+
+export function analysisOriginFor(value: string | null | undefined): string | undefined {
+  return value ? entryFor(ANALYSIS_ORIGINS, value) : undefined;
 }
 
 // L'adresse du lien, depuis une page qui a une clé d'origine. Une visite SANS

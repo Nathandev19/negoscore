@@ -142,7 +142,9 @@ describe("le niveau consulté devient un événement", () => {
     const blocs = [...sql.matchAll(/check\s*\(\s*event_name\s+in\s*\(([^)]*)\)/gi)];
     expect(blocs.length).toBeGreaterThan(0);
     const autorises = [...blocs[blocs.length - 1][1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
-    for (const event of PRODUCT_EVENTS) expect(autorises, event).toContain(event);
+    // Cette migration historique précède analysis_page_view (#157), admis
+    // par la migration suivante et vérifié contre la dernière contrainte.
+    for (const event of PRODUCT_EVENTS.filter((name) => name !== "analysis_page_view")) expect(autorises, event).toContain(event);
     // L'agrégat lit `filtered` : production et trafic non interne déjà écartés.
     const agregat = sql.slice(sql.indexOf("), tier_changes as ("), sql.indexOf("), feedback as ("));
     expect(agregat).toContain("from filtered");

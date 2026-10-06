@@ -2,7 +2,7 @@ import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-part
 import { isRobot, refusesTracking } from "@/lib/analytics/robots";
 import { shortPathAttribution } from "@/lib/acquisition/chemins";
 import { normalizeReferrer } from "@/lib/analytics/referrer";
-import { eventForPage, EXAMPLE_ORIGIN_PARAM, originPathFor } from "@/lib/analytics/views";
+import { analysisOriginFor, eventForPage, INTERNAL_ORIGIN_PARAM, originPathFor } from "@/lib/analytics/views";
 
 export const runtime = "nodejs";
 // La vue est enregistrée à chaque chargement : rien ici n'est mis en cache, ni
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 // Mission #120 — l'image d'un pixel qui enregistre une vue, sans JavaScript.
 //
-// Les quatre pages mesurées (lib/analytics/views.ts) sont statiques et lues par
+// Les pages mesurées (lib/analytics/views.ts) sont lues aussi par
 // des gens venus d'un moteur de recherche. Mesurer dans le navigateur laisserait
 // dehors ceux qui n'ont pas JavaScript — exactement la garantie #074 qu'on
 // tient par ailleurs. C'est donc le serveur qui compte, quand le navigateur
@@ -97,7 +97,9 @@ export async function GET(request: Request) {
   const affichee = court ? court.to : from?.pathname;
   if (!from || affichee !== page) return image();
   const query = from.searchParams;
-  const origin = event === "example_view" ? originPathFor(query?.get(EXAMPLE_ORIGIN_PARAM)) : undefined;
+  const originKey = query.get(INTERNAL_ORIGIN_PARAM);
+  const origin = event === "example_view" ? originPathFor(originKey)
+    : event === "analysis_page_view" ? analysisOriginFor(originKey) : undefined;
 
   await recordProductEvent({
     event,
@@ -111,9 +113,9 @@ export async function GET(request: Request) {
       utm_campaign: court ? court.utm_campaign : query.get("utm_campaign"),
       utm_content: court ? court.utm_content : query.get("utm_content"),
     }),
-    // D'où vient le clic vers l'exemple. `null` = arrivée directe, et c'est une
-    // information, pas un trou.
-    entityType: event === "example_view" ? "origine" : null,
+    // D'où vient le clic vers l'exemple ou l'analyse. `null` = arrivée directe,
+    // et c'est une information, pas un trou.
+    entityType: event === "example_view" || event === "analysis_page_view" ? "origine" : null,
     entityId: origin ?? null,
   });
   return image();

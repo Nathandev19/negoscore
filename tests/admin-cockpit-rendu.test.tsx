@@ -204,6 +204,21 @@ describe("mission #129 — un seul nombre pour « Visites »", () => {
     expect(tuile(html, "Visites mesurées")).toBe(attendu);
   });
 
+  it.each(CAS.slice(0, 2))("%s : 37 arrivées sur l'analyse ne changent pas les visites", async (_nom, counts, attendu) => {
+    const avant = await dashboard({ ...APRES_MIGRATION, counts });
+    const apres = await dashboard({ ...APRES_MIGRATION, counts: { ...counts, analysis_page_view: 37 } });
+    expect([tuile(avant, "Visites mesurées"), tuile(apres, "Visites mesurées")]).toEqual([attendu, attendu]);
+    expect([etape(avant, "Visites"), etape(apres, "Visites")]).toEqual([attendu, attendu]);
+    expect(etape(apres, "Arrivées sur la page d’analyse")).toBe(37);
+  });
+
+  it("place les arrivées sur l'analyse entre les visites et les analyses lancées", async () => {
+    const html = await dashboard({ ...APRES_MIGRATION, counts: { landing_view: 10, analysis_page_view: 7, analysis_started: 4 } });
+    expect([etape(html, "Visites"), etape(html, "Arrivées sur la page d’analyse"), etape(html, "Analyses lancées")]).toEqual([10, 7, 4]);
+    expect(html.indexOf(">Visites</span>")).toBeLessThan(html.indexOf(">Arrivées sur la page d’analyse</span>"));
+    expect(html.indexOf(">Arrivées sur la page d’analyse</span>")).toBeLessThan(html.indexOf(">Analyses lancées</span>"));
+  });
+
   it("le funnel ne recalcule rien lui-même", () => {
     const source = readFileSync("components/admin/charts.tsx", "utf8");
     // Aucune addition d'événements recopiée dans le composant : il appelle

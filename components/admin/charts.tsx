@@ -262,6 +262,7 @@ export function Funnel({ data }: { data: DashboardData }) {
   // Le compte vient donc de lib/admin/data.ts, pas d'une addition recopiée.
   const steps: Array<{ label: string; value: number; num: Nom; den: Nom }> = [
     { label: "Visites", value: visitCount(data), num: ["visite", "visites"], den: ["visite", "visites"] },
+    { label: "Arrivées sur la page d’analyse", value: data.counts.analysis_page_view ?? 0, num: ["arrivée", "arrivées"], den: ["arrivée", "arrivées"] },
     { label: "Analyses lancées", value: data.counts.analysis_started ?? 0, num: ["analyse", "analyses"], den: ["lancée", "lancées"] },
     { label: "Analyses terminées", value: data.counts.analysis_completed ?? 0, num: ["terminée", "terminées"], den: ["analyse", "analyses"] },
     { label: "Inscriptions", value: data.counts.signup ?? 0, num: ["inscription", "inscriptions"], den: ["inscription", "inscriptions"] },

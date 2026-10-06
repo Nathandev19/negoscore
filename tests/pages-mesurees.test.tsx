@@ -4,8 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { shortPathAttribution } from "@/lib/acquisition/chemins";
 import { isRobot, refusesTracking } from "@/lib/analytics/robots";
 import {
+  ANALYSIS_ORIGINS,
   EXAMPLE_ORIGIN_PARAM,
   EXAMPLE_ORIGINS,
+  INTERNAL_ORIGIN_PARAM,
+  analysisOriginFor,
   eventForPage,
   exampleHrefFrom,
   GUIDE_PATHS,
@@ -68,6 +71,7 @@ describe("la table fermée des pages mesurées", () => {
     for (const path of GUIDE_PATHS) expect(eventForPage(path), path).toBe("guide_view");
     expect(new Set(GUIDE_PATHS.map((p) => eventForPage(p))).size).toBe(1);
     expect(eventForPage("/analyse/demo")).toBe("example_view");
+    expect(eventForPage("/analyse")).toBe("analysis_page_view");
   });
 
   it("le navigateur ne choisit pas un chemin, il choisit une entrée", () => {
@@ -109,6 +113,15 @@ describe("l'origine du clic vers l'exemple", () => {
   });
 });
 
+describe("l'origine du clic vers l'analyse", () => {
+  it("le bouton mobile a une clé fermée distincte des UTM", () => {
+    expect(INTERNAL_ORIGIN_PARAM).toBe(EXAMPLE_ORIGIN_PARAM);
+    expect(ANALYSIS_ORIGINS["bouton-mobile"]).toBe("/bouton-mobile");
+    expect(analysisOriginFor("bouton-mobile")).toBe("/bouton-mobile");
+    for (const value of ["__proto__", "constructor", "autre", null]) expect(analysisOriginFor(value)).toBeUndefined();
+  });
+});
+
 // ───────────────────────────────────────────────────────────────────────────
 describe("l'image de mesure enregistre la vue", () => {
   it("un guide : une vue, avec son chemin", async () => {
@@ -135,6 +148,27 @@ describe("l'image de mesure enregistre la vue", () => {
   it("l'exemple, avec l'origine du clic lue dans l'adresse de la page", async () => {
     await ask({ page: "/analyse/demo", referer: `${ORIGIN}/analyse/demo?de=combien-facturer` });
     expect(recorded()).toMatchObject({ event: "example_view", entityType: "origine", entityId: "/combien-facturer" });
+  });
+
+  it("l'arrivée sur /analyse déclenche son propre événement avec le chemin affiché", async () => {
+    await ask({ page: "/analyse", referer: `${ORIGIN}/analyse` });
+    expect(recorded()).toMatchObject({
+      event: "analysis_page_view", attribution: expect.objectContaining({ path: "/analyse" }),
+      entityType: "origine", entityId: null,
+    });
+  });
+
+  it("le bouton fixe est identifié sans écraser les UTM d'acquisition", async () => {
+    await ask({ page: "/analyse", referer: `${ORIGIN}/analyse?de=bouton-mobile&utm_source=Instagram&utm_campaign=dm&utm_content=story` });
+    expect(recorded()).toMatchObject({
+      event: "analysis_page_view", entityType: "origine", entityId: "/bouton-mobile",
+      attribution: expect.objectContaining({ path: "/analyse", utm_source: "instagram", utm_campaign: "dm", utm_content: "story" }),
+    });
+  });
+
+  it("une origine inconnue n'est pas enregistrée comme bouton mobile", async () => {
+    await ask({ page: "/analyse", referer: `${ORIGIN}/analyse?de=constructor` });
+    expect(recorded()).toMatchObject({ event: "analysis_page_view", entityId: null });
   });
 
   it("l'exemple en arrivée directe : enregistré, sans origine", async () => {
@@ -389,7 +423,8 @@ describe("les filtres de #103 et #118 s'appliquent sans rien ajouter", () => {
     const { recordProductEvent } = await import("@/lib/analytics/first-party");
     await recordProductEvent({ event: "guide_view", attribution: { path: "/combien-facturer" } });
     await recordProductEvent({ event: "example_view", entityType: "origine", entityId: "/combien-facturer" });
-    expect(db.rows).toHaveLength(2);
+    await recordProductEvent({ event: "analysis_page_view", attribution: { path: "/analyse" }, entityType: "origine", entityId: "/bouton-mobile" });
+    expect(db.rows).toHaveLength(3);
     for (const row of db.rows) {
       // #103 : décidé par le serveur, et « test » ici — donc hors production.
       expect(row.environment).toBe("test");
@@ -397,6 +432,7 @@ describe("les filtres de #103 et #118 s'appliquent sans rien ajouter", () => {
       expect(row).toHaveProperty("internal");
     }
     expect(db.rows[1]).toMatchObject({ event_name: "example_view", entity_type: "origine", entity_id: "/combien-facturer" });
+    expect(db.rows[2]).toMatchObject({ event_name: "analysis_page_view", path: "/analyse", entity_type: "origine", entity_id: "/bouton-mobile" });
     vi.doUnmock("@/lib/supabase/server");
     vi.resetModules();
   });
@@ -460,6 +496,7 @@ describe("les filtres de #103 et #118 s'appliquent sans rien ajouter", () => {
   it("les valeurs écrites tiennent dans les colonnes de la table", () => {
     for (const page of Object.keys(MEASURED_PAGES)) expect(page.length, page).toBeLessThanOrEqual(300);
     for (const path of Object.values(EXAMPLE_ORIGINS)) expect(path.length, path).toBeLessThanOrEqual(120);
+    for (const path of Object.values(ANALYSIS_ORIGINS)) expect(path.length, path).toBeLessThanOrEqual(120);
     // entity_type : 40 caractères au plus.
     expect("origine".length).toBeLessThanOrEqual(40);
   });
@@ -472,6 +509,7 @@ describe("ce que les pages rendent", () => {
     "/produits-offerts": "app/produits-offerts/page.tsx",
     "/droits-utilisation": "app/droits-utilisation/page.tsx",
     "/analyse/demo": "app/analyse/demo/page.tsx",
+    "/analyse": "app/analyse/page.tsx",
   };
 
   async function render(path: string): Promise<string> {
@@ -509,13 +547,16 @@ describe("ce que les pages rendent", () => {
     }
   });
 
-  it("les pages restent lisibles sans JavaScript et gardent le pixel dans noscript", () => {
+  it("les pages restent lisibles sans JavaScript et gardent le pixel sans noscript", () => {
     for (const fichier of Object.values(FICHIER)) {
       const source = readFileSync(fichier, "utf8");
       expect(source, fichier).not.toMatch(/^\s*["']use client["']/m);
       expect(source, fichier).not.toMatch(/useEffect|onClick|window\.|document\./);
     }
-    expect(readFileSync("components/analytics/view-pixel.tsx", "utf8")).toContain("<noscript>");
+    const pixel = readFileSync("components/analytics/view-pixel.tsx", "utf8");
+    expect(pixel).toContain("{...WITHOUT_JS}");
+    expect(pixel).not.toContain("<noscript>");
+    expect(readFileSync("app/globals.css", "utf8")).toContain("[data-js] [data-sans-js]");
   });
 
   it("la canonique de l'exemple reste /analyse/demo, malgré le paramètre", async () => {

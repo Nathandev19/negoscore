@@ -15,6 +15,8 @@ export const PRODUCT_EVENTS = [
   // la contre-offre calculés AU niveau qu'il déclare, et y réécrire le
   // niveau sans recalculer le reste rendrait la ligne fausse.
   "tier_changed",
+  // Mission #157 — arrivée sur l'analyse, distincte des visites historiques.
+  "analysis_page_view",
 ] as const;
 export type ProductEventName = (typeof PRODUCT_EVENTS)[number];
 
