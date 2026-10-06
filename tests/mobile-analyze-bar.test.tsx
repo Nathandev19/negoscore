@@ -3,8 +3,13 @@ import { MOBILE_ANALYZE_HREF, showMobileAnalyzeBar } from "@/components/mobile-a
 
 describe("le bouton mobile d'analyse", () => {
   it("apparaît quand l'appel à l'action de la page est sous l'écran", () => {
-    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: 578, bottom: 626 }], 460)).toBe(true);
+    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: 578, bottom: 626 }], 460, [{ top: -500, bottom: 40 }])).toBe(true);
     expect(showMobileAnalyzeBar("/", [{ top: 571, bottom: 619 }], 560)).toBe(true);
+  });
+
+  it("reste masqué à 320 × 460 tant que le bloc de score est visible", () => {
+    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: 578, bottom: 626 }], 460, [{ top: 340, bottom: 558 }])).toBe(false);
+    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: -100, bottom: 40 }], 460, [{ top: -160, bottom: 80 }])).toBe(false);
   });
 
   it("disparaît dès que l'appel à l'action entre dans l'écran", () => {
@@ -20,7 +25,7 @@ describe("le bouton mobile d'analyse", () => {
     for (const path of ["/", "/exemple", "/tarifs", "/combien-facturer", "/droits-utilisation", "/produits-offerts"]) {
       expect(showMobileAnalyzeBar(path, [], 560), path).toBe(true);
     }
-    for (const path of ["/analyse", "/admin", "/compte", "/historique", "/connexion"]) {
+    for (const path of ["/analyse", "/admin", "/compte", "/compte/supprime", "/historique", "/connexion", "/mentions-legales", "/confidentialite", "/cgv"]) {
       expect(showMobileAnalyzeBar(path, [], 560), path).toBe(false);
     }
   });

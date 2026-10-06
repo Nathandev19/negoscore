@@ -46,7 +46,7 @@ export function ScoreBand({
     <div className={cn("grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center lg:gap-12", className)}>
       <p className="headline text-verdict text-balance text-creme lg:order-last">{verdictSentence(analysis)}</p>
       {scored && analysis.score ? (
-        <div className="flex flex-col gap-4">
+        <div data-score-block className="flex flex-col gap-4">
           {/* Mission #150 — cette ligne ne s'enroule plus à partir de 360 px.
               Mesuré en #148 : le compteur passe de 64 à 129 px quand il franchit
               9 → 10, soit 64 px de largeur en plus d'un coup. À 375 px il ne
@@ -88,7 +88,7 @@ export function ScoreBand({
           {tierNote}
         </div>
       ) : (
-        <div className="flex flex-col items-start gap-4">
+        <div data-score-block className="flex flex-col items-start gap-4">
           <span className="headline rounded-pill bg-creme px-4 py-1.5 text-lg text-encre">
             {EVALUABILITY_LABEL[analysis.evaluability === "complete" ? "terms_unknown" : analysis.evaluability]}
           </span>
