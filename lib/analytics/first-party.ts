@@ -74,7 +74,8 @@ async function insertEvent(row: Record<string, unknown>): Promise<void> {
     // Le code peut être déployé avant que Nathan applique la migration à la
     // main. Les événements continuent alors d'être écrits, sans ce champ.
     if (!isMissingColumn(error)) throw error;
-    const { referrer_domain: _referrerDomain, ...previousSchema } = row;
+    const previousSchema = { ...row };
+    delete previousSchema.referrer_domain;
     await insertIfAbsent("product_events", previousSchema);
   }
 }
