@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
+import { MobileAnalyzeBar } from "@/components/mobile-analyze-bar";
 import { NavPending } from "@/components/nav-pending";
 import { exampleHrefFrom } from "@/lib/analytics/views";
 import { BRAND } from "@/lib/brand";
@@ -93,6 +94,7 @@ export function SiteFooter() {
           </p>
         </div>
       </div>
+      <MobileAnalyzeBar />
     </footer>
   );
 }
