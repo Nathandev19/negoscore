@@ -6,7 +6,7 @@ import PaidAdsSixMonthsPage from "@/app/droits-pub-6-mois/page";
 import sitemap from "@/app/sitemap";
 import nextConfig from "@/next.config";
 import { FOOTER_COLUMNS } from "@/components/site-footer";
-import { GUIDE_PATHS } from "@/lib/analytics/views";
+import { GUIDE_PATHS, internalHrefFrom } from "@/lib/analytics/views";
 import { BRAND } from "@/lib/brand";
 import { FAQ } from "@/lib/content/home";
 import { MENTION_TTC } from "@/lib/content/vocabulaire";
@@ -79,10 +79,18 @@ describe("titres et descriptions des guides", () => {
     }
   });
 
-  it("chaque guide a une entrée dans la colonne Guides du pied de page", () => {
+  // Mission #161 — chaque lien du pied de page porte « pied-de-page » comme
+  // origine, exactement comme celui de l'exemple depuis #152. Sans ça, une
+  // arrivée sur un guide depuis le pied de page s'enregistrait sans origine.
+  it("chaque guide a une entrée dans la colonne Guides, et elle porte son origine", () => {
     const guides = FOOTER_COLUMNS.find((colonne) => colonne.title === "Guides");
     const hrefs = guides?.links.map((lien) => lien.href) ?? [];
-    for (const chemin of GUIDE_PATHS) expect(hrefs, chemin).toContain(chemin);
+    for (const chemin of GUIDE_PATHS) {
+      expect(hrefs, chemin).toContain(internalHrefFrom(chemin, "pied-de-page"));
+      expect(hrefs, `${chemin} sans origine`).not.toContain(chemin);
+    }
+    // Et aucun utm sur un lien interne, jamais.
+    for (const href of hrefs) expect(href, href).not.toContain("utm_");
   });
 });
 

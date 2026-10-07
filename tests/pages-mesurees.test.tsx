@@ -12,10 +12,13 @@ import {
   eventForPage,
   exampleHrefFrom,
   GUIDE_PATHS,
+  internalHrefFrom,
+  knownOriginKey,
   MEASURED_PAGES,
   originPathFor,
   VIEW_PIXEL_PATH,
   viewPixelSrc,
+  viewPixelUrl,
 } from "@/lib/analytics/views";
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 
@@ -110,6 +113,76 @@ describe("l'origine du clic vers l'exemple", () => {
       expect(originPathFor(hostile), hostile).toBeUndefined();
     }
     expect(originPathFor(null)).toBeUndefined();
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #161 — CE QUI PASSE ENTRE LE LIEN ET LA ROUTE.
+//
+// #158 avait une garde sur les href des guides, et une garde sur la route.
+// Entre les deux, personne ne regardait l'adresse que le navigateur demande
+// vraiment — et c'est là que l'origine se perdait. Mesuré sur un build de
+// production, page ouverte sur /produits-offerts?de=droits-pub-6-mois :
+//   GET /api/vue?p=%2Fproduits-offerts&r=direct
+// Aucune origine dedans. Elle n'arrivait que par l'en-tête Referer, c'est-à-dire
+// par une chose que le site ne décide pas.
+describe("l'adresse de mesure réellement demandée", () => {
+  it("elle emporte l'origine lue dans l'adresse de la page, sous le même nom que les liens", () => {
+    expect(viewPixelUrl("/produits-offerts", "?de=droits-pub-6-mois", "direct")).toBe(
+      `/api/vue?p=%2Fproduits-offerts&${INTERNAL_ORIGIN_PARAM}=droits-pub-6-mois&r=direct`,
+    );
+    // Le nom du paramètre est celui des liens internes : une seule convention.
+    expect(internalHrefFrom("/produits-offerts", "droits-pub-6-mois")).toContain(`?${INTERNAL_ORIGIN_PARAM}=`);
+    expect(viewPixelUrl("/produits-offerts", "?de=droits-pub-6-mois", null)).toContain(`&${INTERNAL_ORIGIN_PARAM}=`);
+  });
+
+  it("les quatre guides traversent la chaîne entière, du lien à la valeur enregistrée", async () => {
+    for (const depart of GUIDE_PATHS) {
+      const cle = depart.slice(1);
+      // 1. le lien écrit dans le corps d'un guide
+      const lien = internalHrefFrom("/produits-offerts", cle);
+      expect(lien, cle).toBe(`/produits-offerts?${INTERNAL_ORIGIN_PARAM}=${cle}`);
+      // 2. l'adresse que le navigateur demande depuis la page ainsi atteinte
+      const adresse = viewPixelUrl("/produits-offerts", new URL(lien, ORIGIN).search, "direct");
+      expect(adresse, cle).toContain(`${INTERNAL_ORIGIN_PARAM}=${cle}`);
+      // 3. ce que la route en enregistre — RÉFÉRENT SANS PARAMÈTRES, pour
+      //    prouver que l'origine ne dépend plus de ce que le navigateur
+      //    accepte de mettre dans son en-tête Referer.
+      telemetry.calls = [];
+      await pixel(new Request(`${ORIGIN}${adresse}`, {
+        headers: { "sec-fetch-dest": "image", "sec-fetch-site": "same-origin", "user-agent": UA, referer: `${ORIGIN}/produits-offerts` },
+      }));
+      expect(recorded(), cle).toMatchObject({ event: "guide_view", entityType: "origine", entityId: depart });
+    }
+  });
+
+  it("une origine fabriquée n'entre même pas dans la requête, et reste inconnue si elle y entre", async () => {
+    for (const hostile of ["__proto__", "constructor", "/admin", "autre", ""]) {
+      expect(knownOriginKey(hostile), hostile).toBeNull();
+      expect(viewPixelUrl("/produits-offerts", `?de=${encodeURIComponent(hostile)}`, null), hostile).toBe(
+        viewPixelSrc("/produits-offerts"),
+      );
+      telemetry.calls = [];
+      await pixel(new Request(`${ORIGIN}${VIEW_PIXEL_PATH}?p=%2Fproduits-offerts&de=${encodeURIComponent(hostile)}`, {
+        headers: { "sec-fetch-dest": "image", "sec-fetch-site": "same-origin", "user-agent": UA, referer: `${ORIGIN}/produits-offerts` },
+      }));
+      expect(recorded(), hostile).toMatchObject({ event: "guide_view", entityId: null });
+    }
+  });
+
+  it("sans origine dans l'adresse, la requête n'en invente pas", () => {
+    expect(viewPixelUrl("/combien-facturer", "", null)).toBe(viewPixelSrc("/combien-facturer"));
+    expect(viewPixelUrl("/combien-facturer", "?utm_source=tiktok", "direct")).toBe(
+      `${viewPixelSrc("/combien-facturer")}&r=direct`,
+    );
+  });
+
+  it("le composant ne compose plus d'adresse lui-même : un seul endroit à tester", () => {
+    const composant = readFileSync("components/analytics/view-pixel.tsx", "utf8");
+    expect(composant).toContain("viewPixelUrl(page, window.location.search, currentAttribution().referrer_host)");
+    // Le fond d'image sans JavaScript, lui, reste sans paramètre : une page
+    // prérendue ne connaît pas l'adresse demandée (le référent prend le relais).
+    expect(composant).toContain('url("${viewPixelSrc(page)}")');
   });
 });
 

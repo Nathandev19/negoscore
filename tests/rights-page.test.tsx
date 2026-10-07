@@ -69,7 +69,8 @@ describe("page /droits-utilisation", () => {
 
   it("elle est liée depuis le pied de page commun", () => {
     const liens = FOOTER_COLUMNS.flatMap((colonne) => colonne.links.map((lien) => lien.href));
-    expect(liens).toContain("/droits-utilisation");
+    // Mission #161 — le lien porte son origine, comme les trois autres guides.
+    expect(liens).toContain("/droits-utilisation?de=pied-de-page");
   });
 
   it("le favicon.ico existe, et aucune autre icône n'a été retirée", () => {

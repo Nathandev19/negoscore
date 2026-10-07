@@ -97,7 +97,18 @@ export async function GET(request: Request) {
   const affichee = court ? court.to : from?.pathname;
   if (!from || affichee !== page) return image();
   const query = from.searchParams;
-  const originKey = query.get(INTERNAL_ORIGIN_PARAM);
+  // Mission #161 — L'ORIGINE VOYAGE DANS LA REQUÊTE, le référent n'est qu'un
+  // repli. Elle était lue ici seulement, dans l'adresse déclarée par le
+  // navigateur : la chaîne ne tenait donc qu'aussi longtemps qu'il envoyait
+  // l'adresse COMPLÈTE de la page, paramètres compris — ce que le site ne
+  // décide pas. Le pixel la porte maintenant lui-même, sous le même nom.
+  //
+  // Le repli reste nécessaire : sans JavaScript, la mesure est un fond
+  // d'image écrit au rendu, et une page prérendue ne connaît pas les
+  // paramètres de l'adresse. Dans les deux cas, c'est la MÊME table fermée
+  // qui tranche juste en dessous : une valeur fabriquée ne devient jamais une
+  // ligne, d'où qu'elle vienne.
+  const originKey = params.get(INTERNAL_ORIGIN_PARAM) || query.get(INTERNAL_ORIGIN_PARAM);
   // Mission #158 — un guide lit son origine comme l'exemple. Les quatre
   // guides se citent désormais dans leur texte : sans ça, le paramètre `?de=`
   // qu'ils portent serait écrit dans l'adresse sans être mesuré nulle part, et

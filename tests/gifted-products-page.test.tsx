@@ -97,11 +97,13 @@ describe("page /produits-offerts", () => {
     // les guides, montrer avant de demander, et c'est le seul chemin vers lui
     // depuis une page qui n'est pas l'accueil.
     expect(guides?.links.map((lien) => lien.href)).toEqual([
-      "/combien-facturer",
-      "/droits-utilisation",
-      "/produits-offerts",
-      // Mission #158 — quatrième guide.
-      "/droits-pub-6-mois",
+      // Mission #161 — les quatre guides portent leur origine, comme
+      // l'exemple depuis #152 : un clic depuis le pied de page s'enregistrait
+      // sans origine, donc « depuis ? » dans /admin/evenements.
+      "/combien-facturer?de=pied-de-page",
+      "/droits-utilisation?de=pied-de-page",
+      "/produits-offerts?de=pied-de-page",
+      "/droits-pub-6-mois?de=pied-de-page",
       "/analyse/demo?de=pied-de-page",
     ]);
   });

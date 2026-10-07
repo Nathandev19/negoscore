@@ -87,6 +87,19 @@ export function analysisOriginFor(value: string | null | undefined): string | un
   return value ? entryFor(ANALYSIS_ORIGINS, value) : undefined;
 }
 
+// Mission #161 — la clé d'origine telle qu'elle est écrite dans l'adresse
+// d'une page, et SEULEMENT si l'une des deux tables fermées la connaît.
+//
+// Elle sert à décider si le pixel de mesure emporte le paramètre : une valeur
+// fabriquée n'entre donc même pas dans notre propre requête. Le serveur
+// revérifie de toute façon, table par table selon l'événement — ici on ne sait
+// pas encore quelle vue sera enregistrée, donc on accepte les clés des deux.
+export function knownOriginKey(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const connue = originPathFor(value) !== undefined || analysisOriginFor(value) !== undefined;
+  return connue ? value : null;
+}
+
 // L'adresse d'un lien INTERNE qui porte son origine. Jamais d'utm sur un lien
 // interne : les colonnes utm décrivent l'acquisition du visiteur, et un clic
 // d'une page du site vers une autre ne doit pas la réécrire (mission #152).
@@ -113,4 +126,31 @@ export const VIEW_PIXEL_PATH = "/api/vue";
 
 export function viewPixelSrc(page: MeasuredPage): string {
   return `${VIEW_PIXEL_PATH}?p=${encodeURIComponent(page)}`;
+}
+
+// Mission #161 — L'ADRESSE COMPLÈTE DE LA REQUÊTE DE MESURE, construite ici.
+//
+// Elle l'était dans le composant, et c'est là que l'origine se perdait :
+// #158 a appris à la route à lire `?de=`, mais la route le lisait dans
+// l'en-tête Referer, et personne ne le mettait dans la requête elle-même.
+// Mesuré sur un build de production, adresse réellement émise :
+//   GET /api/vue?p=%2Fproduits-offerts&r=direct
+// Pas d'origine dedans. Le référent la portait et la chaîne marchait en
+// local ; elle ne marchait donc qu'aussi longtemps que le navigateur envoyait
+// l'adresse COMPLÈTE de la page, c'est-à-dire une chose que le site ne décide
+// pas (politique de référent du navigateur, extension, intermédiaire réseau).
+// L'origine voyage maintenant dans la requête, sous LE MÊME nom de paramètre
+// que dans les liens — `de` — et le référent n'est plus qu'un repli.
+//
+// Le repli garde sa raison d'être : sans JavaScript, la mesure est un fond
+// d'image écrit au rendu, et une page prérendue statiquement ne connaît pas
+// les paramètres de l'adresse. Pour ces visiteurs-là, le référent est le seul
+// chemin possible.
+export function viewPixelUrl(page: MeasuredPage, pageSearch: string, referrerHost: string | null): string {
+  const origine = knownOriginKey(new URLSearchParams(pageSearch).get(INTERNAL_ORIGIN_PARAM));
+  return [
+    viewPixelSrc(page),
+    ...(origine === null ? [] : [`${INTERNAL_ORIGIN_PARAM}=${encodeURIComponent(origine)}`]),
+    ...(referrerHost === null ? [] : [`r=${encodeURIComponent(referrerHost)}`]),
+  ].join("&");
 }

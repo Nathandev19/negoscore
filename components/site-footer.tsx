@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { MobileAnalyzeBar } from "@/components/mobile-analyze-bar";
 import { NavPending } from "@/components/nav-pending";
-import { exampleHrefFrom } from "@/lib/analytics/views";
+import { exampleHrefFrom, internalHrefFrom } from "@/lib/analytics/views";
 import { BRAND } from "@/lib/brand";
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import { SELLER } from "@/lib/legal/identity";
@@ -23,13 +23,19 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
     // dès qu'il y en a deux.
     title: "Guides",
     links: [
-      { href: "/combien-facturer", label: "Combien facturer" },
-      { href: "/droits-utilisation", label: "Droits d'utilisation" },
-      { href: "/produits-offerts", label: "Produits offerts" },
-      // Mission #158 — quatrième guide. Le pied de page est un EMPLACEMENT :
-      // on ne sait pas depuis quelle page on a cliqué, donc pas d'origine ici
-      // non plus (même raison que pour l'exemple, #152).
-      { href: "/droits-pub-6-mois", label: "Droits pub 6 mois" },
+      // Mission #161 — les quatre liens vers les guides portent leur origine,
+      // comme celui de l'exemple le fait depuis #152. Ils ne la portaient pas,
+      // et une arrivée sur un guide depuis le pied de page s'enregistrait donc
+      // sans origine : « depuis ? » dans /admin/evenements, pour un clic dont
+      // on savait parfaitement d'où il venait.
+      //
+      // « pied-de-page » est un EMPLACEMENT, pas une page : il est sur toutes
+      // les pages, et on ne sait pas depuis laquelle on a cliqué. Prétendre le
+      // contraire serait inventer une mesure.
+      { href: internalHrefFrom("/combien-facturer", "pied-de-page"), label: "Combien facturer" },
+      { href: internalHrefFrom("/droits-utilisation", "pied-de-page"), label: "Droits d'utilisation" },
+      { href: internalHrefFrom("/produits-offerts", "pied-de-page"), label: "Produits offerts" },
+      { href: internalHrefFrom("/droits-pub-6-mois", "pied-de-page"), label: "Droits pub 6 mois" },
       // Mission #152 — l'exemple chiffré, à côté des guides : c'est la même
       // chose qu'eux, une page qui montre avant de demander. Le pied de page
       // est sur toutes les pages, donc ce lien est le seul chemin vers

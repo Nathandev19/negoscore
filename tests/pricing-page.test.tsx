@@ -186,11 +186,11 @@ describe("page /combien-facturer", () => {
     // usage que les guides, montrer avant de demander, et c'est le seul
     // chemin vers lui depuis une page qui n'est pas l'accueil.
         expect(guides?.links.map((lien) => lien.href)).toEqual([
-          "/combien-facturer",
-          "/droits-utilisation",
-          "/produits-offerts",
-          // Mission #158 — quatrième guide.
-          "/droits-pub-6-mois",
+          // Mission #161 — chaque guide du pied de page porte son origine.
+          "/combien-facturer?de=pied-de-page",
+          "/droits-utilisation?de=pied-de-page",
+          "/produits-offerts?de=pied-de-page",
+          "/droits-pub-6-mois?de=pied-de-page",
           "/analyse/demo?de=pied-de-page",
         ]);
     expect(FOOTER_COLUMNS.find((colonne) => colonne.title === "Produit")?.links.map((lien) => lien.href)).not.toContain(
