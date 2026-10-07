@@ -172,13 +172,30 @@ describe("la question du navigateur ne revient pas", () => {
     expect(boite).toMatch(/max-h-/);
   });
 
+  // Mission #159 — DÉFAUT TROUVÉ EN OUVRANT LA MODALE, pas dans un test.
+  //
+  // À 320 × 568, avec une adresse et un motif longs, elle s'affichait déjà
+  // défilée de 151 px : donner le focus au bouton « Annuler », qui est en bas,
+  // faisait défiler le contenu jusqu'à lui, et le titre — la ligne qui NOMME
+  // l'action qu'on s'apprête à valider — passait au-dessus du bord.
+  // `preventScroll` garde le focus là où il doit être sans toucher au
+  // défilement : mesuré après correction, scrollTop = 0, titre et ligne
+  // « Compte » visibles d'emblée.
+  it("le focus va sur Annuler SANS faire défiler la boîte", () => {
+    expect(SOURCE).toMatch(/annulerRef\.current\?\.focus\(\{\s*preventScroll:\s*true\s*\}\)/);
+    // Et c'est bien « Annuler » qui le reçoit, jamais la validation : une
+    // touche Entrée réflexe doit renoncer.
+    expect(SOURCE).not.toMatch(/confirmerRef|onConfirmer[^)]*\.focus\(/);
+  });
+
   it("Échap ferme : l'écouteur est posé sur le document et retiré ensuite", () => {
     expect(SOURCE).toContain('"Escape"');
     expect(SOURCE).toContain('document.addEventListener("keydown"');
     expect(SOURCE).toContain('document.removeEventListener("keydown"');
     // Le focus va sur l'annulation, pas sur la validation : une touche Entrée
-    // réflexe doit renoncer, jamais accorder un accès.
-    expect(SOURCE).toContain("annulerRef.current?.focus()");
+    // réflexe doit renoncer, jamais accorder un accès. Mission #159 : sans
+    // faire défiler la boîte — voir le test dédié plus bas.
+    expect(SOURCE).toContain("annulerRef.current?.focus(");
   });
 
   it("la fiche passe l'email à la modale : sans lui, le récapitulatif ne garde rien", () => {

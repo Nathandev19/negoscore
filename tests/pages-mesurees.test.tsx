@@ -697,7 +697,9 @@ describe("le chemin complet de /exemple", () => {
       attribution: expect.objectContaining({
         path: "/analyse/demo",
         utm_source: "instagram",
-        utm_medium: "organic_social",
+        // Mission #159 — voir lib/acquisition/chemins.ts : le DM a son propre
+        // mode d'acquisition, et il traverse le service sur place intact.
+        utm_medium: "dm",
         utm_campaign: "lancement",
         utm_content: "dm_exemple",
       }),

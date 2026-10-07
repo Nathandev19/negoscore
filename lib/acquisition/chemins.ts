@@ -22,6 +22,22 @@ export const ACQUISITION_UTM = {
   campaign: "lancement",
 } as const;
 
+// Mission #159 — LE DM N'EST PAS DE LA PORTÉE ORGANIQUE.
+//
+// `organic_social` décrit un contenu que la plateforme distribue : une vidéo,
+// une bio, quelque chose qu'on a VU passer. Un message privé n'est rien de
+// tout ça — il est envoyé à une personne, qui n'a rien cherché et rien vu.
+// Le mot était donc faux pour /dm et /exemple, et les liens que Nathan colle
+// à la main portaient déjà `dm`.
+//
+// On garde `dm` : c'est le seul des deux qui soit vrai, et c'est celui qui est
+// déjà écrit à la main. Le choix inverse aurait demandé de changer une
+// habitude pour conserver une étiquette inexacte.
+//
+// AUCUNE ligne déjà enregistrée n'est réécrite : l'historique garde
+// `organic_social`, et le rapport dit où se lit la coupure.
+export const DM_MEDIUM = "dm";
+
 // Mission #125 — une ligne peut désormais porter sa DESTINATION. Jusqu'ici
 // tous les chemins menaient à l'accueil, parce qu'ils sortaient tous d'une
 // vidéo qui disait « va sur negoscore.fr ». Le lien envoyé en DM, lui, doit
@@ -33,7 +49,15 @@ export const ACQUISITION_UTM = {
 // à se charger. `servi` dit « rends le contenu de `to` à cette adresse-ci,
 // sans déplacer le navigateur ». L'attribution ne change pas : elle vient
 // de cette table, et c'est /api/vue qui la relit (voir shortPathAttribution).
-export type ShortPath = { source: string; content: string; to?: string; servi?: boolean };
+// `medium` absent = ACQUISITION_UTM.medium. Une ligne ne le porte que si son
+// canal n'est pas de la portée organique — aujourd'hui les deux chemins de DM.
+export type ShortPath = { source: string; content: string; to?: string; servi?: boolean; medium?: string };
+
+// Le mode d'acquisition d'une ligne, défaut compris. Une seule lecture, pour
+// la redirection comme pour le contenu servi sur place.
+export function mediumOf(entry: ShortPath): string {
+  return entry.medium ?? ACQUISITION_UTM.medium;
+}
 
 // Destination par défaut : l'accueil.
 const DEFAULT_TARGET = "/";
@@ -59,7 +83,7 @@ export const SHORT_PATHS: Readonly<Record<string, ShortPath>> = {
   // aux DM de prospection Instagram, et aucune vidéo ne l'a jamais dicté : les
   // vidéos se terminent sur « negoscore.fr » seul. Trois visites réelles de
   // créatrices Instagram étaient donc déjà rangées sous TikTok.
-  dm: { source: "instagram", content: "dm_prospection" },
+  dm: { source: "instagram", content: "dm_prospection", medium: DM_MEDIUM },
   // La vidéo 1 récupère un chemin à elle, que `dm` lui tenait lieu. Les quatre
   // autres avaient déjà le leur.
   negociation: { source: "tiktok", content: "video_1_negociation" },
@@ -104,7 +128,7 @@ export const SHORT_PATHS: Readonly<Record<string, ShortPath>> = {
   // Mission #137 — et le SEUL qui soit servi sur place : l'adresse reste
   // /exemple dans le navigateur, le contenu est celui de /analyse/demo, et
   // il n'y a plus de redirection sur le chemin.
-  exemple: { source: "instagram", content: "dm_exemple", to: "/analyse/demo", servi: true },
+  exemple: { source: "instagram", content: "dm_exemple", to: "/analyse/demo", servi: true, medium: DM_MEDIUM },
 };
 
 // Un chemin tapé à la main ne respecte ni la casse ni la barre oblique finale :
@@ -141,7 +165,7 @@ export function servedAttribution(entry: ShortPath | undefined): ShortPathAttrib
   return {
     to: entry.to,
     utm_source: entry.source,
-    utm_medium: ACQUISITION_UTM.medium,
+    utm_medium: mediumOf(entry),
     utm_campaign: ACQUISITION_UTM.campaign,
     utm_content: entry.content,
   };
@@ -161,7 +185,7 @@ export function shortPathTarget(pathname: string): string | null {
   if (entry === undefined) return null;
   const params = new URLSearchParams({
     utm_source: entry.source,
-    utm_medium: ACQUISITION_UTM.medium,
+    utm_medium: mediumOf(entry),
     utm_campaign: ACQUISITION_UTM.campaign,
     utm_content: entry.content,
   });

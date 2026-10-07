@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
-import { ACQUISITION_UTM, servedAttribution, shortPathAttribution, shortPathIsServed, SHORT_PATHS, shortPathTarget } from "@/lib/acquisition/chemins";
+import { ACQUISITION_UTM, DM_MEDIUM, mediumOf, servedAttribution, shortPathAttribution, shortPathIsServed, SHORT_PATHS, shortPathTarget } from "@/lib/acquisition/chemins";
 import { proxy } from "@/proxy";
 import sitemap from "@/app/sitemap";
 
@@ -50,9 +50,12 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
     expect(location).not.toBeNull();
     const target = new URL(location as string, ORIGIN);
     expect(target.pathname, path).toBe(destination(path));
+    // Mission #159 — le mode d'acquisition vient de la ligne : « dm » pour les
+    // deux chemins de message privé, « organic_social » pour tout ce qui passe
+    // par la portée d'une plateforme (vidéos, bios).
     expect(params(location as string)).toEqual({
       utm_source: source,
-      utm_medium: "organic_social",
+      utm_medium: content.startsWith("dm_") ? "dm" : "organic_social",
       utm_campaign: "lancement",
       utm_content: content,
     });
@@ -90,7 +93,9 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
     expect(attribution).toEqual({
       to: "/analyse/demo",
       utm_source: "instagram",
-      utm_medium: "organic_social",
+      // Mission #159 — un lien envoyé en message privé n'est pas de la portée
+      // organique : personne ne l'a vu passer, il a été envoyé à quelqu'un.
+      utm_medium: "dm",
       utm_campaign: "lancement",
       utm_content: "dm_exemple",
     });
@@ -144,7 +149,32 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
     expect(posted.utm_content).toBe("dm_prospection");
     expect(posted.utm_content).not.toContain("video");
     // La table est la seule source : la ligne elle-même est vérifiée.
-    expect(SHORT_PATHS.dm).toEqual({ source: "instagram", content: "dm_prospection" });
+    expect(SHORT_PATHS.dm).toEqual({ source: "instagram", content: "dm_prospection", medium: "dm" });
+  });
+
+  // Mission #159 — UNIFIER L'ATTRIBUTION DES DM.
+  //
+  // Avant : /dm et /exemple portaient `organic_social`, et les liens collés à
+  // la main dans une conversation portaient `dm`. Le même canal s'écrivait de
+  // deux façons. C'est `dm` qui gagne : un message privé n'est pas de la
+  // portée organique — personne ne l'a vu passer — et c'est déjà la valeur
+  // écrite à la main.
+  it("les deux chemins de message privé portent « dm », tout le reste « organic_social »", async () => {
+    const dms = ["dm", "exemple"];
+    for (const [cle, entry] of Object.entries(SHORT_PATHS)) {
+      const attendu = dms.includes(cle) ? "dm" : ACQUISITION_UTM.medium;
+      // La ligne de la table, source unique.
+      expect(mediumOf(entry), cle).toBe(attendu);
+      // Ce que le serveur pose réellement dans l'adresse.
+      const location = (await call(`/${cle}`)).headers.get("location");
+      if (location) expect(params(location).utm_medium, cle).toBe(attendu);
+    }
+    // Et le contenu servi sur place le porte aussi : /exemple ne redirige pas.
+    expect(shortPathAttribution("/exemple")?.utm_medium).toBe("dm");
+    // Deux valeurs en tout, pas trois : le canal n'a pas de troisième nom.
+    expect(new Set(Object.values(SHORT_PATHS).map(mediumOf))).toEqual(new Set(["dm", ACQUISITION_UTM.medium]));
+    // Le mode d'acquisition n'est écrit qu'ici, jamais dans une page ni une route.
+    expect(DM_MEDIUM).toBe("dm");
   });
 
   it("la vidéo 1 a repris un chemin à elle", async () => {

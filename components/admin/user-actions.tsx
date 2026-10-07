@@ -118,8 +118,15 @@ export function ConfirmationAdmin({
 
   // Le focus va sur « Annuler », pas sur la validation : une touche Entrée
   // réflexe doit renoncer, jamais accorder un accès ou retirer des crédits.
+  //
+  // Mission #159 — `preventScroll`, et c'est tout le point. Ouverte à 320 px
+  // avec une adresse et un motif longs, la boîte s'affichait DÉJÀ DÉFILÉE de
+  // 151 px : donner le focus au bouton du bas faisait défiler le contenu
+  // jusqu'à lui, et le titre — « Confirmer : Accorder Pro offert », la ligne
+  // qui nomme l'action — passait au-dessus du bord. Mesuré en ouvrant la
+  // modale, pas déduit : les tests passaient pendant que c'était le cas.
   useEffect(() => {
-    annulerRef.current?.focus();
+    annulerRef.current?.focus({ preventScroll: true });
   }, []);
 
   return (
