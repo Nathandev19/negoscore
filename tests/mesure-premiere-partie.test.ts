@@ -84,7 +84,7 @@ describe("la mesure première partie survit au retrait de PostHog", () => {
 
   it("les pages mesurées par le pixel incluent l'analyse", () => {
     expect(Object.keys(MEASURED_PAGES).sort()).toEqual(
-      ["/analyse", "/analyse/demo", "/combien-facturer", "/droits-utilisation", "/produits-offerts"].sort(),
+      ["/analyse", "/analyse/demo", "/combien-facturer", "/droits-utilisation", "/produits-offerts", "/droits-pub-6-mois"].sort(),
     );
   });
 

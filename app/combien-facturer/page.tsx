@@ -4,11 +4,16 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { ViewPixel } from "@/components/analytics/view-pixel";
-import { exampleHrefFrom } from "@/lib/analytics/views";
+import { exampleHrefFrom, internalHrefFrom } from "@/lib/analytics/views";
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = publicPageMetadata("/combien-facturer");
+
+// Mission #158 — les liens vers les autres guides portent leur origine, pour
+// qu'on sache lequel envoie des lecteurs vers lequel. Jamais d'utm sur un lien
+// interne : il écraserait l'attribution d'acquisition du visiteur (#152).
+const ORIGINE = "combien-facturer";
 
 // Page publique statique (mission #054), même gabarit que /droits-utilisation.
 // Texte fourni par l'éditeur, repris au mot près : seul le balisage est de
@@ -81,7 +86,7 @@ export default function PricingGuidePage() {
           </p>
           <p>
             {/* Seul lien de la section (A7) : la page qui explique ce qu'est une licence. */}
-            <Link href="/droits-utilisation" className="link">
+            <Link href={internalHrefFrom("/droits-utilisation", ORIGINE)} className="link">
               Droits publicitaires
             </Link>{" "}
             — la marque passe ta vidéo en pub payante :
@@ -96,6 +101,15 @@ export default function PricingGuidePage() {
               ["À vie", "+150 à +250 %"],
             ]}
           />
+          {/* Mission #158 — le palier six mois est celui qu'on nous demande le
+              plus : il a sa page, chiffrée en euros niveau par niveau. */}
+          <p>
+            Six mois est le palier le plus demandé.{" "}
+            <Link href={internalHrefFrom("/droits-pub-6-mois", ORIGINE)} className="link">
+              Ce que tu factures en plus pour six mois de pub
+            </Link>{" "}
+            est chiffré en euros, pour les trois niveaux.
+          </p>
           <p>
             Deux cas reviennent souvent et se facturent au mois, pas au forfait : le whitelisting, quand la marque
             diffuse ses pubs depuis ton compte et sous ton nom, et les Spark Ads, quand elle sponsorise une publication
@@ -179,7 +193,7 @@ export default function PricingGuidePage() {
             Une grille te donne un ordre de grandeur. Elle ne sait pas que ta marque a écrit «&nbsp;droits
             d&apos;utilisation inclus&nbsp;» sans dire combien de temps, ni qu&apos;elle compte 40 % du{" "}
             {/* Seul lien vers le guide des produits offerts (mission #055) : aucun mot du texte n'a changé. */}
-            <Link href="/produits-offerts" className="link">
+            <Link href={internalHrefFrom("/produits-offerts", ORIGINE)} className="link">
               paiement en produits
             </Link>
             .
@@ -197,7 +211,7 @@ export default function PricingGuidePage() {
           {/* Mission #120 — le lien porte son origine : c'est la seule
               façon de savoir combien de lecteurs d'un guide vont voir
               l'exemple, sans lire le référent dans le navigateur. */}
-          <Link href={exampleHrefFrom("combien-facturer")} className="link w-fit">
+          <Link href={exampleHrefFrom(ORIGINE)} className="link w-fit">
             {FULL_EXAMPLE.label}
           </Link>
         </Section>

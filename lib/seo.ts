@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BRAND } from "@/lib/brand";
 import { PLANS } from "@/lib/billing/plans";
 import { FAQ } from "@/lib/content/home";
+import { MENTION_TTC } from "@/lib/content/vocabulaire";
 import { SELLER } from "@/lib/legal/identity";
 import { SITE_PREVIEW_ALT, SITE_PREVIEW_SIZE } from "@/lib/share-card/site-preview";
 
@@ -46,23 +47,45 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
     description:
       "Exemple sur une offre fictive : ce que valent les vidéos, les droits publicitaires et l'exclusivité, et par quoi commencer la négociation avec la marque.",
   },
+  // Mission #158 — TITRES DES GUIDES, RÉÉCRITS POUR LA REQUÊTE TAPÉE.
+  //
+  // Relevé de la page 1 de Google le 07/10/2026 sur quatre requêtes réelles :
+  // presque tous les titres concurrents portent l'année, aucun des nôtres ne
+  // la portait. Et nos titres commençaient par une tournure, pas par les mots
+  // qu'on tape.
+  //
+  // Chaque titre de guide commence donc par les mots tapés, porte l'année, et
+  // tient — SUFFIXE DE MARQUE COMPRIS — sous 60 caractères, pour s'afficher en
+  // entier dans un résultat de recherche. Les descriptions tiennent sous 155.
+  // Longueurs vérifiées par tests/guides-reference.test.tsx : la marque est
+  // ajoutée par le modèle de app/layout.tsx, elle n'est pas écrite ici.
   {
     path: "/combien-facturer",
-    title: "Tarifs UGC : combien facturer une vidéo, une story, une photo",
+    title: "Tarifs UGC 2026 : combien facturer une vidéo",
     description:
-      "Les fourchettes par vidéo selon ton niveau, ce que valent les droits pub et l'exclusivité, et les chiffres sur lesquels ouvrir la négociation avec une marque.",
+      "Combien facturer une vidéo, une story, une photo : les fourchettes par niveau, le prix des droits pub, et par quel chiffre ouvrir la négociation.",
   },
   {
     path: "/produits-offerts",
-    title: "Collab contre produits offerts : ça vaut quoi ?",
+    title: "Collab produits offerts 2026 : ça vaut quoi ?",
     description:
-      "Une marque te paie en produits. Ce que ça vaut vraiment, quand c'est acceptable, quand ça ne l'est jamais, et comment ouvrir la négociation sans te brader.",
+      "Un paiement en produits offerts : ce que la contrepartie vaut, quand c'est acceptable, quand ça ne l'est jamais, et par quoi ouvrir la négociation.",
   },
   {
     path: "/droits-utilisation",
-    title: "Droits d'utilisation UGC : ce que tu vends vraiment",
+    title: "Droits d'utilisation UGC 2026 : le vrai prix",
     description:
-      "Une marque veut diffuser ta vidéo en pub ? Ce n'est plus de la création, c'est une licence. Durée, supports, exclusivité : ce que ça vaut en négociation.",
+      "Ta vidéo passe en pub : ce n'est plus de la création, c'est une licence. Durée, supports, territoire, et ce que chaque ligne vaut en négociation.",
+  },
+  {
+    // Mission #158 — première page de la série « une clause d'offre, une
+    // page ». Aucun résultat de la page 1 de Google ne chiffre une durée
+    // précise : ce sont des barèmes généraux. Celle-ci répond à une seule
+    // question, et ses chiffres viennent de la table du dépôt.
+    path: "/droits-pub-6-mois",
+    title: "Droits pub 6 mois 2026 : combien en plus",
+    description:
+      "Une marque veut passer ta vidéo en publicité pendant six mois : ce que tu factures en plus du tournage, en euros, et comment ouvrir la négociation.",
   },
   {
     path: "/tarifs",
@@ -71,7 +94,7 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
     // donc la phrase d'introduction reste courte.
     description: `Une négociation = un deal entier. ${PLANS.filter((plan) => plan.id !== "free")
       .map((plan) => `${plan.name} : ${plan.price}${plan.period ? ` ${plan.period}` : ""}, ${plan.summary.toLowerCase()}`)
-      .join(". ")}. Prix TTC.`,
+      .join(". ")}. ${MENTION_TTC}`,
   },
   {
     path: "/cgv",

@@ -26,6 +26,10 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
       { href: "/combien-facturer", label: "Combien facturer" },
       { href: "/droits-utilisation", label: "Droits d'utilisation" },
       { href: "/produits-offerts", label: "Produits offerts" },
+      // Mission #158 — quatrième guide. Le pied de page est un EMPLACEMENT :
+      // on ne sait pas depuis quelle page on a cliqué, donc pas d'origine ici
+      // non plus (même raison que pour l'exemple, #152).
+      { href: "/droits-pub-6-mois", label: "Droits pub 6 mois" },
       // Mission #152 — l'exemple chiffré, à côté des guides : c'est la même
       // chose qu'eux, une page qui montre avant de demander. Le pied de page
       // est sur toutes les pages, donc ce lien est le seul chemin vers

@@ -117,6 +117,18 @@ export function proInProgress(endsAt: string | null, cancelled: boolean): string
 
 export const PRO_OFFERED = "Ton accès Pro offert est en cours. Rien à payer.";
 
+// Mission #158 — la mention « toutes taxes comprises », écrite une seule fois.
+//
+// Elle apparaît à trois endroits : l'accueil (section Tarifs), la FAQ de
+// l'accueil, et la description de /tarifs lue par les moteurs. Les trois
+// disaient déjà le même mot pour mot ; rien ne les empêchait de diverger au
+// prochain passage. Elles le lisent maintenant ici.
+//
+// Ce n'est PAS la phrase longue de /tarifs : cette page-là est celle qui vend,
+// et elle dit en plus qui collecte la taxe et sous quel libellé le prélèvement
+// apparaît (mission #122). Deux surfaces, deux niveaux de détail, volontaire.
+export const MENTION_TTC = "Prix TTC.";
+
 // Mission #119 — le lien vers l'exemple chiffré, écrit une seule fois.
 //
 // La page /analyse/demo était indexée par Google et atteignable depuis le seul

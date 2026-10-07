@@ -26,7 +26,7 @@ export function SessionUnavailable() {
             La vérification de ta connexion ne répond pas pour le moment. Tu n&apos;as rien à refaire : recharge la page dans
             un instant.
           </p>
-          <p>Rien n&apos;est perdu, et tu n&apos;as pas été déconnecté.</p>
+          <p>Rien n&apos;est perdu, et ta session n&apos;a pas été fermée.</p>
         </div>
         <Link href="/" className="link flex min-h-11 w-fit items-center font-semibold">
           Retour à l&apos;accueil

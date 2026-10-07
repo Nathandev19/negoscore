@@ -72,17 +72,24 @@ describe("page /produits-offerts", () => {
     expect(texte).toContain("parles-en à un comptable");
   });
 
-  it("le bloc final renvoie vers /analyse, et un seul lien part vers /combien-facturer", () => {
+  // Mission #158 — les quatre guides se citent dans leur texte, et chaque lien
+  // interne porte son origine. Ce qui est vérifié ici : un seul lien par guide
+  // cité, l'origine présente sur chacun, et aucun paramètre utm.
+  it("le bloc final renvoie vers /analyse, et un lien part vers chacun des trois autres guides", () => {
     expect(html).toMatch(/href="\/analyse"[^>]*>[^<]*Analyser mon deal/);
-    expect(corps(/href="\/combien-facturer"/g)).toHaveLength(1);
-    expect(corps(/href="\/droits-utilisation"/g)).toHaveLength(0);
+    for (const guide of ["/combien-facturer", "/droits-utilisation", "/droits-pub-6-mois"]) {
+      expect(corps(new RegExp(`href="${guide}[?]de=produits-offerts"`, "g")), guide).toHaveLength(1);
+      expect(corps(new RegExp(`href="${guide}"`, "g")), guide).toHaveLength(0);
+    }
+    expect(corps(/utm_/g)).toHaveLength(0);
   });
 
   it("elle est publique : métadonnées, sitemap, colonne Guides, exemple compris", () => {
     const meta = publicPageMetadata("/produits-offerts");
-    expect(meta.title).toBe("Collab contre produits offerts : ça vaut quoi ?");
+    // Mission #158 — titre réécrit pour la requête tapée, avec l'année.
+    expect(meta.title).toBe("Collab produits offerts 2026 : ça vaut quoi ?");
     expect(meta.description).toBe(
-      "Une marque te paie en produits. Ce que ça vaut vraiment, quand c'est acceptable, quand ça ne l'est jamais, et comment ouvrir la négociation sans te brader.",
+      "Un paiement en produits offerts : ce que la contrepartie vaut, quand c'est acceptable, quand ça ne l'est jamais, et par quoi ouvrir la négociation.",
     );
     expect(sitemap().map((entry) => entry.url)).toContain(`${CANONICAL_ORIGIN}/produits-offerts`);
     const guides = FOOTER_COLUMNS.find((colonne) => colonne.title === "Guides");
@@ -93,14 +100,16 @@ describe("page /produits-offerts", () => {
       "/combien-facturer",
       "/droits-utilisation",
       "/produits-offerts",
+      // Mission #158 — quatrième guide.
+      "/droits-pub-6-mois",
       "/analyse/demo?de=pied-de-page",
     ]);
   });
 
-  it("les dix pages publiques gardent des titres et des descriptions uniques", () => {
-    expect(PUBLIC_PAGES).toHaveLength(10);
-    expect(new Set(PUBLIC_PAGES.map((page) => page.title)).size).toBe(10);
-    expect(new Set(PUBLIC_PAGES.map((page) => page.description)).size).toBe(10);
+  it("les onze pages publiques gardent des titres et des descriptions uniques", () => {
+    expect(PUBLIC_PAGES).toHaveLength(11);
+    expect(new Set(PUBLIC_PAGES.map((page) => page.title)).size).toBe(11);
+    expect(new Set(PUBLIC_PAGES.map((page) => page.description)).size).toBe(11);
   });
 
   it("l'accueil vise une autre intention que le guide des tarifs", () => {

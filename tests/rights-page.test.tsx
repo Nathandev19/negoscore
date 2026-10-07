@@ -60,9 +60,10 @@ describe("page /droits-utilisation", () => {
 
   it("titre et description sont ceux décidés", () => {
     const meta = publicPageMetadata("/droits-utilisation");
-    expect(meta.title).toBe("Droits d'utilisation UGC : ce que tu vends vraiment");
+    // Mission #158 — titre réécrit pour la requête tapée, avec l'année.
+    expect(meta.title).toBe("Droits d'utilisation UGC 2026 : le vrai prix");
     expect(meta.description).toBe(
-      "Une marque veut diffuser ta vidéo en pub ? Ce n'est plus de la création, c'est une licence. Durée, supports, exclusivité : ce que ça vaut en négociation.",
+      "Ta vidéo passe en pub : ce n'est plus de la création, c'est une licence. Durée, supports, territoire, et ce que chaque ligne vaut en négociation.",
     );
   });
 

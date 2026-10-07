@@ -6,11 +6,15 @@ import { Button } from "@/components/ui/button";
 import { WRITTEN_CONTRACT_THRESHOLD_EUR } from "@/lib/legal/fr";
 import { formatEur } from "@/lib/money";
 import { ViewPixel } from "@/components/analytics/view-pixel";
-import { exampleHrefFrom } from "@/lib/analytics/views";
+import { exampleHrefFrom, internalHrefFrom } from "@/lib/analytics/views";
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = publicPageMetadata("/produits-offerts");
+
+// Mission #158 — voir le commentaire de app/combien-facturer/page.tsx :
+// origine interne sur chaque lien vers un autre guide, jamais d'utm.
+const ORIGINE = "produits-offerts";
 
 // Page publique statique (mission #055), même gabarit que les deux autres
 // guides. Texte fourni par l'éditeur, repris au mot près : seul le balisage
@@ -102,13 +106,24 @@ export default function GiftedProductsPage() {
             <li>
               La marque veut passer ta vidéo en publicité. Là, elle achète de la diffusion, et{" "}
               {/* Seul lien vers le guide des tarifs (mission #055) : aucun mot du texte n'a changé. */}
-              <Link href="/combien-facturer" className="link">
+              <Link href={internalHrefFrom("/combien-facturer", ORIGINE)} className="link">
                 la diffusion se paie en euros
+              </Link>
+              . Six mois de pub, par exemple, se chiffrent{" "}
+              {/* Mission #158 — la durée la plus demandée a sa page. */}
+              <Link href={internalHrefFrom("/droits-pub-6-mois", ORIGINE)} className="link">
+                50 à 70 % au-dessus du prix de création
               </Link>
               .
             </li>
             <li>
-              Elle demande une exclusivité, même courte. Tu lui vends des clients que tu n&apos;auras pas.
+              Elle demande une exclusivité, même courte. Tu lui vends des clients que tu n&apos;auras pas. Ce que tu
+              cèdes exactement, et pour combien de temps, c&apos;est{" "}
+              {/* Mission #158 — le principe de la licence, sur sa page. */}
+              <Link href={internalHrefFrom("/droits-utilisation", ORIGINE)} className="link">
+                la question des droits d&apos;utilisation
+              </Link>
+              .
             </li>
             <li>
               Elle demande plusieurs vidéos, un brief précis, des retouches, une deadline. C&apos;est une prestation.
@@ -151,7 +166,7 @@ export default function GiftedProductsPage() {
           {/* Mission #120 — le lien porte son origine : c'est la seule
               façon de savoir combien de lecteurs d'un guide vont voir
               l'exemple, sans lire le référent dans le navigateur. */}
-          <Link href={exampleHrefFrom("produits-offerts")} className="link w-fit">
+          <Link href={exampleHrefFrom(ORIGINE)} className="link w-fit">
             {FULL_EXAMPLE.label}
           </Link>
         </Section>

@@ -24,7 +24,17 @@ export default function config(phase: string): NextConfig {
     // marque propose, jamais ce qu'on vend). Redirection permanente : d'anciens
     // liens existent dans des emails déjà envoyés. Les paramètres (?erreur=…)
     // sont transmis tels quels.
-    redirects: async () => [{ source: "/offres", destination: "/tarifs", permanent: true }],
+    // Mission #158 — /droits-d-utilisation n'a jamais existé : c'est la
+    // variante avec tiret que des gens tapent et que des liens portent, et
+    // elle répondait « page introuvable ». Redirection permanente, comme
+    // /offres. Next sert ces redirections en 308 (permanent qui préserve la
+    // méthode), pas en 301 — mesuré sur le serveur, et les deux sont
+    // équivalents pour les moteurs. tests/guides-reference.test.tsx vérifie que
+    // l'entrée existe et qu'elle est déclarée permanente.
+    redirects: async () => [
+      { source: "/offres", destination: "/tarifs", permanent: true },
+      { source: "/droits-d-utilisation", destination: "/droits-utilisation", permanent: true },
+    ],
     // Routes privées qui ne sont pas des pages (images, API, étapes de connexion) :
     // jamais indexées, même si une adresse circule (mission #047). Les pages
     // privées portent en plus robots noindex dans leurs métadonnées.

@@ -145,6 +145,24 @@ describe("l'image de mesure enregistre la vue", () => {
     expect(cache).toContain("max-age=0");
   });
 
+  // Mission #158 — les quatre guides se citent dans leur texte. Un guide lit
+  // donc son origine comme l'exemple : sans ça, le `?de=` que portent ces
+  // liens serait écrit dans l'adresse sans être mesuré nulle part.
+  it("un guide atteint depuis un autre guide garde l'origine du clic", async () => {
+    await ask({ page: "/droits-pub-6-mois", referer: `${ORIGIN}/droits-pub-6-mois?de=combien-facturer` });
+    expect(recorded()).toMatchObject({ event: "guide_view", entityType: "origine", entityId: "/combien-facturer" });
+  });
+
+  it("une arrivée directe sur un guide est enregistrée, sans origine inventée", async () => {
+    await ask({ page: "/droits-pub-6-mois", referer: `${ORIGIN}/droits-pub-6-mois` });
+    expect(recorded()).toMatchObject({ event: "guide_view", entityType: "origine", entityId: null });
+  });
+
+  it("une origine fabriquée sur un guide ne devient jamais une ligne du cockpit", async () => {
+    await ask({ page: "/droits-pub-6-mois", referer: `${ORIGIN}/droits-pub-6-mois?de=__proto__` });
+    expect(recorded()).toMatchObject({ event: "guide_view", entityId: null });
+  });
+
   it("l'exemple, avec l'origine du clic lue dans l'adresse de la page", async () => {
     await ask({ page: "/analyse/demo", referer: `${ORIGIN}/analyse/demo?de=combien-facturer` });
     expect(recorded()).toMatchObject({ event: "example_view", entityType: "origine", entityId: "/combien-facturer" });

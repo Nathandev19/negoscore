@@ -27,13 +27,15 @@ export const MEASURED_PAGES: Readonly<Record<string, ProductEventName>> = {
   "/combien-facturer": "guide_view",
   "/produits-offerts": "guide_view",
   "/droits-utilisation": "guide_view",
+  // Mission #158 — quatrième guide.
+  "/droits-pub-6-mois": "guide_view",
   "/analyse/demo": "example_view",
   "/analyse": "analysis_page_view",
 };
 
 export type MeasuredPage = keyof typeof MEASURED_PAGES;
 
-export const GUIDE_PATHS = ["/combien-facturer", "/produits-offerts", "/droits-utilisation"] as const;
+export const GUIDE_PATHS = ["/combien-facturer", "/produits-offerts", "/droits-utilisation", "/droits-pub-6-mois"] as const;
 
 export function eventForPage(page: string | null | undefined): ProductEventName | undefined {
   return page ? entryFor(MEASURED_PAGES, page) : undefined;
@@ -58,6 +60,10 @@ export const EXAMPLE_ORIGINS: Readonly<Record<string, string>> = {
   "combien-facturer": "/combien-facturer",
   "produits-offerts": "/produits-offerts",
   "droits-utilisation": "/droits-utilisation",
+  // Mission #158 — quatrième guide, et la table sert maintenant aussi aux
+  // liens d'un guide vers un autre : « d'où vient le lecteur » se lit de la
+  // même façon pour une vue de guide et pour une vue de l'exemple.
+  "droits-pub-6-mois": "/droits-pub-6-mois",
   // Mission #152 — le pied de page, présent sur toutes les pages. Ce n'est pas
   // une page d'origine mais un EMPLACEMENT : on ne peut pas savoir depuis
   // laquelle on a cliqué, et prétendre le contraire serait inventer une
@@ -81,10 +87,19 @@ export function analysisOriginFor(value: string | null | undefined): string | un
   return value ? entryFor(ANALYSIS_ORIGINS, value) : undefined;
 }
 
+// L'adresse d'un lien INTERNE qui porte son origine. Jamais d'utm sur un lien
+// interne : les colonnes utm décrivent l'acquisition du visiteur, et un clic
+// d'une page du site vers une autre ne doit pas la réécrire (mission #152).
+// `?de=` est à part, et il est lu dans une table fermée.
+//
 // L'adresse du lien, depuis une page qui a une clé d'origine. Une visite SANS
 // paramètre reste parfaitement valide : c'est une arrivée directe.
+export function internalHrefFrom(to: string, origin: keyof typeof EXAMPLE_ORIGINS | null): string {
+  return origin ? `${to}?${INTERNAL_ORIGIN_PARAM}=${origin}` : to;
+}
+
 export function exampleHrefFrom(origin: keyof typeof EXAMPLE_ORIGINS | null): string {
-  return origin ? `/analyse/demo?${EXAMPLE_ORIGIN_PARAM}=${origin}` : "/analyse/demo";
+  return internalHrefFrom("/analyse/demo", origin);
 }
 
 // ─── L'adresse de l'image de mesure ────────────────────────────────────────

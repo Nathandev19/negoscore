@@ -5,11 +5,15 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { BRAND } from "@/lib/brand";
 import { ViewPixel } from "@/components/analytics/view-pixel";
-import { exampleHrefFrom } from "@/lib/analytics/views";
+import { exampleHrefFrom, internalHrefFrom } from "@/lib/analytics/views";
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = publicPageMetadata("/droits-utilisation");
+
+// Mission #158 — voir le commentaire de app/combien-facturer/page.tsx :
+// origine interne sur chaque lien vers un autre guide, jamais d'utm.
+const ORIGINE = "droits-utilisation";
 
 // Page publique statique (mission #052). Texte fourni par l'éditeur, repris au
 // mot près : seul le balisage est de nous. La citation de l'article L131-3 est
@@ -98,7 +102,7 @@ export default function UsageRightsPage() {
           {/* Seul lien ajouté vers le guide des tarifs (mission #054) : aucun mot du texte n'a changé. */}
           <p>
             Ce sont les{" "}
-            <Link href="/combien-facturer" className="link">
+            <Link href={internalHrefFrom("/combien-facturer", ORIGINE)} className="link">
               ordres de grandeur
             </Link>{" "}
             que {BRAND.name} applique, au-dessus du prix de création :
@@ -109,6 +113,15 @@ export default function UsageRightsPage() {
             </li>
             <li>Trois mois d&apos;exclusivité sur la catégorie : compte 30 % à 50 % en plus.</li>
           </ul>
+          {/* Mission #158 — les deux durées les plus demandées ont désormais
+              leur page chiffrée ; cette section-ci donne le principe. */}
+          <p>
+            Six mois, c&apos;est la durée qu&apos;on nous demande le plus :{" "}
+            <Link href={internalHrefFrom("/droits-pub-6-mois", ORIGINE)} className="link">
+              ce que tu factures en plus pour six mois de pub
+            </Link>{" "}
+            est chiffré en euros, niveau par niveau.
+          </p>
           <p>
             Un exemple concret. Trois vidéos TikTok et une story chez un créateur qui débute, ça vaut entre 300 et 540 €
             de création. Ajoute six mois de droits pub et trois mois d&apos;exclusivité, et l&apos;offre juste monte
@@ -145,6 +158,15 @@ export default function UsageRightsPage() {
             Une marque sérieuse répond en trois lignes. Une marque qui espérait que tu ne demandes pas, tu le sauras à
             sa réponse.
           </p>
+          {/* Mission #158 — le cas où il n'y a pas d'argent du tout : c'est la
+              même conversation, et elle a sa page. */}
+          <p>
+            Et si la réponse est qu&apos;il n&apos;y a pas de budget, mais des{" "}
+            <Link href={internalHrefFrom("/produits-offerts", ORIGINE)} className="link">
+              produits offerts
+            </Link>{" "}
+            : la diffusion publicitaire, elle, se paie quand même en euros.
+          </p>
         </Section>
 
         <Section title="Vérifie ton offre">
@@ -161,7 +183,7 @@ export default function UsageRightsPage() {
           {/* Mission #120 — le lien porte son origine : c'est la seule
               façon de savoir combien de lecteurs d'un guide vont voir
               l'exemple, sans lire le référent dans le navigateur. */}
-          <Link href={exampleHrefFrom("droits-utilisation")} className="link w-fit">
+          <Link href={exampleHrefFrom(ORIGINE)} className="link w-fit">
             {FULL_EXAMPLE.label}
           </Link>
         </Section>

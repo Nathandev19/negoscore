@@ -395,7 +395,7 @@ describe("#117 — chaque point suit le champ qui lui correspond", () => {
     // Pour chaque champ écrit, aucun texte affiché ne doit dire qu'il manque.
     const analysis = avec({ rate_percent: 15, base: "montant HT hors frais de port", attribution_days: 30, payout: "le 15 du mois suivant, à partir de 50 € cumulés" });
     const textes = analysis.negotiate.flatMap((point) => [point.label, point.why]).join(" ");
-    for (const demande of ["sans assiette écrite", "sans ce nombre écrit", "ne dit pas quand tu es payée", "sans dire ce qu'elle rapporte"]) {
+    for (const demande of ["sans assiette écrite", "sans ce nombre écrit", "ne dit pas à quelle date le versement tombe", "sans dire ce qu'elle rapporte"]) {
       expect(textes, demande).not.toContain(demande);
     }
   });

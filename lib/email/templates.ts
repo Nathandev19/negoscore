@@ -23,6 +23,14 @@ const PLAN_OBTAINED: Record<PlanKey, string> = {
   pro: `accès Pro, jusqu'à ${negotiations(NEGOTIATIONS.proPerPeriod)} par mois`,
 };
 
+// Mission #158 — « Tes conditions générales de vente » disait le contraire de
+// la vérité : le vendeur, c'est Negoscore, pas la destinataire de l'email. Le
+// lien pointe vers NOS conditions. Écrit une seule fois, et repris par les
+// deux versions des trois emails — texte brut et HTML.
+function conditionsLine(siteUrl: string): string {
+  return `Les conditions : ${siteUrl}/cgv`;
+}
+
 const CONSENT =
   "Tu as accepté, au moment du paiement, que l'exécution du service commence immédiatement, avant la fin du délai de rétractation de 14 jours, et tu as reconnu perdre ton droit de rétractation une fois le service fourni. Cet email constitue la confirmation de cet accord.";
 
@@ -97,7 +105,7 @@ export function purchaseConfirmationEmail(options: {
     "",
     CONSENT,
     "",
-    `Tes conditions générales de vente : ${siteUrl}/cgv`,
+    conditionsLine(siteUrl),
     `Une question : ${SELLER.email}`,
     "",
     signature(),
@@ -127,7 +135,7 @@ export function purchaseConfirmationEmail(options: {
       : []),
     { kind: "heading", text: "Ton droit de rétractation" },
     { kind: "paragraph", text: CONSENT },
-    { kind: "small", text: `Tes conditions générales de vente : ${siteUrl}/cgv` },
+    { kind: "small", text: conditionsLine(siteUrl) },
     { kind: "small", text: `Une question : ${SELLER.email}` },
   ];
 
@@ -161,7 +169,7 @@ export function cancellationConfirmationEmail(options: { to: string; endsAt: Dat
     "",
     credits,
     "",
-    `Tes conditions générales de vente : ${siteUrl}/cgv`,
+    conditionsLine(siteUrl),
     `Une question : ${SELLER.email}`,
     "",
     signature(),
@@ -181,7 +189,7 @@ export function cancellationConfirmationEmail(options: { to: string; endsAt: Dat
         { kind: "paragraph", text: credits },
         // ADDED (#044)
         { kind: "button", label: "Voir mon compte", url: `${siteUrl}/compte` },
-        { kind: "small", text: `Tes conditions générales de vente : ${siteUrl}/cgv` },
+        { kind: "small", text: conditionsLine(siteUrl) },
         { kind: "small", text: `Une question : ${SELLER.email}` },
       ],
       siteUrl,
@@ -208,7 +216,7 @@ export function accountDeletionEmail(options: { to: string; siteUrl: string }): 
     "",
     alert,
     "",
-    `Tes conditions générales de vente : ${siteUrl}/cgv`,
+    conditionsLine(siteUrl),
     `Une question : ${SELLER.email}`,
     "",
     signature(),
@@ -229,7 +237,7 @@ export function accountDeletionEmail(options: { to: string; siteUrl: string }): 
         { kind: "paragraph", text: alert, strong: true },
         // Pas d'appel à revenir : un simple moyen d'écrire, pour l'alerte ci-dessus.
         { kind: "button", label: "Écrire au support", url: `mailto:${SELLER.email}` },
-        { kind: "small", text: `Tes conditions générales de vente : ${siteUrl}/cgv` },
+        { kind: "small", text: conditionsLine(siteUrl) },
       ],
       siteUrl,
     }),

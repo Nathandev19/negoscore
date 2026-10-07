@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { FEATURED_PLAN, PLANS } from "@/lib/billing/plans";
 import { exampleHrefFrom } from "@/lib/analytics/views";
-import { FULL_EXAMPLE, negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
+import { FULL_EXAMPLE, MENTION_TTC, negotiations, NEGOTIATIONS } from "@/lib/content/vocabulaire";
 import { FAQ, STEPS, TRUST } from "@/lib/content/home";
 import { JsonLd } from "@/components/seo/json-ld";
 import { faqJsonLd, publicPageMetadata, softwareApplicationJsonLd } from "@/lib/seo";
@@ -152,7 +152,8 @@ export default function HomePage() {
               <h2 className="text-h1 font-extrabold">Ce que ça coûte</h2>
               <p className="measure">
                 Ta première négociation est gratuite{NEGOTIATIONS.free > 1 ? ` (${negotiations(NEGOTIATIONS.free)})` : ""}, sans
-                carte bancaire. Une négociation couvre un deal en entier, de l&apos;analyse à la conclusion. Prix TTC.
+                carte bancaire. Une négociation couvre un deal en entier, de l&apos;analyse à la conclusion.{" "}
+                {MENTION_TTC}
               </p>
             </div>
             <ul className="flex flex-col">

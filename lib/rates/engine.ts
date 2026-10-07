@@ -103,7 +103,7 @@ export const LEGACY_ENGINE_ASSUMPTIONS: readonly string[] = [
 // Offre chiffrée dans une autre devise que l'euro : la fourchette reste
 // calculée, mais le montant n'y est pas confronté (mission #058).
 export const FOREIGN_CURRENCY_ASSUMPTION =
-  "Le montant de cette offre n'est pas en euros : il n'est pas comparé à la fourchette, qui est en euros. Convertis-le au cours du jour avant de te décider, et demande dans quelle devise tu seras payée.";
+  "Le montant de cette offre n'est pas en euros : il n'est pas comparé à la fourchette, qui est en euros. Convertis-le au cours du jour avant de te décider, et demande dans quelle devise le paiement sera fait.";
 
 // Au-delà de ce rapport entre borne basse estimée et montant proposé, l'écart
 // est signalé comme inhabituel.

@@ -1,5 +1,5 @@
 import { PLANS } from "@/lib/billing/plans";
-import { COPILOT_PROMISE, ESTIMATE_DISCLAIMER, exchanges, NEGOTIATION_EXCHANGES, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
+import { COPILOT_PROMISE, ESTIMATE_DISCLAIMER, exchanges, MENTION_TTC, NEGOTIATION_EXCHANGES, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
 import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
 import rates from "@/lib/rates/fr-2026.3.json";
 import { MAX_PDF_PAGES } from "@/lib/upload";
@@ -81,7 +81,7 @@ export const FAQ = [
   {
     question: "Combien ça coûte ?",
     // Relance gratuite d'une analyse incomplète : mission #043, FAQ corrigée en #046.
-    answer: `Ta première négociation est gratuite. Si l'analyse ressort incomplète parce que le message de la marque ne dit pas assez ce qu'elle demande, tu peux la relancer gratuitement une fois, dans les ${RETRY_WINDOW_DAYS} jours, avec les précisions obtenues, sans que ça compte comme une négociation de plus. Ensuite : ${PLANS_TEXT}. Prix TTC.`,
+    answer: `Ta première négociation est gratuite. Si l'analyse ressort incomplète parce que le message de la marque ne dit pas assez ce qu'elle demande, tu peux la relancer gratuitement une fois, dans les ${RETRY_WINDOW_DAYS} jours, avec les précisions obtenues, sans que ça compte comme une négociation de plus. Ensuite : ${PLANS_TEXT}. ${MENTION_TTC}`,
   },
 ] as const;
 

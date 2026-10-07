@@ -158,7 +158,7 @@ export function commissionCandidates(deal: Deal, baseLow: number | null, baseHig
   if (pay.payout === null) {
     out.push({
       label: "Faire écrire quand la commission est versée, et à partir de quel seuil",
-      why: "L'offre ne dit pas quand tu es payée ni à partir de quel montant. Un seuil de déclenchement peut rendre une commission inatteignable : demande la fréquence, le délai et le minimum.",
+      why: "L'offre ne dit pas à quelle date le versement tombe, ni à partir de quel montant. Un seuil de déclenchement peut rendre une commission inatteignable : demande la fréquence, le délai et le minimum.",
       sameAs: PAYOUT,
     });
   }

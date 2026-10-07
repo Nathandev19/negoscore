@@ -34,7 +34,7 @@ export default async function ResultNotFound() {
             <div className="flex flex-col gap-3">
               <h1 className="text-h1 font-extrabold">Cette analyse n&apos;est pas sur ton compte</h1>
               <p>
-                Tu es bien connecté. Mais cette analyse n&apos;est pas rattachée à ton compte : elle a sans doute été
+                Ta session est bien ouverte. Mais cette analyse n&apos;est pas rattachée à ton compte : elle a sans doute été
                 faite sans compte, dans un autre navigateur, ou elle a été supprimée depuis.
               </p>
               <p>

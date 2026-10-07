@@ -166,12 +166,12 @@ describe("A3 — les pages de résultat pendant une panne", () => {
     expect(fake.loads).toBe(1);
   });
 
-  it("la 404 des résultats n'affirme pas « tu es bien connecté » quand elle n'a pas pu demander", async () => {
+  it("la 404 des résultats n'affirme pas que la session est ouverte quand elle n'a pas pu demander", async () => {
     fake.cookie = FRESH;
     fake.user = "network";
     const { default: NotFound } = await import("@/app/analyse/resultat/not-found");
     const html = lisible(renderToStaticMarkup(await NotFound()));
-    expect(html).not.toContain("Tu es bien connecté");
+    expect(html).not.toContain("Ta session est bien ouverte");
   });
 });
 

@@ -98,7 +98,11 @@ export async function GET(request: Request) {
   if (!from || affichee !== page) return image();
   const query = from.searchParams;
   const originKey = query.get(INTERNAL_ORIGIN_PARAM);
-  const origin = event === "example_view" ? originPathFor(originKey)
+  // Mission #158 — un guide lit son origine comme l'exemple. Les quatre
+  // guides se citent désormais dans leur texte : sans ça, le paramètre `?de=`
+  // qu'ils portent serait écrit dans l'adresse sans être mesuré nulle part, et
+  // on ne saurait pas lequel envoie des lecteurs vers lequel.
+  const origin = event === "example_view" || event === "guide_view" ? originPathFor(originKey)
     : event === "analysis_page_view" ? analysisOriginFor(originKey) : undefined;
 
   await recordProductEvent({
@@ -115,7 +119,7 @@ export async function GET(request: Request) {
     }),
     // D'où vient le clic vers l'exemple ou l'analyse. `null` = arrivée directe,
     // et c'est une information, pas un trou.
-    entityType: event === "example_view" || event === "analysis_page_view" ? "origine" : null,
+    entityType: event === "example_view" || event === "analysis_page_view" || event === "guide_view" ? "origine" : null,
     entityId: origin ?? null,
   });
   return image();

@@ -92,7 +92,9 @@ describe("C — plus de « débloquée » au-dessus d'une page introuvable", () 
     const html = renderToStaticMarkup(await ResultNotFound());
     expect(text(html)).toContain("Cette analyse n'est pas sur ton compte");
     expect(text(html)).toContain(
-      "Tu es bien connecté. Mais cette analyse n'est pas rattachée à ton compte : elle a sans doute été faite sans compte, dans un autre navigateur, ou elle a été supprimée depuis.",
+      // Mission #158 — deuxième personne au neutre : « connecté » accordait au
+      // masculin une phrase adressée à n'importe qui.
+      "Ta session est bien ouverte. Mais cette analyse n'est pas rattachée à ton compte : elle a sans doute été faite sans compte, dans un autre navigateur, ou elle a été supprimée depuis.",
     );
     expect(text(html)).toContain(
       "Pour la retrouver, retourne dans le navigateur où tu l'as lancée et clique à nouveau sur « Débloquer ». Elle sera rattachée à ton compte, même si tu ouvres ensuite le lien reçu par email ailleurs.",

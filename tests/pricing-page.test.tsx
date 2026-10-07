@@ -166,16 +166,20 @@ describe("page /combien-facturer", () => {
     expect(html).toMatch(/href="\/analyse"[^>]*>[^<]*Analyser mon deal/);
   });
 
+  // Mission #158 — le lien porte son origine (`?de=`), jamais un utm.
   it("un seul lien vers /droits-utilisation, et la page réciproque en a un vers ici", async () => {
-    expect([...html.matchAll(/href="\/droits-utilisation"/g)].filter((m) => html.indexOf("<footer") > (m.index ?? 0))).toHaveLength(1);
+    const avantPied = (markup: string, motif: RegExp) =>
+      [...markup.matchAll(motif)].filter((m) => markup.indexOf("<footer") > (m.index ?? 0));
+    expect(avantPied(html, /href="\/droits-utilisation\?de=combien-facturer"/g)).toHaveLength(1);
     const { default: UsageRightsPage } = await import("@/app/droits-utilisation/page");
     const rights = renderToStaticMarkup(<UsageRightsPage />);
-    expect([...rights.matchAll(/href="\/combien-facturer"/g)].filter((m) => rights.indexOf("<footer") > (m.index ?? 0))).toHaveLength(1);
+    expect(avantPied(rights, /href="\/combien-facturer\?de=droits-utilisation"/g)).toHaveLength(1);
   });
 
   it("elle est publique : métadonnées, sitemap, et une entrée dans la colonne Guides", () => {
     const meta = publicPageMetadata("/combien-facturer");
-    expect(meta.title).toBe("Tarifs UGC : combien facturer une vidéo, une story, une photo");
+    // Mission #158 — titre réécrit pour la requête tapée, avec l'année.
+    expect(meta.title).toBe("Tarifs UGC 2026 : combien facturer une vidéo");
     expect(sitemap().map((entry) => entry.url)).toContain(`${CANONICAL_ORIGIN}/combien-facturer`);
     const guides = FOOTER_COLUMNS.find((colonne) => colonne.title === "Guides");
     // Mission #152 — l'exemple chiffré rejoint la colonne : c'est le même
@@ -185,6 +189,8 @@ describe("page /combien-facturer", () => {
           "/combien-facturer",
           "/droits-utilisation",
           "/produits-offerts",
+          // Mission #158 — quatrième guide.
+          "/droits-pub-6-mois",
           "/analyse/demo?de=pied-de-page",
         ]);
     expect(FOOTER_COLUMNS.find((colonne) => colonne.title === "Produit")?.links.map((lien) => lien.href)).not.toContain(
@@ -235,7 +241,9 @@ describe("guide des tarifs — compléments #055", () => {
     expect(upliftCap(deal())).toBe(1.5);
   });
 
+  // Mission #158 — l'origine interne (`?de=`) fait partie du lien.
   it("un seul lien vers /produits-offerts, dans le corps de la page", () => {
-    expect([...html.matchAll(/href="\/produits-offerts"/g)].filter((m) => html.indexOf("<footer") > (m.index ?? 0))).toHaveLength(1);
+    const motif = /href="\/produits-offerts\?de=combien-facturer"/g;
+    expect([...html.matchAll(motif)].filter((m) => html.indexOf("<footer") > (m.index ?? 0))).toHaveLength(1);
   });
 });

@@ -48,6 +48,9 @@ describe("robots.txt et sitemap.xml", () => {
       "https://www.negoscore.fr/produits-offerts",
       // Mission #052 : page publique ajoutée au sitemap.
       "https://www.negoscore.fr/droits-utilisation",
+      // Mission #158 : quatrième guide, première page de la série
+      // « une clause d'offre, une page ».
+      "https://www.negoscore.fr/droits-pub-6-mois",
       "https://www.negoscore.fr/tarifs",
       "https://www.negoscore.fr/cgv",
       "https://www.negoscore.fr/confidentialite",

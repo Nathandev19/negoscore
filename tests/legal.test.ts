@@ -150,7 +150,7 @@ describe("email de confirmation d'achat", () => {
       "Date : 16 septembre 2026",
       "Ce que tu as obtenu : 3 négociations ajoutées à ton compte",
       "Tu as accepté, au moment du paiement, que l'exécution du service commence immédiatement, avant la fin du délai de rétractation de 14 jours, et tu as reconnu perdre ton droit de rétractation une fois le service fourni. Cet email constitue la confirmation de cet accord.",
-      "Tes conditions générales de vente : https://www.negoscore.fr/cgv",
+      "Les conditions : https://www.negoscore.fr/cgv",
       "Une question : contact@negoscore.fr",
       "— Negoscore",
       "Nathan Pakou Gakosso Owah, EI — 77 rue François Arago, 93100 Montreuil",
