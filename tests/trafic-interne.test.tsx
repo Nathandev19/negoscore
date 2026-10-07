@@ -58,7 +58,11 @@ vi.mock("@/lib/auth/account", () => ({
   ensureAccount: async () => ({ created: false }),
   attachAnonDeals: async () => ({ attached: 0, refused: false }),
 }));
-vi.mock("@/lib/auth/login-claims", () => ({ redeemLoginClaim: async () => null }));
+vi.mock("@/lib/auth/login-claims", () => ({
+  redeemLoginClaim: async () => null,
+  // Mission #162 — la réclamation rend aussi l'attribution relevée à la demande.
+  redeemLoginClaimFull: async () => ({ anonToken: null, attribution: null }),
+}));
 vi.mock("@/lib/billing/free-usage", () => ({ mergeFreeUsage: async () => undefined }));
 vi.mock("@/lib/analytics/first-party", () => ({ recordProductEvent: async () => undefined }));
 

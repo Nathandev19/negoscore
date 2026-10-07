@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useActionState, useId, type FormEvent } from "react";
+import { Suspense, useActionState, useId, useRef, type FormEvent } from "react";
+import { currentAttribution } from "@/components/analytics/first-party-view";
 import { requestMagicLink, type LoginState } from "@/app/connexion/actions";
 import { NextFromUrl } from "@/app/connexion/login-from-url";
 import { safeNextPath } from "@/lib/auth/next-path";
@@ -24,6 +25,13 @@ const INITIAL: LoginState = { status: "idle", message: null };
 export function LoginForm() {
   const [state, action, pending] = useActionState(requestMagicLink, INITIAL);
   const emailId = useId();
+  // Mission #162 — l'attribution de la page courante, écrite dans un champ
+  // caché à l'envoi, comme le fait déjà le formulaire de paiement. Elle ne dit
+  // quelque chose que si /connexion elle-même porte des UTM ; le reste du
+  // temps c'est le serveur qui retrouve l'origine par le jeton anonyme
+  // (app/connexion/actions.ts). Sans JavaScript, ce champ reste vide, et une
+  // inscription non attribuée vaut mieux qu'une origine inventée.
+  const attributionField = useRef<HTMLInputElement>(null);
 
   if (state.status === "sent") {
     return <LinkSent email={state.email ?? ""} next={state.next ?? safeNextPath(null)} />;
@@ -37,6 +45,7 @@ export function LoginForm() {
       return;
     }
     try {
+      if (attributionField.current) attributionField.current.value = JSON.stringify(currentAttribution());
     } catch {
       // mesure indisponible : la connexion passe avant
     }
@@ -50,6 +59,9 @@ export function LoginForm() {
       <Suspense fallback={null}>
         <NextFromUrl />
       </Suspense>
+      {/* Mission #162 — rempli à l'envoi, jamais au rendu : la page est
+          statique, et une valeur figée au build ne dirait rien de la visite. */}
+      <input type="hidden" name="attribution" ref={attributionField} defaultValue="" />
       {/* Étiquette visible : elle reste là quand le champ est rempli, ce que
           l'exemple dans le champ ne fait pas (mission #062, A7). */}
       <label htmlFor={emailId} className="text-small font-semibold text-encre">

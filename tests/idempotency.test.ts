@@ -14,6 +14,11 @@ type DealRow = {
   anon_token: string | null;
   status: string;
   idempotency_key: string | null;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  referrer_host?: string | null;
 };
 type AnalysisRow = { id: string; deal_id: string; payload: unknown };
 
@@ -23,6 +28,7 @@ const db = vi.hoisted(() => ({
   freeUsage: new Map<string, number>(),
   // Migration 019 appliquée ou non.
   idempotencyColumn: true,
+  attributionColumns: true,
   seq: 0,
 }));
 const user = vi.hoisted(() => ({ current: null as { id: string; email: string } | null }));
@@ -113,12 +119,20 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
         if (key !== null && db.deals.some((d) => d.idempotency_key === key)) {
           throw new actual.SupabaseRequestError("doublon", 409, "23505");
         }
+        // Mission #162 — et l'attribution de la visite qui a soumis l'offre,
+        // refusée tant que la migration 20261007000039 n'est pas appliquée.
+        if (row.utm_source !== undefined && !db.attributionColumns) throw missingColumn();
         db.deals.push({
           id,
           user_id: (row.user_id as string) ?? null,
           anon_token: (row.anon_token as string) ?? null,
           status: String(row.status),
           idempotency_key: key,
+          utm_source: (row.utm_source as string) ?? null,
+          utm_medium: (row.utm_medium as string) ?? null,
+          utm_campaign: (row.utm_campaign as string) ?? null,
+          utm_content: (row.utm_content as string) ?? null,
+          referrer_host: (row.referrer_host as string) ?? null,
         });
       }
       if (table === "analyses") db.analyses.push({ id, deal_id: String(row.deal_id), payload: row.payload });
@@ -175,6 +189,7 @@ beforeEach(() => {
   db.analyses = [];
   db.freeUsage.clear();
   db.idempotencyColumn = true;
+  db.attributionColumns = true;
   db.seq = 0;
   user.current = null;
   model.calls = 0;
@@ -308,5 +323,50 @@ describe("clé d'idempotence d'une analyse", () => {
     const response = await post({ text: OFFER, idempotencyKey: "trop court" });
     expect(response.status).toBe(200);
     expect(db.deals[0].idempotency_key).toBeNull();
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #162 — D'OÙ VENAIT LA VISITE QUI A SOUMIS CETTE OFFRE.
+//
+// C'est le seul moment où le serveur tient les deux bouts : l'attribution,
+// envoyée par le navigateur depuis la page d'arrivée où les UTM sont encore
+// dans l'adresse, et le jeton anonyme de ce navigateur. Huit minutes plus
+// tard, sur /connexion, il ne reste plus que le jeton — et c'est par lui que
+// l'attribution est retrouvée (app/connexion/actions.ts).
+describe("l'attribution de la visite est rangée avec le deal", () => {
+  const INSTAGRAM = {
+    path: "/",
+    referrer_host: "instagram.com",
+    utm_source: "Instagram",
+    utm_medium: "organic_social",
+    utm_campaign: "lancement",
+    utm_content: "bio_instagram",
+  };
+
+  it("les UTM de l'arrivée sont écrits sur le deal, normalisés comme partout", async () => {
+    await post({ text: OFFER, attribution: INSTAGRAM });
+    expect(db.deals).toHaveLength(1);
+    expect(db.deals[0]).toMatchObject({
+      anon_token: TOKEN,
+      utm_source: "instagram",
+      utm_medium: "organic_social",
+      utm_campaign: "lancement",
+      utm_content: "bio_instagram",
+      referrer_host: "instagram.com",
+    });
+  });
+
+  it("aucune attribution envoyée : rien n'est inventé sur le deal", async () => {
+    await post({ text: OFFER });
+    expect(db.deals[0]).toMatchObject({ utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null, referrer_host: null });
+  });
+
+  it("colonnes absentes : l'analyse passe quand même, sans l'attribution", async () => {
+    db.attributionColumns = false;
+    const response = await post({ text: OFFER, attribution: INSTAGRAM });
+    expect(response.status).toBe(200);
+    expect(db.deals).toHaveLength(1);
+    expect(db.deals[0].utm_source).toBeNull();
   });
 });

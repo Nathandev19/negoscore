@@ -2,7 +2,8 @@
 
 import { cookies, headers } from "next/headers";
 import { newPkcePair, safeNextPath, sendMagicLink, VERIFIER_COOKIE } from "@/lib/auth/session";
-import { CLAIM_PARAM, createLoginClaim } from "@/lib/auth/login-claims";
+import { CLAIM_PARAM, createLoginClaim, firstTouchForAnonToken } from "@/lib/auth/login-claims";
+import { hasAttribution, mergeAttribution, parseAttribution } from "@/lib/analytics/first-party";
 import { ANON_COOKIE, hashIp } from "@/lib/security/request";
 import { configuredSiteUrl, originFromHeaders } from "@/lib/site-url";
 import { hitUsageGuard } from "@/lib/security/usage-guard";
@@ -26,6 +27,20 @@ function requestedNext(formData: FormData, referer: string | null, origin: strin
     return safeNextPath(page.searchParams.get("next"));
   } catch {
     return safeNextPath(null);
+  }
+}
+
+// L'attribution envoyée par le champ caché du formulaire. JSON illisible,
+// champ absent (sans JavaScript), valeur fabriquée : on rend un objet vide, et
+// parseAttribution borne et nettoie tout ce qui passe — comme pour /api/events
+// et le formulaire de paiement, qui reçoivent la même chose du navigateur.
+function lireAttribution(formData: FormData): unknown {
+  const brut = formData.get("attribution");
+  if (typeof brut !== "string" || brut === "" || brut.length > 2000) return {};
+  try {
+    return JSON.parse(brut);
+  } catch {
+    return {};
   }
 }
 
@@ -64,7 +79,27 @@ export async function requestMagicLink(_previous: LoginState, formData: FormData
     // lien : ouvert ailleurs, le lien rattachera quand même ces analyses.
     // Le jeton est lu dans le cookie httpOnly, jamais reçu du formulaire.
     const anonToken = jar.get(ANON_COOKIE)?.value ?? null;
-    const claim = anonToken ? await createLoginClaim(email, anonToken) : null;
+
+    // Mission #162 — L'ATTRIBUTION EST RANGÉE AVEC LA DEMANDE.
+    //
+    // Deux sources, et la priorité va à la page courante, jamais l'inverse :
+    // une attribution déjà présente n'est pas écrasée (même règle qu'en #152).
+    //   1. ce que le navigateur envoie du formulaire — il ne dit quelque chose
+    //      que si /connexion elle-même porte des UTM (lien direct) ;
+    //   2. l'attribution de la visite qui a soumis l'offre, relue côté serveur
+    //      par le jeton anonyme. C'est elle qui règle le cas réel : les UTM
+    //      sont restés sur la page d'arrivée, huit minutes plus tôt.
+    //
+    // Rien n'est inventé : les deux absentes, la réclamation ne porte aucune
+    // attribution et `signup` restera `non_attribue`.
+    const duFormulaire = parseAttribution(lireAttribution(formData));
+    const duPremierContact = await firstTouchForAnonToken(anonToken);
+    const attribution = mergeAttribution(duFormulaire, duPremierContact);
+
+    // Une réclamation existe désormais aussi pour porter SEULEMENT une
+    // attribution : quelqu'un qui arrive avec des UTM et crée son compte sans
+    // avoir rien analysé n'a pas de jeton anonyme, et son origine compte.
+    const claim = anonToken || hasAttribution(attribution) ? await createLoginClaim(email, anonToken, attribution) : null;
     const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}${claim ? `&${CLAIM_PARAM}=${claim}` : ""}`;
     const sent = await sendMagicLink(email, challenge, redirectTo);
     if (!sent) {

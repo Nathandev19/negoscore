@@ -1,5 +1,5 @@
 import { attachAnonDeals, ensureAccount } from "@/lib/auth/account";
-import { redeemLoginClaim } from "@/lib/auth/login-claims";
+import { redeemLoginClaimFull } from "@/lib/auth/login-claims";
 import { mergeFreeUsage } from "@/lib/billing/free-usage";
 import { expiredCookieHeader, sessionCookieHeaders, type Session } from "@/lib/auth/session";
 export { signedInRedirectPath } from "@/lib/auth/next-path";
@@ -56,11 +56,25 @@ export async function completeSignIn(
   options: { extraCookies?: string[]; source: "callback" | "confirm"; claim?: string | null },
 ): Promise<Response> {
   const account = (await ensureAccount(session.user)) ?? { created: false };
-  if (account.created) {
-    await recordProductEvent({ event: "signup", userId: session.user.id, entityType: "user", entityId: session.user.id, dedupeKey: `signup:${session.user.id}` });
-  }
   const anonToken = readCookie(request, ANON_COOKIE);
-  const claimedToken = await redeemLoginClaim(options.claim ?? null, session.user.email);
+  // Mission #162 — la réclamation est consommée AVANT d'écrire `signup` :
+  // c'est elle qui porte l'attribution relevée quand le lien a été demandé,
+  // dans le navigateur qui savait encore d'où venait la visite. Le clic, lui,
+  // arrive d'une messagerie : sans cookie, sans référent, sans rien.
+  const claimed = await redeemLoginClaimFull(options.claim ?? null, session.user.email);
+  const claimedToken = claimed.anonToken;
+  if (account.created) {
+    await recordProductEvent({
+      event: "signup",
+      userId: session.user.id,
+      entityType: "user",
+      entityId: session.user.id,
+      dedupeKey: `signup:${session.user.id}`,
+      // Aucune attribution dans la réclamation = `non_attribue`. On ne devine
+      // jamais une origine à partir du clic lui-même.
+      ...(claimed.attribution ? { attribution: claimed.attribution } : {}),
+    });
+  }
   const tokens = [...new Set([anonToken, claimedToken].filter((token): token is string => Boolean(token)))];
 
   // RISQUE ACCEPTÉ (mission #068), à connaître avant de toucher à ce qui suit.
@@ -104,6 +118,8 @@ export async function completeSignIn(
       // Secret présent dans le lien, et réclamation effectivement utilisée.
       claim_presented: Boolean(options.claim),
       claim_redeemed: claimedToken !== null,
+      // Mission #162 — l'attribution a-t-elle survécu au saut de navigateur ?
+      claim_attributed: claimed.attribution !== null,
     }),
   );
 

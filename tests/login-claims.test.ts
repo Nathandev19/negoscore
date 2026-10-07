@@ -7,8 +7,10 @@ import { baseExtraction } from "@/lib/fixtures/preview-states";
 // de l'analyse (A), puis clic sur le lien depuis un autre navigateur (B), sans
 // cookie anonyme. Aucun appel réseau : Supabase Auth et PostgREST sont simulés.
 
-type Deal = { id: string; anon_token: string | null; user_id: string | null };
-type Claim = { id: string; email: string; anon_token: string; nonce_hash: string; expires_at: string };
+type Deal = { id: string; anon_token: string | null; user_id: string | null } & Record<string, unknown>;
+// Mission #162 — la réclamation peut n'avoir aucun jeton (elle ne porte alors
+// qu'une attribution), et porte cinq colonnes de mesure en plus.
+type Claim = { id: string; email: string; anon_token: string | null; nonce_hash: string; expires_at: string } & Record<string, unknown>;
 
 const db = vi.hoisted(() => ({
   deals: [] as Deal[],
@@ -38,6 +40,20 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
       db.claims.push(claim);
       return claim;
     },
+    deleteRowsReturningAll: async (table: string, filter: string) => {
+      if (table !== "login_claims") throw new Error(`suppression inattendue : ${table}`);
+      const hash = param(filter, "nonce_hash", "eq");
+      const email = param(filter, "email", "eq");
+      const after = param(filter, "expires_at", "gt");
+      const hit = db.claims.filter(
+        (c) =>
+          (hash === undefined || c.nonce_hash === hash) &&
+          (email === undefined || c.email === email) &&
+          (after === undefined || c.expires_at > after),
+      );
+      db.claims = db.claims.filter((c) => !hit.includes(c));
+      return hit.map((c) => ({ ...c }));
+    },
     deleteRowsReturning: async (table: string, filter: string, key: string) => {
       if (table !== "login_claims") throw new Error(`suppression inattendue : ${table}`);
       const hash = param(filter, "nonce_hash", "eq");
@@ -57,6 +73,12 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
     selectRows: async (table: string, query: string) => {
       if (table === "deals") {
         const token = param(query, "anon_token", "eq");
+        // Mission #162 — la lecture du premier contact demande les colonnes de
+        // mesure ; celle du rattachement demande le propriétaire. Deux
+        // questions, deux réponses.
+        if (query.includes("utm_source")) {
+          return db.deals.filter((d) => d.anon_token === token).map((d) => ({ ...d }));
+        }
         return db.deals.filter((d) => d.anon_token === token && d.user_id !== null).map((d) => ({ user_id: d.user_id }));
       }
       if (table === "analyses") {
@@ -224,21 +246,21 @@ describe("A5 — l'identifiant d'une analyse d'autrui ne suffit pas", () => {
 describe("A5 — autorisation expirée", () => {
   it(`plus de ${LOGIN_CLAIM_TTL_MINUTES} minutes après la demande : refusée`, async () => {
     const past = new Date(Date.now() - (LOGIN_CLAIM_TTL_MINUTES + 1) * 60_000);
-    const nonce = await createLoginClaim(NINA.email, TOKEN, past);
+    const nonce = await createLoginClaim(NINA.email, TOKEN, null, past);
     await click(`${SITE}/auth/confirm?token_hash=h&type=email&next=%2Fhistorique&reclamation=${nonce}`, NINA);
     expect(db.deals[0].user_id).toBeNull();
   });
 
   it("juste avant l'échéance : acceptée", async () => {
     const past = new Date(Date.now() - (LOGIN_CLAIM_TTL_MINUTES - 1) * 60_000);
-    const nonce = await createLoginClaim(NINA.email, TOKEN, past);
+    const nonce = await createLoginClaim(NINA.email, TOKEN, null, past);
     await click(`${SITE}/auth/confirm?token_hash=h&type=email&next=%2Fhistorique&reclamation=${nonce}`, NINA);
     expect(db.deals[0].user_id).toBe(NINA.userId);
   });
 
   it("la purge quotidienne supprime les réclamations expirées, et elles seules", async () => {
-    await createLoginClaim(NINA.email, TOKEN, new Date(Date.now() - 3 * 3600_000));
-    await createLoginClaim(MALO.email, "autre", new Date());
+    await createLoginClaim(NINA.email, TOKEN, null, new Date(Date.now() - 3 * 3600_000));
+    await createLoginClaim(MALO.email, "autre", null, new Date());
     const report = await runPurge(new Date(), { loginClaimIds: db.claims.map((c) => c.id) });
     expect(report.login_claims).toBe(1);
     expect(db.claims.map((c) => c.email)).toEqual([MALO.email]);

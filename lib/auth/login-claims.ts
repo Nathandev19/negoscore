@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import { deleteRowsReturning, insertRow, isMissingRelation } from "@/lib/supabase/server";
+import { deleteRowsReturning, deleteRowsReturningAll, insertRow, isMissingColumn, isMissingRelation, selectRows } from "@/lib/supabase/server";
+import type { Attribution } from "@/lib/analytics/first-party";
 
 // Réclamation d'analyses anonymes au moment de la connexion (mission #067).
 //
@@ -39,18 +40,62 @@ function digest(nonce: string): string {
   return createHash("sha256").update(nonce).digest("hex");
 }
 
+// Mission #162 — LES COLONNES D'ATTRIBUTION, et leur repli.
+//
+// La migration 20261007000039 est appliquée à la main : le code peut être
+// déployé avant elle. Une insertion qui échoue sur une colonne absente est
+// donc rejouée SANS l'attribution — on perd la mesure, jamais la réclamation,
+// donc jamais le rattachement des analyses anonymes.
+const COLONNES_ATTRIBUTION = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "referrer_host"] as const;
+
+function colonnesDe(attribution: Attribution | null): Record<string, string | null> {
+  if (!attribution) return {};
+  return {
+    utm_source: attribution.utm_source ?? null,
+    utm_medium: attribution.utm_medium ?? null,
+    utm_campaign: attribution.utm_campaign ?? null,
+    utm_content: attribution.utm_content ?? null,
+    referrer_host: attribution.referrer_host ?? null,
+  };
+}
+
+function attributionDe(row: Record<string, unknown>): Attribution | null {
+  const lire = (cle: string) => (typeof row[cle] === "string" && row[cle] !== "" ? (row[cle] as string) : null);
+  const attribution: Attribution = {
+    utm_source: lire("utm_source"), utm_medium: lire("utm_medium"), utm_campaign: lire("utm_campaign"),
+    utm_content: lire("utm_content"), referrer_host: lire("referrer_host"),
+  };
+  return Object.values(attribution).some((champ) => champ !== null) ? attribution : null;
+}
+
 // Enregistre la réclamation et renvoie le secret à glisser dans le lien. null :
 // rien d'enregistré (table absente, base injoignable) — la connexion se fait
 // quand même, avec l'ancien comportement (cookie présent au clic).
-export async function createLoginClaim(email: string, anonToken: string, now: Date = new Date()): Promise<string | null> {
+//
+// Mission #162 — le jeton anonyme peut désormais être absent : une réclamation
+// existe aussi pour porter SEULEMENT une attribution, quand quelqu'un arrive
+// avec des UTM et crée son compte sans avoir rien analysé.
+export async function createLoginClaim(
+  email: string,
+  anonToken: string | null,
+  attribution: Attribution | null = null,
+  now: Date = new Date(),
+): Promise<string | null> {
   const nonce = randomBytes(24).toString("base64url");
+  const base = {
+    email: email.trim().toLowerCase(),
+    anon_token: anonToken,
+    nonce_hash: digest(nonce),
+    expires_at: new Date(now.getTime() + LOGIN_CLAIM_TTL_MINUTES * 60_000).toISOString(),
+  };
   try {
-    await insertRow("login_claims", {
-      email: email.trim().toLowerCase(),
-      anon_token: anonToken,
-      nonce_hash: digest(nonce),
-      expires_at: new Date(now.getTime() + LOGIN_CLAIM_TTL_MINUTES * 60_000).toISOString(),
-    });
+    try {
+      await insertRow("login_claims", { ...base, ...colonnesDe(attribution) });
+    } catch (caught) {
+      if (!isMissingColumn(caught) || !attribution) throw caught;
+      console.warn(JSON.stringify({ event: "login_claim_attribution_ignoree", reason: "colonne absente : appliquer la migration 20261007000039" }));
+      await insertRow("login_claims", base);
+    }
     return nonce;
   } catch (caught) {
     console.error(
@@ -67,6 +112,44 @@ export async function createLoginClaim(email: string, anonToken: string, now: Da
 // Utilise la réclamation : renvoie le jeton anonyme à rattacher, ou null. La
 // suppression filtrée EST la vérification : secret, adresse et date doivent
 // correspondre tous les trois, et une ligne supprimée ne peut plus resservir.
+// Mission #162 — la réclamation rend maintenant DEUX choses : le jeton anonyme
+// à rattacher, et l'attribution relevée quand le lien a été demandé. Les deux
+// sortent du même DELETE, celui qui vérifie le secret, l'adresse et la date.
+export type RedeemedClaim = { anonToken: string | null; attribution: Attribution | null };
+
+export async function redeemLoginClaimFull(nonce: string | null, email: string | null, now: Date = new Date()): Promise<RedeemedClaim> {
+  const vide: RedeemedClaim = { anonToken: null, attribution: null };
+  if (!nonce || !NONCE.test(nonce) || !email) return vide;
+  const filtre = `nonce_hash=eq.${digest(nonce)}&email=eq.${encodeURIComponent(email.trim().toLowerCase())}&expires_at=gt.${encodeURIComponent(now.toISOString())}`;
+  try {
+    let rows: Array<Record<string, unknown>>;
+    try {
+      rows = await deleteRowsReturningAll("login_claims", filtre, `anon_token,${COLONNES_ATTRIBUTION.join(",")}`);
+    } catch (caught) {
+      // Migration pas encore appliquée : la réclamation doit quand même être
+      // consommée, sinon le rattachement des analyses anonymes s'arrête.
+      if (!isMissingColumn(caught)) throw caught;
+      console.warn(JSON.stringify({ event: "login_claim_attribution_ignoree", reason: "colonne absente à la lecture" }));
+      rows = (await deleteRowsReturning("login_claims", filtre, "anon_token")).map((anon_token) => ({ anon_token }));
+    }
+    const row = rows[0];
+    if (!row) return vide;
+    return {
+      anonToken: typeof row.anon_token === "string" && row.anon_token !== "" ? row.anon_token : null,
+      attribution: attributionDe(row),
+    };
+  } catch (caught) {
+    console.error(
+      JSON.stringify({
+        event: "login_claim_error",
+        operation: "redeem",
+        reason: isMissingRelation(caught) ? "table login_claims absente" : "lecture",
+      }),
+    );
+    return vide;
+  }
+}
+
 export async function redeemLoginClaim(nonce: string | null, email: string | null, now: Date = new Date()): Promise<string | null> {
   if (!nonce || !NONCE.test(nonce) || !email) return null;
   try {
@@ -100,6 +183,36 @@ export function claimFromLink(url: URL): string | null {
   try {
     return new URL(next).searchParams.get(CLAIM_PARAM);
   } catch {
+    return null;
+  }
+}
+
+// Mission #162 — L'ATTRIBUTION DE LA VISITE QUI A SOUMIS UNE OFFRE AVEC CE
+// JETON, relue au moment où le lien de connexion est demandé.
+//
+// Sur /connexion l'adresse ne porte plus rien : les UTM sont restés sur la
+// page d'arrivée, et un lien interne n'a pas le droit de les recopier (#152).
+// Le seul fil qui relie encore cette demande à l'arrivée est le cookie
+// anonyme, httpOnly, que le serveur lit lui-même — et le deal qu'il a créé.
+//
+// La plus récente : quelqu'un qui revient par un autre canal et analyse à
+// nouveau est attribué à sa dernière venue, pas à la première. Une erreur de
+// lecture ou une colonne absente ne rend rien, et la connexion continue.
+export async function firstTouchForAnonToken(anonToken: string | null): Promise<Attribution | null> {
+  if (!anonToken) return null;
+  try {
+    const rows = await selectRows<Record<string, unknown>>(
+      "deals",
+      `select=${COLONNES_ATTRIBUTION.join(",")}&anon_token=eq.${encodeURIComponent(anonToken)}&order=created_at.desc&limit=1`,
+    );
+    return rows[0] ? attributionDe(rows[0]) : null;
+  } catch (caught) {
+    console.warn(
+      JSON.stringify({
+        event: "attribution_premier_contact_indisponible",
+        reason: isMissingColumn(caught) ? "colonne absente : appliquer la migration 20261007000039" : "lecture",
+      }),
+    );
     return null;
   }
 }

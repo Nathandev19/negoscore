@@ -213,6 +213,18 @@ export async function deleteRows(table: string, filter: string): Promise<void> {
 
 // Supprime les lignes du filtre et renvoie la valeur de `key` pour chacune,
 // pour journaliser ce qui a réellement été supprimé.
+// Mission #162 — la même suppression, mais en rendant PLUSIEURS colonnes :
+// la réclamation de connexion porte désormais une attribution en plus du jeton
+// anonyme, et les deux doivent sortir du même DELETE — c'est lui qui vérifie
+// le secret, l'adresse et la date, et la ligne n'existe plus après.
+export async function deleteRowsReturningAll(table: string, filter: string, select: string): Promise<Array<Record<string, unknown>>> {
+  const rows = await rest<Array<Record<string, unknown>> | null>(`${table}?${filter}&select=${select}`, {
+    method: "DELETE",
+    what: `suppression ${table}`,
+  });
+  return rows ?? [];
+}
+
 export async function deleteRowsReturning(table: string, filter: string, key: string): Promise<string[]> {
   const rows = await rest<Array<Record<string, unknown>> | null>(`${table}?${filter}&select=${key}`, {
     method: "DELETE",

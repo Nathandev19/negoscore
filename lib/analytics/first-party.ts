@@ -41,6 +41,28 @@ export function parseAttribution(value: unknown): Attribution {
   };
 }
 
+// Mission #162 — COMPLÉTER SANS JAMAIS ÉCRASER.
+//
+// Même règle qu'en #152 pour les liens internes : une attribution déjà là ne
+// se réécrit pas. Ici, `fallback` est l'attribution relevée à la demande du
+// lien de connexion ; elle ne remplit que les champs que la requête courante
+// ne renseigne pas. Si la demande ne portait rien, rien n'est inventé.
+export function mergeAttribution(current: Attribution | null | undefined, fallback: Attribution | null | undefined): Attribution {
+  const a = current ?? {};
+  const b = fallback ?? {};
+  const champ = (cle: keyof Attribution) => a[cle] ?? b[cle] ?? null;
+  return {
+    path: champ("path"), referrer_host: champ("referrer_host"), utm_source: champ("utm_source"),
+    utm_medium: champ("utm_medium"), utm_campaign: champ("utm_campaign"), utm_content: champ("utm_content"),
+  };
+}
+
+// Cette attribution dit-elle quelque chose ? Une attribution dont tous les
+// champs sont vides ne vaut pas la peine d'être rangée.
+export function hasAttribution(value: Attribution | null | undefined): boolean {
+  return value != null && Object.values(value).some((champ) => champ != null && champ !== "");
+}
+
 export async function recordProductEvent(input: {
   event: ProductEventName; userId?: string | null; attribution?: Attribution; entityType?: string | null;
   entityId?: string | null; metadata?: Record<string, string | number | boolean | null>; dedupeKey?: string | null;

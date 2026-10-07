@@ -31,7 +31,7 @@ import {
   updateRows,
 } from "@/lib/supabase/server";
 import { MAX_FILE_BYTES } from "@/lib/upload";
-import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
+import { hasAttribution, parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
 import { withEnvironment } from "@/lib/telemetry/tagged";
 
 export const runtime = "nodejs";
@@ -442,26 +442,65 @@ export async function POST(request: Request) {
       }
     }
 
+    // Mission #162 — D'OÙ VENAIT LA VISITE QUI A SOUMIS CETTE OFFRE.
+    //
+    // C'est le seul moment où le serveur tient les deux bouts à la fois :
+    // l'attribution, envoyée par le navigateur depuis la page d'arrivée (où
+    // les UTM sont encore dans l'adresse), et le jeton anonyme de ce
+    // navigateur. Huit minutes plus tard, sur /connexion, l'adresse ne porte
+    // plus rien — et c'est là que l'attribution se perdait.
+    //
+    // Elle est rangée avec le deal : déjà rattaché au jeton, déjà purgé avec
+    // l'analyse. L'attribution meurt donc avec elle, sans rien ajouter à ce
+    // qui est conservé. Repli propre si la migration 20261007000039 n'est pas
+    // encore appliquée : on perd la mesure, jamais l'analyse.
+    const premierContact = hasAttribution(attribution)
+      ? {
+          utm_source: attribution.utm_source ?? null,
+          utm_medium: attribution.utm_medium ?? null,
+          utm_campaign: attribution.utm_campaign ?? null,
+          utm_content: attribution.utm_content ?? null,
+          referrer_host: attribution.referrer_host ?? null,
+        }
+      : null;
+    let attributionAEcrire = premierContact;
+    async function withAttribution<T>(write: (extra: Record<string, unknown>) => Promise<T>): Promise<T> {
+      if (!attributionAEcrire) return write({});
+      try {
+        return await write(attributionAEcrire);
+      } catch (caught) {
+        if (!isMissingColumn(caught)) throw caught;
+        console.warn(JSON.stringify({ event: "attribution_deal_ignoree", reason: "colonne absente : appliquer la migration 20261007000039" }));
+        attributionAEcrire = null;
+        return write({});
+      }
+    }
+
     let dealId: string;
     if (document) {
       dealId = document.deal.id;
       await withKey((extra) =>
-        updateRows("deals", `id=eq.${dealId}`, { status: "analysed", ...(user ? { user_id: user.id } : {}), ...extra }),
+        withAttribution((origine) =>
+          updateRows("deals", `id=eq.${dealId}`, { status: "analysed", ...(user ? { user_id: user.id } : {}), ...origine, ...extra }),
+        ),
       );
     } else {
       // Mission #103 : d'où vient ce dossier. Le cockpit ne compte que la production.
       const deal = await withKey((extra) =>
-        withEnvironment((environment) =>
-          insertRow<{ id: string }>("deals", {
-            ...environment,
-            user_id: user?.id ?? null,
-            anon_token: anonToken,
-            source_type: "text",
-            raw_text: rawText,
-            status: "analysed",
-            ...extra,
-          }),
-          { userId: user?.id ?? null },
+        withAttribution((origine) =>
+          withEnvironment((environment) =>
+            insertRow<{ id: string }>("deals", {
+              ...environment,
+              user_id: user?.id ?? null,
+              anon_token: anonToken,
+              source_type: "text",
+              raw_text: rawText,
+              status: "analysed",
+              ...origine,
+              ...extra,
+            }),
+            { userId: user?.id ?? null },
+          ),
         ),
       );
       dealId = deal.id;
