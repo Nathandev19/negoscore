@@ -12,7 +12,7 @@ import { FAQ } from "@/lib/content/home";
 import { MENTION_TTC } from "@/lib/content/vocabulaire";
 import { accountDeletionEmail, cancellationConfirmationEmail, purchaseConfirmationEmail } from "@/lib/email/templates";
 import { computeEstimate, upliftCap } from "@/lib/rates/engine";
-import rates from "@/lib/rates/fr-2026.3.json";
+import rates from "@/lib/rates/fr-2026.4.json";
 import { CURRENT_RATE_VERSION } from "@/lib/rates/tables";
 import { CANONICAL_ORIGIN, PUBLIC_PAGES, publicPageMetadata } from "@/lib/seo";
 import type { Analysis } from "@/lib/schema";

@@ -1,7 +1,7 @@
 import { PLANS } from "@/lib/billing/plans";
 import { COPILOT_PROMISE, ESTIMATE_DISCLAIMER, exchanges, MENTION_TTC, NEGOTIATION_EXCHANGES, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
 import { RETRY_WINDOW_DAYS } from "@/lib/analysis/retry-window";
-import rates from "@/lib/rates/fr-2026.3.json";
+import { CURRENT_RATE_VERSION } from "@/lib/rates/tables";
 import { MAX_PDF_PAGES } from "@/lib/upload";
 
 // Textes de la page d'accueil. Les prix et la version de la table viennent du
@@ -23,7 +23,7 @@ export const STEPS = [
 export const TRUST = [
   {
     title: "Une table de tarifs versionnée",
-    text: `Les prix viennent d'une table française versionnée (${rates.version} aujourd'hui). La version utilisée est affichée sur chaque négociation.`,
+    text: `Les prix viennent d'une table française versionnée (${CURRENT_RATE_VERSION} aujourd'hui). La version utilisée est affichée sur chaque négociation.`,
   },
   {
     title: "Ce que le score lit, et ce qu'il ne peut pas savoir",
@@ -52,7 +52,7 @@ const PLANS_TEXT = PLANS.map((plan) => `${plan.name} : ${plan.price}${plan.perio
 export const FAQ = [
   {
     question: "D'où viennent les prix ?",
-    answer: `D'une table de tarifs française, versionnée (${rates.version}) : des benchmarks observés sur des offres UGC en France, complétés par des valeurs interpolées là où les observations manquent. Le tarif de base part du niveau « Je débute » ; sur la page de résultat, tu choisis ton niveau et tout est recalculé. Chaque négociation affiche la version de la table utilisée.`,
+    answer: `D'une table de tarifs française, versionnée (${CURRENT_RATE_VERSION}) : des benchmarks observés sur des offres UGC en France, complétés par des valeurs interpolées là où les observations manquent. Le tarif de base part du niveau « Je débute » ; sur la page de résultat, tu choisis ton niveau et tout est recalculé. Chaque négociation affiche la version de la table utilisée.`,
   },
   {
     question: "Ça marche pour quel type d'offre ?",

@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CURRENT_RATE_VERSION } from "@/lib/rates/tables";
 
 // Mission #086 — l'avis porte sur les chiffres réellement jugés : ceux du tour
 // affiché, enregistrés avec son numéro, et regroupés selon les termes de ce
@@ -78,7 +79,9 @@ describe("A — les chiffres affichés et le tour, enregistrés avec l'avis", ()
       total_low: expected.estimate.total_low,
       total_high: expected.estimate.total_high,
       score: expected.score?.value ?? null,
-      rate_table_version: "fr-2026.3",
+      // Mission #160 — l'analyse de ce test est composée avec la table
+      // COURANTE : la version enregistrée la suit, elle n'est pas gravée.
+      rate_table_version: CURRENT_RATE_VERSION,
     });
     expect(db.writes[0].total_low).not.toBe(original.estimate.total_low);
   });

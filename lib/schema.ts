@@ -43,6 +43,21 @@ export const analysisSchema = z.object({
       spark_ads: z.boolean(),
       duration_months: z.number().nullable(),
       territory: z.string().nullable(),
+      // Mission #160 — LES ZONES DEMANDÉES, extraites par le modèle, chiffrées
+      // par le code. `territory` reste le texte tel qu'écrit (il s'affiche dans
+      // « Le deal proposé ») ; ce champ-ci est la donnée.
+      //
+      // Un tableau de chaînes, pas une énumération : une valeur inconnue doit
+      // être ÉCARTÉE, jamais faire échouer la lecture d'une analyse. La liste
+      // fermée vit dans la table de tarifs (territory_zones), le tri est fait
+      // par lib/rates/zones.ts, et une analyse enregistrée avant ce champ le
+      // lit comme un tableau vide — donc exactement le chiffrage d'avant.
+      //
+      // OPTIONNEL à l'entrée, comme variable_pay plus bas et pour la même
+      // raison : une analyse enregistrée avant ce champ doit se relire sans
+      // erreur. Après normalizeDeal il existe toujours, trié par la liste
+      // fermée — tout ce qui lit un deal normalisé peut s'y fier.
+      territory_zones: z.array(z.string()).max(20).optional(),
       perpetual: z.boolean(),
     }),
     exclusivity: z.object({

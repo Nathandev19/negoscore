@@ -4,13 +4,13 @@ import PricingGuidePage from "@/app/combien-facturer/page";
 import sitemap from "@/app/sitemap";
 import { FOOTER_COLUMNS } from "@/components/site-footer";
 import { billableUnits, computeEstimate, upliftCap } from "@/lib/rates/engine";
-import rates from "@/lib/rates/fr-2026.3.json";
+import rates from "@/lib/rates/fr-2026.4.json";
 import { TIERS } from "@/lib/rates/tier";
 import { CANONICAL_ORIGIN, publicPageMetadata, PUBLIC_PAGES } from "@/lib/seo";
 import type { Analysis } from "@/lib/schema";
 
 // Mission #054 — la page /combien-facturer publie des fourchettes. Chaque
-// chiffre affiché est ici RECALCULÉ depuis lib/rates/fr-2026.3.json et le
+// chiffre affiché est ici RECALCULÉ depuis la table courante et le
 // moteur : le jour où la table change, ce test échoue avant la mise en ligne.
 
 const html = renderToStaticMarkup(<PricingGuidePage />);

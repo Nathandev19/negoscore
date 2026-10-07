@@ -445,7 +445,7 @@ describe("rien d'autre n'a bougé", () => {
     // Les deux fichiers qui décident des fourchettes ne mentionnent ni le
     // lien, ni les chemins courts : la partie A et la partie B sont
     // strictement de la copie et de l'aiguillage.
-    for (const fichier of ["lib/rates/engine.ts", "lib/rates/fr-2026.3.json", "lib/rates/score.ts"]) {
+    for (const fichier of ["lib/rates/engine.ts", "lib/rates/fr-2026.4.json", "lib/rates/score.ts"]) {
       const source = readFileSync(fichier, "utf8");
       for (const ajout of ["FULL_EXAMPLE", "analyse/demo", "SHORT_PATHS", "ACQUISITION_UTM"]) {
         expect(source, `${fichier} / ${ajout}`).not.toContain(ajout);

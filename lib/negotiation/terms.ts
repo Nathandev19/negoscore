@@ -30,7 +30,11 @@ export function applyGroup(base: Deal, next: Deal, group: TermGroup): Deal {
     case "usage_duration":
       return { ...base, usage: { ...base.usage, duration_months: next.usage.duration_months, perpetual: next.usage.perpetual } };
     case "territory":
-      return { ...base, usage: { ...base.usage, territory: next.usage.territory } };
+      // Mission #160 — les zones suivent le territoire : elles sont la même
+      // information, l'une en texte, l'autre chiffrable. Les séparer ferait
+      // recalculer un tour avec le texte du nouveau territoire et les zones de
+      // l'ancien.
+      return { ...base, usage: { ...base.usage, territory: next.usage.territory, territory_zones: next.usage.territory_zones } };
     case "exclusivity":
       return { ...base, exclusivity: next.exclusivity };
     case "payment_terms":

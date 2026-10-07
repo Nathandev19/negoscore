@@ -1,11 +1,17 @@
-import current from "@/lib/rates/fr-2026.3.json";
+import current from "@/lib/rates/fr-2026.4.json";
+import fr20263 from "@/lib/rates/fr-2026.3.json";
 import fr20262 from "@/lib/rates/fr-2026.2.json";
 
 // Mission #085 — une analyse garde la table avec laquelle elle a été faite.
 // Toutes les tables que le moteur actuel sait appliquer EXACTEMENT, par
 // version. Une table n'entre ici que si le moteur la calcule comme au jour de
 // l'analyse :
-//   - fr-2026.3 : la table actuelle ;
+//   - fr-2026.4 : la table actuelle. Mission #160 — elle ajoute les ZONES de
+//     territoire (territory_zones) et ne change RIEN d'autre : mêmes tarifs,
+//     mêmes multiplicateurs, mêmes plafonds, mêmes seuils que fr-2026.3,
+//     vérifié champ par champ. Une analyse faite en fr-2026.3 n'a pas de zones
+//     et rend donc exactement le même chiffrage qu'avant ;
+//   - fr-2026.3 : même table sans les zones ;
 //   - fr-2026.2 : mêmes tarifs, multiplicateurs, plafonds et seuils que
 //     fr-2026.3 ; seul le niveau par défaut différait (confirmé), et le moteur
 //     reçoit toujours le niveau explicitement (tests/rate-tables.test.ts le
@@ -22,6 +28,7 @@ export const CURRENT_RATE_VERSION = current.version;
 
 const TABLES: Readonly<Record<string, RateTable>> = {
   [current.version]: current,
+  [fr20263.version]: fr20263 as RateTable,
   [fr20262.version]: fr20262 as RateTable,
 };
 

@@ -22,7 +22,7 @@ export const metadata: Metadata = publicPageMetadata("/droits-pub-6-mois");
 // (créer et diffuser sont deux factures, ce que dit la loi, les quatre
 // questions qui fixent le prix). Celle-ci chiffre une DURÉE.
 //
-// Tous les nombres affichés viennent de lib/rates/fr-2026.3.json et du moteur.
+// Tous les nombres affichés viennent de la table courante et du moteur.
 // tests/guides-reference.test.tsx les recalcule un par un : le jour où la table
 // change, le test échoue avant la mise en ligne. Les liens internes portent
 // `?de=droits-pub-6-mois`, jamais un paramètre utm (mission #152).

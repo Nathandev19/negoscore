@@ -780,7 +780,7 @@ describe("ce que le cockpit montre", () => {
 // ───────────────────────────────────────────────────────────────────────────
 describe("rien d'autre n'a bougé", () => {
   it("aucun fichier du moteur de chiffrage n'est touché par cette mission", () => {
-    for (const fichier of ["lib/rates/engine.ts", "lib/rates/fr-2026.3.json", "lib/rates/score.ts"]) {
+    for (const fichier of ["lib/rates/engine.ts", "lib/rates/fr-2026.4.json", "lib/rates/score.ts"]) {
       const source = readFileSync(fichier, "utf8");
       for (const ajout of ["guide_view", "example_view", "ViewPixel", "viewPixelSrc", "isRobot", "/api/vue"]) {
         expect(source, `${fichier} / ${ajout}`).not.toContain(ajout);

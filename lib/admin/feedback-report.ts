@@ -1,7 +1,7 @@
 import { FEEDBACK_RATINGS, type FeedbackRating } from "@/lib/analysis/feedback-options";
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { offeredOf, type Offered } from "@/lib/negotiation/terms";
-import rates from "@/lib/rates/fr-2026.3.json";
+import { CURRENT_RATE_VERSION } from "@/lib/rates/tables";
 import { TIERS, type Tier } from "@/lib/rates/tier";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 import { isUuid } from "@/lib/security/request";
@@ -139,7 +139,7 @@ export const TIER_GROUP_LABEL: Record<Tier, string> = {
 };
 
 // Version de la table qui sert aujourd'hui aux nouvelles analyses.
-export const CURRENT_RATE_TABLE = rates.version;
+export const CURRENT_RATE_TABLE = CURRENT_RATE_VERSION;
 
 // Mission #078, A — par version de la table de tarifs enregistrée avec la
 // réponse. La table actuelle d'abord, toujours présente (« Aucun retour » tant

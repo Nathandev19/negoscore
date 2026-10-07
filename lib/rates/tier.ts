@@ -1,4 +1,4 @@
-import rates from "@/lib/rates/fr-2026.3.json";
+import { CURRENT_RATE_TABLE } from "@/lib/rates/tables";
 
 // Niveau de la créatrice : la ligne de la table de tarifs utilisée pour la base.
 // C'est le levier le plus fort du moteur (débutant 100–180 €, confirmé 250–500 €,
@@ -11,7 +11,7 @@ import rates from "@/lib/rates/fr-2026.3.json";
 export const TIERS = ["starter", "confirmed", "experienced"] as const;
 export type Tier = (typeof TIERS)[number];
 
-export const DEFAULT_TIER = rates.base_rates_eur.default_tier as Tier;
+export const DEFAULT_TIER = CURRENT_RATE_TABLE.base_rates_eur.default_tier as Tier;
 
 // Libellés en termes de travail et d'expérience, jamais de nombre d'abonnés :
 // on ne peut pas le vérifier, et il ne dit pas ce qu'une marque paie.

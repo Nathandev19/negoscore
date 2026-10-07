@@ -1,4 +1,5 @@
 import { variablePayOf } from "@/lib/negotiation/commission";
+import { requestedZones } from "@/lib/rates/zones";
 import type { Analysis } from "@/lib/schema";
 
 type Deal = Analysis["deal"];
@@ -63,6 +64,15 @@ export function normalizeDeal(deal: Deal): Deal {
       // Publier sur son propre compte est un usage organique.
       organic: usage.organic || deal.publication_required,
       duration_months: stated(usage.duration_months),
+      // Mission #160 — LA VALIDATION A LIEU AVANT L'ENREGISTREMENT, et elle
+      // ÉCARTE, elle ne rejette pas : une zone que la table ne connaît pas
+      // disparaît, l'analyse continue. Une liste fermée ne doit jamais pouvoir
+      // faire perdre la ligne qu'elle décore.
+      //
+      // La France est retirée ici aussi : elle vaut +0, et une ligne à 0 €
+      // n'apprend rien à personne. Le moteur refiltre de toute façon avec la
+      // table de l'analyse, qui n'est pas forcément la table courante.
+      territory_zones: requestedZones(usage.territory_zones),
     },
     exclusivity: { ...exclusivity, duration_months: stated(exclusivity.duration_months) },
     payment: { ...payment, amount_eur: amount },

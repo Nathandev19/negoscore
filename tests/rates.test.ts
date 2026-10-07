@@ -10,7 +10,7 @@ import {
   upliftCap,
   volumeDiscountFactor,
 } from "@/lib/rates/engine";
-import rates from "@/lib/rates/fr-2026.3.json";
+import rates from "@/lib/rates/fr-2026.4.json";
 import { computeScore, uncappedScore } from "@/lib/rates/score";
 import type { Analysis } from "@/lib/schema";
 import extracted17 from "./fixtures/deal-17-contrat-boisson.json";

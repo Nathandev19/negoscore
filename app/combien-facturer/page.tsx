@@ -17,7 +17,7 @@ const ORIGINE = "combien-facturer";
 
 // Page publique statique (mission #054), même gabarit que /droits-utilisation.
 // Texte fourni par l'éditeur, repris au mot près : seul le balisage est de
-// nous. Tous les chiffres des tableaux viennent de lib/rates/fr-2026.3.json et
+// nous. Tous les chiffres des tableaux viennent de la table courante et
 // des règles de lib/rates/engine.ts ; tests/pricing-page.test.tsx les recalcule
 // depuis la table et échoue si elle change.
 export default function PricingGuidePage() {

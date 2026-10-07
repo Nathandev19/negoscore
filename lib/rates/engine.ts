@@ -3,6 +3,7 @@ import { formatNumber } from "@/lib/display";
 import { CURRENT_RATE_TABLE, type RateTable } from "@/lib/rates/tables";
 import { RAW_FOOTAGE_LABEL } from "@/lib/content/labels";
 import { DEFAULT_TIER, type Tier } from "@/lib/rates/tier";
+import { reachesWorld, requestedZones, ZONE_LABEL, zoneRate } from "@/lib/rates/zones";
 import type { Analysis } from "@/lib/schema";
 
 // Chiffrage déterministe. Toutes les valeurs de tarif viennent de la table
@@ -352,8 +353,31 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
     addMultiplier("raw_footage", "raw_footage", RAW_FOOTAGE_LABEL);
   }
 
-  if (isWorldwide(usage.territory)) {
+  // ─── LE TERRITOIRE (mission #160) ────────────────────────────────────────
+  //
+  // Avant : un interrupteur « monde », déclenché par expression régulière sur
+  // le texte libre. « France, Belgique et Suisse » ne contenait aucun des mots
+  // cherchés, donc +0 % — une règle absente, pas un barème trop bas.
+  //
+  // Maintenant : le modèle extrait des ZONES (usage.territory_zones), la table
+  // les chiffre, et chaque zone comptée s'affiche sur sa propre ligne. Une
+  // créatrice qui conteste voit laquelle discuter.
+  //
+  // L'interrupteur « monde » RESTE, et il reste en premier : une analyse
+  // d'avant cette mission n'a pas de zones, et un texte qui dit « monde
+  // entier » doit continuer à être facturé comme avant, au centime près.
+  const zonesDemandees = requestedZones(usage.territory_zones, rates);
+  if (isWorldwide(usage.territory) || (zonesDemandees.length > 0 && reachesWorld(zonesDemandees, rates))) {
+    // LE PLAFOND DE COHÉRENCE : le monde est le plafond du territoire, jamais
+    // une zone de plus. Des zones qui atteignent ou dépassent le mondial sont
+    // facturées comme le mondial, et c'est « Diffusion mondiale » qui s'écrit —
+    // dire autre chose ferait payer plus cher le tout que la somme des parties.
     addMultiplier("territory_worldwide", "territory", "Diffusion mondiale");
+  } else if (zonesDemandees.length > 0) {
+    for (const zone of zonesDemandees) {
+      const taux = zoneRate(zone, rates);
+      if (taux) uplifts.push({ label: `Diffusion ${ZONE_LABEL[zone] ?? zone}`, topic: "territory", low: taux.low, high: taux.high });
+    }
   } else if (usage.territory === null && (usage.paid_ads || usage.whitelisting || usage.spark_ads)) {
     assumptions.push("Territoire non précisé : diffusion en France supposée.");
   }

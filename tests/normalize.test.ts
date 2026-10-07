@@ -17,6 +17,9 @@ const NO_USAGE: Deal["usage"] = {
   spark_ads: false,
   duration_months: null,
   territory: null,
+  // Mission #160 — normalizeDeal garantit ce champ : il existe toujours après
+  // normalisation, trié par la liste fermée de la table (lib/rates/zones.ts).
+  territory_zones: [],
   perpetual: false,
 };
 
@@ -71,7 +74,7 @@ describe("normalizeDeal", () => {
     const rich: Deal = {
       ...POSTS_ON_OWN_ACCOUNT,
       publication_required: false,
-      usage: { organic: true, paid_ads: true, whitelisting: true, spark_ads: true, duration_months: 6, territory: "France", perpetual: true },
+      usage: { organic: true, paid_ads: true, whitelisting: true, spark_ads: true, duration_months: 6, territory: "France", territory_zones: [], perpetual: true },
     };
     expect(normalizeDeal(rich)).toEqual(rich);
     const published = { ...rich, publication_required: true };

@@ -3,7 +3,7 @@ import path from "node:path";
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { isFarAboveOffer } from "@/lib/rates/engine";
 import { uncappedScore } from "@/lib/rates/score";
-import rates from "@/lib/rates/fr-2026.3.json";
+import rates from "@/lib/rates/fr-2026.4.json";
 import { TIER_LABEL, TIERS, type Tier } from "@/lib/rates/tier";
 import type { Analysis } from "@/lib/schema";
 import { collectDeals } from "./survey-deals.ts";

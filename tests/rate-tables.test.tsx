@@ -2,15 +2,21 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import fr20262 from "@/lib/rates/fr-2026.2.json";
 import fr20263 from "@/lib/rates/fr-2026.3.json";
+import fr20264 from "@/lib/rates/fr-2026.4.json";
 
 // Mission #085 — une analyse, et tout son fil de négociation, se calculent avec
 // la table qui a servi à l'analyse d'origine. On simule ici le jour où la table
-// est corrigée : la table actuelle devient une « fr-2026.4 » aux tarifs
-// doublés, APRÈS l'analyse. Rien de ce qui a été fait en fr-2026.3 ne doit
-// bouger.
+// est corrigée : la table actuelle devient une version FICTIVE aux tarifs
+// doublés, APRÈS l'analyse. Rien de ce qui a été fait avec la table de
+// l'analyse ne doit bouger.
+//
+// Mission #160 — le numéro de cette table fictive était « fr-2026.4 », qui
+// existe désormais pour de bon. Il devient « fr-2026.99 », impossible à
+// confondre, et la version de l'analyse n'est plus écrite en dur : elle vient
+// de CURRENT_RATE_VERSION, sinon ce fichier est à reprendre à chaque table.
 
 const tables = vi.hoisted(() => ({ current: null as unknown }));
-const FR4 = { ...fr20263, version: "fr-2026.4", base_rates_eur: { ...fr20263.base_rates_eur, starter: { low: 200, high: 360, confidence: "medium" }, confirmed: { low: 500, high: 1000, confidence: "medium" }, experienced: { low: 1000, high: 1600, confidence: "low" } } };
+const FUTURE = { ...fr20264, version: "fr-2026.99", base_rates_eur: { ...fr20264.base_rates_eur, starter: { low: 200, high: 360, confidence: "medium" }, confirmed: { low: 500, high: 1000, confidence: "medium" }, experienced: { low: 1000, high: 1600, confidence: "low" } } };
 
 vi.mock("@/lib/rates/tables", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/lib/rates/tables")>();
@@ -19,14 +25,14 @@ vi.mock("@/lib/rates/tables", async (importOriginal) => {
     get CURRENT_RATE_TABLE() {
       return tables.current ?? real.CURRENT_RATE_TABLE;
     },
-    rateTable: (version: string) => (version === FR4.version && tables.current === FR4 ? FR4 : real.rateTable(version)),
+    rateTable: (version: string) => (version === FUTURE.version && tables.current === FUTURE ? FUTURE : real.rateTable(version)),
   };
 });
 
 const { composeAnalysis } = await import("@/lib/analysis/compose");
 const { engineParts } = await import("@/lib/analysis/engine-parts");
 const { recomputeForDeal, recomputeForTier, tierChangeAvailable } = await import("@/lib/analysis/recompute");
-const { rateTable } = await import("@/lib/rates/tables");
+const { CURRENT_RATE_VERSION, rateTable } = await import("@/lib/rates/tables");
 const { processTurn } = await import("@/lib/negotiation/turn");
 const { loadScenarios, readingOf, scenarioContext } = await import("@/lib/negotiation/scenarios");
 const { AnalysisResult } = await import("@/components/result/analysis-result");
@@ -64,54 +70,54 @@ describe("les tables que le moteur sait appliquer", () => {
   });
 });
 
-describe("A, B — une analyse fr-2026.3 reste en fr-2026.3 quand la table actuelle change", () => {
+describe("A, B — une analyse garde SA table quand la table actuelle change", () => {
   const stored = composeAnalysis(sample as never, { tier: "confirmed" });
   const atStarter = composeAnalysis(sample as never, { tier: "starter" });
 
   it("la table actuelle a bien changé (le test simule quelque chose)", () => {
-    const fresh = withCurrent(FR4, () => composeAnalysis(sample as never, { tier: "confirmed" }));
-    expect(fresh.estimate.rate_table_version).toBe("fr-2026.4");
+    const fresh = withCurrent(FUTURE, () => composeAnalysis(sample as never, { tier: "confirmed" }));
+    expect(fresh.estimate.rate_table_version).toBe(FUTURE.version);
     expect(fresh.estimate.total_low).not.toBe(stored.estimate.total_low);
   });
 
-  it("changement de niveau : chiffres et version de fr-2026.3", () => {
-    const recomputed = withCurrent(FR4, () => recomputeForTier(stored, "starter"));
+  it("changement de niveau : chiffres et version de la table de l'analyse", () => {
+    const recomputed = withCurrent(FUTURE, () => recomputeForTier(stored, "starter"));
     expect(recomputed.estimate).toEqual(atStarter.estimate);
-    expect(recomputed.estimate.rate_table_version).toBe("fr-2026.3");
+    expect(recomputed.estimate.rate_table_version).toBe(CURRENT_RATE_VERSION);
     expect(recomputed.score).toEqual(atStarter.score);
   });
 
-  it("termes actuels après un tour : chiffres et version de fr-2026.3", () => {
+  it("termes actuels après un tour : chiffres et version de la table de l'analyse", () => {
     const deal = { ...stored.deal, usage: { ...stored.deal.usage, duration_months: 12 } };
-    const expected = engineParts(deal, stored.evaluability, "confirmed", [], rateTable("fr-2026.3")!);
-    const recomputed = withCurrent(FR4, () => recomputeForDeal(stored, deal))!;
-    expect(recomputed.estimate.rate_table_version).toBe("fr-2026.3");
+    const expected = engineParts(deal, stored.evaluability, "confirmed", [], rateTable(CURRENT_RATE_VERSION)!);
+    const recomputed = withCurrent(FUTURE, () => recomputeForDeal(stored, deal))!;
+    expect(recomputed.estimate.rate_table_version).toBe(CURRENT_RATE_VERSION);
     expect(recomputed.estimate.total_low).toBe(expected.estimate.total_low);
     expect(recomputed.estimate.total_high).toBe(expected.estimate.total_high);
   });
 
-  it("D — un tour : avant et après chiffrés en fr-2026.3, comme l'analyse", () => {
+  it("D — un tour : avant et après chiffrés avec la table de l'analyse", () => {
     const s = scenario("termes-a-la-hausse");
     const context = scenarioContext(s);
     const before = processTurn(context, readingOf(s, context.original));
-    const after = withCurrent(FR4, () => processTurn(context, readingOf(s, context.original)));
+    const after = withCurrent(FUTURE, () => processTurn(context, readingOf(s, context.original)));
     if (before.kind !== "turn" || after.kind !== "turn") throw new Error("pas un tour");
-    expect(after.payload.pricing_before.rate_table_version).toBe("fr-2026.3");
-    expect(after.payload.pricing_after?.rate_table_version).toBe("fr-2026.3");
+    expect(after.payload.pricing_before.rate_table_version).toBe(CURRENT_RATE_VERSION);
+    expect(after.payload.pricing_after?.rate_table_version).toBe(CURRENT_RATE_VERSION);
     expect(after.payload).toEqual(before.payload);
   });
 
-  it("D — deuxième tour, termes déjà changés : toujours fr-2026.3", () => {
+  it("D — deuxième tour, termes déjà changés : toujours la table de l'analyse", () => {
     const first = scenario("termes-a-la-hausse");
     const second = scenario("termes-a-la-baisse");
     const context = scenarioContext(first);
     const turn2 = processTurn(context, readingOf(first, context.original));
     if (turn2.kind !== "turn") throw new Error("pas un tour");
     const next = { ...context, previous: [turn2.payload], turnNumber: 3, brandReply: second.reponse_marque };
-    const turn3 = withCurrent(FR4, () => processTurn(next, readingOf(second, context.original)));
+    const turn3 = withCurrent(FUTURE, () => processTurn(next, readingOf(second, context.original)));
     if (turn3.kind !== "turn") throw new Error("pas un tour");
-    expect(turn3.payload.pricing_before.rate_table_version).toBe("fr-2026.3");
-    expect(turn3.payload.pricing_after?.rate_table_version).toBe("fr-2026.3");
+    expect(turn3.payload.pricing_before.rate_table_version).toBe(CURRENT_RATE_VERSION);
+    expect(turn3.payload.pricing_after?.rate_table_version).toBe(CURRENT_RATE_VERSION);
     expect(turn3.payload.pricing_before.total_low).toBe(turn2.payload.pricing_after?.total_low);
   });
 });
