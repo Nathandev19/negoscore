@@ -65,10 +65,25 @@ export function ScoreBand({
               L'écart horizontal passe de 20 à 16 px sur mobile : à 375 px il
               manquait exactement 1 px pour que la pastille tienne sur une
               ligne, et ces 4 px la lui rendent. Au-delà de 640 px, où la place
-              n'a jamais manqué, il reste à 20 px. Entre 360 et 374 px la
-              pastille se comprime sur deux lignes : c'est assumé, la ligne ne
-              s'enroule pas et rien ne bouge. */}
-          <div className="flex flex-wrap items-end gap-x-4 gap-y-3 min-[360px]:flex-nowrap sm:gap-x-5">
+              n'a jamais manqué, il reste à 20 px.
+
+              Mission #163 — ET LA BANDE 360–374 px EST RÉPARÉE.
+              #150 l'avait assumée : la ligne ne s'enroulait plus, mais la
+              PASTILLE se comprimait et c'était son libellé qui passait sur
+              deux lignes. Mesuré à l'état stabilisé, cinq relevés identiques :
+                 360 px → 105 px disponibles, 117 px nécessaires, hauteur 68 px
+                 365 px → 110 px disponibles, 117 px nécessaires, hauteur 68 px
+                 374 px → 117 px disponibles, hauteur 40 px — ça passe
+              Il manquait donc 12 px à 360 px. Le compteur n'en a aucun à
+              céder : il est déjà à sa largeur minimale de contenu (207 px à
+              toutes les largeurs, et il ne se comprime pas). On les prend
+              UNIQUEMENT sous 375 px, et uniquement sur de l'espace vide :
+              8 px sur l'écart (16 → 8) et 8 px sur les côtés de la pastille
+              (16 → 12, voir VerdictPill). Seize px rendus pour douze
+              nécessaires : quatre de marge, parce qu'une mesure exacte au
+              pixel près est une mesure qui recasse au prochain libellé.
+              Ni le score ni la phrase de verdict ne bougent d'un pixel. */}
+          <div className="flex flex-wrap items-end gap-x-4 gap-y-3 max-[374px]:gap-x-2 min-[360px]:flex-nowrap sm:gap-x-5">
             <AnimatedScore score={analysis.score} animated={animated} from={from} />
             <VerdictPill band={analysis.score.band} />
           </div>
@@ -110,9 +125,13 @@ function TierNote({ tier }: { tier: ResultView["profile_tier"] }) {
   );
 }
 
+// Mission #163 — `max-[374px]:px-3` : quatre pixels de chaque côté, rendus au
+// libellé sur la seule bande où il n'en avait pas assez. Au-dessus de 374 px
+// la pastille est inchangée, et sa taille de texte ne bouge jamais : c'est le
+// verdict, on ne le rétrécit pas pour faire entrer la mise en page.
 export function VerdictPill({ band }: { band: Score["band"] }) {
   return (
-    <span className={cn("headline mb-3 rounded-pill px-4 py-1.5 text-lg text-encre sm:text-xl", BAND_STYLE[band].onMarque)}>
+    <span className={cn("headline mb-3 rounded-pill px-4 py-1.5 text-lg text-encre max-[374px]:px-3 sm:text-xl", BAND_STYLE[band].onMarque)}>
       {BAND_LABEL[band]}
     </span>
   );

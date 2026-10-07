@@ -95,6 +95,38 @@ describe("la pastille de verdict ne bascule plus à la ligne", () => {
     expect(LIGNE).toContain("flex-wrap");
   });
 
+  // Mission #163 — ET LA BANDE 360–373 px, QUE #150 AVAIT ASSUMÉE.
+  //
+  // La ligne ne s'enroulait plus, mais la PASTILLE se comprimait et c'était
+  // son libellé qui passait sur deux lignes. Ouvert et mesuré à l'état
+  // stabilisé, cinq relevés identiques, sur /dev/resultat?etat=debloque :
+  //
+  //      largeur   place pour la pastille   nécessaire   hauteur
+  //      360 px            105 px             117 px      68 px  ← deux lignes
+  //      365 px            110 px             117 px      68 px  ← deux lignes
+  //      373 px            116 px             117 px      68 px  ← deux lignes
+  //      374 px            117 px             117 px      40 px     une ligne
+  //
+  // Douze px manquaient à 360 px. Le compteur n'en a aucun à céder : il est
+  // déjà à sa largeur minimale de contenu (207 px à toutes les largeurs). Ils
+  // sont donc pris sur du vide, et seulement sous 374 px : 8 px sur l'écart et
+  // 8 px sur les côtés de la pastille. Seize rendus pour douze nécessaires.
+  //
+  // Après : 109 px de large, 40 px de haut — une ligne — à 360, 365 et 373 px.
+  it("entre 360 et 373 px, le libellé de la pastille ne passe plus sur deux lignes", () => {
+    const PASTILLE = /className={cn\("(headline mb-3 rounded-pill[^"]*)"/.exec(SOURCE)?.[1] ?? "";
+    expect(PASTILLE, "pastille introuvable").not.toBe("");
+    // Les deux seuls gestes, et ils sont bornés à la bande défaillante.
+    expect(LIGNE).toContain("max-[374px]:gap-x-2");
+    expect(PASTILLE).toContain("max-[374px]:px-3");
+    // Au-dessus de 374 px, rien ne change : la pastille garde px-4.
+    expect(PASTILLE).toContain("px-4");
+    // Et sa taille de texte ne bouge JAMAIS : c'est le verdict, on ne le
+    // rétrécit pas pour faire entrer la mise en page.
+    expect(PASTILLE).toContain("text-lg");
+    expect(PASTILLE).toContain("sm:text-xl");
+  });
+
   it("l'écart horizontal reste assez serré pour que la pastille tienne à 375 px", () => {
     // Mesuré : à 375 px il ne restait que 3 px de marge. Avec l'écart d'origine
     // (20 px) il en manquait 1, et la pastille se comprimait sur deux lignes.

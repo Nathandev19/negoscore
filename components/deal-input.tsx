@@ -379,7 +379,16 @@ export function DealInput({ note }: { note?: string } = {}) {
 
   return (
     <form
-      className="flex flex-col gap-3"
+      /* Mission #163 — le rythme vertical du formulaire se resserre SUR MOBILE
+         seulement : 8 px au lieu de 12 entre les trois blocs (onglets, bouton,
+         mentions), soit 12 px rendus. Au-delà de 640 px rien ne change.
+         C'est le dernier endroit vide du haut de l'accueil : sans ces 12 px, le
+         lien vers l'exemple s'arrêtait à 1 px de la ligne de flottaison à
+         375 x 667 — un pixel n'est pas une marge, c'est la mesure de #148 qui
+         recommence. Ici la marge est de 13 px, de quoi encaisser une police de
+         repli qui rendrait chacune des sept lignes du haut de page 1 px plus
+         haute. La zone de texte, elle, n'est pas touchée. */
+      className="flex flex-col gap-2 sm:gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         if (!canSubmit) return;

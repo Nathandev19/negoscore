@@ -198,21 +198,59 @@ export function claimFromLink(url: URL): string | null {
 // La plus récente : quelqu'un qui revient par un autre canal et analyse à
 // nouveau est attribué à sa dernière venue, pas à la première. Une erreur de
 // lecture ou une colonne absente ne rend rien, et la connexion continue.
+// Mission #163 — LE DRAPEAU DIT À QUEL MAILLON LA CHAÎNE A LÂCHÉ.
+//
+// Cette lecture peut ne rien rendre pour quatre raisons qui n'appellent pas la
+// même action, et elles se ressemblaient toutes : un `null`. Une inscription
+// non attribuée qui ne devrait pas l'être obligeait alors à deviner.
+//
+// Chaque étape a son étiquette, et elles ne se refusionnent pas : le test
+// tests/attribution-inscription.test.ts échoue si deux situations distinctes
+// se mettent à produire la même.
+//
+// L'étiquette dit OÙ, jamais QUOI : aucun jeton, aucun identifiant, aucune
+// adresse, aucun contenu ne passe dans le journal.
+export const PREMIER_CONTACT_ETAPES = {
+  // Ce navigateur n'a jamais lancé d'analyse anonyme : il n'y a rien à relire.
+  // Ce n'est pas une panne, c'est un parcours sans premier contact.
+  sansJeton: "sans_jeton_anonyme",
+  // Un jeton, mais aucun deal à son nom : analyse purgée, ou jeton d'un autre
+  // environnement. Là, quelque chose s'est perdu.
+  aucunDeal: "aucun_deal_pour_ce_jeton",
+  // Un deal, mais il ne porte aucune attribution : arrivée directe, ou deal
+  // créé avant la migration 20261007000039.
+  dealSansAttribution: "deal_sans_attribution",
+  // La migration n'est pas appliquée sur cet environnement.
+  colonneAbsente: "colonne_absente",
+  // Base injoignable ou requête refusée.
+  lecture: "lecture",
+} as const;
+
+export type PremierContactEtape = (typeof PREMIER_CONTACT_ETAPES)[keyof typeof PREMIER_CONTACT_ETAPES];
+
+function journalPremierContact(etape: PremierContactEtape): void {
+  console.warn(JSON.stringify({ event: "attribution_premier_contact_indisponible", etape }));
+}
+
 export async function firstTouchForAnonToken(anonToken: string | null): Promise<Attribution | null> {
-  if (!anonToken) return null;
+  if (!anonToken) {
+    journalPremierContact(PREMIER_CONTACT_ETAPES.sansJeton);
+    return null;
+  }
   try {
     const rows = await selectRows<Record<string, unknown>>(
       "deals",
       `select=${COLONNES_ATTRIBUTION.join(",")}&anon_token=eq.${encodeURIComponent(anonToken)}&order=created_at.desc&limit=1`,
     );
-    return rows[0] ? attributionDe(rows[0]) : null;
+    if (!rows[0]) {
+      journalPremierContact(PREMIER_CONTACT_ETAPES.aucunDeal);
+      return null;
+    }
+    const attribution = attributionDe(rows[0]);
+    if (!attribution) journalPremierContact(PREMIER_CONTACT_ETAPES.dealSansAttribution);
+    return attribution;
   } catch (caught) {
-    console.warn(
-      JSON.stringify({
-        event: "attribution_premier_contact_indisponible",
-        reason: isMissingColumn(caught) ? "colonne absente : appliquer la migration 20261007000039" : "lecture",
-      }),
-    );
+    journalPremierContact(isMissingColumn(caught) ? PREMIER_CONTACT_ETAPES.colonneAbsente : PREMIER_CONTACT_ETAPES.lecture);
     return null;
   }
 }

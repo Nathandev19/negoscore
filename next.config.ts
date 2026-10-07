@@ -27,10 +27,19 @@ export default function config(phase: string): NextConfig {
     // Mission #158 — /droits-d-utilisation n'a jamais existé : c'est la
     // variante avec tiret que des gens tapent et que des liens portent, et
     // elle répondait « page introuvable ». Redirection permanente, comme
-    // /offres. Next sert ces redirections en 308 (permanent qui préserve la
-    // méthode), pas en 301 — mesuré sur le serveur, et les deux sont
-    // équivalents pour les moteurs. tests/guides-reference.test.tsx vérifie que
-    // l'entrée existe et qu'elle est déclarée permanente.
+    // /offres.
+    //
+    // DÉCISION DU 07/10/2026, TRANCHÉE : nos redirections permanentes sont des
+    // 308, et le restent. `permanent: true` est le permanent de Next — celui
+    // qui préserve la méthode HTTP — et il sert 308, pas 301 (mesuré sur le
+    // serveur). Google traite les deux à l'identique, et /offres s'écrit ainsi
+    // depuis la #046 : écrire une redirection autrement que les autres ne
+    // gagnerait rien et coûterait la cohérence.
+    //
+    // Une mission qui demande « 301 » demande une redirection PERMANENTE. Ce
+    // n'est pas une question ouverte : ne pas la rouvrir, ne pas proposer
+    // `statusCode: 301`. tests/guides-reference.test.tsx vérifie que l'entrée
+    // existe et qu'elle est déclarée permanente.
     redirects: async () => [
       { source: "/offres", destination: "/tarifs", permanent: true },
       { source: "/droits-d-utilisation", destination: "/droits-utilisation", permanent: true },

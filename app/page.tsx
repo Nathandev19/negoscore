@@ -42,9 +42,20 @@ export default function HomePage() {
         {/* C1 — le champ reste au-dessus de la ligne de flottaison sur mobile. */}
         <section
           id="analyser"
-          className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-6 pb-16 sm:px-6 md:pb-24 lg:grid-cols-[1.1fr_1fr] lg:items-end lg:gap-16 lg:pt-20"
+          /* Mission #163 — LES 27 px QUI MANQUAIENT AU LIEN, pris dans le
+             vide et nulle part ailleurs. Mesuré à 375 x 667, état stabilisé :
+             le bas du lien tombait à 694 px pour un écran de 667.
+             Ni le titre ni la phrase de promesse ne sont touchés : ce sont
+             trois espacements, et seulement sur mobile — au-delà de 1024 px
+             les valeurs d'origine (lg:) s'appliquent toujours.
+                pt-6 → pt-3        12 px sous un en-tête collant de 56 px
+                gap-6 → gap-3      12 px entre le message et le formulaire
+                gap-3 → gap-2       4 px entre le titre et la promesse
+             Vingt-huit px rendus. Le reste du levier est dans la zone de
+             texte, et on n'y touche pas : c'est la surface du geste. */
+          className="mx-auto grid w-full max-w-6xl gap-3 px-4 pt-3 pb-16 sm:px-6 md:pb-24 lg:grid-cols-[1.1fr_1fr] lg:items-end lg:gap-16 lg:pt-20"
         >
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             <h1 className="text-display font-extrabold text-balance">Cette marque te propose combien&nbsp;?</h1>
             <p className="measure text-body text-encre-douce sm:text-lg">
               Colle son message. On te dit ce que ça vaut vraiment, ce que tu cèdes, et quoi répondre — jusqu&apos;à la

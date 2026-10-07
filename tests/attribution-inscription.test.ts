@@ -132,7 +132,7 @@ vi.mock("next/headers", () => ({
 
 const { requestMagicLink } = await import("@/app/connexion/actions");
 const { GET: confirmer } = await import("@/app/auth/confirm/route");
-const { CLAIM_PARAM } = await import("@/lib/auth/login-claims");
+const { CLAIM_PARAM, firstTouchForAnonToken, PREMIER_CONTACT_ETAPES } = await import("@/lib/auth/login-claims");
 
 const TOKEN = "jeton-anonyme-d-elise";
 const INSTAGRAM = {
@@ -349,6 +349,84 @@ describe("la migration appliquée à la main : le déploiement d'avant ne casse 
     // réclamation survit, et les analyses anonymes ne sont jamais rattachées.
     // On perd la mesure, jamais le rattachement.
     expect(db.claims).toHaveLength(0);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #163 — le drapeau dit à quel maillon la chaîne a lâché.
+describe("le journal nomme l'étape où le premier contact se perd", () => {
+  // Les étiquettes relevées pendant un appel, sans jamais toucher la vraie
+  // console en dehors de l'appel.
+  async function etapes(appel: () => Promise<unknown>): Promise<string[]> {
+    const relevees: string[] = [];
+    const vrai = console.warn;
+    console.warn = (...args: unknown[]) => {
+      for (const arg of args) {
+        try {
+          const ligne = JSON.parse(String(arg)) as { event?: string; etape?: string };
+          if (ligne.event === "attribution_premier_contact_indisponible" && ligne.etape) relevees.push(ligne.etape);
+        } catch {
+          // pas une ligne de journal du produit
+        }
+      }
+    };
+    try {
+      await appel();
+    } finally {
+      console.warn = vrai;
+    }
+    return relevees;
+  }
+
+  it("quatre situations, quatre étiquettes : aucune n'en recouvre une autre", async () => {
+    // 1. aucun jeton anonyme : ce navigateur n'a jamais rien analysé.
+    expect(await etapes(() => firstTouchForAnonToken(null))).toEqual([PREMIER_CONTACT_ETAPES.sansJeton]);
+
+    // 2. un jeton, mais aucun deal à son nom.
+    db.deals = [];
+    expect(await etapes(() => firstTouchForAnonToken(TOKEN))).toEqual([PREMIER_CONTACT_ETAPES.aucunDeal]);
+
+    // 3. un deal, mais il ne porte aucune attribution.
+    analyseAnonyme(null);
+    expect(await etapes(() => firstTouchForAnonToken(TOKEN))).toEqual([PREMIER_CONTACT_ETAPES.dealSansAttribution]);
+
+    // 4. la migration n'est pas appliquée sur cet environnement.
+    db.colonnesAbsentes = ["utm_source"];
+    expect(await etapes(() => firstTouchForAnonToken(TOKEN))).toEqual([PREMIER_CONTACT_ETAPES.colonneAbsente]);
+
+    // Et les quatre étiquettes sont bien DISTINCTES : les refusionner fait
+    // échouer ce test, c'est tout son objet.
+    const toutes = Object.values(PREMIER_CONTACT_ETAPES);
+    expect(new Set(toutes).size).toBe(toutes.length);
+  });
+
+  it("quand le premier contact existe, le journal se tait", async () => {
+    analyseAnonyme();
+    expect(await etapes(() => firstTouchForAnonToken(TOKEN))).toEqual([]);
+  });
+
+  it("l'étiquette dit OÙ, jamais QUOI : ni jeton, ni adresse, ni contenu", async () => {
+    analyseAnonyme();
+    const lignes: string[] = [];
+    const vrai = console.warn;
+    console.warn = (...args: unknown[]) => lignes.push(args.map(String).join(" "));
+    try {
+      db.colonnesAbsentes = ["utm_source"];
+      await firstTouchForAnonToken(TOKEN);
+      await firstTouchForAnonToken(null);
+    } finally {
+      console.warn = vrai;
+    }
+    const journal = lignes.join(" ");
+    expect(journal).not.toBe("");
+    for (const interdit of [TOKEN, auth.email, "instagram", "bio_instagram", auth.userId]) {
+      expect(journal, interdit).not.toContain(interdit);
+    }
+    // Le code source non plus ne doit pas glisser la valeur dans le journal.
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("lib/auth/login-claims.ts", "utf8");
+    const fonction = source.slice(source.indexOf("function journalPremierContact"), source.indexOf("export async function firstTouchForAnonToken"));
+    expect(fonction).not.toMatch(/anonToken|email|attribution/);
   });
 });
 
