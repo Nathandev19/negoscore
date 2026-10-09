@@ -8,7 +8,7 @@ vi.mock("@/components/deal-input", () => ({
 vi.mock("@/components/analytics/track-view", () => ({ TrackView: () => null }));
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { baseExtraction, PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/preview-states";
-import { BAND_LABEL } from "@/lib/display";
+import { BAND_LABEL, priceCapNote, QUANTITY_CAP_NOTE } from "@/lib/display";
 import { bandFor, comparedAmountOf, priceCapFor } from "@/lib/rates/score";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -313,5 +313,106 @@ describe("le verdict n'est pas une position dans la fourchette", () => {
     const textes = STEPS.map((etape) => `${etape.title} ${etape.text}`).join(" ");
     expect(textes).toContain("ce que vaut l'offre, conditions comprises");
     expect(textes).not.toMatch(/au-dessus, dans la fourchette, ou en dessous/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe("le mot « note » non plus", () => {
+  // Mission #177 — même raison que pour « score » : la note n'est plus
+  // affichée, donc le mot ne nomme plus rien que la créatrice puisse voir.
+  // Les notes de plafond disaient encore « la note ne peut pas dépasser » ;
+  // elles disent « le verdict ».
+  //
+  // MAIS « note » est un mot courant du français, et le remplacer partout
+  // à l'aveugle serait pire que le laisser. Ce test porte donc sur ce qui
+  // est RENDU, phrase par phrase, et nomme ses exceptions.
+  const MOT = /\bnotes?\b/i;
+
+  // ─── L'EXCEPTION, en attente d'arbitrage ────────────────────────────────
+  // La note de quantité inconnue (#035) dit encore « la note ne peut donc
+  // pas dépasser ». Elle est de la même famille que les deux corrigées ici,
+  // mais la #177 demande de la LISTER, pas de la corriger : le rapport la
+  // porte. Le jour où elle est tranchée, cette exception disparaît et le
+  // test redevient absolu.
+  const EN_ATTENTE = [QUANTITY_CAP_NOTE];
+
+  const lisible = (html: string) =>
+    html
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&#x27;|&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/\s+/g, " ");
+
+  const sansExceptions = (texte: string) => EN_ATTENTE.reduce((reste, phrase) => reste.split(phrase).join(" "), texte);
+
+  it("les trois notes de plafond disent « le verdict »", () => {
+    for (const [raison, bande] of [
+      ["bottom", BAND_LABEL.fair],
+      ["middle", BAND_LABEL.good],
+    ] as const) {
+      const phrase = priceCapNote(56, raison);
+      expect(phrase, raison).toContain(`le verdict ne peut pas dépasser « ${bande} »`);
+      expect(phrase, raison).not.toMatch(MOT);
+    }
+    expect(priceCapNote(56, "ratio")).toContain("Le verdict ne peut pas monter plus haut.");
+    expect(priceCapNote(56, "ratio")).not.toMatch(MOT);
+  });
+
+  it("ni dans ce que la page de résultat REND, dans ses six états", async () => {
+    const { AnalysisResult } = await import("@/components/result/analysis-result");
+    for (const etat of PREVIEW_STATES) {
+      const { analysis } = previewAnalysis(etat);
+      const texte = sansExceptions(lisible(renderToStaticMarkup(<AnalysisResult analysis={analysis} unlockHref="/connexion" />)));
+      expect(texte, etat).not.toMatch(MOT);
+    }
+  });
+
+  it("ni dans l'accueil, l'historique et le pied de page", async () => {
+    const { default: HomePage } = await import("@/app/page");
+    const { HistoryView } = await import("@/components/account/history-view");
+    const { SiteFooter } = await import("@/components/site-footer");
+    const rendus = [
+      renderToStaticMarkup(<HomePage />),
+      renderToStaticMarkup(
+        <HistoryView
+          rows={[
+            { id: "a", created_at: "2026-09-19T10:00:00.000Z", score: 58, band: "weak", amount: 300, evaluability: "complete", tier: "confirmed" },
+          ]}
+        />,
+      ),
+      renderToStaticMarkup(<SiteFooter />),
+    ];
+    for (const html of rendus) expect(sansExceptions(lisible(html))).not.toMatch(MOT);
+  });
+
+  it("ni dans les textes de contenu, les formules et les descriptions", async () => {
+    const { FAQ, STEPS, TRUST } = await import("@/lib/content/home");
+    const { PLANS } = await import("@/lib/billing/plans");
+    const { PUBLIC_PAGES } = await import("@/lib/seo");
+    const vocabulaire = await import("@/lib/content/vocabulaire");
+    const textes = [
+      ...[...STEPS, ...TRUST, ...FAQ].map((entree) => Object.values(entree).join(" ")),
+      ...PLANS.flatMap((plan) => [plan.name, plan.summary, ...plan.features]),
+      ...Object.values(vocabulaire).filter((v): v is string => typeof v === "string"),
+      ...PUBLIC_PAGES.map((page) => `${page.title} ${page.description}`),
+    ];
+    for (const texte of textes) expect(sansExceptions(texte), texte.slice(0, 70)).not.toMatch(MOT);
+  });
+
+  it("LE CODE, LA BASE ET /admin gardent leur vocabulaire", () => {
+    // Même frontière que pour « score » : ce test interdit le mot À L'ÉCRAN,
+    // jamais dans les identifiants. `data-tier-note`, `QUANTITY_CAP_NOTE`,
+    // `priceCapNote`, la colonne `note` d'un avis : tous légitimes.
+    expect(readFileSync("components/result/score-band.tsx", "utf8")).toContain("data-tier-note");
+    expect(readFileSync("lib/display.ts", "utf8")).toContain("export function priceCapNote");
+    // Et /admin, qui affiche toujours le chiffre, n'est pas concerné.
+    expect(readFileSync("components/admin/feedback-report-view.tsx", "utf8")).toContain('["Score"');
+  });
+
+  it("l'exception en attente est UNE seule phrase, et elle est nommée", () => {
+    // Si une deuxième apparaissait, elle devrait passer par le rapport, pas
+    // se glisser dans cette liste.
+    expect(EN_ATTENTE).toHaveLength(1);
+    expect(QUANTITY_CAP_NOTE).toContain("la note ne peut donc pas dépasser");
   });
 });

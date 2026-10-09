@@ -68,14 +68,14 @@ export const QUANTITY_CAP_NOTE =
 //
 // Mission #109, B — le plafond mord désormais aussi pour un montant DANS la
 // fourchette, où « X % du bas de la fourchette » dépasserait 100 % et ne
-// voudrait plus rien dire. La note nomme alors la position, et la bande
+// voudrait plus rien dire. Elle nomme alors la position, et la bande
 // qu'elle interdit, en reprenant les libellés affichés juste à côté.
 export function priceCapNote(percent: number, reason: PriceCapReason = "ratio"): string {
   if (reason === "bottom") {
-    return `Le montant proposé est dans le tiers bas de la fourchette : la note ne peut pas dépasser « ${BAND_LABEL.fair} ».`;
+    return `Le montant proposé est dans le tiers bas de la fourchette : le verdict ne peut pas dépasser « ${BAND_LABEL.fair} ».`;
   }
   if (reason === "middle") {
-    return `Le montant proposé est au milieu de la fourchette : la note ne peut pas dépasser « ${BAND_LABEL.good} ».`;
+    return `Le montant proposé est au milieu de la fourchette : le verdict ne peut pas dépasser « ${BAND_LABEL.good} ».`;
   }
   // Mission #176 — « Le score » nommait un nombre que la créatrice ne voit
   // plus. C est le RÉSULTAT affiché, donc « le verdict ».

@@ -486,7 +486,9 @@ describe("à l'écran", () => {
   it("B — la note de plafond nomme la position, jamais un pourcentage du plancher supérieur à 100 %", () => {
     const html = render(REFERENCE);
     expect(html).toContain("Le montant proposé est dans le tiers bas de la fourchette");
-    expect(html).toContain("la note ne peut pas dépasser « Deal correct »");
+    // Mission #177 — « la note » nommait un nombre que la créatrice ne voit
+    // plus depuis la #174. C'est le résultat affiché, donc « le verdict ».
+    expect(html).toContain("le verdict ne peut pas dépasser « Deal correct »");
     expect(html).not.toContain("du bas de la fourchette. Le verdict ne peut pas monter plus haut.");
     // Le pourcentage du plancher vaudrait 139 % : il n'apparaît nulle part.
     expect(html).not.toContain("139 %");
