@@ -6,7 +6,11 @@ import { TIERS } from "@/lib/rates/tier";
 
 export const runtime = "nodejs";
 
-const PUBLIC_EVENTS = ["landing_view", "pricing_view", "tier_changed"] as const;
+// Mission #165 — les deux drapeaux de la carte de verdict rejoignent la
+// liste : ils sont émis par le navigateur, au clic, et ne portent aucune
+// donnée. Comme tier_changed, ils ne nomment pas une page : la garde
+// VIEW_PAGES ne les concerne pas.
+const PUBLIC_EVENTS = ["landing_view", "pricing_view", "tier_changed", "carte_partagee", "carte_telechargee"] as const;
 
 // Mission #136 — la page d'où part un événement de vue.
 //

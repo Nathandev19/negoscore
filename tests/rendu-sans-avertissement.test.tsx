@@ -41,6 +41,7 @@ vi.mock("next/navigation", async (importOriginal) => ({
 }));
 
 const { NegotiationThread } = await import("@/components/result/negotiation/negotiation-thread");
+const { VerdictCardShare } = await import("@/components/result/verdict-card-share");
 const { default: PageExemple } = await import("@/app/analyse/demo/page");
 
 // Tout ce que React écrit sur la console pendant un rendu. React n'émet pas
@@ -84,6 +85,11 @@ describe("la page de résultat se rend sans un seul avertissement React", () => 
           />
         }
       >
+        {/* Mission #165 — la carte de verdict est un enfant de la page de
+            résultat : elle entre dans le même harnais. Rendue ici sans
+            cliquer, donc à l'état « Voir ma carte » — aucune requête ne part
+            au rendu, c'est justement ce qu'on veut vérifier. */}
+        <VerdictCardShare />
         <p>Un enfant quelconque.</p>
       </AnalysisResult>,
     );

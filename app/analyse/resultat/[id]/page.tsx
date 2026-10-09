@@ -7,6 +7,7 @@ import { EstimateFeedback } from "@/components/result/estimate-feedback";
 import { NegotiationThread } from "@/components/result/negotiation/negotiation-thread";
 import { RetryPanel, type RetryPanelState } from "@/components/result/retry-panel";
 import { ShareCardLink } from "@/components/result/share-card-link";
+import { VerdictCardShare } from "@/components/result/verdict-card-share";
 import { SessionUnavailable } from "@/components/session-unavailable";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -111,7 +112,16 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
           ) : null
         }
       >
-        {cardAvailable ? <ShareCardLink href={`/analyse/resultat/${id}/carte`} /> : null}
+        {/* Mission #165 — DEUX CARTES, DEUX RÉGIMES, jamais les deux à la fois.
+            La carte de verdict (4:5, crème) se construit à partir du cookie
+            anonyme : elle n'existe donc que pour la visiteuse qui vient
+            d'analyser et n'a pas encore de compte — exactement le moment où
+            elle a envie de montrer son verdict. Se connecter efface ce cookie
+            (lib/auth/sign-in.ts), et c'est alors la carte de #064, rattachée à
+            la session, qui reste proposée. */}
+        {cardAvailable ? (
+          user === null ? <VerdictCardShare /> : <ShareCardLink href={`/analyse/resultat/${id}/carte`} />
+        ) : null}
         {askFeedback ? (
           <EstimateFeedback
             action={`/api/analyses/${id}/avis`}

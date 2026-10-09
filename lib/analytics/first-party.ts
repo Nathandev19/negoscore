@@ -17,6 +17,13 @@ export const PRODUCT_EVENTS = [
   "tier_changed",
   // Mission #157 — arrivée sur l'analyse, distincte des visites historiques.
   "analysis_page_view",
+  // Mission #165 — une carte de verdict est partie. DEUX DRAPEAUX, et rien
+  // d'autre : ils disent qu'une image a quitté l'appareil, par le partage
+  // natif ou par un téléchargement. Jamais le montant, jamais la fourchette,
+  // jamais l'analyse concernée. Ce qu'on veut savoir est « est-ce que ça
+  // circule », pas « qui a partagé quoi ».
+  "carte_partagee",
+  "carte_telechargee",
 ] as const;
 export type ProductEventName = (typeof PRODUCT_EVENTS)[number];
 

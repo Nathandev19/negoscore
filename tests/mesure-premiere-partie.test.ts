@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { PRODUCT_EVENTS } from "@/lib/analytics/first-party";
 import { MEASURED_PAGES } from "@/lib/analytics/views";
@@ -79,7 +80,32 @@ describe("la mesure première partie survit au retrait de PostHog", () => {
       "example_view",
       "tier_changed",
       "analysis_page_view",
+      // Mission #165 — une carte de verdict est partie, par le partage natif
+      // ou par un téléchargement. Deux drapeaux, aucune donnée.
+      "carte_partagee",
+      "carte_telechargee",
     ]);
+  });
+
+  // Mission #165 — LA BASE ADMET-ELLE TOUS CES NOMS ?
+  //
+  // `product_events.event_name` porte une liste fermée, redéfinie par chaque
+  // migration qui ajoute un événement. Un nom ajouté au code sans migration
+  // est refusé par la base, silencieusement : recordProductEvent avale
+  // l'erreur, et le compteur reste à zéro sans que rien ne le dise.
+  // Ce test lit la DERNIÈRE contrainte en date — celle qui vaut réellement —
+  // et exige qu'elle couvre toute la table du code.
+  it("la dernière contrainte de la base admet exactement les événements du code", () => {
+    const dossier = path.join(process.cwd(), "supabase", "migrations");
+    const derniere = readdirSync(dossier)
+      .filter((nom) => nom.endsWith(".sql") && readFileSync(path.join(dossier, nom), "utf8").includes("product_events_event_name_check"))
+      .sort()
+      .at(-1);
+    expect(derniere, "aucune migration ne définit la contrainte").toBeDefined();
+    const sql = readFileSync(path.join(dossier, derniere as string), "utf8");
+    const blocs = [...sql.matchAll(/check\s*\(\s*event_name\s+in\s*\(([^)]*)\)/gi)];
+    const admis = [...blocs[blocs.length - 1][1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    expect([...admis].sort()).toEqual([...PRODUCT_EVENTS].sort());
   });
 
   it("les pages mesurées par le pixel incluent l'analyse", () => {
@@ -90,7 +116,9 @@ describe("la mesure première partie survit au retrait de PostHog", () => {
 
   it("les deux vues du navigateur partent toujours, et seules elles", () => {
     const route = lire("app/api/events/route.ts");
-    expect(route).toContain('const PUBLIC_EVENTS = ["landing_view", "pricing_view", "tier_changed"]');
+    expect(route).toContain(
+      'const PUBLIC_EVENTS = ["landing_view", "pricing_view", "tier_changed", "carte_partagee", "carte_telechargee"]',
+    );
     // L'accueil et les tarifs les émettent toujours.
     expect(lire("app/page.tsx")).toContain('<FirstPartyView event="landing_view" />');
     expect(lire("app/tarifs/page.tsx")).toContain('<FirstPartyView event="pricing_view" />');
