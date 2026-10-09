@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnalysisResult } from "@/components/result/analysis-result";
+import { ScoreBand } from "@/components/result/score-band";
 import { loadScenarios, runScenario } from "@/lib/negotiation/scenarios";
 import { PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/preview-states";
 import type { TurnPayload } from "@/lib/negotiation/types";
@@ -93,6 +94,22 @@ describe("la page de résultat se rend sans un seul avertissement React", () => 
         <p>Un enfant quelconque.</p>
       </AnalysisResult>,
     );
+    expect(bruit).toEqual([]);
+  });
+
+  // Mission #172, point 2 — L'ANIMATION DU SCORE N'EST PAS UN ANGLE MORT.
+  //
+  // Le rejeu (changement de niveau) remonte la jauge et le chiffre depuis
+  // une valeur de départ : c'est le seul chemin où ScoreBand reçoit `from`,
+  // et il remonte un composant entier par sa clé. Un avertissement y
+  // passerait inaperçu — la page est déjà affichée quand il sort.
+  it.each(PREVIEW_STATES)("état « %s », pendant l'animation du score et au rejeu", (etat) => {
+    const { analysis } = previewAnalysis(etat);
+    const valeur = analysis.score?.value ?? null;
+    for (const depart of [null, 0, valeur]) {
+      renderToStaticMarkup(<ScoreBand analysis={analysis} from={depart} />);
+      renderToStaticMarkup(<ScoreBand analysis={analysis} from={depart} animated={false} />);
+    }
     expect(bruit).toEqual([]);
   });
 

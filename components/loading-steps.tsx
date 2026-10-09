@@ -88,6 +88,10 @@ export function WaitingScreen({ kind, respondedAt, startedAgoMs = 0 }: WaitingSc
       tabIndex={-1}
       aria-label="Analyse en cours"
       aria-busy={respondedAt === null}
+      // Mission #172 — LE REPÈRE QUE LA BARRE MOBILE LIT. Même procédé que
+      // `data-score-block` : un attribut sur l'élément, pas un état partagé
+      // entre deux composants client qui ne se connaissent pas.
+      data-analysis-running
       className="flex flex-col gap-6 rounded-control border-2 border-encre p-5 sm:p-6"
     >
       <p className="headline text-h2 text-encre">On analyse ton offre</p>

@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { EXAMPLE_ORIGIN_PARAM } from "@/lib/analytics/views";
+import { EXAMPLE_ORIGIN_PARAM, GUIDE_PATHS } from "@/lib/analytics/views";
 
-const PAGES = new Set(["/", "/analyse/demo", "/exemple", "/tarifs", "/combien-facturer", "/droits-utilisation", "/produits-offerts"]);
+export const PAGES = new Set<string>(["/", "/analyse/demo", "/exemple", "/tarifs", ...GUIDE_PATHS]);
 const PAGE_CTA_SELECTOR = 'main a[href="/analyse"], main button[type="submit"], footer a[href="/analyse"]';
 const SCORE_BLOCK_SELECTOR = "main [data-score-block]";
+// Mission #172 — l'écran d'attente, où qu'il soit dans la page.
+const RUNNING_SELECTOR = "[data-analysis-running]";
 const HEADER_HEIGHT = 56;
 const CTA_APPROACH = 16;
 
@@ -23,7 +25,21 @@ export function showMobileAnalyzeBar(
   ctas: readonly VerticalRect[],
   viewportHeight: number,
   scoreBlocks: readonly VerticalRect[] = [],
+  // Mission #172 — UNE ANALYSE TOURNE. Rapporté sur iPhone, Safari, navigation
+  // privée : pendant « On analyse ton offre », la barre proposait de lancer ce
+  // qui était déjà en cours.
+  //
+  // La cause n'était pas un oubli de règle, c'est l'inverse : l'écran
+  // d'attente REMPLACE le formulaire, donc le `button[type="submit"]` que la
+  // barre surveillait disparaît de la page — et la barre, qui se cachait
+  // justement parce qu'un bouton d'analyse était à l'écran, se montrait.
+  //
+  // Ce booléen ne dépend PAS du défilement : une analyse tourne ou ne tourne
+  // pas, et on ne propose pas d'en lancer une deuxième parce qu'on a fait
+  // défiler la page.
+  analysisRunning = false,
 ): boolean {
+  if (analysisRunning) return false;
   const approach = pathname === "/analyse/demo" || pathname === "/exemple" ? CTA_APPROACH : 0;
   return pathname !== null && PAGES.has(pathname)
     && !scoreBlocks.some((score) => score.bottom > HEADER_HEIGHT && score.top < viewportHeight)
@@ -43,7 +59,11 @@ export function MobileAnalyzeBar() {
       frame = requestAnimationFrame(() => {
         const ctas = [...document.querySelectorAll<HTMLElement>(PAGE_CTA_SELECTOR)].map((element) => element.getBoundingClientRect());
         const scoreBlocks = [...document.querySelectorAll<HTMLElement>(SCORE_BLOCK_SELECTOR)].map((element) => element.getBoundingClientRect());
-        setVisible(window.matchMedia("(max-width: 767px)").matches && showMobileAnalyzeBar(pathname, ctas, window.innerHeight, scoreBlocks));
+        const running = document.querySelector(RUNNING_SELECTOR) !== null;
+        setVisible(
+          window.matchMedia("(max-width: 767px)").matches &&
+            showMobileAnalyzeBar(pathname, ctas, window.innerHeight, scoreBlocks, running),
+        );
       });
     };
     update();

@@ -100,7 +100,12 @@
   /* Mouvement : deux durées, plus le remplissage unique du score. */
   --duration-hover: 150ms;
   --duration-reveal: 400ms;
-  --duration-score: 700ms;
+  /* Mission #172 — 600 ms au plus. Le chiffre ET la jauge lisent la MÊME
+     variable : ils partent ensemble et arrivent ensemble, et on ne peut pas
+     en décaler un sans décaler l'autre. Mesuré image par image sur
+     /dev/resultat : --score-now et la largeur de la jauge progressent du
+     même pas, 2/11 px à 60 ms, 17/79 px à 364 ms, 33/151 px à l'arrivée. */
+  --duration-score: 600ms;
 }
 
 /* Jetons des composants shadcn, ramenés à la palette. */
