@@ -70,7 +70,7 @@ export default function HomePage() {
           </div>
           <div className="flex flex-col gap-2">
             {/* La phrase est masquée quand il ne reste aucun droit : elle serait fausse à ce moment-là. */}
-            <DealInput note="Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et les messages." />
+            <DealInput note="Verdict et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et les messages." />
             {/* Mission #152 — LA SORTIE POUR QUI N'A PAS D'OFFRE SOUS LA MAIN.
                 Le lien vers l'exemple existait déjà, mais dans la section C3,
                 trois écrans plus bas : quelqu'un qui arrive par la bio voit un
@@ -136,7 +136,7 @@ export default function HomePage() {
             </div>
             {score ? (
               <div className="on-marque grain flex flex-col overflow-hidden rounded-control bg-marque text-creme">
-                <ScoreBand analysis={sampleAnalysis}  className="p-5 sm:p-7 lg:grid-cols-1 lg:gap-6" />
+                <ScoreBand analysis={sampleAnalysis} className="p-5 sm:p-7 lg:grid-cols-1 lg:gap-6" />
                 {total ? (
                   <div className="flex flex-col gap-1 border-t border-creme/30 px-5 py-4 sm:px-7">
                     <p className="text-small">Ce que ça vaut vraiment</p>

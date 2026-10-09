@@ -114,7 +114,7 @@ describe("page d'accueil", () => {
     for (const plan of PLANS) expect(html).toContain(plan.price);
     expect(html).toContain("Ta première négociation est gratuite");
     expect(html).toContain("On ne lit que ce qui est écrit dans l&#x27;offre.");
-    expect(html).toContain("Score et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et les messages.");
+    expect(html).toContain("Verdict et fourchette gratuits, sans compte. Ton email suffit pour la contre-offre et les messages.");
     expect(html).not.toContain("Gratuit · sans compte");
     expect(html).not.toContain("et un message à envoyer.");
     // B4 (#030) : plus aucune promesse de gratuité ni de durée dans le sous-titre.

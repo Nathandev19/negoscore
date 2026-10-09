@@ -77,7 +77,9 @@ export function priceCapNote(percent: number, reason: PriceCapReason = "ratio"):
   if (reason === "middle") {
     return `Le montant proposé est au milieu de la fourchette : la note ne peut pas dépasser « ${BAND_LABEL.good} ».`;
   }
-  return `Le montant proposé représente ${percent} % du bas de la fourchette. Le score ne peut pas monter plus haut.`;
+  // Mission #176 — « Le score » nommait un nombre que la créatrice ne voit
+  // plus. C est le RÉSULTAT affiché, donc « le verdict ».
+  return `Le montant proposé représente ${percent} % du bas de la fourchette. Le verdict ne peut pas monter plus haut.`;
 }
 
 // Pastille de verdict quand l'offre n'a pas de score.

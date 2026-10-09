@@ -1,5 +1,11 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/components/deal-input", () => ({
+  DealInput: ({ note }: { note?: string }) => <form aria-label="saisie">{note}</form>,
+}));
+vi.mock("@/components/analytics/track-view", () => ({ TrackView: () => null }));
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { baseExtraction, PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/preview-states";
 import { BAND_LABEL } from "@/lib/display";
@@ -145,12 +151,6 @@ describe("aucun texte public ne promet une note sur 100", () => {
   // Mission #175 — le constat était en `it.fails` depuis la #174 : l'accueil
   // promettait encore « un score sur 100 » et « 90/100 ». Les deux phrases
   // sont réécrites, et la garde devient une vraie garde.
-  //
-  // Elle porte sur la NOTE CHIFFRÉE, pas sur le mot « score » : le produit
-  // calcule toujours une note, et plusieurs textes nomment encore ce qu'elle
-  // lit. Ces mentions-là sont listées dans le rapport de la #175, en attente
-  // d'arbitrage — les transformer en échec ici, ce serait trancher à la place
-  // de leur auteur.
   it("ni l'accueil, ni les formules, ni le champ d'analyse", async () => {
     const { FAQ, STEPS, TRUST } = await import("@/lib/content/home");
     const { PLANS } = await import("@/lib/billing/plans");
@@ -167,5 +167,151 @@ describe("aucun texte public ne promet une note sur 100", () => {
     for (const page of PUBLIC_PAGES) {
       expect(`${page.title} ${page.description}`, page.path).not.toMatch(/sur 100|\/100/);
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe("le mot « score » a quitté la copie destinée aux créatrices", () => {
+  // Mission #176 — la note n'est plus affichée : le mot ne nomme plus rien
+  // qu'elle puisse voir. Deux mots le remplacent selon le rôle, et la règle
+  // vit dans lib/content/vocabulaire.ts :
+  //     ce qui LIT l'offre         → « l'analyse »
+  //     ce qui S'AFFICHE en retour → « le verdict »
+  //
+  // « score » reste le mot du CODE et de la BASE, comme « crédit » : ce test
+  // ne lit donc que des TEXTES, jamais des identifiants.
+  const MOT = /\bscores?\b/i;
+
+  it("ni dans les textes de l'accueil", async () => {
+    const { FAQ, STEPS, TRUST } = await import("@/lib/content/home");
+    for (const entree of [...STEPS, ...TRUST, ...FAQ]) {
+      const texte = Object.values(entree).join(" ");
+      expect(texte, texte.slice(0, 60)).not.toMatch(MOT);
+    }
+  });
+
+  it("ni dans les trois formules, donc ni sur l'accueil ni sur /tarifs", async () => {
+    const { PLANS } = await import("@/lib/billing/plans");
+    for (const plan of PLANS) {
+      for (const texte of [plan.name, plan.summary, ...plan.features]) {
+        expect(texte, `${plan.name} : ${texte}`).not.toMatch(MOT);
+      }
+    }
+  });
+
+  it("ni dans le vocabulaire public, ni dans les titres et descriptions", async () => {
+    const vocabulaire = await import("@/lib/content/vocabulaire");
+    for (const [nom, valeur] of Object.entries(vocabulaire)) {
+      if (typeof valeur === "string") expect(valeur, nom).not.toMatch(MOT);
+    }
+    const { PUBLIC_PAGES } = await import("@/lib/seo");
+    for (const page of PUBLIC_PAGES) expect(`${page.title} ${page.description}`, page.path).not.toMatch(MOT);
+  });
+
+  it("ni dans ce que la page de résultat et l'accueil RENDENT", async () => {
+    // La preuve par le rendu, pas par la source : c'est le texte lu à
+    // l'écran qui compte, et lui seul.
+    const { default: HomePage } = await import("@/app/page");
+    const { ScoreBand } = await import("@/components/result/score-band");
+    const lisible = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/\s+/g, " ");
+    expect(lisible(renderToStaticMarkup(<HomePage />))).not.toMatch(MOT);
+    for (const etat of PREVIEW_STATES) {
+      const { analysis } = previewAnalysis(etat);
+      expect(lisible(renderToStaticMarkup(<ScoreBand analysis={analysis} showTier />)), etat).not.toMatch(MOT);
+    }
+  });
+
+  it("la décision vit dans le vocabulaire, pas seulement dans les pages", () => {
+    // Mission #176, point 3 — « score » n'était pas défini comme terme
+    // client : il n'y avait rien à renommer, seulement une décision à
+    // consigner là où la prochaine personne ira la chercher. Un commentaire
+    // est ici le livrable, donc il est gardé comme tel.
+    const vocabulaire = readFileSync("lib/content/vocabulaire.ts", "utf8");
+    expect(vocabulaire).toContain("« SCORE » N'EST PLUS UN MOT DE LA COPIE");
+    expect(vocabulaire).toContain("ce qui LIT l'offre");
+    expect(vocabulaire).toContain("« l'analyse »");
+    expect(vocabulaire).toContain("ce qui S'AFFICHE en retour");
+    expect(vocabulaire).toContain("« le verdict »");
+    // Et l'exception y est nommée, pas sous-entendue.
+    expect(vocabulaire).toContain("/admin");
+  });
+
+  it("L'EXCEPTION EST /admin, et elle est nommée", async () => {
+    // Décidée en #174 : le rapport d'avis garde « Score : X/100 ». C'est
+    // l'outil interne qui sert justement à recalibrer l'échelle — l'en
+    // priver reviendrait à se priver du chiffre qu'on veut mesurer.
+    const rapport = readFileSync("components/admin/feedback-report-view.tsx", "utf8");
+    expect(rapport).toContain('["Score"');
+    // Et l'exception s'arrête là : aucune page de créatrice ne l'imite.
+    const CREATRICE = ["app/page.tsx", "app/historique/page.tsx", "components/result/score-band.tsx"];
+    for (const fichier of CREATRICE) {
+      // Des PHRASES, donc sur une seule ligne : une chaîne qui court sur
+      // plusieurs lignes n'est pas du texte d'écran.
+      const chaines = codeSeul(fichier).match(/"[^"\n]*\bscores?\b[^"\n]*"/gi) ?? [];
+      // Les seules occurrences admises sont des chemins d'import, des
+      // attributs de données et des colonnes de requête — jamais une phrase.
+      for (const chaine of chaines) {
+        // `"score"` seul est un index de TYPE (Analysis["score"]), pas une
+        // phrase : le mot reste celui du code, comme « crédit ».
+        expect(chaine, `${fichier} ${chaine}`).toMatch(/score-band|rates\/score|data-score|payload->score|select=|^"score"$/);
+      }
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe("le verdict n'est pas une position dans la fourchette", () => {
+  // Mission #176 — la première réécriture de la #175 annonçait « le verdict :
+  // au-dessus, dans la fourchette, ou en dessous ». C'est faux, et c'est
+  // mesurable : le verdict est une VALEUR, conditions comprises.
+  //
+  // Ce test garde les deux bouts. D'abord le fait, pour qu'on sache pourquoi
+  // la phrase dit ce qu'elle dit. Ensuite la phrase, pour qu'elle ne reparte
+  // pas dans l'autre sens.
+  function offre(montant: number, dures: boolean) {
+    const base = baseExtraction();
+    return {
+      ...base,
+      deal: {
+        ...base.deal,
+        brand: null,
+        deliverables: [{ type: "video" as const, platform: "tiktok" as const, quantity: 2, format: null }],
+        usage: { ...base.deal.usage, organic: true, paid_ads: false, perpetual: false, duration_months: 6, territory: "France", territory_zones: ["france"] },
+        exclusivity: dures ? { present: true, duration_months: 6, category: "x" } : { present: false, duration_months: null, category: null },
+        revisions: dures ? { count: null, unlimited: true } : { count: 2, unlimited: false },
+        raw_footage: dures,
+        payment: { ...base.deal.payment, amount_eur: montant, terms_days: dures ? 90 : 30 },
+        in_kind_value_eur: null,
+      },
+    };
+  }
+
+  it("deux montants DANS leur fourchette donnent deux verdicts différents", () => {
+    // Relevé le 10/10 : 200 € dans 200–360 € donne « correct », 360 € dans la
+    // même fourchette donne « excellent », et 390 € dans 390–850 € avec des
+    // conditions dures donne « faible ». La position ne suffit pas.
+    const bas = composeAnalysis(offre(200, false) as never, { tier: "starter" });
+    const haut = composeAnalysis(offre(360, false) as never, { tier: "starter" });
+    for (const a of [bas, haut]) {
+      expect(a.deal.payment.amount_eur).toBeGreaterThanOrEqual(a.estimate.total_low as number);
+      expect(a.deal.payment.amount_eur).toBeLessThanOrEqual(a.estimate.total_high as number);
+    }
+    expect(bas.score!.band).not.toBe(haut.score!.band);
+  });
+
+  it("et deux montants AU-DESSUS du haut aussi", () => {
+    const saine = composeAnalysis(offre(540, false) as never, { tier: "starter" });
+    const dure = composeAnalysis(offre(1275, true) as never, { tier: "starter" });
+    for (const a of [saine, dure]) {
+      expect(a.deal.payment.amount_eur).toBeGreaterThan(a.estimate.total_high as number);
+    }
+    expect(saine.score!.band).not.toBe(dure.score!.band);
+  });
+
+  it("l'accueil ne décrit donc pas le verdict comme une position", async () => {
+    const { STEPS } = await import("@/lib/content/home");
+    const textes = STEPS.map((etape) => `${etape.title} ${etape.text}`).join(" ");
+    expect(textes).toContain("ce que vaut l'offre, conditions comprises");
+    expect(textes).not.toMatch(/au-dessus, dans la fourchette, ou en dessous/);
   });
 });

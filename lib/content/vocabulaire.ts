@@ -11,6 +11,22 @@ import { LAST_TURN } from "@/lib/negotiation/libelles";
 // de la copie destinée à la personne.
 //
 // Les nombres viennent tous du code : jamais écrits à la main dans un texte.
+//
+// ─── Mission #176 — « SCORE » N'EST PLUS UN MOT DE LA COPIE ───────────────
+//
+// La note sur 100 a quitté l'affichage (#174) : plus aucun écran de créatrice
+// ne la montre. Le mot « score » ne nomme donc plus rien qu'elle puisse voir,
+// et il a disparu de la copie. Deux mots le remplacent, selon le rôle :
+//
+//   ce qui LIT l'offre          → « l'analyse »
+//   ce qui S'AFFICHE en retour  → « le verdict »
+//
+// La note continue d'être calculée et enregistrée : « score » reste le mot du
+// CODE et de la BASE, comme « crédit ». Une seule exception à l'écran, et
+// elle est nommée : /admin, où le rapport d'avis affiche « Score : X/100 »
+// parce que c'est l'outil qui sert justement à recalibrer l'échelle.
+//
+// tests/note-contre-bande.test.ts refuse le mot partout ailleurs.
 
 // Nombre de tours d'un échange, l'analyse comprise (lib/negotiation/types.ts).
 export const NEGOTIATION_TURNS = LAST_TURN;

@@ -34,7 +34,7 @@ export const PLANS = [
     summary: `${FREE_ANALYSES} négociation`,
     features: [
       "Le deal en entier : analyse de l'offre, réponses à la marque, conclusion",
-      "Score, points à négocier et fourchette en euros",
+      "Verdict, points à négocier et fourchette en euros",
       "Contre-offre et messages à envoyer, après ton email",
     ],
   },
@@ -46,7 +46,7 @@ export const PLANS = [
     summary: `${PACK_ANALYSES} négociations complètes`,
     features: [
       "Le deal en entier : analyse de l'offre, réponses à la marque, conclusion",
-      "Score, points à négocier et fourchette en euros",
+      "Verdict, points à négocier et fourchette en euros",
       "Contre-offre et messages à envoyer, sans autre étape",
     ],
   },
@@ -58,7 +58,7 @@ export const PLANS = [
     summary: `Jusqu'à ${PRO_ANALYSES_PER_PERIOD} négociations par mois`,
     features: [
       "Le deal en entier : analyse de l'offre, réponses à la marque, conclusion",
-      "Score, points à négocier et fourchette en euros",
+      "Verdict, points à négocier et fourchette en euros",
       "Contre-offre et messages à envoyer, sans autre étape",
     ],
   },

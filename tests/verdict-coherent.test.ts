@@ -487,7 +487,7 @@ describe("à l'écran", () => {
     const html = render(REFERENCE);
     expect(html).toContain("Le montant proposé est dans le tiers bas de la fourchette");
     expect(html).toContain("la note ne peut pas dépasser « Deal correct »");
-    expect(html).not.toContain("du bas de la fourchette. Le score ne peut pas monter plus haut.");
+    expect(html).not.toContain("du bas de la fourchette. Le verdict ne peut pas monter plus haut.");
     // Le pourcentage du plancher vaudrait 139 % : il n'apparaît nulle part.
     expect(html).not.toContain("139 %");
   });
@@ -504,7 +504,7 @@ describe("à l'écran", () => {
     const estimate = computeEstimate(under, { tier: "starter" });
     expect(appliedPriceCap(under, estimate)?.reason).toBe("ratio");
     const html = render(under);
-    expect(html).toContain("du bas de la fourchette. Le score ne peut pas monter plus haut.");
+    expect(html).toContain("du bas de la fourchette. Le verdict ne peut pas monter plus haut.");
     expect(html).not.toContain("la note ne peut pas dépasser");
   });
 });

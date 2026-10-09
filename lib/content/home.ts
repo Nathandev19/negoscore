@@ -12,10 +12,16 @@ export const STEPS = [
   { title: "On lit ce qui est écrit", text: "Livrables, droits, exclusivité, délais." },
   {
     title: "Tu obtiens le chiffre",
-    // Mission #175 — la note sur 100 a quitté l'affichage en #174 : cette
-    // phrase la promettait encore. Elle est retirée de l'écran, pas du
-    // produit : rien ici ne ferme la porte à son retour.
-    text: "Une fourchette en euros, et le verdict : au-dessus, dans la fourchette, ou en dessous. Avec ton email : la contre-offre et le message à envoyer.",
+    // Mission #175, corrigée en #176 — la note sur 100 a quitté l'affichage
+    // en #174 : cette phrase la promettait encore. Elle est retirée de
+    // l'écran, pas du produit : rien ici ne ferme la porte à son retour.
+    //
+    // La première réécriture annonçait « au-dessus, dans la fourchette, ou en
+    // dessous ». Mesuré sur le moteur : un montant DANS la fourchette donne
+    // quatre verdicts différents selon les conditions, et un montant au-dessus
+    // du haut en donne deux. Le verdict n'est pas une position, c'est une
+    // valeur — conditions comprises.
+    text: "Une fourchette en euros, et le verdict : ce que vaut l'offre, conditions comprises. Avec ton email : la contre-offre et le message à envoyer.",
   },
   {
     title: "Tu réponds, elle répond",
@@ -29,10 +35,13 @@ export const TRUST = [
     text: `Les prix viennent d'une table française versionnée (${CURRENT_RATE_VERSION} aujourd'hui). La version utilisée est affichée sur chaque négociation.`,
   },
   {
-    title: "Ce que le score lit, et ce qu'il ne peut pas savoir",
+    // Mission #176 — « le score » ne nomme plus rien que la créatrice voie.
+    // Ce qui LIT, c'est l'analyse ; ce qui s'affiche, c'est le verdict. Le
+    // paragraphe suit le genre de son nouveau sujet.
+    title: "Ce que l'analyse lit, et ce qu'elle ne peut pas savoir",
     // Liste complétée (mission #061) : l'entraînement IA et les rushs non
     // couverts sont deux malus réellement appliqués (lib/rates/score.ts).
-    text: "Il lit le prix, le délai de paiement, les droits cédés, l'exclusivité, les révisions, l'usage de tes contenus pour entraîner une IA et les rushs bruts demandés sans être payés, écrits dans l'offre. Il ne peut pas savoir si la marque paiera à temps ni si le brief va déraper : son verdict porte sur ce qui est écrit, pas sur ce qui se passera.",
+    text: "Elle lit le prix, le délai de paiement, les droits cédés, l'exclusivité, les révisions, l'usage de tes contenus pour entraîner une IA et les rushs bruts demandés sans être payés, écrits dans l'offre. Elle ne peut pas savoir si la marque paiera à temps ni si le brief va déraper : son verdict porte sur ce qui est écrit, pas sur ce qui se passera.",
   },
   {
     title: "Tes offres effacées au bout de 30 jours",
@@ -65,7 +74,7 @@ export const FAQ = [
   {
     question: "Et si l'offre ne donne pas de montant ?",
     answer:
-      "On calcule quand même ce que valent les contenus demandés, et on te le montre comme une fourchette indicative, sans score. S'il manque aussi ce qui est demandé ou les droits d'utilisation, on te dit quoi faire préciser à la marque avant de chiffrer.",
+      "On calcule quand même ce que valent les contenus demandés, et on te le montre comme une fourchette indicative, sans verdict. S'il manque aussi ce qui est demandé ou les droits d'utilisation, on te dit quoi faire préciser à la marque avant de chiffrer.",
   },
   {
     question: "Qu'est-ce que vous faites de mes documents ?",

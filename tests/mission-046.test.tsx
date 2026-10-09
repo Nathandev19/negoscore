@@ -108,10 +108,10 @@ describe("B — sans droit, l'action principale devient « Voir les tarifs »", 
     expect(renderToStaticMarkup(<NoRightNotice message="x" offerSignIn={false} />)).not.toContain("Me connecter");
   });
 
-  it("mission #047 A1 : la phrase « Score et fourchette gratuits… » est masquée quand un refus est affiché", () => {
+  it("mission #047 A1 : la phrase « Verdict et fourchette gratuits… » est masquée quand un refus est affiché", () => {
     const source = readFileSync(path.join(ROOT, "components/deal-input.tsx"), "utf8");
     expect(source).toContain("{note && !right.blocked ? <p");
-    expect(readFileSync(path.join(ROOT, "app/page.tsx"), "utf8")).toContain('<DealInput note="Score et fourchette gratuits, sans compte.');
+    expect(readFileSync(path.join(ROOT, "app/page.tsx"), "utf8")).toContain('<DealInput note="Verdict et fourchette gratuits, sans compte.');
   });
 
   it("le bouton d'analyse n'est plus mis en avant sans droit", () => {

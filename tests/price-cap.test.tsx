@@ -162,7 +162,7 @@ describe("explication du plafond sur la page de résultat", () => {
     expect(applied?.percent).toBe(Math.round((priceRatio(deal, estimate) as number) * 100));
     const html = render(analysis);
     expect(html).toContain(priceCapNote(applied?.percent as number));
-    expect(html).toContain("du bas de la fourchette. Le score ne peut pas monter plus haut.");
+    expect(html).toContain("du bas de la fourchette. Le verdict ne peut pas monter plus haut.");
   });
 
   // Mission #109, B — le seul endroit sans plafond prix est désormais le TIERS
