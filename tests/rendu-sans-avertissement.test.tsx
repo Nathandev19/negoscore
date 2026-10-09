@@ -103,13 +103,13 @@ describe("la page de résultat se rend sans un seul avertissement React", () => 
   // une valeur de départ : c'est le seul chemin où ScoreBand reçoit `from`,
   // et il remonte un composant entier par sa clé. Un avertissement y
   // passerait inaperçu — la page est déjà affichée quand il sort.
-  it.each(PREVIEW_STATES)("état « %s », pendant l'animation du score et au rejeu", (etat) => {
+  // Mission #174 — l'animation a disparu avec la note. Le bandeau reste
+  // dans le harnais : c'est lui qui porte la pastille et le rappel de
+  // niveau, et il est remonté à chaque changement de niveau.
+  it.each(PREVIEW_STATES)("état « %s », le bandeau de verdict seul et avec le rappel de niveau", (etat) => {
     const { analysis } = previewAnalysis(etat);
-    const valeur = analysis.score?.value ?? null;
-    for (const depart of [null, 0, valeur]) {
-      renderToStaticMarkup(<ScoreBand analysis={analysis} from={depart} />);
-      renderToStaticMarkup(<ScoreBand analysis={analysis} from={depart} animated={false} />);
-    }
+    renderToStaticMarkup(<ScoreBand analysis={analysis} />);
+    renderToStaticMarkup(<ScoreBand analysis={analysis} showTier />);
     expect(bruit).toEqual([]);
   });
 

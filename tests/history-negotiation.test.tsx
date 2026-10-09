@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BAND_LABEL } from "@/lib/display";
 
 // Mission #087 — l'historique montre les deals qui ont bougé : état de
 // l'échange, montant et score actuels à côté de ceux d'origine, sans rien
@@ -62,7 +63,14 @@ describe("A, B — le résumé d'un échange", () => {
   it("tour 2 en cours : montant et score actuels, ceux que la page affiche en tête", () => {
     const summary = summarizeNegotiation(original, [turn2])!;
     const page = recomputeForDeal(original, result.payload.deal_after)!;
-    expect(summary).toEqual({ turn: 2, concluded: false, amountNow: 450, now: { score: page.score?.value ?? null, evaluability: page.evaluability } });
+    expect(summary).toEqual({
+      turn: 2,
+      concluded: false,
+      amountNow: 450,
+      // Mission #174 — la bande vient du MOTEUR (recomputeForDeal), jamais
+      // d'un bandFor(note) : c'est elle que la liste affiche désormais.
+      now: { score: page.score?.value ?? null, band: page.score?.band ?? null, evaluability: page.evaluability },
+    });
   });
 
   it("le score qui a bougé est le score actuel, pas celui d'origine (la marque monte à 1 800 €)", () => {
@@ -92,14 +100,23 @@ describe("l'affichage de la liste", () => {
   const base = { created_at: "2026-09-19T10:00:00.000Z", evaluability: "complete", tier: "confirmed" };
   const summary = summarizeNegotiation(original, [turn2])!;
 
-  it("A, B — une analyse négociée : état, montant d'origine et actuel, score actuel et d'origine", () => {
+  // Mission #174 — la note sur 100 a quitté la liste comme elle a quitté la
+  // page de résultat. Ce qui s'affiche est le VERDICT, et il vient de la
+  // bande enregistrée, projetée par la requête — jamais d'un bandFor(note).
+  it("A, B — une analyse négociée : état, montant d'origine et actuel, verdict actuel et d'origine", () => {
     const html = text(
-      renderToStaticMarkup(<HistoryView rows={[{ ...base, id: A, score: original.score!.value, amount: 300, negotiation: summary }]} />),
+      renderToStaticMarkup(
+        <HistoryView
+          rows={[{ ...base, id: A, score: original.score!.value, band: original.score!.band, amount: 300, negotiation: summary }]}
+        />,
+      ),
     );
     expect(html).toContain("Négociation en cours, tour 2");
     expect(html).toContain("Offre : 300 € au départ, 450 € aujourd'hui");
-    expect(html).toContain(`${summary.now!.score} /100`);
-    expect(html).toContain(`${original.score!.value}/100 au départ`);
+    expect(html).toContain(BAND_LABEL[summary.now!.band as keyof typeof BAND_LABEL]);
+    expect(html).toContain(`${BAND_LABEL[original.score!.band]} au départ`);
+    // Et aucune note nulle part.
+    expect(html).not.toContain("/100");
   });
 
   it("B — conclue : dit au tour où elle l'a été", () => {
@@ -107,10 +124,24 @@ describe("l'affichage de la liste", () => {
     expect(html).toContain("Négociation conclue au tour 3");
   });
 
-  it("C — table disparue : le score d'origine, et c'est dit", () => {
-    const html = text(renderToStaticMarkup(<HistoryView rows={[{ ...base, id: A, score: 29, amount: 300, negotiation: { ...summary, now: null } }]} />));
-    expect(html).toContain("29 /100");
-    expect(html).toContain("Score de l'offre d'origine, non recalculable");
+  it("C — table disparue : le verdict d'origine, et c'est dit", () => {
+    const html = text(
+      renderToStaticMarkup(
+        <HistoryView rows={[{ ...base, id: A, score: 29, band: "bad", amount: 300, negotiation: { ...summary, now: null } }]} />,
+      ),
+    );
+    expect(html).toContain(BAND_LABEL.bad);
+    expect(html).toContain("Verdict de l'offre d'origine, non recalculable");
+    expect(html).not.toContain("/100");
+  });
+
+  it("une bande absente ne devient pas une couleur inventée", () => {
+    // Une ligne d'avant la projection (#174) n'a pas de bande. On dit
+    // pourquoi, plutôt que de la redeviner depuis la note — c'est
+    // exactement le recalcul qu'on vient de retirer.
+    const html = text(renderToStaticMarkup(<HistoryView rows={[{ ...base, id: B, score: 58, amount: 300, negotiation: null }]} />));
+    expect(html).not.toContain("/100");
+    for (const libelle of Object.values(BAND_LABEL)) expect(html, libelle).not.toContain(libelle);
   });
 
   it("une analyse sans tour : comme avant", () => {

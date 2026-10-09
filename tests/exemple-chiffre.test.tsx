@@ -6,6 +6,8 @@ import { SAMPLE_OFFER, SAMPLE_OFFER_SOURCE, SAMPLE_OFFER_TEXT } from "@/lib/fixt
 import { FULL_EXAMPLE } from "@/lib/content/vocabulaire";
 import { navItems } from "@/components/header-nav";
 import { SampleOfferQuote, SEUIL_REPLI_PX } from "@/components/result/sample-offer-quote";
+import { verdictSentence } from "@/lib/analysis/verdict";
+import { sampleAnalysis } from "@/lib/sample-analysis";
 import type { Analysis } from "@/lib/schema";
 
 // Mission #119, partie B — /analyse/demo cesse d'être orpheline.
@@ -133,8 +135,12 @@ describe("l'offre source est visible sur la page d'exemple", () => {
     const html = await renderDemo();
     const texte = lisible(html);
     expect(texte).toContain(SAMPLE_OFFER.body);
-    // Au-DESSUS du score : dans l'ordre de lecture, avant le bandeau de verdict.
-    expect(texte.indexOf(SAMPLE_OFFER.body)).toBeLessThan(texte.indexOf("/100"));
+    // Au-DESSUS du verdict : dans l'ordre de lecture, avant le bandeau.
+    // Mission #174 — le repère était « /100 ». La note n'est plus affichée,
+    // c'est la phrase de verdict qui ouvre le bandeau.
+    const bandeau = texte.indexOf(verdictSentence(sampleAnalysis).replace(/\s/g, " "));
+    expect(bandeau, "phrase de verdict introuvable").toBeGreaterThan(-1);
+    expect(texte.indexOf(SAMPLE_OFFER.body)).toBeLessThan(bandeau);
     // Présenté comme un message reçu, pas comme un paragraphe de page web.
     expect(html).toMatch(/<blockquote[^>]*>[^<]*Bonjour/);
     expect(texte).toContain("Le message reçu");
@@ -161,11 +167,16 @@ describe("l'offre source est visible sur la page d'exemple", () => {
     expect(texte.indexOf("offre inventée")).toBeLessThan(texte.indexOf(SAMPLE_OFFER.body));
   });
 
-  it("le résultat n'est pas repoussé : le score suit immédiatement le message", async () => {
+  it("le résultat n'est pas repoussé : le verdict suit immédiatement le message", async () => {
     const html = await renderDemo();
     const texte = lisible(html);
-    // Rien d'autre entre le message et le score que la phrase de verdict.
-    const entre = texte.slice(texte.indexOf(SAMPLE_OFFER.body) + SAMPLE_OFFER.body.length, texte.indexOf("/100"));
+    // Rien entre le message et le bandeau. Mission #174 — la borne était le
+    // « /100 », qui venait APRÈS la phrase de verdict ; c'est la phrase
+    // elle-même qui ouvre maintenant le bandeau, donc la marge se resserre.
+    const entre = texte.slice(
+      texte.indexOf(SAMPLE_OFFER.body) + SAMPLE_OFFER.body.length,
+      texte.indexOf(verdictSentence(sampleAnalysis).replace(/\s/g, " ")),
+    );
     expect(entre.trim().length, entre).toBeLessThan(120);
     // La signature n'est pas affichée : elle nomme la marque autrement que
     // « Le deal proposé » (voir lib/fixtures/sample-offer.ts). Comparé sur le

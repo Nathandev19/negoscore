@@ -26,16 +26,14 @@ export function ResultSkeleton() {
               <BoneLine onMarque />
               <BoneLine onMarque width="w-2/3" />
             </span>
-            {/* Réserve la hauteur du score, de la pastille, de la jauge et du rappel de niveau. */}
+            {/* Réserve la hauteur de la pastille et du rappel de niveau.
+                Mission #174 — plus de nombre ni de jauge à réserver : le
+                squelette promettait une note que la page n'affiche plus, et
+                gardait 103 px pour rien. */}
             <div data-reserved-score className="invisible flex flex-col gap-4">
               <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-                <p className="figures flex items-baseline leading-none">
-                  <span className="text-[7rem] leading-[0.8] sm:text-[9rem]">00</span>
-                  <span className="text-4xl">/100</span>
-                </p>
                 <span className="headline mb-3 rounded-pill px-4 py-1.5 text-lg sm:text-xl">Deal</span>
               </div>
-              <div className="h-3 w-full" />
               <p className="text-small">Niveau</p>
             </div>
           </div>

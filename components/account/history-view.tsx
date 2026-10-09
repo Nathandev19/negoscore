@@ -3,9 +3,8 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { BoneLine, LoadingAnnouncement } from "@/components/ui/skeleton";
-import { BAND_STYLE, formatEur } from "@/lib/display";
+import { BAND_LABEL, BAND_STYLE, formatEur } from "@/lib/display";
 import type { NegotiationSummary } from "@/lib/negotiation/history";
-import { bandFor } from "@/lib/rates/score";
 import { rateTable } from "@/lib/rates/tables";
 import { parseTier, TIER_LABEL } from "@/lib/rates/tier";
 import { cn } from "@/lib/utils";
@@ -13,7 +12,12 @@ import { cn } from "@/lib/utils";
 export type HistoryRow = {
   id: string;
   created_at: string;
+  // La note reste lue et enregistrée, mais elle n'est plus affichée
+  // (mission #174) : elle sert encore à savoir si l'analyse est chiffrée.
   score: number | null;
+  // Mission #174 — la bande ENREGISTRÉE, projetée depuis le payload. Elle
+  // n'est jamais recalculée depuis la note : les deux pouvaient diverger.
+  band?: string | null;
   amount: number | null;
   evaluability: string | null;
   // Absent des analyses d'avant le schéma 1.4 : calculées au niveau confirmé.
@@ -37,15 +41,22 @@ export function negotiationState(summary: NegotiationSummary): string {
   return summary.concluded ? `Négociation conclue au tour ${summary.turn}` : `Négociation en cours, tour ${summary.turn}`;
 }
 
-function Score({ score, evaluability }: { score: number | null; evaluability: string | null }) {
-  if (score === null) return <span className="text-sm font-semibold text-encre">{NO_SCORE_LABEL[evaluability ?? ""] ?? "—"}</span>;
+// Mission #174 — LE VERDICT, PLUS LA NOTE.
+//
+// La note sur 100 a quitté l'affichage, ici comme sur la page de résultat.
+// Ce qui reste est la bande, avec sa pastille — et elle vient de ce qui est
+// ENREGISTRÉ, jamais d'un bandFor(note) : c'est précisément ce recalcul qui
+// faisait dire « correct » à la liste pendant que la page disait « faible ».
+//
+// Bande absente (analyse d'avant la projection, ou offre non chiffrable) :
+// on dit pourquoi, on n'invente pas une couleur.
+function Verdict({ band, evaluability }: { band: string | null | undefined; evaluability: string | null }) {
+  const connue = band !== null && band !== undefined && band in BAND_STYLE ? (band as keyof typeof BAND_STYLE) : null;
+  if (connue === null) return <span className="text-sm font-semibold text-encre">{NO_SCORE_LABEL[evaluability ?? ""] ?? "—"}</span>;
   return (
     <span className="flex items-center gap-2">
-      <span aria-hidden className={cn("size-3 shrink-0 rounded-pill", BAND_STYLE[bandFor(score)].onCreme)} />
-      <span className="figures text-2xl text-encre">
-        {score}
-        <span className="font-sans text-sm font-medium text-attenue">/100</span>
-      </span>
+      <span aria-hidden className={cn("size-3 shrink-0 rounded-pill", BAND_STYLE[connue].onCreme)} />
+      <span className="text-sm font-semibold text-encre">{BAND_LABEL[connue]}</span>
     </span>
   );
 }
@@ -136,18 +147,20 @@ export function HistoryView({ rows, negotiationUnavailable = false }: { rows: Hi
                   </span>
                   {row.negotiation?.now ? (
                     <span className="flex flex-col items-end gap-0.5">
-                      <Score score={row.negotiation.now.score} evaluability={row.negotiation.now.evaluability} />
+                      <Verdict band={row.negotiation.now.band} evaluability={row.negotiation.now.evaluability} />
                       <span className="text-xs text-attenue">
-                        {row.score !== null ? `${row.score}/100 au départ` : `Au départ : ${NO_SCORE_LABEL[row.evaluability ?? ""] ?? "—"}`}
+                        {row.band && row.band in BAND_STYLE
+                          ? `${BAND_LABEL[row.band as keyof typeof BAND_STYLE]} au départ`
+                          : `Au départ : ${NO_SCORE_LABEL[row.evaluability ?? ""] ?? "—"}`}
                       </span>
                     </span>
                   ) : row.negotiation ? (
                     <span className="flex flex-col items-end gap-0.5">
-                      <Score score={row.score} evaluability={row.evaluability} />
-                      <span className="max-w-40 text-right text-xs text-attenue">Score de l&apos;offre d&apos;origine, non recalculable</span>
+                      <Verdict band={row.band} evaluability={row.evaluability} />
+                      <span className="max-w-40 text-right text-xs text-attenue">Verdict de l&apos;offre d&apos;origine, non recalculable</span>
                     </span>
                   ) : (
-                    <Score score={row.score} evaluability={row.evaluability} />
+                    <Verdict band={row.band} evaluability={row.evaluability} />
                   )}
                 </Link>
               </li>

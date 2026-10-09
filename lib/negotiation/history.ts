@@ -34,7 +34,10 @@ export type NegotiationSummary = {
   concluded: boolean;
   amountNow: number | null;
   // null : la table de l'analyse n'existe plus, rien n'est recalculé.
-  now: { score: number | null; evaluability: ResultView["evaluability"] } | null;
+  // Mission #174 — la bande vient du moteur (recomputeForDeal), jamais
+  // d'un bandFor(note) : la note n'est plus affichée, et elle ne doit pas
+  // non plus servir à deviner une couleur.
+  now: { score: number | null; band: string | null; evaluability: ResultView["evaluability"] } | null;
 };
 
 export function summarizeNegotiation(analysis: ResultView, rows: readonly HistoryTurnRow[]): NegotiationSummary | null {
@@ -53,6 +56,8 @@ export function summarizeNegotiation(analysis: ResultView, rows: readonly Histor
     turn: state.turn,
     concluded: conclusionRow !== null || replies.some((row) => row.accepted !== null),
     amountNow: state.deal.payment.amount_eur,
-    now: recomputed ? { score: recomputed.score?.value ?? null, evaluability: recomputed.evaluability } : null,
+    now: recomputed
+      ? { score: recomputed.score?.value ?? null, band: recomputed.score?.band ?? null, evaluability: recomputed.evaluability }
+      : null,
   };
 }

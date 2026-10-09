@@ -111,10 +111,11 @@ export function AnalysisResult({
   negotiated?: Negotiated | null;
 }) {
   const [tier, setTier] = useState<Tier>(stored.profile_tier);
-  // Changement de niveau : le bandeau est remonté (key) pour rejouer l'animation,
-  // depuis le score affiché juste avant. prefers-reduced-motion : valeur finale
-  // directement (règle globale de globals.css).
-  const [replay, setReplay] = useState<{ count: number; from: number | null }>({ count: 0, from: null });
+  // Mission #174 — le compteur de rejeu REMONTAIT le bandeau pour rejouer
+  // l'animation du score. La note n'est plus affichée, il n'y a plus
+  // d'animation : il ne reste que le nombre de changements de niveau, qui
+  // sert à savoir s'il faut annoncer quelque chose à la région live.
+  const [replay, setReplay] = useState(0);
   // origin : l'offre analysée, au niveau choisi. C'est sur elle que portent la
   // contre-offre et le premier message, déjà envoyés. analysis : ce que le code
   // déduit des termes (score, fourchette, deal, loi), recalculé sur les termes
@@ -142,7 +143,7 @@ export function AnalysisResult({
 
   function chooseTier(next: Tier) {
     if (next === tier) return;
-    setReplay({ count: replay.count + 1, from: analysis.score?.value ?? null });
+    setReplay(replay + 1);
     setTier(next);
     // Mémorisé pour les analyses suivantes, et sur le compte dès qu'une
     // session est ouverte, quelle que soit l'analyse (mission #065).
@@ -175,11 +176,14 @@ export function AnalysisResult({
   // annoncée. Elle ne parle qu'après un changement de niveau.
   const range = formatEurRange(analysis.estimate.total_low, analysis.estimate.total_high);
   const announcement =
-    replay.count === 0
+    replay === 0
       ? ""
       : [
           `Niveau « ${TIER_LABEL[analysis.profile_tier].short} ».`,
-          analysis.score ? `Score : ${analysis.score.value} sur 100, ${BAND_LABEL[analysis.score.band].toLowerCase()}.` : null,
+          // Mission #174 — la note sur 100 n'est plus annoncée : elle n'est
+          // plus affichée. Le verdict, lui, l'est — et c'est ce qui change
+          // quand on change de niveau.
+          analysis.score ? `Verdict : ${BAND_LABEL[analysis.score.band].toLowerCase()}.` : null,
           range ? `Fourchette estimée : ${range}.` : null,
         ]
           .filter(Boolean)
@@ -211,7 +215,7 @@ export function AnalysisResult({
           <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-10 sm:px-6 lg:pt-10 lg:pb-14">
             <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>
             {above}
-            <ScoreBand key={replay.count} analysis={analysis} from={replay.from} showTier={!incomplete} />
+            <ScoreBand analysis={analysis} showTier={!incomplete} />
             {belowScore}
           </div>
         </section>

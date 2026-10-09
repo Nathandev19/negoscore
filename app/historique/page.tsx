@@ -25,7 +25,12 @@ export default async function HistoryPage() {
     selectRowsAsUser<HistoryRow>(
       token,
       "analyses",
-      "select=id,created_at,score,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability,tier:payload->>profile_tier,rateTable:rate_table_version&order=created_at.desc&limit=100",
+      // Mission #174 — « band » est PROJETÉE, plus recalculée. La liste
+      // dérivait la pastille de la note avec bandFor(score) : sur une offre
+      // sous le plancher, elle affichait « correct » là où la page de
+      // résultat dit « faible » (relevé en #172). Une bande se lit, elle ne
+      // se redevine pas.
+      "select=id,created_at,score,band:payload->score->>band,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability,tier:payload->>profile_tier,rateTable:rate_table_version&order=created_at.desc&limit=100",
     ),
     loadHistoryTurns(user.id),
   ]);

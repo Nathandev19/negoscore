@@ -143,10 +143,15 @@ describe("page d'accueil : identité (#031)", () => {
     expect(method).not.toMatch(/rounded|bg-marque|<svg/);
     // Surface bleue avec grain : uniquement l'exemple de résultat.
     expect(html.match(/grain bg-marque|grain flex flex-col overflow-hidden rounded-control bg-marque/g)).toHaveLength(1);
-    // L'exemple montre la phrase de verdict du moteur, sans animation.
+    // L'exemple montre la phrase de verdict du moteur.
     // Phrase recalculée par le moteur actuel sur l'exemple (plus de chiffres figés).
     expect(html.replace(/&nbsp;|\u00a0|\u202f/g, " ")).toContain(verdictSentence(sampleAnalysis).replace(/\s/g, " "));
-    expect(html).toContain("animation:none");
+    // Mission #174 — il n'y a plus d'animation à couper : la note sur 100 et
+    // sa jauge ont quitté l'affichage. L'exemple n'en porte donc plus trace.
+    // (Le TEXTE de l'accueil, lui, promet encore « un score sur 100 » : c'est
+    // une promesse à réécrire, consignée dans tests/note-contre-bande.test.ts.)
+    expect(html).not.toContain("animation:none");
+    expect(html).not.toContain("score-count");
   });
 });
 

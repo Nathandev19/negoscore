@@ -1,17 +1,49 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { baseExtraction, PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/preview-states";
 import { BAND_LABEL } from "@/lib/display";
 import { bandFor, comparedAmountOf, priceCapFor } from "@/lib/rates/score";
 
-// Mission #172, point 1 — LA NOTE ET LA BANDE DISENT DEUX CHOSES OPPOSÉES.
+// ═══════════════════════════════════════════════════════════════════════════
+//  CE FICHIER GARDE UNE DETTE CONNUE, PAS UN DÉFAUT D'AFFICHAGE.
+//  Ouvert le 09/10/2026 (#172), réécrit le 10/10/2026 (#174).
+// ═══════════════════════════════════════════════════════════════════════════
 //
-// Le cas rapporté : 3 vidéos, 400 €, 89 € de produits, droits pub 6 mois,
-// quatre zones, exclusivité 3 mois. Fourchette 610 – 1 310 €.
-// La page affiche la bande « Faible » À CÔTÉ de la note 58/100 — et 58 est
-// dans la tranche que l'échelle elle-même appelle « correct ».
+// CE QUI EST VRAI AUJOURD'HUI : la note ENREGISTRÉE peut contredire la bande
+// ENREGISTRÉE. Une offre à 400 € sous un plancher de 610 € porte la bande
+// « faible » et la note 58, et 58 est dans la tranche que l'échelle de la
+// #042 appelle « correct ».
 //
-// La note se lit en premier. Deux lectures opposées sur la même ligne.
+// POURQUOI CE N'EST PLUS VISIBLE : depuis la #174, la note sur 100 n'est
+// affichée nulle part — ni sur la page de résultat, ni dans l'historique.
+// La contradiction ne peut donc plus être LUE par personne. Elle n'est pas
+// réparée pour autant : elle est dans la base, dans chaque analyse
+// enregistrée, et elle ressortirait le jour où la note reviendrait à l'écran.
+//
+// POURQUOI ELLE N'A PAS ÉTÉ RÉPARÉE : aligner le plafond de la #050 sur la
+// règle de bande de la #167 fait bouger huit tests, dont l'invariant
+// d'arrondi — un décalage de 9 € sur le plancher déplacerait la note de
+// 8 points contre 3 au plus aujourd'hui, parce que le nouveau plafond crée
+// une falaise de 20 points au plancher. Mesuré en #172.
+//
+// CE QUE CE FICHIER EXIGE :
+//   1. que la contradiction reste exactement celle qu'on a décrite — si elle
+//      change de forme, on veut le savoir ;
+//   2. que la note reste INVISIBLE tant qu'elle n'est pas réparée ;
+//   3. que sa réparation soit signalée : la garde en `it.fails` deviendra
+//      rouge le jour où la note et la bande s'accorderont, et c'est le
+//      signal qu'on peut retirer le marqueur — et rouvrir la question de
+//      l'affichage.
+
+// Le CODE d'un fichier, commentaires retirés : ceux-ci nomment justement ce
+// qui a été enlevé, et c'est leur travail de le dire.
+function codeSeul(fichier: string): string {
+  return readFileSync(fichier, "utf8")
+    .split("\n")
+    .filter((ligne) => !/^\s*(\/\/|\*|\/\*)/.test(ligne))
+    .join("\n");
+}
 
 function casRapporte() {
   const base = baseExtraction();
@@ -39,8 +71,8 @@ function casRapporte() {
   };
 }
 
-describe("la note affichée et la bande affichée nomment la même chose", () => {
-  it("le cas rapporté est bien reproduit : 610 – 1 310 €, bande « Faible », note 58", () => {
+describe("la dette : la note enregistrée peut contredire la bande enregistrée", () => {
+  it("le cas est toujours exactement celui qu'on a décrit : 610 – 1 310 €, « faible », 58", () => {
     const { estimate, score } = composeAnalysis(casRapporte() as never, { tier: "starter" });
     expect(estimate.total_low).toBe(610);
     expect(estimate.total_high).toBe(1310);
@@ -48,27 +80,7 @@ describe("la note affichée et la bande affichée nomment la même chose", () =>
     expect(score?.value).toBe(58);
   });
 
-  // ─── LA GARDE DEMANDÉE ──────────────────────────────────────────────────
-  //
-  // `it.fails` : cette assertion ÉCHOUE sur le code d'aujourd'hui, et c'est
-  // le constat. Elle n'est pas désactivée — vitest la lance, et le jour où
-  // elle PASSERA, c'est ce fichier qui échouera, en demandant qu'on retire le
-  // `.fails`. Un défaut mesuré qui ne peut pas être oublié.
-  //
-  // Pourquoi elle n'est pas corrigée dans cette mission : aligner le plafond
-  // de la #050 sur la règle de bande de la #167 fait bouger HUIT tests, dont
-  // l'invariant d'arrondi (un décalage de 9 € sur le plancher déplacerait la
-  // note de 8 points, contre 3 au plus aujourd'hui). La mission dit de
-  // s'arrêter au-delà de cinq. Le détail est dans le rapport de la #172.
-  it.fails("aucune analyse ne porte une note dont la tranche nommée contredit sa bande", () => {
-    const { score } = composeAnalysis(casRapporte() as never, { tier: "starter" });
-    expect(BAND_LABEL[bandFor(score!.value)]).toBe(BAND_LABEL[score!.band]);
-  });
-
   it("la contradiction tient au plafond de la #050, pas à la bande", () => {
-    // La bande vient de la règle de la #167 : sous le plancher, jamais mieux
-    // que « faible ». Le plafond, lui, autorise encore 59 — une valeur qui
-    // est DANS la tranche « correct ».
     const { deal, estimate, score } = composeAnalysis(casRapporte() as never, { tier: "starter" });
     const plafond = priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
     expect(plafond?.reason).toBe("ratio");
@@ -76,18 +88,67 @@ describe("la note affichée et la bande affichée nomment la même chose", () =>
     // 59 est dans « correct », alors que le montant est sous le plancher.
     expect(bandFor(plafond!.cap)).toBe("fair");
     expect(score!.band).toBe("weak");
-    // Et le montant comparé est bien sous le plancher.
     expect(comparedAmountOf(deal)).toBe(400);
     expect(estimate.total_low).toBeGreaterThan(400);
   });
 
-  it("aucune fixture de prévisualisation ne porte cette contradiction", () => {
-    // Le défaut n'est pas général : il n'apparaît qu'entre 0,60 et 1 fois le
-    // plancher. Les six états d'aperçu sont sains, et doivent le rester.
+  // LA GARDE. `it.fails` : elle échoue aujourd'hui, et c'est le constat. Le
+  // jour où elle passera, c'est CE fichier qui échouera, en demandant qu'on
+  // retire le marqueur — et qu'on rouvre la question de l'affichage.
+  it.fails("aucune analyse ne porte une note dont la tranche nommée contredit sa bande", () => {
+    const { score } = composeAnalysis(casRapporte() as never, { tier: "starter" });
+    expect(BAND_LABEL[bandFor(score!.value)]).toBe(BAND_LABEL[score!.band]);
+  });
+
+  it("la dette ne touche pas les six états d'aperçu : elle vit entre 0,60 et 1 fois le plancher", () => {
     for (const etat of PREVIEW_STATES) {
       const { analysis } = previewAnalysis(etat);
       if (analysis.score === null) continue;
       expect(BAND_LABEL[bandFor(analysis.score.value)], etat).toBe(BAND_LABEL[analysis.score.band]);
     }
+  });
+});
+
+describe("tant qu'elle n'est pas réparée, la note reste invisible", () => {
+  // Mission #174 — c'est la seule raison pour laquelle on peut vivre avec la
+  // dette. Si la note revenait à l'écran sans que le plafond soit aligné, la
+  // contradiction redeviendrait lisible le jour même.
+  const SURFACES: Array<[string, string]> = [
+    ["la page de résultat", "components/result/score-band.tsx"],
+    // Mission #174 — ajoutée après la batterie de mutation : la région live
+    // annonçait « Score : 58 sur 100 » au changement de niveau, et on
+    // pouvait l'y remettre sans qu'aucun test ne bronche. Ce qu'un lecteur
+    // d'écran entend fait partie de ce qui est affiché.
+    ["l'annonce au changement de niveau", "components/result/analysis-result.tsx"],
+    ["le squelette de chargement", "components/result/result-skeleton.tsx"],
+    ["l'historique", "components/account/history-view.tsx"],
+  ];
+
+  it.each(SURFACES)("%s n'écrit pas la note", (_nom, fichier) => {
+    const code = codeSeul(fichier);
+    expect(code).not.toContain("/100");
+    expect(code).not.toContain("sur 100");
+    expect(code).not.toContain("score.value");
+  });
+
+  it("l'historique lit la bande enregistrée, jamais un bandFor(note)", () => {
+    // Le défaut relevé en #172 : la liste redevinait la couleur depuis la
+    // note, et disait « correct » là où la page disait « faible ».
+    expect(codeSeul("components/account/history-view.tsx")).not.toContain("bandFor");
+    const page = readFileSync("app/historique/page.tsx", "utf8");
+    expect(page).toContain("band:payload->score->>band");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+describe("ce que la #174 laisse à réécrire", () => {
+  // L'accueil PROMET encore une note sur 100, en toutes lettres. Ce n'est pas
+  // un reste d'affichage oublié : c'est une phrase de vente, et sa réécriture
+  // n'est pas une décision technique. Consignée ici en `it.fails` plutôt que
+  // réécrite à la place de son auteur.
+  it.fails("aucun texte public ne promet une note sur 100", async () => {
+    const { FAQ, STEPS } = await import("@/lib/content/home");
+    const textes = [...STEPS, ...FAQ].map((entree) => Object.values(entree).join(" ")).join(" ");
+    expect(textes).not.toMatch(/sur 100|\/100/);
   });
 });

@@ -105,7 +105,7 @@
      en décaler un sans décaler l'autre. Mesuré image par image sur
      /dev/resultat : --score-now et la largeur de la jauge progressent du
      même pas, 2/11 px à 60 ms, 17/79 px à 364 ms, 33/151 px à l'arrivée. */
-  --duration-score: 600ms;
+
 }
 
 /* Jetons des composants shadcn, ramenés à la palette. */
@@ -215,72 +215,12 @@ html:not([data-js]) [data-replie] {
   font-weight: 600;
 }
 
-/* Arrivée sur un résultat : le score monte de 0 à sa valeur et la jauge se
-   remplit, une fois, en 700 ms. Rien d'autre ne bouge. Au changement de niveau
-   (mission #040), la même animation est rejouée depuis le score précédent
-   (--score-from, --gauge-from, --marker-from), vers le nouveau. Le chiffre est un
-   compteur CSS animé par une propriété enregistrée : sans animation (ancien
-   navigateur, mouvement réduit), il s'affiche directement à sa valeur. */
-@property --score-now {
-  syntax: "<integer>";
-  inherits: false;
-  initial-value: 0;
-}
-@keyframes score-count {
-  from {
-    --score-now: var(--score-from, 0);
-  }
-}
-@keyframes gauge-grow {
-  from {
-    width: var(--gauge-from, 0%);
-  }
-}
-@keyframes gauge-marker {
-  from {
-    left: var(--marker-from, 2px); /* départ dans la piste, comme le repère à 0 */
-  }
-}
-/* Mission #150 — LA BOÎTE DU COMPTEUR NE CHANGE PLUS DE TAILLE.
-   Sans cela, le compteur passait de 64 à 129 px en franchissant 9 → 10 :
-   64 px de largeur en plus au milieu de l'animation, qui faisaient basculer la
-   pastille de verdict à la ligne et descendre tout ce qui suit de 64 px.
-   La valeur FINALE est rendue dans ::before, invisible mais dans le flux :
-   c'est elle qui donne sa largeur et sa ligne de base à la boîte, exactement,
-   dans la même police et la même chasse. La valeur qui monte est posée par
-   ::after, en position absolue, donc sans effet sur la mise en page.
-   `ch` ne convient pas ici : il vaut l'avance du « 0 » proportionnel
-   (66,5 px), alors qu'un chiffre en chasse fixe en mesure 64,5 — 4 px de trop
-   par chiffre, assez pour reprendre à la pastille la place qu'on vient de lui
-   rendre. */
-.score-count {
-  --score-now: var(--score-target);
-  counter-reset: score var(--score-now) score-final var(--score-target);
-  animation: score-count var(--duration-score) linear both;
-  font-variant-numeric: tabular-nums;
-  position: relative;
-}
-.score-count::before {
-  content: counter(score-final);
-  visibility: hidden;
-}
-/* Calée à DROITE de la boîte réservée : le nombre reste collé au « /100 »
-   pendant qu'il monte, et les chiffres apparaissent vers la gauche, comme sur
-   un compteur. Calé à gauche, « 7 » se serait retrouvé séparé du « /100 » par
-   le vide réservé au second chiffre. */
-.score-count::after {
-  content: counter(score);
-  position: absolute;
-  right: 0;
-  top: 0;
-}
-.gauge-grow {
-  animation: gauge-grow var(--duration-score) linear both;
-}
-.gauge-marker {
-  animation: gauge-marker var(--duration-score) linear both;
-}
-
+/* Mission #174 — LA NOTE SUR 100 N'EST PLUS AFFICHÉE, et tout ce qui
+   l'animait est parti avec elle : la propriété enregistrée --score-now,
+   les trois séries d'images (score-count, gauge-grow, gauge-marker), la
+   boîte à largeur réservée de la #150 et la variable --duration-score.
+   La note continue d'être calculée et enregistrée — c'est l'affichage
+   qui s'arrête, et il se remet en remettant ce bloc. */
 /* Longueur de ligne du corps. */
 @utility measure {
   max-width: 66ch;
