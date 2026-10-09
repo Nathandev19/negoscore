@@ -88,6 +88,16 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
       "Une marque veut passer ta vidéo en publicité pendant six mois : ce que tu factures en plus du tournage, en euros, et comment ouvrir la négociation.",
   },
   {
+    // Mission #171 — deuxième page de la série. Relevé de la page 1 de
+    // Google le 09/10/2026 sur « clause d'exclusivité UGC » : les trois
+    // premiers résultats décrivent la clause, aucun ne met un euro en face,
+    // et deux des trois sont écrits pour les marques.
+    path: "/exclusivite-ugc",
+    title: "Exclusivité UGC : combien facturer en 2026 ?",
+    description:
+      "La marque t'interdit ses concurrents trois ou six mois : ce que la clause vaut en euros, ce qu'elle doit préciser, et par quoi ouvrir la négociation.",
+  },
+  {
     path: "/tarifs",
     title: "Tarifs",
     // Longueur tenue par tests/seo.test.tsx : les résumés de PLANS y entrent,

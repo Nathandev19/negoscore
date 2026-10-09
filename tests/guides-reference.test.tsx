@@ -3,6 +3,7 @@ import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import PaidAdsSixMonthsPage from "@/app/droits-pub-6-mois/page";
+import ExclusivityPage from "@/app/exclusivite-ugc/page";
 import sitemap from "@/app/sitemap";
 import nextConfig from "@/next.config";
 import { FOOTER_COLUMNS } from "@/components/site-footer";
@@ -45,13 +46,14 @@ const GUIDE_FILES: Record<string, string> = {
   "/produits-offerts": "app/produits-offerts/page.tsx",
   "/droits-utilisation": "app/droits-utilisation/page.tsx",
   "/droits-pub-6-mois": "app/droits-pub-6-mois/page.tsx",
+  "/exclusivite-ugc": "app/exclusivite-ugc/page.tsx",
 };
 
 const source = (file: string) => readFileSync(path.join(ROOT, file), "utf8");
 
 // ───────────────────────────────────────────────────────────────────────────
 describe("titres et descriptions des guides", () => {
-  it("les quatre guides sont connus, mesurés, et dans le plan du site", () => {
+  it("les cinq guides sont connus, mesurés, et dans le plan du site", () => {
     expect([...GUIDE_PATHS].sort()).toEqual(Object.keys(GUIDE_FILES).sort());
     const urls = sitemap().map((entry) => entry.url);
     for (const chemin of GUIDE_PATHS) expect(urls, chemin).toContain(`${CANONICAL_ORIGIN}${chemin}`);
@@ -117,7 +119,7 @@ describe("maillage interne des guides", () => {
   // Ce qui est vérifié ici est le BALISAGE DES LIENS, écrit en clair dans la
   // source de chaque guide : le rendu complet des quatre pages n'apprendrait
   // rien de plus, et le pied de page commun est testé ailleurs.
-  it("chaque guide cite les trois autres, avec son origine et sans aucun utm", () => {
+  it("chaque guide cite les quatre autres, avec son origine et sans aucun utm", () => {
     for (const [chemin, file] of Object.entries(GUIDE_FILES)) {
       const texte = source(file);
       const origine = chemin.slice(1);
@@ -262,6 +264,125 @@ describe("page /droits-pub-6-mois", () => {
     expect(html).toMatch(/href="\/analyse"[^>]*>[^<]*Analyser mon deal/);
     const corpsSeul = html.slice(0, html.indexOf("<footer"));
     expect(corpsSeul.lastIndexOf('href="/analyse"')).toBeGreaterThan(corpsSeul.lastIndexOf("<table"));
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
+// Mission #171 — /exclusivite-ugc : tous les nombres, recalculés.
+//
+// Même discipline que /droits-pub-6-mois : la page ne publie aucun chiffre
+// que ce fichier ne refasse depuis la table et le moteur. Le jour où un
+// multiplicateur d'exclusivité change, le test échoue avant la mise en ligne.
+const EXCLU_3M: Deal["exclusivity"] = { present: true, duration_months: 3, category: "soin du visage" };
+const EXCLU_6M: Deal["exclusivity"] = { present: true, duration_months: 6, category: "soin du visage" };
+
+function totauxExclu(
+  tier: "starter" | "confirmed" | "experienced",
+  quantity: number,
+  exclusivity?: Deal["exclusivity"],
+  usage?: Deal["usage"],
+) {
+  const estimate = computeEstimate(
+    deal({
+      deliverables: [{ type: "video", platform: "tiktok", quantity, format: null }],
+      ...(exclusivity ? { exclusivity } : {}),
+      ...(usage ? { usage } : {}),
+    }),
+    { tier },
+  );
+  return { low: estimate.total_low as number, high: estimate.total_high as number };
+}
+
+const htmlExclu = renderToStaticMarkup(<ExclusivityPage />);
+const contenuExclu = htmlExclu.slice(htmlExclu.indexOf("<main"), htmlExclu.indexOf("</main>"));
+const texteExclu = contenuExclu
+  .replaceAll("&#x27;", "'")
+  .replaceAll("&amp;", "&")
+  .replaceAll(" ", " ")
+  .replace(/<[^>]+>/g, " ")
+  .replace(/\s+/g, " ");
+
+describe("page /exclusivite-ugc", () => {
+  it("elle est publique, mesurée, et son texte tient entre 600 et 900 mots", () => {
+    const mots = texteExclu.trim().split(/\s+/).filter((mot) => /[\p{L}\p{N}]/u.test(mot));
+    expect(mots.length).toBeGreaterThanOrEqual(600);
+    expect(mots.length).toBeLessThanOrEqual(900);
+    expect([...htmlExclu.matchAll(/<h1[^>]*>/g)]).toHaveLength(1);
+    expect(source(GUIDE_FILES["/exclusivite-ugc"])).toContain('<ViewPixel page="/exclusivite-ugc" />');
+  });
+
+  it("la version de la table de tarifs est affichée, comme sur une page de résultat", () => {
+    expect(texteExclu).toContain(`Table de tarifs ${CURRENT_RATE_VERSION}`);
+    expect(texteExclu).toContain("Estimation fondée sur des benchmarks de marché, pas un tarif officiel");
+    // Et elle est LUE, pas recopiée : écrite en dur, elle annoncerait un jour
+    // une table qui n'a pas produit ces chiffres. Même garde que la carte.
+    expect(source(GUIDE_FILES["/exclusivite-ugc"])).not.toMatch(/fr-20\d\d\.\d/);
+  });
+
+  it("la réponse courte est faite des deux multiplicateurs de la table", () => {
+    const trois = rates.multipliers.exclusivity_3m;
+    const six = rates.multipliers.exclusivity_6m_plus;
+    expect(texteExclu).toContain(
+      `compte ${Math.round(trois.low * 100)} à ${Math.round(trois.high * 100)} % du prix de création pour trois mois, ${Math.round(six.low * 100)} à ${Math.round(six.high * 100)} % pour six`,
+    );
+  });
+
+  it("le tableau en euros est recalculé par le moteur, pour les trois niveaux", () => {
+    for (const tier of ["starter", "confirmed", "experienced"] as const) {
+      const avec = totauxExclu(tier, 1, EXCLU_3M);
+      expect(texteExclu, `${tier} ${avec.low}-${avec.high}`).toContain(euros(avec.low, avec.high));
+    }
+  });
+
+  it("l'exemple à trois vidéos : création, trois mois et six mois viennent du moteur", () => {
+    const creation = totauxExclu("starter", 3);
+    const trois = totauxExclu("starter", 3, EXCLU_3M);
+    const six = totauxExclu("starter", 3, EXCLU_6M);
+    expect(texteExclu).toContain(`le tournage seul vaut ${euros(creation.low, creation.high)}`);
+    expect(texteExclu).toContain(`ajoutent ${euros(trois.low - creation.low, trois.high - creation.high)}`);
+    expect(texteExclu).toContain(`six mois ajoutent ${euros(six.low - creation.low, six.high - creation.high)}`);
+  });
+
+  it("le barème par durée est celui de la table, palier par palier", () => {
+    const paliers: Array<[string, { low: number; high: number }]> = [
+      ["1 mois", rates.multipliers.exclusivity_1m],
+      ["3 mois", rates.multipliers.exclusivity_3m],
+      ["6 mois et plus", rates.multipliers.exclusivity_6m_plus],
+    ];
+    for (const [label, valeur] of paliers) {
+      expect(texteExclu, label).toContain(`${label} ${pourcents(valeur.low, valeur.high)}`);
+    }
+    // Et la page ne publie AUCUN palier que la table ne connaisse pas : le
+    // barème s'arrête à six mois, et elle le dit au lieu d'extrapoler.
+    expect(texteExclu).toContain("Le barème s'arrête à six mois");
+    expect(Object.keys(rates.multipliers).filter((clef) => clef.startsWith("exclusivity"))).toHaveLength(paliers.length);
+    // Le compte, pas seulement la présence : « +N à +M % » est la forme des
+    // lignes du barème, et il y en a exactement autant que de paliers dans la
+    // table. Une ligne ajoutée à la main se verrait ici.
+    expect(texteExclu.match(/\+\d+ à \+\d+ %/g) ?? []).toHaveLength(paliers.length);
+  });
+
+  it("la durée supposée annoncée est celle du moteur", () => {
+    const flou = computeEstimate(deal({ exclusivity: { present: true, duration_months: null, category: null } }), { tier: "starter" });
+    const hypothese = flou.assumptions.find((phrase) => /exclusivité non précisée/i.test(phrase));
+    expect(hypothese, "le moteur doit poser une hypothèse").toBeDefined();
+    expect(/(\d+) mois supposés/.exec(hypothese as string)?.[1]).toBe("3");
+    expect(texteExclu).toContain("notre chiffrage suppose trois mois");
+  });
+
+  it("le cumul avec la pub, et les deux plafonds, sont ceux du moteur", () => {
+    const cumul = totauxExclu("starter", 3, EXCLU_6M, PUB_6_MOIS);
+    expect(texteExclu).toContain(`ça fait ${euros(cumul.low, cumul.high)}`);
+    expect(texteExclu).toContain(`plafonné à +${Math.round(rates.uplift_caps.standard.max_cumulative_uplift * 100)} % du prix de création`);
+    expect(texteExclu).toContain(`ne monte à +${Math.round(rates.uplift_caps.heavy.max_cumulative_uplift * 100)} %`);
+    // Le plafond MORD réellement sur cet exemple : sinon la phrase mentirait.
+    const creation = totauxExclu("starter", 3);
+    expect(cumul.high / creation.high).toBeCloseTo(1 + upliftCap(deal()), 2);
+  });
+
+  it("elle finit sur le lien vers l'analyseur", () => {
+    expect(htmlExclu).toMatch(/href="\/analyse"[^>]*>[^<]*Analyser mon deal/);
   });
 });
 

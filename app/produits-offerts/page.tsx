@@ -117,7 +117,11 @@ export default function GiftedProductsPage() {
               .
             </li>
             <li>
-              Elle demande une exclusivité, même courte. Tu lui vends des clients que tu n&apos;auras pas. Ce que tu
+              Elle demande une{" "}
+              <Link href={internalHrefFrom("/exclusivite-ugc", ORIGINE)} className="link">
+                exclusivité
+              </Link>
+              , même courte. Tu lui vends des clients que tu n&apos;auras pas. Ce que tu
               cèdes exactement, et pour combien de temps, c&apos;est{" "}
               {/* Mission #158 — le principe de la licence, sur sa page. */}
               <Link href={internalHrefFrom("/droits-utilisation", ORIGINE)} className="link">

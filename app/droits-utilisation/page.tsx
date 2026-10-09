@@ -111,7 +111,12 @@ export default function UsageRightsPage() {
             <li>
               Six mois de droits publicitaires : compte 50 % à 70 % du prix de création en plus.
             </li>
-            <li>Trois mois d&apos;exclusivité sur la catégorie : compte 30 % à 50 % en plus.</li>
+            <li>
+              <Link href={internalHrefFrom("/exclusivite-ugc", ORIGINE)} className="link">
+                Trois mois d&apos;exclusivité
+              </Link>{" "}
+              sur la catégorie : compte 30 % à 50 % en plus.
+            </li>
           </ul>
           {/* Mission #158 — les deux durées les plus demandées ont désormais
               leur page chiffrée ; cette section-ci donne le principe. */}

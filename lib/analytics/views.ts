@@ -29,13 +29,21 @@ export const MEASURED_PAGES: Readonly<Record<string, ProductEventName>> = {
   "/droits-utilisation": "guide_view",
   // Mission #158 — quatrième guide.
   "/droits-pub-6-mois": "guide_view",
+  // Mission #171 — cinquième guide.
+  "/exclusivite-ugc": "guide_view",
   "/analyse/demo": "example_view",
   "/analyse": "analysis_page_view",
 };
 
 export type MeasuredPage = keyof typeof MEASURED_PAGES;
 
-export const GUIDE_PATHS = ["/combien-facturer", "/produits-offerts", "/droits-utilisation", "/droits-pub-6-mois"] as const;
+export const GUIDE_PATHS = [
+  "/combien-facturer",
+  "/produits-offerts",
+  "/droits-utilisation",
+  "/droits-pub-6-mois",
+  "/exclusivite-ugc",
+] as const;
 
 export function eventForPage(page: string | null | undefined): ProductEventName | undefined {
   return page ? entryFor(MEASURED_PAGES, page) : undefined;
@@ -64,6 +72,8 @@ export const EXAMPLE_ORIGINS: Readonly<Record<string, string>> = {
   // liens d'un guide vers un autre : « d'où vient le lecteur » se lit de la
   // même façon pour une vue de guide et pour une vue de l'exemple.
   "droits-pub-6-mois": "/droits-pub-6-mois",
+  // Mission #171 — cinquième guide.
+  "exclusivite-ugc": "/exclusivite-ugc",
   // Mission #152 — le pied de page, présent sur toutes les pages. Ce n'est pas
   // une page d'origine mais un EMPLACEMENT : on ne peut pas savoir depuis
   // laquelle on a cliqué, et prétendre le contraire serait inventer une

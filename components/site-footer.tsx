@@ -36,6 +36,8 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
       { href: internalHrefFrom("/droits-utilisation", "pied-de-page"), label: "Droits d'utilisation" },
       { href: internalHrefFrom("/produits-offerts", "pied-de-page"), label: "Produits offerts" },
       { href: internalHrefFrom("/droits-pub-6-mois", "pied-de-page"), label: "Droits pub 6 mois" },
+      // Mission #171 — cinquième guide.
+      { href: internalHrefFrom("/exclusivite-ugc", "pied-de-page"), label: "Exclusivité" },
       // Mission #152 — l'exemple chiffré, à côté des guides : c'est la même
       // chose qu'eux, une page qui montre avant de demander. Le pied de page
       // est sur toutes les pages, donc ce lien est le seul chemin vers

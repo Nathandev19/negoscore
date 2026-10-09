@@ -136,7 +136,7 @@ describe("l'adresse de mesure réellement demandée", () => {
     expect(viewPixelUrl("/produits-offerts", "?de=droits-pub-6-mois", null)).toContain(`&${INTERNAL_ORIGIN_PARAM}=`);
   });
 
-  it("les quatre guides traversent la chaîne entière, du lien à la valeur enregistrée", async () => {
+  it("les cinq guides traversent la chaîne entière, du lien à la valeur enregistrée", async () => {
     for (const depart of GUIDE_PATHS) {
       const cle = depart.slice(1);
       // 1. le lien écrit dans le corps d'un guide

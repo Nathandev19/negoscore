@@ -129,6 +129,10 @@ export default function PaidAdsSixMonthsPage() {
             <Point lead={<>L&apos;exclusivité.</>}>
               T&apos;interdire les marques concurrentes n&apos;a rien à voir avec la diffusion : c&apos;est une ligne
               séparée, et souvent la plus chère.{" "}
+              <Link href={internalHrefFrom("/exclusivite-ugc", ORIGINE)} className="link">
+                Ce que vaut une exclusivité
+              </Link>{" "}
+              se chiffre durée par durée.{" "}
               <Link href={internalHrefFrom("/combien-facturer", ORIGINE)} className="link">
                 Les fourchettes par format et par supplément
               </Link>{" "}

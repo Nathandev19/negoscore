@@ -191,6 +191,8 @@ describe("page /combien-facturer", () => {
           "/droits-utilisation?de=pied-de-page",
           "/produits-offerts?de=pied-de-page",
           "/droits-pub-6-mois?de=pied-de-page",
+          // Mission #171 — cinquième guide.
+          "/exclusivite-ugc?de=pied-de-page",
           "/analyse/demo?de=pied-de-page",
         ]);
     expect(FOOTER_COLUMNS.find((colonne) => colonne.title === "Produit")?.links.map((lien) => lien.href)).not.toContain(

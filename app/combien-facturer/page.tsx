@@ -120,7 +120,12 @@ export default function PricingGuidePage() {
             Deux lignes plus rares, mais réellement facturées : les rushs bruts, si la marque veut tes fichiers source,
             +35 à +45 % ; et les variantes d&apos;accroche ou de CTA, 40 à 60 € l&apos;unité.
           </p>
-          <p>Exclusivité — tu t&apos;interdis les marques concurrentes :</p>
+          <p>
+            <Link href={internalHrefFrom("/exclusivite-ugc", ORIGINE)} className="link">
+              Exclusivité
+            </Link>{" "}
+            — tu t&apos;interdis les marques concurrentes :
+          </p>
           <RateTable
             head={["Durée", "À ajouter"]}
             rows={[
@@ -159,7 +164,10 @@ export default function PricingGuidePage() {
               <strong className="font-semibold text-encre">150 à 379 €</strong> en plus.
             </li>
             <li>
-              Exclusivité trois mois : +30 à +50 %, soit{" "}
+              <Link href={internalHrefFrom("/exclusivite-ugc", ORIGINE)} className="link">
+                Exclusivité trois mois
+              </Link>{" "}
+              : +30 à +50 %, soit{" "}
               <strong className="font-semibold text-encre">90 à 271 €</strong> en plus.
             </li>
           </ul>

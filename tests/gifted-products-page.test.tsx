@@ -16,7 +16,11 @@ const texte = html
   .replaceAll("&amp;", "&")
   .replaceAll(" ", " ")
   .replace(/<[^>]+>/g, " ")
-  .replace(/\s+/g, " ");
+  .replace(/\s+/g, " ")
+  // Une balise retirée laisse un espace ; devant une virgule ou un point,
+  // cet espace n'existe pas dans la page. Sans ça, poser un lien au milieu
+  // d'une phrase ferait échouer un test sans qu'aucun texte ait changé.
+  .replace(/\s+([,.])/g, "$1");
 
 const corps = (motif: RegExp) => [...html.matchAll(motif)].filter((m) => html.indexOf("<footer") > (m.index ?? 0));
 
@@ -104,14 +108,16 @@ describe("page /produits-offerts", () => {
       "/droits-utilisation?de=pied-de-page",
       "/produits-offerts?de=pied-de-page",
       "/droits-pub-6-mois?de=pied-de-page",
+      // Mission #171 — cinquième guide.
+      "/exclusivite-ugc?de=pied-de-page",
       "/analyse/demo?de=pied-de-page",
     ]);
   });
 
-  it("les onze pages publiques gardent des titres et des descriptions uniques", () => {
-    expect(PUBLIC_PAGES).toHaveLength(11);
-    expect(new Set(PUBLIC_PAGES.map((page) => page.title)).size).toBe(11);
-    expect(new Set(PUBLIC_PAGES.map((page) => page.description)).size).toBe(11);
+  it("les douze pages publiques gardent des titres et des descriptions uniques", () => {
+    expect(PUBLIC_PAGES).toHaveLength(12);
+    expect(new Set(PUBLIC_PAGES.map((page) => page.title)).size).toBe(12);
+    expect(new Set(PUBLIC_PAGES.map((page) => page.description)).size).toBe(12);
   });
 
   it("l'accueil vise une autre intention que le guide des tarifs", () => {
