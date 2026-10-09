@@ -54,3 +54,7 @@ next-env.d.ts
 # le dépôt est public depuis le 04/10, et un « git add . » y publierait des
 # documents qui n'ont rien à y faire. Le dossier n'était protégé par rien.
 /Claude outputs/
+
+# rendus de la carte de verdict (#168) : des images à regarder, pas des
+# fichiers à versionner. Le test les réécrit à chaque passage.
+/cartes-rendues/

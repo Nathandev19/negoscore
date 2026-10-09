@@ -52,6 +52,7 @@ function ligne(part: Partial<Ligne> = {}): Ligne {
     haut: 1190,
     bande: "weak",
     evaluabilite: "complete",
+    niveau: "starter",
     livrables: [{ type: "video", platform: "tiktok", quantity: 3, format: "30 s, 3 hooks" }],
     droits_mois: 6,
     droits_a_vie: false,
@@ -164,6 +165,30 @@ describe("la requête ne lit que ce qu'elle affiche", () => {
     expect(requete, "le jeton filtre la requête").toContain("deal.anon_token=eq.");
   });
 
+  // Mission #168 — le nom de la colonne ne suffit pas à juger. « deal » ou
+  // « infos » ne contiennent aucun mot interdit et ramèneraient pourtant tout
+  // l'objet, nom de la marque compris. Chaque entrée doit donc désigner un
+  // SCALAIRE, ou l'un des deux tableaux dont on sait ce qu'ils contiennent.
+  it("chaque colonne désigne un scalaire, jamais un objet qui porterait du texte libre", () => {
+    // Projections de tableau explicitement admises, et la raison : ce sont des
+    // listes de valeurs typées, reprojetées en mémoire (voir livrablesDe et
+    // requestedZones). Toute autre projection d'objet est refusée.
+    const TABLEAUX_ADMIS = ["livrables:payload->deal->deliverables", "zones:payload->deal->usage->territory_zones"];
+    for (const colonne of CARTE_COLONNES) {
+      if (TABLEAUX_ADMIS.includes(colonne)) continue;
+      const chemin = colonne.includes(":") ? colonne.slice(colonne.indexOf(":") + 1) : colonne;
+      // Soit une colonne réelle de la table (pas de flèche), soit un chemin
+      // JSON qui se termine par ->> : l'opérateur qui rend du TEXTE, donc une
+      // feuille, jamais un sous-objet.
+      const scalaire = !chemin.includes("->") || chemin.includes("->>");
+      // `->` final sur un nombre est admis aussi : PostgREST rend le nombre,
+      // pas l'objet. On vérifie alors que la feuille est un champ connu.
+      const FEUILLES_NOMBRE = ["amount_eur", "in_kind_value_eur", "total_low", "total_high", "duration_months", "perpetual", "present"];
+      const feuille = chemin.split("->").at(-1) ?? "";
+      expect(scalaire || FEUILLES_NOMBRE.includes(feuille), colonne).toBe(true);
+    }
+  });
+
   it("le fichier de la route ne lit aucun champ de marque", () => {
     const source = readFileSync("app/api/carte/route.tsx", "utf8") + readFileSync("lib/share-card/verdict-data.ts", "utf8");
     // Les commentaires expliquent justement pourquoi : on ne regarde que le
@@ -242,6 +267,34 @@ describe("rien de ce qui s'affiche ne vient du modèle", () => {
     // Et c'est la MÊME règle que celle du chiffrage : deux façons de le dire,
     // jamais deux vérités.
     expect(texte.length).toBeLessThan(100);
+  });
+
+  // ─── Mission #168 ──────────────────────────────────────────────────────
+
+  it("le niveau de calcul est présent sur la carte", () => {
+    // #039 : la même offre ne vaut pas la même chose selon le niveau. Une
+    // fourchette sans son niveau ne correspond à rien de vérifiable.
+    expect(verdictCardTexts(verdictDataFromRow(ligne())).pied).toBe(`barème ${CURRENT_RATE_VERSION} · Je débute`);
+    expect(verdictCardTexts(verdictDataFromRow(ligne({ niveau: "experienced" }))).pied).toContain("C'est mon métier");
+    // Niveau inconnu : le barème seul, jamais une valeur inventée sous la
+    // fourchette.
+    expect(verdictCardTexts(verdictDataFromRow(ligne({ niveau: "patron" }))).pied).toBe(`barème ${CURRENT_RATE_VERSION}`);
+  });
+
+  it("un montant issu d'une acceptation dit « jusqu'à » et « à confirmer »", () => {
+    // La nuance de langue de #064 : la marque a annoncé un plafond, la
+    // créatrice s'apprête à l'accepter, rien n'est conclu. La carte est faite
+    // pour être postée — elle ne doit pas laisser croire à un accord.
+    const ferme = verdictCardTexts(verdictDataFromRow(ligne()));
+    expect(ferme.proposeLabel).toBe("On m'a proposé");
+    expect(ferme.aConfirmer).toBe(null);
+    const plafond = verdictCardTexts({ ...verdictDataFromRow(ligne()), plafond: true });
+    expect(plafond.proposeLabel).toBe("On m'a proposé jusqu'à");
+    expect(plafond.aConfirmer).toBe("à confirmer");
+    // Les mots de la phrase de #064 y sont tous, montant compris.
+    expect(`${plafond.proposeLabel} ${plafond.propose}, ${plafond.aConfirmer}`).toMatch(
+      /^On m'a proposé jusqu'à 300\s€, à confirmer$/,
+    );
   });
 
   it("les cinq bandes ont leur mot, et le verdict en est un seul", () => {

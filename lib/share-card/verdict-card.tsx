@@ -4,6 +4,8 @@ import { formatEur, formatEurRange } from "@/lib/money";
 import { comparedAmount } from "@/lib/rates/score";
 import { formatNumber } from "@/lib/display";
 import { HOME_ZONE, reachesWorld, ZONE_LABEL } from "@/lib/rates/zones";
+import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
+import { AVANCES_FOURCHETTE, AVANCES_OFFRE, tailleQuiTient } from "@/lib/share-card/mesure-texte";
 import type { Analysis } from "@/lib/schema";
 
 // Mission #165 — LA CARTE DE VERDICT, celle qu'on envoie à ses copines.
@@ -41,7 +43,7 @@ export const VERDICT_UN_MOT: Record<Band, string> = {
 // version « sur crème » : les aplats clairs du bleu ne tiennent pas le
 // contraste sur fond clair, on prend donc l'encre pour le texte et la couleur
 // seulement en pastille.
-const { creme, encre, encreDouce, attenue, marque, bandOnMarque } = STATIC_PALETTE;
+const { creme, encre, attenue, marque, bandOnMarque, surMarque } = STATIC_PALETTE;
 
 // Espaces fines insécables du formateur (U+202F) ramenées à l'insécable
 // simple, la seule présente dans les polices embarquées.
@@ -72,6 +74,21 @@ export type VerdictCardData = {
   zones: string[];
   /** Version de la table qui a produit ces chiffres. */
   bareme: string;
+  /**
+   * Niveau de calcul (#039). Il figure toujours sur la carte : sans lui, la
+   * fourchette ne correspond à rien de vérifiable. Il nomme un niveau, jamais
+   * une personne. null : l'analyse n'en porte pas (ne devrait pas arriver, le
+   * schéma a un défaut).
+   */
+  niveau: Tier | null;
+  /**
+   * Mission #168 — le montant vient d'un message d'ACCEPTATION, pas d'un
+   * accord ferme : la marque a annoncé « jusqu'à 900 € » et la créatrice
+   * s'apprête à l'accepter. La carte le dit, parce qu'elle est faite pour
+   * être postée et qu'elle ne doit pas laisser croire à un accord conclu.
+   * Nuance reprise telle quelle de la carte de #064.
+   */
+  plafond: boolean;
 };
 
 // Pas de carte sans les trois choses qui en font une : un montant proposé, une
@@ -137,11 +154,17 @@ export function offerLine(data: VerdictCardData): string | null {
 }
 
 export type VerdictCardTexts = {
+  /** « On m'a proposé », ou « On m'a proposé jusqu'à » quand c'est un plafond. */
+  proposeLabel: string;
   propose: string | null;
+  /** « à confirmer », sous le montant, quand c'est un plafond. null sinon. */
+  aConfirmer: string | null;
   vaut: string | null;
   verdict: string | null;
   offre: string | null;
   bareme: string;
+  /** Barème et niveau, la seule mention technique de la carte. */
+  pied: string;
 };
 
 export function verdictCardTexts(data: VerdictCardData): VerdictCardTexts {
@@ -153,14 +176,73 @@ export function verdictCardTexts(data: VerdictCardData): VerdictCardTexts {
   const propose =
     compare === null ? null : `${formatEur(compare)}${data.propose === null ? " en produits" : ""}`;
   const range = formatEurRange(data.bas, data.haut);
+  // Mission #168 — « On m'a proposé jusqu'à 900 €, à confirmer » : la phrase
+  // de #064, répartie sur les trois niveaux de la bande haute pour que le
+  // montant reste le montant. Aucun mot n'est perdu.
+  const bareme = `barème ${data.bareme}`;
   return {
+    proposeLabel: data.plafond ? "On m'a proposé jusqu'à" : "On m'a proposé",
     propose: propose ? plain(propose) : null,
+    aConfirmer: data.plafond ? "à confirmer" : null,
     vaut: range ? plain(range) : null,
     verdict: data.bande ? VERDICT_UN_MOT[data.bande] : null,
     offre: offerLine(data),
-    bareme: `barème ${data.bareme}`,
+    bareme,
+    // Le niveau figure TOUJOURS (#039). Sans lui la fourchette ne veut rien
+    // dire : la même offre vaut autre chose selon le niveau de calcul.
+    pied: data.niveau ? `${bareme} · ${TIER_LABEL[data.niveau].short}` : bareme,
   };
 }
+
+// ─── LA MISE EN PAGE (mission #168) ─────────────────────────────────────────
+//
+// Avant : deux montants de même poids sur un fond uniforme — un reçu. Une
+// carte qui ne donne pas envie d'être postée ne sert à rien.
+//
+// Maintenant, deux temps et une seule chose qui domine :
+//   - une bande haute crème de 420 px, où « on m'a proposé » est dit en petit
+//     et le montant en 90 px. C'est VOLONTAIREMENT le second rôle ;
+//   - un champ bleu à fond perdu sur tout le reste, où la fourchette fait
+//     150 px. C'est l'élément dominant, et c'est le sujet de la carte.
+//
+// LE CHAMP BLEU NE CHANGE JAMAIS DE COULEUR SELON LE VERDICT. C'est la
+// pastille qui porte l'état, et elle seule : les trois cas — sous-évalué,
+// correct, sur-évalué — partagent une seule identité visuelle. Une carte dont
+// le fond vire au rouge est une carte qu'on ne poste pas.
+//
+// La marque reste discrète : « negoscore.fr » en pied, dans le bleu, et le
+// barème à 50 % d'opacité à côté. Une carte qui a l'air d'une publicité ne se
+// partage pas.
+
+export const CARTE_MARGE = 90;
+const LARGEUR_UTILE = VERDICT_CARD_SIZE.width - 2 * CARTE_MARGE;
+const HAUTEUR_BANDE = 420;
+
+// LA FOURCHETTE NE PASSE JAMAIS SUR DEUX LIGNES. Elle est le sujet de la
+// carte ; coupée en deux elle cesse de se lire d'un coup d'œil, et elle
+// pousse le pied de page vers le bas. La taille descend donc par paliers
+// jusqu'à tenir dans les 900 px utiles.
+//
+// À 150 px, « 610 € – 1 310 € » tient (837 px mesurés). « 2 700 € – 5 280 € »
+// déborderait (1 047 px) et descend à 116. Les paliers sont choisis pour que
+// la fourchette reste dominante même au plus bas : 90 px est encore la
+// moitié plus grand que le montant proposé.
+export const TAILLES_FOURCHETTE = [150, 132, 116, 102, 90] as const;
+export function tailleFourchette(texte: string): number {
+  return tailleQuiTient(texte, AVANCES_FOURCHETTE, TAILLES_FOURCHETTE, LARGEUR_UTILE);
+}
+
+// LA LIGNE D'OFFRE TIENT SUR DEUX LIGNES AU PLUS, et aucun élément n'en est
+// retiré pour y arriver : c'est la taille qui descend. Retirer une zone ou un
+// livrable ferait mentir la carte par omission — exactement ce que la #167
+// vient de corriger sur le territoire.
+export const TAILLES_OFFRE = [34, 31, 28, 26] as const;
+export function tailleOffre(texte: string): number {
+  return tailleQuiTient(texte, AVANCES_OFFRE, TAILLES_OFFRE, LARGEUR_UTILE, 2, 0.92);
+}
+
+const BLANC_60 = surMarque.attenue;
+const BLANC_50 = surMarque.discret;
 
 // Satori : flexbox uniquement, `display: flex` sur tout conteneur à plusieurs
 // enfants, aucune propriété non supportée (pas de grid, pas de gap négatif,
@@ -175,48 +257,61 @@ export function verdictCardElement(data: VerdictCardData): ReactElement {
         flexDirection: "column",
         width: VERDICT_CARD_SIZE.width,
         height: VERDICT_CARD_SIZE.height,
-        padding: 100,
-        background: creme,
-        color: encre,
+        background: marque,
         fontFamily: "Familjen Grotesk",
       }}
     >
-      <div style={{ display: "flex", fontSize: 40, fontWeight: 600, color: marque, letterSpacing: "-0.01em" }}>
-        Negoscore
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "center" }}>
-        <div style={{ display: "flex", fontSize: 44, fontWeight: 600, color: attenue }}>On m&apos;a proposé</div>
+      {/* ─── La bande haute : crème, le montant proposé, en second rôle ─── */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          height: HAUTEUR_BANDE,
+          padding: `0 ${CARTE_MARGE}px`,
+          background: creme,
+        }}
+      >
+        <div style={{ display: "flex", fontSize: 34, fontWeight: 600, color: attenue, letterSpacing: "0.1em" }}>
+          {t.proposeLabel}
+        </div>
         <div
           style={{
             display: "flex",
-            marginTop: 8,
+            marginTop: 14,
             fontFamily: "Bricolage Grotesque",
             fontWeight: 800,
-            fontSize: 104,
+            fontSize: 90,
             letterSpacing: "-0.03em",
-            color: encreDouce,
+            color: encre,
           }}
         >
           {t.propose ?? ""}
         </div>
+        {t.aConfirmer ? (
+          <div style={{ display: "flex", marginTop: 10, fontSize: 30, fontWeight: 600, color: attenue }}>{t.aConfirmer}</div>
+        ) : null}
+      </div>
 
-        <div style={{ display: "flex", marginTop: 52, fontSize: 44, fontWeight: 600, color: attenue }}>Ça en vaut</div>
+      {/* ─── Le champ bleu : la fourchette, et c'est elle qu'on retient ─── */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flexGrow: 1,
+          padding: `64px ${CARTE_MARGE}px ${CARTE_MARGE}px`,
+          color: surMarque.plein,
+        }}
+      >
+        <div style={{ display: "flex", fontSize: 34, fontWeight: 600, color: BLANC_60, letterSpacing: "0.1em" }}>Ça en vaut</div>
         <div
           style={{
             display: "flex",
-            marginTop: 8,
+            marginTop: 12,
             fontFamily: "Bricolage Grotesque",
             fontWeight: 800,
-            // L'élément dominant de la carte. La fourchette la plus longue
-            // rendue par le moteur (« 2 700 € – 5 280 € ») tient sur deux
-            // lignes à cette taille, dans les 880 px utiles.
-            // Mesuré sur rendu : à 148 px, une fourchette à deux lignes
-            // (« 2 700 € – 5 280 € ») plus une ligne d'offre longue poussaient
-            // le pied de page hors de la marge de 100 px. À 132 elle tient,
-            // et reste de loin l'élément dominant de la carte.
-            fontSize: 132,
-            lineHeight: 1.04,
+            fontSize: tailleFourchette(t.vaut ?? ""),
+            lineHeight: 1,
             letterSpacing: "-0.04em",
           }}
         >
@@ -224,17 +319,17 @@ export function verdictCardElement(data: VerdictCardData): ReactElement {
         </div>
 
         {t.verdict ? (
-          <div style={{ display: "flex", marginTop: 44 }}>
+          <div style={{ display: "flex", marginTop: 40 }}>
             <div
               style={{
                 display: "flex",
-                padding: "16px 48px",
+                padding: "14px 44px",
                 borderRadius: 999,
                 background: pastille,
                 color: encre,
                 fontFamily: "Bricolage Grotesque",
                 fontWeight: 800,
-                fontSize: 62,
+                fontSize: 56,
                 letterSpacing: "-0.02em",
               }}
             >
@@ -244,15 +339,28 @@ export function verdictCardElement(data: VerdictCardData): ReactElement {
         ) : null}
 
         {t.offre ? (
-          <div style={{ display: "flex", marginTop: 44, fontSize: 34, fontWeight: 600, color: encreDouce, lineHeight: 1.32 }}>
+          <div
+            style={{
+              display: "flex",
+              marginTop: 36,
+              fontSize: tailleOffre(t.offre),
+              fontWeight: 600,
+              color: BLANC_60,
+              lineHeight: 1.3,
+            }}
+          >
             {t.offre}
           </div>
         ) : null}
-      </div>
 
-      <div style={{ display: "flex", alignItems: "baseline" }}>
-        <div style={{ display: "flex", fontSize: 44, fontWeight: 600, color: marque }}>{VERDICT_CARD_SITE}</div>
-        <div style={{ display: "flex", marginLeft: 24, fontSize: 28, fontWeight: 600, color: attenue }}>{t.bareme}</div>
+        {/* Pousse le pied de page en bas du champ bleu, quelle que soit la
+            hauteur de ce qui précède. */}
+        <div style={{ display: "flex", flexGrow: 1 }} />
+
+        <div style={{ display: "flex", alignItems: "baseline" }}>
+          <div style={{ display: "flex", fontSize: 40, fontWeight: 600 }}>{VERDICT_CARD_SITE}</div>
+          <div style={{ display: "flex", marginLeft: 22, fontSize: 26, fontWeight: 600, color: BLANC_50 }}>{t.pied}</div>
+        </div>
       </div>
     </div>
   );

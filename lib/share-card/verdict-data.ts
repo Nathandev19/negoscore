@@ -1,5 +1,6 @@
 import { selectRows } from "@/lib/supabase/server";
 import { requestedZones } from "@/lib/rates/zones";
+import { parseTier } from "@/lib/rates/tier";
 import type { VerdictCardData } from "@/lib/share-card/verdict-card";
 
 // Mission #165 — CE QUE LA ROUTE DE LA CARTE A LE DROIT DE LIRE.
@@ -29,6 +30,10 @@ export const CARTE_COLONNES = [
   "haut:payload->estimate->total_high",
   "bande:payload->score->>band",
   "evaluabilite:payload->>evaluability",
+  // Mission #168 — le niveau de calcul (#039). Il figure toujours sur la
+  // carte : la même offre ne vaut pas la même chose selon le niveau, et une
+  // fourchette sans son niveau ne correspond à rien de vérifiable.
+  "niveau:payload->>profile_tier",
   // De quoi écrire la ligne d'offre, et rien d'autre.
   "livrables:payload->deal->deliverables",
   "droits_mois:payload->deal->usage->duration_months",
@@ -86,6 +91,14 @@ export function verdictDataFromRow(row: LigneCarte): VerdictCardData {
     // est écartée, jamais affichée telle quelle.
     zones: requestedZones(Array.isArray(row.zones) ? row.zones.filter((z): z is string => typeof z === "string") : []),
     bareme: typeof row.rate_table_version === "string" ? row.rate_table_version : "",
+    // Liste fermée : une valeur inconnue devient null et le niveau ne
+    // s'affiche pas, plutôt que d'écrire n'importe quoi sous la fourchette.
+    niveau: parseTier(row.niveau),
+    // Mission #168 — le montant d'un message d'acceptation (« jusqu'à 900 €,
+    // à confirmer ») vient du fil de négociation. Cette route ne le lit pas
+    // encore : voir le rapport de #168, point A2. Tant qu'elle ne le lit pas,
+    // la carte ne peut pas l'affirmer, donc false.
+    plafond: false,
   };
 }
 
