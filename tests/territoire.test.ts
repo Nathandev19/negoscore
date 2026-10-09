@@ -8,7 +8,17 @@ import { computeEstimate, isWorldwide } from "@/lib/rates/engine";
 import fr20263 from "@/lib/rates/fr-2026.3.json";
 import fr20264 from "@/lib/rates/fr-2026.4.json";
 import { CURRENT_RATE_TABLE, CURRENT_RATE_VERSION, rateTable } from "@/lib/rates/tables";
-import { allZones, billableZones, HOME_ZONE, reachesWorld, requestedZones, ZONE_LABEL, zonesTotal, zoneRate } from "@/lib/rates/zones";
+import {
+  allZones,
+  billableRequestedZones,
+  billableZones,
+  HOME_ZONE,
+  reachesWorld,
+  requestedZones,
+  ZONE_LABEL,
+  zonesTotal,
+  zoneRate,
+} from "@/lib/rates/zones";
 import sample from "@/lib/fixtures/sample-extraction.json";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 
@@ -103,7 +113,10 @@ describe("la liste des zones est fermée, et elle vit dans la table", () => {
       expect(lignesTerritoire(sujet), hostile).toEqual([]);
     }
     // Et une zone inconnue au milieu de zones connues laisse passer les connues.
-    expect(requestedZones(["europe", "mars", "france"])).toEqual(["europe"]);
+    // La France en fait partie depuis #167 : `requestedZones` rend TOUT ce qui
+    // a été demandé, et c'est `billableRequestedZones` qui enlève le gratuit.
+    expect(requestedZones(["europe", "mars", "france"])).toEqual(["france", "europe"]);
+    expect(billableRequestedZones(["europe", "mars", "france"])).toEqual(["europe"]);
   });
 });
 
@@ -340,10 +353,14 @@ describe("un tour de négociation emporte les zones avec le territoire", () => {
     const apres = avecZones("France, Belgique et Suisse", ["france", "europe_francophone"]);
     const applique = applyGroups(avant, apres, ["territory"]);
     expect(applique.usage.territory).toBe("France, Belgique et Suisse");
-    expect(applique.usage.territory_zones).toEqual(["europe_francophone"]);
+    // La France est conservée dans ce qui est ENREGISTRÉ (#167) : elle a été
+    // demandée, et c'est au chiffrage de ne pas la facturer.
+    expect(applique.usage.territory_zones).toEqual(["france", "europe_francophone"]);
     // Et le nouveau chiffrage suit : sans les zones, le tour aurait gardé
-    // l'ancien territoire chiffré à zéro sous un nouveau libellé.
-    expect(lignesTerritoire(applique).map((l) => l.label)).toEqual(["Diffusion Belgique, Suisse, Luxembourg"]);
+    // l'ancien territoire chiffré à zéro sous un nouveau libellé. AUCUN
+    // NOMBRE N'A BOUGÉ ICI : la France vaut +0 %, seul le libellé de la zone
+    // a changé (« Belgique, Suisse, Luxembourg » → « Europe francophone »).
+    expect(lignesTerritoire(applique).map((l) => l.label)).toEqual(["Diffusion Europe francophone"]);
   });
 });
 
@@ -391,7 +408,12 @@ describe("le modèle extrait, le code chiffre", () => {
 
   it("la normalisation écarte avant enregistrement, et n'écarte jamais la ligne", () => {
     const sujet = avecZones("partout", ["mars", "europe", "france", "europe"]);
-    // Dédoublonné, trié par la table, France retirée, inconnu écarté.
-    expect(sujet.usage.territory_zones).toEqual(["europe"]);
+    // Dédoublonné, trié par la table, inconnu écarté — et la France gardée
+    // (#167) : ce qui est enregistré est ce qui a été DEMANDÉ. La retirer à
+    // l'enregistrement, c'était la perdre pour tout ce qui vient après, la
+    // carte de verdict comprise.
+    expect(sujet.usage.territory_zones).toEqual(["france", "europe"]);
+    // Le chiffrage, lui, ne voit toujours que le facturable.
+    expect(lignesTerritoire(sujet).map((l) => l.label)).toEqual([`Diffusion ${ZONE_LABEL.europe}`]);
   });
 });

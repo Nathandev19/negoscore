@@ -187,14 +187,48 @@ describe("rien de ce qui s'affiche ne vient du modèle", () => {
 
   it("la ligne d'offre n'est faite que de champs structurés", () => {
     const texte = offerLine(verdictDataFromRow(ligne()))!;
-    expect(texte).toBe("3 vidéos · 6 mois de droits pub · exclusivité 3 mois · Belgique, Suisse, Luxembourg");
+    // Les zones sont des ÉLÉMENTS de la ligne, chacune avec son libellé de
+    // table, France comprise (#167).
+    expect(texte).toBe("3 vidéos · 6 mois de droits pub · exclusivité 3 mois · France · Europe francophone");
     // Ni plateforme écrite par le modèle, ni format, ni catégorie.
     expect(texte).not.toMatch(/tiktok|hooks/i);
   });
 
-  it("une zone inconnue est écartée, et la France seule ne se dit pas", () => {
+  // Mission #167 — le nombre affiché est celui qui a été comparé à la
+  // fourchette. Sans argent, ce sont les produits, et c'est dit.
+  it("« On m'a proposé » affiche le montant qui a été comparé, produits compris", () => {
+    // L'espace avant l'euro est insécable : on compare sur le nombre et le
+    // suffixe, pas sur l'octet d'espace.
+    expect(verdictCardTexts(verdictDataFromRow(ligne())).propose).toMatch(/^300\s€$/);
+    const enProduits = verdictCardTexts(verdictDataFromRow(ligne({ propose: null, produits: 267 })));
+    expect(enProduits.propose).toMatch(/^267\s€ en produits$/);
+    // Et jamais la somme des deux : 300 + 267 ne s'affiche pas.
+    expect(verdictCardTexts(verdictDataFromRow(ligne({ produits: 267 }))).propose).toMatch(/^300\s€$/);
+  });
+
+  // ─── Mission #167, point 2 : les deux gardes nommées ────────────────────
+
+  it("une zone absente de l'offre ne sort pas sur la carte", () => {
+    // Trois zones demandées sur cinq : les deux autres n'apparaissent pas, et
+    // rien ne vient les compléter.
+    const texte = offerLine(verdictDataFromRow(ligne({ zones: ["france", "europe_francophone", "amerique_nord"] })))!;
+    expect(texte).toContain("France · Europe francophone · Amérique du Nord");
+    expect(texte).not.toMatch(/reste de l'Europe|reste du monde|monde entier/);
+    // Et une zone que la table ne connaît pas n'est jamais affichée telle
+    // quelle : elle est écartée avant d'arriver à la carte.
     expect(verdictDataFromRow(ligne({ zones: ["mars", "europe"] })).zones).toEqual(["europe"]);
-    expect(offerLine(verdictDataFromRow(ligne({ zones: ["france"], droits_mois: null, exclusivite: false })))).toBe("3 vidéos");
+    expect(offerLine(verdictDataFromRow(ligne({ zones: ["mars", "europe"] })))!).not.toContain("mars");
+  });
+
+  it("la France seule rend « France », pas une ligne vide", () => {
+    // Elle était retirée avant #167 parce que sa majoration vaut zéro : une
+    // offre France-seulement rendait une carte sans aucun territoire.
+    expect(offerLine(verdictDataFromRow(ligne({ zones: ["france"], droits_mois: null, exclusivite: false })))).toBe(
+      "3 vidéos · France",
+    );
+    // Aucune zone demandée reste aucune zone affichée : on n'invente pas la
+    // France quand l'offre ne dit rien du territoire.
+    expect(offerLine(verdictDataFromRow(ligne({ zones: [], droits_mois: null, exclusivite: false })))).toBe("3 vidéos");
   });
 
   // Trouvé en RENDANT la carte, pas en la relisant : avec les quatre zones

@@ -25,7 +25,14 @@ export type ZoneKey = string;
 // une ligne sans nom ne se conteste pas.
 export const ZONE_LABEL: Readonly<Record<string, string>> = {
   france: "France",
-  europe_francophone: "Belgique, Suisse, Luxembourg",
+  // Mission #167 — « Europe francophone » et non plus « Belgique, Suisse,
+  // Luxembourg ». Les quatre autres entrées nomment une ZONE ; celle-ci
+  // énumérait ses pays, et c'était la seule. Sur une ligne de territoire
+  // séparée par des points médians, une énumération à virgules à l'intérieur
+  // d'un élément se lit mal : « France · Belgique, Suisse, Luxembourg ·
+  // Amérique du Nord ». Les trois pays restent écrits ici, en commentaire, et
+  // dans le prompt d'extraction qui dit au modèle ce que la zone recouvre.
+  europe_francophone: "Europe francophone",
   europe: "Reste de l'Europe",
   amerique_nord: "Amérique du Nord",
   reste_du_monde: "Reste du monde",
@@ -58,9 +65,10 @@ export function zoneRate(zone: string, rates: RateTable = CURRENT_RATE_TABLE): {
   return entryFor(zonesOf(rates), zone);
 }
 
-// Les zones demandées par l'offre, telles que le moteur les facturera :
-// connues de la table, dédoublonnées, dans l'ordre de la table, la France
-// retirée parce qu'elle vaut zéro et qu'une ligne à 0 € n'apprend rien.
+// Les zones demandées par l'offre : celles que la table connaît,
+// dédoublonnées, dans l'ordre de la table. TOUT ce qui a été demandé, France
+// comprise — c'est la liste de ce qu'on affiche. Pour chiffrer, le moteur lit
+// `billableRequestedZones`, juste en dessous.
 //
 // UNE ZONE INCONNUE N'AJOUTE RIEN ET NE FAIT RIEN ÉCHOUER. C'est la règle qui
 // vaut partout ailleurs dans le dépôt : on écarte la valeur, jamais la ligne.
@@ -72,8 +80,23 @@ export function requestedZones(values: readonly string[] | null | undefined, rat
   // (Une vérification supplémentaire côté « demandé » existait ici : elle ne
   // pouvait rien attraper que celle-ci ne rattrape, et une garde que rien ne
   // peut faire échouer ne garde rien.)
+  //
+  // Mission #167 — LA FRANCE RESTE. Elle était retirée ici, au motif que sa
+  // majoration vaut zéro ; mais ce qui vaut zéro ne se facture pas, ça ne
+  // veut pas dire que ça ne s'est pas demandé. Une offre « France, Belgique,
+  // Suisse » affichait « Belgique, Suisse, Luxembourg » : on effaçait de
+  // l'écran une zone que la marque avait bien demandée.
+  //
+  // Le moteur, lui, chiffre sur `billableRequestedZones` : rien ne change au
+  // prix, et aucune ligne à 0 € n'apparaît.
   const demandees = new Set(values);
-  return billableZones(rates).filter((zone) => demandees.has(zone));
+  return allZones(rates).filter((zone) => demandees.has(zone));
+}
+
+// Les zones demandées QUI SE FACTURENT : les mêmes, moins celle qui est déjà
+// comprise dans le tarif de base. C'est ce que lit le moteur.
+export function billableRequestedZones(values: readonly string[] | null | undefined, rates: RateTable = CURRENT_RATE_TABLE): string[] {
+  return requestedZones(values, rates).filter((zone) => zone !== HOME_ZONE);
 }
 
 // Le total des zones demandées.

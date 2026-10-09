@@ -3,7 +3,7 @@ import { formatNumber } from "@/lib/display";
 import { CURRENT_RATE_TABLE, type RateTable } from "@/lib/rates/tables";
 import { RAW_FOOTAGE_LABEL } from "@/lib/content/labels";
 import { DEFAULT_TIER, type Tier } from "@/lib/rates/tier";
-import { reachesWorld, requestedZones, ZONE_LABEL, zoneRate } from "@/lib/rates/zones";
+import { billableRequestedZones, reachesWorld, ZONE_LABEL, zoneRate } from "@/lib/rates/zones";
 import type { Analysis } from "@/lib/schema";
 
 // Chiffrage déterministe. Toutes les valeurs de tarif viennent de la table
@@ -366,7 +366,10 @@ export function computeEstimate(deal: Deal, profile: Profile = {}): ComputedEsti
   // L'interrupteur « monde » RESTE, et il reste en premier : une analyse
   // d'avant cette mission n'a pas de zones, et un texte qui dit « monde
   // entier » doit continuer à être facturé comme avant, au centime près.
-  const zonesDemandees = requestedZones(usage.territory_zones, rates);
+  // Mission #167 — les zones FACTURABLES : la France est demandée comme les
+  // autres, mais elle est comprise dans le tarif de base et n'ouvre aucune
+  // ligne. Le chiffrage est inchangé.
+  const zonesDemandees = billableRequestedZones(usage.territory_zones, rates);
   if (isWorldwide(usage.territory) || (zonesDemandees.length > 0 && reachesWorld(zonesDemandees, rates))) {
     // LE PLAFOND DE COHÉRENCE : le monde est le plafond du territoire, jamais
     // une zone de plus. Des zones qui atteignent ou dépassent le mondial sont

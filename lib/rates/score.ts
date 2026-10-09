@@ -216,13 +216,60 @@ function withoutPriceCap(deal: Deal, estimate: Estimate): number {
   return hasUnknownQuantity(deal) ? Math.min(raw, UNKNOWN_QUANTITY_SCORE_CAP) : raw;
 }
 
+// ─── Mission #167 — LE MONTANT COMPARÉ, et la bande qui ne peut pas le nier ──
+//
+// LE DÉFAUT, reproduit : une offre à 400 € face à une fourchette de
+// 610 – 1310 € portait la bande « Deal correct ». La bande n'a jamais été une
+// comparaison à la fourchette : c'est `bandFor(score)`, et le score est un
+// composite — base 50, jusqu'à 30 points de prix, le reste en conditions.
+// 400 € sous le plancher ne rapporte que 7,7 points de prix sur 30, mais
+// 50 + 7,7 − 5 (exclusivité) + 5 (paiement à 30 jours) = 58, et 58 tombe dans
+// la tranche 50–69 de « correct ». Le plafond par le prix de la #050 visait
+// exactement ce cas et l'a manqué d'UN point : il plafonnait à 59.
+//
+// LA RÈGLE : un montant sous le plancher de la fourchette ne peut pas porter
+// « correct », quoi que disent les conditions. Le score, lui, ne bouge pas —
+// l'échelle de la #042 reste gelée, et aucun chiffre déjà mesuré ne change.
+// Au-dessus du plancher, rien n'est touché : c'est là que les conditions
+// doivent continuer à peser, et que la phrase de verdict lit la bande pour
+// dire « ce sont tes conditions qui pèsent » (lib/analysis/verdict.ts).
+//
+// Le seuil entre « mauvais » et « faible » est RATIO_ZERO, déjà le seuil du
+// « très en dessous » de la phrase de verdict : un seul seuil pour une seule
+// idée.
+
+// LE MONTANT COMPARÉ. Un seul endroit décide quel nombre affronte la
+// fourchette, et c'est le même que celui qu'on affiche (« On m'a proposé »,
+// carte de verdict) : sans ça l'écran se contredit lui-même.
+//
+// L'argent d'abord, les produits à défaut — et jamais la somme des deux : des
+// produits ne sont pas de l'argent, et les additionner ferait passer une
+// offre payée 400 € pour une offre à 489 € — le cas de la #167, 400 € plus
+// 89 € de produits gardés. C'est la démonstration du guide
+// /produits-offerts, elle vaut aussi ici.
+export function comparedAmount(money: number | null, inKind: number | null): number | null {
+  return money ?? inKind;
+}
+
+export function comparedAmountOf(deal: Deal): number | null {
+  return comparedAmount(deal.payment.amount_eur, deal.in_kind_value_eur);
+}
+
+// La bande, corrigée par la position du montant comparé. Rien d'autre ne
+// change : même score, même échelle, mêmes seuils.
+export function bandWithinRange(value: number, amount: number | null, low: number | null): Score["band"] {
+  const band = bandFor(value);
+  if (amount === null || low === null || !(low > 0) || amount >= low) return band;
+  return amount < RATIO_ZERO * low ? "bad" : "weak";
+}
+
 // Score avec les deux plafonds appliqués : quantité inconnue et prix. Quand les
 // deux existent, le plus bas l'emporte. Ce sont des bornes supérieures : elles
 // ne peuvent que faire baisser le score, jamais le monter.
 export function computeScore(deal: Deal, estimate: Estimate): Score {
   const priceCap = priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
   const value = Math.min(withoutPriceCap(deal, estimate), priceCap?.cap ?? Number.POSITIVE_INFINITY);
-  return { value, band: bandFor(value) };
+  return { value, band: bandWithinRange(value, comparedAmountOf(deal), estimate.total_low) };
 }
 
 // Score sans le plafond de quantité inconnue : ce que vaudrait l'offre si un
@@ -273,7 +320,7 @@ export function uncappedScore(deal: Deal, estimate: Estimate): Score {
   }
 
   const bounded = Math.round(Math.min(100, Math.max(0, value)));
-  return { value: bounded, band: bandFor(bounded) };
+  return { value: bounded, band: bandWithinRange(bounded, comparedAmountOf(deal), estimate.total_low) };
 }
 
 export function bandFor(value: number): Score["band"] {

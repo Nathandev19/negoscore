@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { STATIC_PALETTE } from "@/lib/design/static-palette";
 import { formatEur, formatEurRange } from "@/lib/money";
+import { comparedAmount } from "@/lib/rates/score";
 import { formatNumber } from "@/lib/display";
 import { HOME_ZONE, reachesWorld, ZONE_LABEL } from "@/lib/rates/zones";
 import type { Analysis } from "@/lib/schema";
@@ -105,22 +106,32 @@ export function offerLine(data: VerdictCardData): string | null {
   if (data.exclusivite) {
     parts.push(data.exclusiviteMois === null ? "exclusivité" : `exclusivité ${mois(data.exclusiviteMois)}`);
   }
-  // Les zones viennent de la liste fermée de la table de tarifs, et leurs
-  // libellés sont les nôtres. La France seule ne se dit pas : c'est le
-  // territoire par défaut.
+  // ─── LE TERRITOIRE (mission #167) ────────────────────────────────────────
   //
-  // Et quand les zones atteignent le mondial, on écrit « monde entier »
-  // plutôt que de les énumérer : mesuré, la liste complète fait quatre lignes
-  // sur la carte et pousse le pied de page hors des marges. C'est la même
-  // règle que le moteur applique au chiffrage (lib/rates/zones.ts), donc deux
-  // façons de dire la même chose, jamais deux vérités.
-  const horsFrance = data.zones.filter((zone) => zone !== HOME_ZONE);
-  if (horsFrance.length > 0) {
-    parts.push(
-      reachesWorld(horsFrance)
-        ? "monde entier"
-        : horsFrance.map((zone) => ZONE_LABEL[zone]).filter((label): label is string => Boolean(label)).join(", "),
-    );
+  // Une zone retenue = un élément de la ligne, avec le libellé de la table
+  // (lib/rates/zones.ts). Plus d'énumération de pays, plus de virgules à
+  // l'intérieur d'un élément : « France · Europe francophone · Amérique du
+  // Nord ».
+  //
+  // LA FRANCE N'EST PLUS RETIRÉE. Elle l'était parce que sa majoration vaut
+  // zéro — mais ce qui ne se facture pas peut très bien avoir été demandé, et
+  // une offre « France, Belgique, Suisse » affichait « Belgique, Suisse,
+  // Luxembourg » : une zone demandée disparaissait de l'écran.
+  //
+  // Une zone absente de l'offre n'apparaît jamais : `data.zones` ne contient
+  // que ce que le modèle a extrait, filtré par la liste fermée.
+  //
+  // Toutes les zones retenues : « monde entier », d'un bloc. C'est la règle
+  // du chiffrage (reachesWorld), donc deux façons de dire la même chose et
+  // jamais deux vérités — et c'est aussi ce qui garde la ligne courte, la
+  // liste complète débordant des marges de la carte (mesuré en #165).
+  const facturables = data.zones.filter((zone) => zone !== HOME_ZONE);
+  if (data.zones.length > 0) {
+    if (reachesWorld(facturables)) parts.push("monde entier");
+    else for (const zone of data.zones) {
+      const label = ZONE_LABEL[zone];
+      if (label) parts.push(label);
+    }
   }
   return parts.length > 0 ? plain(parts.join(" · ")) : null;
 }
@@ -134,12 +145,13 @@ export type VerdictCardTexts = {
 };
 
 export function verdictCardTexts(data: VerdictCardData): VerdictCardTexts {
+  // Mission #167 — LE MÊME NOMBRE QUE CELUI QUI AFFRONTE LA FOURCHETTE.
+  // `comparedAmount` décide une fois pour toutes lequel des deux compte, et
+  // c'est lui qu'on affiche : sans ça la carte annoncerait un montant et
+  // jugerait l'autre.
+  const compare = comparedAmount(data.propose, data.produits);
   const propose =
-    data.propose !== null
-      ? formatEur(data.propose)
-      : data.produits !== null
-        ? `${formatEur(data.produits)} en produits`
-        : null;
+    compare === null ? null : `${formatEur(compare)}${data.propose === null ? " en produits" : ""}`;
   const range = formatEurRange(data.bas, data.haut);
   return {
     propose: propose ? plain(propose) : null,
