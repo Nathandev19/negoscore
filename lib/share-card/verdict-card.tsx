@@ -4,7 +4,6 @@ import { formatEur, formatEurRange } from "@/lib/money";
 import { comparedAmount } from "@/lib/rates/score";
 import { formatNumber } from "@/lib/display";
 import { HOME_ZONE, reachesWorld, ZONE_LABEL } from "@/lib/rates/zones";
-import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
 import { AVANCES_FOURCHETTE, AVANCES_OFFRE, tailleQuiTient } from "@/lib/share-card/mesure-texte";
 import type { Analysis } from "@/lib/schema";
 
@@ -74,13 +73,6 @@ export type VerdictCardData = {
   zones: string[];
   /** Version de la table qui a produit ces chiffres. */
   bareme: string;
-  /**
-   * Niveau de calcul (#039). Il figure toujours sur la carte : sans lui, la
-   * fourchette ne correspond à rien de vérifiable. Il nomme un niveau, jamais
-   * une personne. null : l'analyse n'en porte pas (ne devrait pas arriver, le
-   * schéma a un défaut).
-   */
-  niveau: Tier | null;
   /**
    * Mission #168 — le montant vient d'un message d'ACCEPTATION, pas d'un
    * accord ferme : la marque a annoncé « jusqu'à 900 € » et la créatrice
@@ -162,9 +154,8 @@ export type VerdictCardTexts = {
   vaut: string | null;
   verdict: string | null;
   offre: string | null;
+  /** La seule mention technique de la carte. */
   bareme: string;
-  /** Barème et niveau, la seule mention technique de la carte. */
-  pied: string;
 };
 
 export function verdictCardTexts(data: VerdictCardData): VerdictCardTexts {
@@ -179,7 +170,20 @@ export function verdictCardTexts(data: VerdictCardData): VerdictCardTexts {
   // Mission #168 — « On m'a proposé jusqu'à 900 €, à confirmer » : la phrase
   // de #064, répartie sur les trois niveaux de la bande haute pour que le
   // montant reste le montant. Aucun mot n'est perdu.
-  const bareme = `barème ${data.bareme}`;
+  // ─── Mission #170 — LE NIVEAU DE CALCUL NE FIGURE PLUS ICI ──────────────
+  //
+  // Il y était depuis la #168, au nom de la #039 : une fourchette sans son
+  // niveau ne correspond à rien de vérifiable. C'est vrai sur la page de
+  // résultat, où la #039 reste en vigueur — et faux sur une image publique.
+  //
+  // Le niveau est écrit à la première personne (« Je débute », « C'est mon
+  // métier ») : sur une carte postée en story, ce n'est pas une information
+  // sur le deal, c'est une information sur la créatrice, et elle joue contre
+  // elle. Une marque qui lit « Je débute » sous une fourchette sait quoi en
+  // faire.
+  //
+  // Il ne reste donc que le barème, qui dit quelle table a produit ces
+  // chiffres et ne dit rien de personne.
   return {
     proposeLabel: data.plafond ? "On m'a proposé jusqu'à" : "On m'a proposé",
     propose: propose ? plain(propose) : null,
@@ -187,10 +191,7 @@ export function verdictCardTexts(data: VerdictCardData): VerdictCardTexts {
     vaut: range ? plain(range) : null,
     verdict: data.bande ? VERDICT_UN_MOT[data.bande] : null,
     offre: offerLine(data),
-    bareme,
-    // Le niveau figure TOUJOURS (#039). Sans lui la fourchette ne veut rien
-    // dire : la même offre vaut autre chose selon le niveau de calcul.
-    pied: data.niveau ? `${bareme} · ${TIER_LABEL[data.niveau].short}` : bareme,
+    bareme: `barème ${data.bareme}`,
   };
 }
 
@@ -299,67 +300,74 @@ export function verdictCardElement(data: VerdictCardData): ReactElement {
           display: "flex",
           flexDirection: "column",
           flexGrow: 1,
-          padding: `64px ${CARTE_MARGE}px ${CARTE_MARGE}px`,
+          // Pas de marge haute : le groupe est centré dans la hauteur
+          // disponible, et une marge en haut seulement le décalerait vers le
+          // bas. Les 90 px du bas tiennent le pied de page, et la zone morte
+          // de 60 px reste intacte.
+          padding: `0 ${CARTE_MARGE}px ${CARTE_MARGE}px`,
           color: surMarque.plein,
         }}
       >
-        <div style={{ display: "flex", fontSize: 34, fontWeight: 600, color: BLANC_60, letterSpacing: "0.1em" }}>Ça en vaut</div>
-        <div
-          style={{
-            display: "flex",
-            marginTop: 12,
-            fontFamily: "Bricolage Grotesque",
-            fontWeight: 800,
-            fontSize: tailleFourchette(t.vaut ?? ""),
-            lineHeight: 1,
-            letterSpacing: "-0.04em",
-          }}
-        >
-          {t.vaut ?? ""}
-        </div>
-
-        {t.verdict ? (
-          <div style={{ display: "flex", marginTop: 40 }}>
-            <div
-              style={{
-                display: "flex",
-                padding: "14px 44px",
-                borderRadius: 999,
-                background: pastille,
-                color: encre,
-                fontFamily: "Bricolage Grotesque",
-                fontWeight: 800,
-                fontSize: 56,
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {t.verdict}
-            </div>
-          </div>
-        ) : null}
-
-        {t.offre ? (
+        {/* Mission #170 — LE GROUPE EST CENTRÉ dans la hauteur disponible.
+            Avant, il commençait en haut du champ bleu et le pied de page
+            était collé en bas : il restait environ 260 px de bleu vide au
+            milieu, sur les cinq rendus. Le pied reste ancré en bas, le reste
+            se centre — et ça tient avec une ligne d'offre comme avec deux. */}
+        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "center" }}>
+          <div style={{ display: "flex", fontSize: 34, fontWeight: 600, color: BLANC_60, letterSpacing: "0.1em" }}>Ça en vaut</div>
           <div
             style={{
               display: "flex",
-              marginTop: 36,
-              fontSize: tailleOffre(t.offre),
-              fontWeight: 600,
-              color: BLANC_60,
-              lineHeight: 1.3,
+              marginTop: 12,
+              fontFamily: "Bricolage Grotesque",
+              fontWeight: 800,
+              fontSize: tailleFourchette(t.vaut ?? ""),
+              lineHeight: 1,
+              letterSpacing: "-0.04em",
             }}
           >
-            {t.offre}
+            {t.vaut ?? ""}
           </div>
-        ) : null}
 
-        {/* Pousse le pied de page en bas du champ bleu, quelle que soit la
-            hauteur de ce qui précède. */}
-        <div style={{ display: "flex", flexGrow: 1 }} />
+          {t.verdict ? (
+            <div style={{ display: "flex", marginTop: 40 }}>
+              <div
+                style={{
+                  display: "flex",
+                  padding: "14px 44px",
+                  borderRadius: 999,
+                  background: pastille,
+                  color: encre,
+                  fontFamily: "Bricolage Grotesque",
+                  fontWeight: 800,
+                  fontSize: 56,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {t.verdict}
+              </div>
+            </div>
+          ) : null}
+
+          {t.offre ? (
+            <div
+              style={{
+                display: "flex",
+                marginTop: 36,
+                fontSize: tailleOffre(t.offre),
+                fontWeight: 600,
+                color: BLANC_60,
+                lineHeight: 1.3,
+              }}
+            >
+              {t.offre}
+            </div>
+          ) : null}
+        </div>
 
         <div style={{ display: "flex", alignItems: "baseline" }}>
           <div style={{ display: "flex", fontSize: 40, fontWeight: 600 }}>{VERDICT_CARD_SITE}</div>
-          <div style={{ display: "flex", marginLeft: 22, fontSize: 26, fontWeight: 600, color: BLANC_50 }}>{t.pied}</div>
+          <div style={{ display: "flex", marginLeft: 22, fontSize: 26, fontWeight: 600, color: BLANC_50 }}>{t.bareme}</div>
         </div>
       </div>
     </div>

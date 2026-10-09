@@ -405,16 +405,24 @@ describe("rien de ce qui s'affiche ne vient du modèle", () => {
     expect(texte.length).toBeLessThan(100);
   });
 
-  // ─── Mission #168 ──────────────────────────────────────────────────────
+  // ─── Mission #170 ──────────────────────────────────────────────────────
 
-  it("le niveau de calcul est présent sur la carte", () => {
-    // #039 : la même offre ne vaut pas la même chose selon le niveau. Une
-    // fourchette sans son niveau ne correspond à rien de vérifiable.
-    expect(verdictCardTexts(verdictDataFromRow(ligne())).pied).toBe(`barème ${CURRENT_RATE_VERSION} · Je débute`);
-    expect(verdictCardTexts(verdictDataFromRow(ligne({ niveau: "experienced" }))).pied).toContain("C'est mon métier");
-    // Niveau inconnu : le barème seul, jamais une valeur inventée sous la
-    // fourchette.
-    expect(verdictCardTexts(verdictDataFromRow(ligne({ niveau: "patron" }))).pied).toBe(`barème ${CURRENT_RATE_VERSION}`);
+  it("LE NIVEAU DE CALCUL N'EST PAS SUR LA CARTE", () => {
+    // Il y était depuis la #168, au nom de la #039. Mais il est écrit à la
+    // première personne (« Je débute ») : sur une image publique, ce n'est
+    // pas une information sur le deal, c'est une information sur la
+    // créatrice, et elle joue contre elle. La #039 reste en vigueur sur la
+    // page de résultat, qui n'est vue que par elle.
+    const textes = verdictCardTexts(verdictDataFromRow(ligne()));
+    expect(textes.bareme).toBe(`barème ${CURRENT_RATE_VERSION}`);
+    const tout = Object.values(textes).join(" | ");
+    for (const niveau of ["Je débute", "Déjà des collabs payées", "C'est mon métier", "Niveau"]) {
+      expect(tout, niveau).not.toContain(niveau);
+    }
+    // Et la route ne charge même plus la colonne : une colonne lue sans être
+    // affichée est une colonne de trop.
+    expect(CARTE_COLONNES.join(",")).not.toContain("profile_tier");
+    expect(readFileSync("lib/share-card/verdict-card.tsx", "utf8")).not.toContain("TIER_LABEL");
   });
 
   it("un montant issu d'une acceptation dit « jusqu'à » et « à confirmer »", () => {

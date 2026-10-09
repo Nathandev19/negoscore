@@ -42,10 +42,12 @@ export const CARTE_COLONNES = [
   "haut:payload->estimate->total_high",
   "bande:payload->score->>band",
   "evaluabilite:payload->>evaluability",
-  // Mission #168 — le niveau de calcul (#039). Il figure toujours sur la
-  // carte : la même offre ne vaut pas la même chose selon le niveau, et une
-  // fourchette sans son niveau ne correspond à rien de vérifiable.
-  "niveau:payload->>profile_tier",
+  // Mission #170 — « niveau:payload->>profile_tier » a été RETIRÉ d'ici.
+  // Le niveau de calcul ne figure plus sur la carte : il est écrit à la
+  // première personne, et sur une image publique c'est une information sur
+  // la créatrice, pas sur le deal. Plus rien ne le lit, donc la route ne le
+  // demande plus — une colonne qu'on charge sans l'afficher est une colonne
+  // de trop. La #039 reste en vigueur sur la page de résultat.
   // De quoi écrire la ligne d'offre, et rien d'autre.
   "livrables:payload->deal->deliverables",
   "droits_mois:payload->deal->usage->duration_months",
@@ -167,7 +169,6 @@ export function carteDepuisChiffrage(pricing: Pricing, ligne: LigneOffre): Verdi
     exclusiviteMois: ligne.exclusiviteMois,
     zones: ligne.zones,
     bareme: pricing.rate_table_version,
-    niveau: parseTier(pricing.tier),
     plafond: pricing.ceiling,
   };
 }
@@ -211,9 +212,6 @@ export function verdictDataFromRow(row: LigneCarte): VerdictCardData {
     // est écartée, jamais affichée telle quelle.
     zones: requestedZones(Array.isArray(row.zones) ? row.zones.filter((z): z is string => typeof z === "string") : []),
     bareme: typeof row.rate_table_version === "string" ? row.rate_table_version : "",
-    // Liste fermée : une valeur inconnue devient null et le niveau ne
-    // s'affiche pas, plutôt que d'écrire n'importe quoi sous la fourchette.
-    niveau: parseTier(row.niveau),
     // L'offre d'origine n'a pas de plafond annoncé : c'est une notion du fil.
     plafond: false,
   };
@@ -332,7 +330,6 @@ export function carteDeLAnalyse(analysis: ResultView): VerdictCardData {
     bande: analysis.evaluability === "complete" ? (analysis.score?.band ?? null) : null,
     ...ligneOffreDuDeal(analysis.deal),
     bareme: analysis.estimate.rate_table_version,
-    niveau: analysis.profile_tier,
     // Une offre d'origine n'a pas de plafond annoncé : « jusqu'à … à
     // confirmer » est une notion du fil de négociation, et elle y est lue
     // (pricing.ceiling), jamais câblée.

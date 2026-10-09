@@ -134,17 +134,19 @@ describe("contenu de la carte", () => {
     expect(text).not.toMatch(/@/);
   });
 
-  it("rien d'autre que ce que la carte annonce : montant, fourchette, verdict, offre, barème et niveau", () => {
+  it("rien d'autre que ce que la carte annonce : montant, fourchette, verdict, offre et barème", () => {
     const texts = verdictCardTexts(carteDeLAnalyse(sensitiveAnalysis()));
-    expect(Object.keys(texts).sort()).toEqual(["aConfirmer", "bareme", "offre", "pied", "propose", "proposeLabel", "vaut", "verdict"]);
+    expect(Object.keys(texts).sort()).toEqual(["aConfirmer", "bareme", "offre", "propose", "proposeLabel", "vaut", "verdict"]);
     expect(texts.verdict).toBe("Faible");
     expect(texts.propose?.replace(/\s/g, " ")).toBe("300 €");
     expect(texts.vaut?.replace(/\s/g, " ")).toBe("510 € – 1 100 €");
     // Le champ libre « format » n'est jamais recopié.
     expect(texts.offre).toContain("2 vidéos");
     expect(texts.offre).not.toContain("TikTok");
-    // Le niveau nomme une ligne de la table, jamais une personne.
-    expect(texts.pied).toContain("Déjà des collabs payées");
+    // Mission #170 — et le niveau de calcul n'y est PAS : il est écrit à la
+    // première personne, et la carte est faite pour être postée.
+    expect(texts.bareme).toBe("barème demo-2026-09");
+    expect(Object.values(texts).join(" | ")).not.toContain("Déjà des collabs payées");
   });
 
   it("pas de carte vide : ni « unpriced » ni « incomplete » ; les états chiffrés en ont une", () => {
@@ -221,12 +223,14 @@ describe("accès à la carte : même règle que la suppression", () => {
   });
 });
 
-describe("le niveau de calcul ne passe plus par l'adresse", () => {
-  it("il est lu dans l'analyse enregistrée, pas dans un paramètre", async () => {
+describe("le niveau de calcul ne passe plus par l'adresse — ni par la carte", () => {
+  it("la route ne le demande même plus", async () => {
     expect((await get(ANON_ID, `deal_anon_token=${OWNER_TOKEN}`)).status).toBe(200);
-    // Une seule requête, et le niveau en est une colonne auditée.
-    expect(db.requetes[0]).toContain("niveau:payload->>profile_tier");
-    expect(verdictCardTexts(carteDeLAnalyse(sensitiveAnalysis())).pied).toContain("Déjà des collabs payées");
+    // Mission #170 — plus rien ne le lit, donc la requête ne le charge plus.
+    expect(db.requetes[0]).not.toContain("profile_tier");
+    expect(Object.values(verdictCardTexts(carteDeLAnalyse(sensitiveAnalysis()))).join(" | ")).not.toContain(
+      "Déjà des collabs payées",
+    );
   });
 
   it("aucun paramètre d'adresse n'élargit l'accès ni ne change les chiffres", async () => {

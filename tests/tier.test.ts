@@ -11,6 +11,9 @@ import { LEGACY_ENGINE_ASSUMPTIONS, PLAUSIBILITY_ASSUMPTION, UPLIFT_CAPPED_ASSUM
 import rates from "@/lib/rates/fr-2026.3.json";
 import { DEFAULT_TIER, TIER_LABEL, TIERS } from "@/lib/rates/tier";
 import { analysisSchema } from "@/lib/schema";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { AnalysisResult } from "@/components/result/analysis-result";
 import { sampleAnalysis } from "@/lib/sample-analysis";
 import { verdictCardTexts } from "@/lib/share-card/verdict-card";
 import { carteDeLAnalyse } from "@/lib/share-card/verdict-data";
@@ -249,18 +252,33 @@ describe("A2 — changer de niveau n'appelle ni le modèle ni le serveur", () =>
   });
 });
 
-describe("B2 — la carte porte le niveau affiché", () => {
-  // Mission #169 — le niveau ne voyage plus dans l'adresse de la carte : il
-  // est lu dans l'analyse enregistrée et ÉCRIT SUR L'IMAGE. C'est plus sûr
-  // (aucun paramètre à manipuler) et plus vrai (le niveau affiché est celui
-  // qui a produit les chiffres).
-  it("le niveau est écrit sur la carte, et c'est celui des chiffres", () => {
+describe("B2 — le niveau s'affiche sur la page, jamais sur la carte", () => {
+  // Mission #170 — la #039 reste entière SUR LA PAGE DE RÉSULTAT : sans son
+  // niveau, une fourchette ne correspond à rien de vérifiable, et c'est elle
+  // qui la lit. Sur la carte, qui part en story, le même texte devient une
+  // information sur la créatrice (« Je débute »), et elle joue contre elle.
+  it("la page de résultat nomme le niveau des chiffres qu'elle montre", () => {
+    // Le sélecteur de niveau l'annonce sans même être déplié :
+    // « Changer de niveau — “ Je débute ” aujourd'hui ». C'est ÇA, la #039
+    // sur la page : pas une mention perdue, la phrase qui dit à quel niveau
+    // les chiffres affichés ont été calculés.
     const base = analysisSchema.parse(sampleAnalysis);
     for (const tier of TIERS) {
       const vue = recomputeForTier(base, tier);
-      const pied = verdictCardTexts(carteDeLAnalyse(vue)).pied;
-      expect(pied, tier).toContain(TIER_LABEL[vue.profile_tier].short);
-      expect(pied, tier).toContain(vue.estimate.rate_table_version);
+      const html = renderToStaticMarkup(createElement(AnalysisResult, { analysis: vue, unlockHref: "/connexion" }))
+        .replace(/&#x27;/g, "'")
+        .replace(/&quot;/g, '"');
+      expect(html, tier).toContain(`« ${TIER_LABEL[vue.profile_tier].short} » aujourd'hui`);
+    }
+  });
+
+  it("la carte, elle, ne le porte dans aucun de ses textes", () => {
+    const base = analysisSchema.parse(sampleAnalysis);
+    for (const tier of TIERS) {
+      const vue = recomputeForTier(base, tier);
+      const textes = Object.values(verdictCardTexts(carteDeLAnalyse(vue))).join(" | ");
+      expect(textes, tier).toContain(vue.estimate.rate_table_version);
+      expect(textes, tier).not.toContain(TIER_LABEL[vue.profile_tier].short);
     }
   });
 });
