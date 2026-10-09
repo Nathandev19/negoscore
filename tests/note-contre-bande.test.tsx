@@ -328,22 +328,16 @@ describe("le mot « note » non plus", () => {
   // est RENDU, phrase par phrase, et nomme ses exceptions.
   const MOT = /\bnotes?\b/i;
 
-  // ─── L'EXCEPTION, en attente d'arbitrage ────────────────────────────────
-  // La note de quantité inconnue (#035) dit encore « la note ne peut donc
-  // pas dépasser ». Elle est de la même famille que les deux corrigées ici,
-  // mais la #177 demande de la LISTER, pas de la corriger : le rapport la
-  // porte. Le jour où elle est tranchée, cette exception disparaît et le
-  // test redevient absolu.
-  const EN_ATTENTE = [QUANTITY_CAP_NOTE];
-
+  // Mission #178 — IL N'Y A PLUS AUCUNE EXCEPTION. La note de quantité
+  // inconnue (#035) était la dernière à dire « la note ne peut donc pas
+  // dépasser » ; elle dit « le verdict ». Le test est redevenu absolu, et
+  // la liste d'attente qui le tempérait a disparu avec son seul membre.
   const lisible = (html: string) =>
     html
       .replace(/<[^>]+>/g, " ")
       .replace(/&#x27;|&#39;/g, "'")
       .replace(/&quot;/g, '"')
       .replace(/\s+/g, " ");
-
-  const sansExceptions = (texte: string) => EN_ATTENTE.reduce((reste, phrase) => reste.split(phrase).join(" "), texte);
 
   it("les trois notes de plafond disent « le verdict »", () => {
     for (const [raison, bande] of [
@@ -362,7 +356,7 @@ describe("le mot « note » non plus", () => {
     const { AnalysisResult } = await import("@/components/result/analysis-result");
     for (const etat of PREVIEW_STATES) {
       const { analysis } = previewAnalysis(etat);
-      const texte = sansExceptions(lisible(renderToStaticMarkup(<AnalysisResult analysis={analysis} unlockHref="/connexion" />)));
+      const texte = lisible(renderToStaticMarkup(<AnalysisResult analysis={analysis} unlockHref="/connexion" />));
       expect(texte, etat).not.toMatch(MOT);
     }
   });
@@ -382,7 +376,7 @@ describe("le mot « note » non plus", () => {
       ),
       renderToStaticMarkup(<SiteFooter />),
     ];
-    for (const html of rendus) expect(sansExceptions(lisible(html))).not.toMatch(MOT);
+    for (const html of rendus) expect(lisible(html)).not.toMatch(MOT);
   });
 
   it("ni dans les textes de contenu, les formules et les descriptions", async () => {
@@ -396,7 +390,7 @@ describe("le mot « note » non plus", () => {
       ...Object.values(vocabulaire).filter((v): v is string => typeof v === "string"),
       ...PUBLIC_PAGES.map((page) => `${page.title} ${page.description}`),
     ];
-    for (const texte of textes) expect(sansExceptions(texte), texte.slice(0, 70)).not.toMatch(MOT);
+    for (const texte of textes) expect(texte, texte.slice(0, 70)).not.toMatch(MOT);
   });
 
   it("LE CODE, LA BASE ET /admin gardent leur vocabulaire", () => {
@@ -409,10 +403,10 @@ describe("le mot « note » non plus", () => {
     expect(readFileSync("components/admin/feedback-report-view.tsx", "utf8")).toContain('["Score"');
   });
 
-  it("l'exception en attente est UNE seule phrase, et elle est nommée", () => {
-    // Si une deuxième apparaissait, elle devrait passer par le rapport, pas
-    // se glisser dans cette liste.
-    expect(EN_ATTENTE).toHaveLength(1);
-    expect(QUANTITY_CAP_NOTE).toContain("la note ne peut donc pas dépasser");
+  it("la note de quantité inconnue aussi, la dernière des quatre", () => {
+    // Elle était l'unique exception de la #177. Vérifiée nommément : c'est
+    // la phrase qui a fait vivre la liste d'attente, et elle est alignée.
+    expect(QUANTITY_CAP_NOTE).toContain("le verdict ne peut donc pas dépasser");
+    expect(QUANTITY_CAP_NOTE).not.toMatch(MOT);
   });
 });

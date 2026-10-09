@@ -61,7 +61,9 @@ describe("plafond du score quand la quantité est inconnue", () => {
     expect(html.indexOf(QUANTITY_CAP_NOTE)).toBeLessThan(html.indexOf("Ce que ça vaut"));
     expect(render(known)).not.toContain(QUANTITY_CAP_NOTE);
     expect(QUANTITY_CAP_NOTE).toBe(
-      "La marque ne dit pas combien de contenus elle veut : le chiffrage en compte un seul, la note ne peut donc pas dépasser « Deal correct ».",
+      // Mission #178 — « la note » nommait un nombre que la créatrice ne
+      // voit plus depuis la #174. Dernière des quatre à passer au verdict.
+      "La marque ne dit pas combien de contenus elle veut : le chiffrage en compte un seul, le verdict ne peut donc pas dépasser « Deal correct ».",
     );
   });
 
