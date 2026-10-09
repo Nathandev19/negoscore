@@ -211,9 +211,10 @@ describe("explication du plafond sur la page de résultat", () => {
   });
 
   it("B3 — la phrase n'apparaît ni sur la carte partageable ni sur l'aperçu", async () => {
-    const { shareCardTexts } = await import("@/lib/share-card/element");
+    const { verdictCardTexts } = await import("@/lib/share-card/verdict-card");
+    const { carteDeLAnalyse } = await import("@/lib/share-card/verdict-data");
     const { analysis } = dealAtRatio(0.56);
-    const texts = JSON.stringify(shareCardTexts(analysis));
+    const texts = JSON.stringify(verdictCardTexts(carteDeLAnalyse(analysis)));
     expect(texts).not.toContain("du bas de la fourchette");
     expect(texts).not.toMatch(/%/);
   });

@@ -200,10 +200,13 @@ describe("089 bis — les routes qui confondaient encore panne et absence", () =
   });
 
   it("carte partageable : 503 « momentanément indisponible », jamais 404 « introuvable »", async () => {
-    const { GET } = await import("@/app/analyse/resultat/[id]/carte/route");
-    const response = await GET(new Request(`http://localhost:3000/analyse/resultat/${ID}/carte`), { params });
+    // Mission #169 — même règle, nouvelle adresse. Une panne d'authentification
+    // n'est pas une absence de session : la carte d'une analyse rattachée à un
+    // compte ne doit pas devenir « introuvable » pour sa propre propriétaire.
+    const { GET } = await import("@/app/api/carte/[id]/route");
+    const response = await GET(new Request(`http://localhost:3000/api/carte/${ID}`), { params });
     expect(response.status).toBe(503);
-    expect(await response.text()).not.toContain("introuvable");
+    expect(await response.text()).toBe("");
   });
 
   it("message retenu comme envoyé : 503, pas 401 (« tu n'es pas identifiée »)", async () => {

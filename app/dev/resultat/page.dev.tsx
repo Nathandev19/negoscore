@@ -9,11 +9,12 @@ import { loadScenarios, readingOf, scenarioContext } from "@/lib/negotiation/sce
 import { processTurn } from "@/lib/negotiation/turn";
 import type { ThreadAccess, TurnPayload } from "@/lib/negotiation/types";
 import { RetryPanel, type RetryPanelState } from "@/components/result/retry-panel";
-import { ShareCardLink } from "@/components/result/share-card-link";
+import { VerdictCardShare } from "@/components/result/verdict-card-share";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { PREVIEW_STATES, previewAnalysis, type PreviewState } from "@/lib/fixtures/preview-states";
-import { shareCardAvailable } from "@/lib/share-card/element";
+import { verdictCardAvailable } from "@/lib/share-card/verdict-card";
+import { carteDeLAnalyse } from "@/lib/share-card/verdict-data";
 
 // DÉVELOPPEMENT UNIQUEMENT (extension .dev.tsx, voir next.config.ts) : la page
 // de résultat complète rendue depuis une fixture passée par le vrai moteur,
@@ -88,7 +89,10 @@ export default async function ResultPreviewPage({ searchParams }: { searchParams
           thread ? <NegotiationThread key="echange" analysisId="apercu" turns={thread.turns} conclusion={null} access={thread.access} /> : null
         }
       >
-        {shareCardAvailable(analysis) ? <ShareCardLink href={`/dev/carte?etat=${state}`} /> : null}
+        {/* Mission #169 — le même bouton que la page réelle. L'aperçu ne
+            passe pas par la base : il pointe sur /dev/carte, qui rend la
+            carte depuis la fixture. */}
+        {verdictCardAvailable(carteDeLAnalyse(analysis)) ? <VerdictCardShare href={`/dev/carte?etat=${state}`} /> : null}
         {shouldAskFeedback({
           current: { low: analysis.estimate.total_low, high: analysis.estimate.total_high },
           lastJudged: null,

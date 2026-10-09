@@ -44,8 +44,8 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     if (threadConcluded(thread)) return json(200, { concluded: true });
 
     const previous = thread.turns.map((turn) => turn.payload);
-    const { deal, conclusion } = concludeNow(result.analysis, previous, tier, result.sourceText);
-    const payload: ConclusionPayload = { schema_version: TURN_SCHEMA_VERSION, tier, deal, conclusion };
+    const { deal, conclusion, pricing } = concludeNow(result.analysis, previous, tier, result.sourceText);
+    const payload: ConclusionPayload = { schema_version: TURN_SCHEMA_VERSION, tier, deal, conclusion, pricing };
     try {
       await insertRow(TURNS_TABLE, {
         analysis_id: id,

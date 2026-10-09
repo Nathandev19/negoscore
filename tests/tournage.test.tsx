@@ -9,7 +9,9 @@ import { quoteIsIn } from "@/lib/negotiation/quotes";
 import { baseAnalysis } from "@/lib/negotiation/scenarios";
 import { processTurn, type TurnContext } from "@/lib/negotiation/turn";
 import { turnReadingSchema, type Deal, type TurnPayload, type TurnReading } from "@/lib/negotiation/types";
-import { shareCardTexts } from "@/lib/share-card/element";
+import { verdictCardTexts } from "@/lib/share-card/verdict-card";
+import { carteDepuisChiffrage, ligneOffreDuDeal } from "@/lib/share-card/verdict-data";
+import { projectionAnalyse, projectionFil } from "./helpers/carte-projection";
 import type { Analysis } from "@/lib/schema";
 
 // Mission #100 — les quatre défauts relevés pendant le tournage du 23/09/2026.
@@ -318,31 +320,51 @@ describe("point 4 — le même montant sur la carte et à l'écran", () => {
     // L'écran de conclusion porte les 900 €.
     expect(payload.closing?.accept.offered).toBe(900);
 
-    const view = lockAnalysis({ ...original, deal: payload.deal_after });
-    const carte = shareCardTexts(view, 900);
-    const attendu = `Elle propose jusqu'à ${formatEur(900)}, à confirmer`.replace(/ /g, " ");
-    expect(carte.proposes).toBe(attendu);
-    expect(carte.proposes).not.toContain(formatEur(600));
+    // Mission #169 — LE PLAFOND EST DANS LE CHIFFRAGE ENREGISTRÉ. Il n'est
+    // plus passé à la carte au moment du rendu : il est décidé ici, à
+    // l'écriture du tour, et la carte le LIT. C'est ce qui permet à la route
+    // de ne rien recalculer.
+    const chiffrage = payload.pricing_after ?? payload.pricing_before;
+    expect(chiffrage.compared).toBe(900);
+    expect(chiffrage.ceiling).toBe(true);
+
+    const carte = verdictCardTexts(carteDepuisChiffrage(chiffrage, ligneOffreDuDeal(payload.deal_after)));
+    expect(carte.proposeLabel).toBe("On m'a proposé jusqu'à");
+    expect(carte.aConfirmer).toBe("à confirmer");
+    expect(carte.propose).toBe(formatEur(900).replace(/\u202f/g, "\u00a0"));
+    expect(carte.propose).not.toContain(formatEur(600));
+
     // Sans plafond annoncé, la carte dit ce que les termes retiennent.
-    expect(shareCardTexts(view).proposes).toBe(`Elle propose ${formatEur(600)}`.replace(/ /g, " "));
+    const simple = verdictCardTexts(
+      carteDepuisChiffrage({ ...chiffrage, compared: 600, ceiling: false }, ligneOffreDuDeal(payload.deal_after)),
+    );
+    expect(simple.proposeLabel).toBe("On m'a proposé");
+    expect(simple.aConfirmer).toBe(null);
+    expect(simple.propose).toBe(formatEur(600).replace(/\u202f/g, "\u00a0"));
   });
 });
 
 // La route de la carte, avec ses dépendances simulées : c'est le montant
 // transmis au rendu qui est vérifié, pas le PNG.
 const db = vi.hoisted(() => ({
-  result: null as unknown,
-  thread: null as unknown,
-  rendered: null as { analysis: unknown; offered: number | null } | null,
+  analyse: null as Record<string, unknown> | null,
+  fil: [] as Array<Record<string, unknown>>,
+  rendered: null as unknown,
 }));
 
 vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => ({ id: "u1", email: "creatrice@example.fr" })));
-vi.mock("@/lib/analysis/load", () => ({ loadResultForViewer: async () => db.result }));
-vi.mock("@/lib/negotiation/store", () => ({ loadThread: async () => db.thread }));
-vi.mock("@/lib/share-card/render", () => ({
-  renderShareCard: async (analysis: unknown, headers: Record<string, string>, offered: number | null = null) => {
-    db.rendered = { analysis, offered };
-    return new Response("png", { status: 200, headers: { "Content-Type": "image/png", ...headers } });
+vi.mock("@/lib/supabase/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/supabase/server")>()),
+  selectRows: async (table: string) => (table === "analyses" ? (db.analyse ? [db.analyse] : []) : db.fil),
+}));
+// Le PNG est vérifié ailleurs : ici c'est le CONTENU de la carte qui compte.
+vi.mock("next/og", () => ({
+  ImageResponse: class {
+    status = 200;
+    headers = new Headers({ "Content-Type": "image/png" });
+    constructor(element: unknown) {
+      db.rendered = element;
+    }
   },
 }));
 
@@ -352,27 +374,32 @@ describe("point 4 (suite) — la carte n'est pas figée à l'analyse d'origine",
     const payload2 = turn2(original);
     const payload3 = turn3(original, [payload2]);
 
-    db.result = { analysis: lockAnalysis(original), unlocked: true, sourceRemoved: false, sourceType: "text", sourceText: OFFRE };
-    db.thread = {
-      turns: [
-        { id: "t2", turnNumber: 2, brandReply: REPLY_2, createdAt: "2026-09-23T09:00:00.000Z", payload: payload2 },
-        { id: "t3", turnNumber: 3, brandReply: REPLY_3, createdAt: "2026-09-23T10:00:00.000Z", payload: payload3 },
-      ],
-      conclusion: null,
-    };
+    db.analyse = projectionAnalyse(lockAnalysis(original), { rate_table_version: original.estimate.rate_table_version });
+    db.fil = [
+      projectionFil({ kind: "reply", turn_number: 2, created_at: "2026-09-23T09:00:00.000Z", payload: payload2 }),
+      projectionFil({ kind: "reply", turn_number: 3, created_at: "2026-09-23T10:00:00.000Z", payload: payload3 }),
+    ];
     db.rendered = null;
 
-    const { GET } = await import("@/app/analyse/resultat/[id]/carte/route");
+    const { GET } = await import("@/app/api/carte/[id]/route");
     const id = "33333333-3333-4333-8333-333333333333";
-    const response = await GET(new Request(`https://negoscore.fr/analyse/resultat/${id}/carte`), { params: Promise.resolve({ id }) });
+    const response = await GET(new Request(`https://negoscore.fr/api/carte/${id}`, { headers: { cookie: "deal_anon_token=x" } }), {
+      params: Promise.resolve({ id }),
+    });
     expect(response.status).toBe(200);
 
-    const rendu = db.rendered as unknown as { analysis: { deal: Deal }; offered: number | null };
-    // Les termes du tour 3, pas ceux de l'offre d'origine (150 €, sans territoire).
-    expect(rendu.analysis.deal.payment.amount_eur).toBe(600);
-    expect(rendu.analysis.deal.payment.terms_days).toBe(30);
-    expect(rendu.analysis.deal.usage.territory).toBe("France");
-    // Et le montant de la conclusion.
-    expect(rendu.offered).toBe(900);
+    // Les chiffres du TOUR 3, pas ceux de l'offre d'origine — et la route ne
+    // les a pas recalculés : elle les a lus dans le chiffrage enregistré.
+    const chiffrage3 = payload3.pricing_after ?? payload3.pricing_before;
+    const attendu = verdictCardTexts(carteDepuisChiffrage(chiffrage3, ligneOffreDuDeal(payload3.deal_after)));
+    const texte = JSON.stringify(db.rendered);
+    expect(attendu.vaut).not.toBe(null);
+    expect(texte).toContain(attendu.vaut);
+    // Le montant annoncé à ce tour, et dit pour ce qu'il est.
+    expect(texte).toContain("On m'a proposé jusqu'à");
+    expect(texte).toContain("à confirmer");
+    // Et jamais le nom de la marque, alors que le fil en est plein.
+    expect(original.deal.brand).not.toBe(null);
+    expect(texte).not.toContain(original.deal.brand);
   });
 });

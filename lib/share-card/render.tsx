@@ -1,8 +1,5 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { ImageResponse } from "next/og";
-import type { ResultView } from "@/lib/analysis/lock";
-import { SHARE_CARD_SIZE, shareCardElement } from "@/lib/share-card/element";
 
 // satori, qui motorise ImageResponse, plante sur la police variable de
 // Bricolage Grotesque (« Cannot read properties of undefined (reading '256') »,
@@ -23,18 +20,4 @@ export function loadFonts() {
     { name: "Familjen Grotesk", data: familjen, weight: 600 as const, style: "normal" as const },
   ]);
   return fonts;
-}
-
-export async function renderShareCard(
-  analysis: ResultView,
-  headers: Record<string, string> = {},
-  // Mission #100 : le montant que la marque met sur la table, quand il dépasse
-  // celui des termes (plafond annoncé). null : le montant des termes.
-  offered: number | null = null,
-): Promise<ImageResponse> {
-  return new ImageResponse(shareCardElement(analysis, offered), {
-    ...SHARE_CARD_SIZE,
-    fonts: await loadFonts(),
-    headers,
-  });
 }

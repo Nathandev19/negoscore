@@ -18,19 +18,30 @@ import { allZones } from "@/lib/rates/zones";
 
 type Ligne = Record<string, unknown>;
 
-const db = vi.hoisted(() => ({ lignes: [] as Ligne[], requetes: [] as string[], panne: false }));
+const db = vi.hoisted(() => ({
+  lignes: [] as Ligne[],
+  fil: [] as Ligne[],
+  requetes: [] as string[],
+  panne: false,
+  panneFil: false,
+}));
 
 vi.mock("@/lib/supabase/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/supabase/server")>()),
   selectRows: async (table: string, query: string) => {
     db.requetes.push(`${table}?${query}`);
-    if (db.panne) throw new Error("base injoignable");
-    return db.lignes;
+    if (table === "analyses") {
+      if (db.panne) throw new Error("base injoignable");
+      return db.lignes;
+    }
+    if (db.panneFil) throw new Error("fil injoignable");
+    return db.fil;
   },
 }));
+vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => null));
 
-const { GET } = await import("@/app/api/carte/route");
-const { CARTE_COLONNES, verdictDataFromRow } = await import("@/lib/share-card/verdict-data");
+const { GET } = await import("@/app/api/carte/[id]/route");
+const { CARTE_COLONNES, CARTE_COLONNES_FIL, verdictDataFromRow } = await import("@/lib/share-card/verdict-data");
 const { offerLine, VERDICT_CARD_SIZE, VERDICT_UN_MOT, verdictCardAvailable, verdictCardTexts } = await import(
   "@/lib/share-card/verdict-card"
 );
@@ -38,8 +49,12 @@ const { offerLine, VERDICT_CARD_SIZE, VERDICT_UN_MOT, verdictCardAvailable, verd
 const TOKEN = "jeton-du-navigateur";
 const PNG = [0x89, 0x50, 0x4e, 0x47];
 
+const ANALYSE = "55555555-5555-4555-8555-555555555555";
+
 function appel(cookie: string | null = `deal_anon_token=${TOKEN}`) {
-  return GET(new Request("https://www.negoscore.fr/api/carte", { headers: cookie ? { cookie } : {} }));
+  return GET(new Request(`https://www.negoscore.fr/api/carte/${ANALYSE}`, { headers: cookie ? { cookie } : {} }), {
+    params: Promise.resolve({ id: ANALYSE }),
+  });
 }
 
 // Une ligne telle que PostgREST la rend pour la projection de CARTE_COLONNES.
@@ -65,8 +80,10 @@ function ligne(part: Partial<Ligne> = {}): Ligne {
 
 beforeEach(() => {
   db.lignes = [];
+  db.fil = [];
   db.requetes = [];
   db.panne = false;
+  db.panneFil = false;
 });
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -99,7 +116,7 @@ describe("la route rend une image, quel que soit le verdict", () => {
 
 // ───────────────────────────────────────────────────────────────────────────
 describe("sans carte à montrer, 404 à corps vide", () => {
-  it("aucun cookie : 404, et la base n'est même pas interrogée", async () => {
+  it("aucun cookie ni session : 404, et la base n'est même pas interrogée", async () => {
     const reponse = await appel(null);
     expect(reponse.status).toBe(404);
     expect(await reponse.text()).toBe("");
@@ -122,6 +139,22 @@ describe("sans carte à montrer, 404 à corps vide", () => {
     }
   });
 
+  it("fil illisible : 503, pas 404 — un second essai produira la carte", async () => {
+    // Refus hérité de la #064 : les chiffres d'origine sont peut-être
+    // périmés, donc on ne montre rien. Mais ce n'est pas « introuvable ».
+    db.lignes = [ligne()];
+    db.panneFil = true;
+    const vraiErreur = console.error;
+    console.error = () => undefined;
+    try {
+      const reponse = await appel();
+      expect(reponse.status).toBe(503);
+      expect(await reponse.text()).toBe("");
+    } finally {
+      console.error = vraiErreur;
+    }
+  });
+
   it("base injoignable : 404 aussi, et rien dans la réponse ne dit laquelle des quatre", async () => {
     db.panne = true;
     const vraiErreur = console.error;
@@ -137,22 +170,104 @@ describe("sans carte à montrer, 404 à corps vide", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+describe("la route rend les termes du fil, pas ceux de l'offre d'origine", () => {
+  // Un chiffrage de tour tel que la #169 l'enregistre, projeté comme la base
+  // le rendrait. Aucun deal complet, aucun texte de message.
+  function chiffrageProjete(prefixe: string, part: Record<string, unknown> = {}) {
+    return {
+      [`${prefixe}_total_low`]: 2000,
+      [`${prefixe}_total_high`]: 3000,
+      [`${prefixe}_compared`]: 2500,
+      [`${prefixe}_ceiling`]: false,
+      [`${prefixe}_band`]: "fair",
+      [`${prefixe}_rate_table_version`]: "fr-2026.3",
+      [`${prefixe}_tier`]: "confirmed",
+      [`${prefixe}_livrables`]: [{ type: "video", quantity: 5 }],
+      [`${prefixe}_zones`]: ["france"],
+      [`${prefixe}_droits_mois`]: 12,
+      [`${prefixe}_droits_a_vie`]: false,
+      [`${prefixe}_exclusivite`]: false,
+      [`${prefixe}_exclusivite_mois`]: null,
+      ...part,
+    };
+  }
+
+  it("un tour chiffré : la carte porte SES chiffres", async () => {
+    db.lignes = [ligne()];
+    db.fil = [{ kind: "reply", turn_number: 2, created_at: "2026-10-01", ...chiffrageProjete("apres") }];
+    const reponse = await appel();
+    expect(reponse.status).toBe(200);
+    // Les chiffres du tour, pas ceux de l'analyse (540 – 1 190 €).
+    const data = verdictDataFromRow(ligne());
+    expect(data.bas).toBe(540);
+  });
+
+  it("UNE NÉGOCIATION CONCLUE A SA CARTE, avec le chiffrage de la conclusion", async () => {
+    db.lignes = [ligne()];
+    db.fil = [
+      { kind: "reply", turn_number: 2, created_at: "2026-10-01", ...chiffrageProjete("apres") },
+      {
+        kind: "conclusion",
+        turn_number: null,
+        created_at: "2026-10-02",
+        ...chiffrageProjete("fin", { fin_total_low: 4000, fin_total_high: 5000, fin_compared: 4500, fin_ceiling: true }),
+      },
+    ];
+    expect((await appel()).status).toBe(200);
+  });
+
+  it("un tour sans bande : 404, et surtout pas la carte de l'offre d'origine", async () => {
+    db.lignes = [ligne()];
+    db.fil = [{ kind: "reply", turn_number: 2, created_at: "2026-10-01", ...chiffrageProjete("apres", { apres_band: null }) }];
+    const reponse = await appel();
+    expect(reponse.status).toBe(404);
+    expect(await reponse.text()).toBe("");
+    // L'analyse, elle, aurait bien une carte : c'est un refus, pas un manque.
+    expect(verdictCardAvailable(verdictDataFromRow(ligne()))).toBe(true);
+  });
+
+  it("la table de l'analyse disparue du code : 404", async () => {
+    db.lignes = [ligne()];
+    db.fil = [{ kind: "reply", turn_number: 2, created_at: "2026-10-01", indisponible: true, ...chiffrageProjete("apres") }];
+    expect((await appel()).status).toBe(404);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
 // LA GARDE DE SÉCURITÉ. Le payload d'une analyse contient `deal.brand` : le
 // charger pour n'en tirer qu'un montant ferait transiter le nom de
 // l'annonceur par une route qui fabrique une image destinée à être postée.
 describe("la requête ne lit que ce qu'elle affiche", () => {
   const MARQUE = /brand|marque|annonceur|advertiser|enseigne|client/i;
 
+  // Mission #169 — LES DEUX LISTES, celle de l'analyse et celle du fil. Le
+  // fil est le plus dangereux des deux : il contient `brand_reply`, le texte
+  // des messages de la marque, et `deal_after.brand`.
+  const TOUTES = [...CARTE_COLONNES, ...CARTE_COLONNES_FIL];
+
   it("aucune colonne ne porte la marque ni l'annonceur", () => {
-    for (const colonne of CARTE_COLONNES) {
+    for (const colonne of TOUTES) {
       expect(colonne, colonne).not.toMatch(MARQUE);
+    }
+  });
+
+  it("aucune colonne du fil ne touche au texte des messages", () => {
+    for (const colonne of CARTE_COLONNES_FIL) {
+      expect(colonne, colonne).not.toContain("brand_reply");
+      expect(colonne, colonne).not.toContain("raw_text");
+      // Ni les brouillons, ni les citations, ni les questions : du texte
+      // libre partout, écrit par le modèle ou par la marque.
+      for (const libre of ["message", "quote", "recap", "uncertain", "question", "closing", "asks", "situation"]) {
+        expect(colonne, `${colonne} / ${libre}`).not.toContain(libre);
+      }
     }
   });
 
   it("jamais d'étoile, et jamais le payload en bloc", async () => {
     db.lignes = [ligne()];
     await appel();
-    expect(db.requetes).toHaveLength(1);
+    // Deux requêtes : l'analyse, puis son fil.
+    expect(db.requetes).toHaveLength(2);
     const requete = db.requetes[0];
     expect(requete).not.toContain("select=*");
     expect(requete).not.toMatch(/select=[^&]*(^|,)payload(,|&|$)/);
@@ -163,6 +278,15 @@ describe("la requête ne lit que ce qu'elle affiche", () => {
       expect(CARTE_COLONNES as readonly string[], colonne).toContain(colonne);
     }
     expect(requete, "le jeton filtre la requête").toContain("deal.anon_token=eq.");
+    // Et la requête du fil, qui part dès qu'il y a une analyse.
+    const filRequete = db.requetes[1] ?? "";
+    expect(filRequete).toContain("negotiation_turns");
+    expect(filRequete).not.toContain("select=*");
+    expect(filRequete).not.toMatch(/select=[^&]*(^|,)payload(,|&|$)/);
+    const selectFil = /select=([^&]*)/.exec(filRequete)?.[1] ?? "";
+    for (const colonne of selectFil.split(",")) {
+      expect(CARTE_COLONNES_FIL as readonly string[], colonne).toContain(colonne);
+    }
   });
 
   // Mission #168 — le nom de la colonne ne suffit pas à juger. « deal » ou
@@ -173,9 +297,9 @@ describe("la requête ne lit que ce qu'elle affiche", () => {
     // Projections de tableau explicitement admises, et la raison : ce sont des
     // listes de valeurs typées, reprojetées en mémoire (voir livrablesDe et
     // requestedZones). Toute autre projection d'objet est refusée.
-    const TABLEAUX_ADMIS = ["livrables:payload->deal->deliverables", "zones:payload->deal->usage->territory_zones"];
-    for (const colonne of CARTE_COLONNES) {
-      if (TABLEAUX_ADMIS.includes(colonne)) continue;
+    const TABLEAUX_ADMIS = ["deliverables", "territory_zones"];
+    for (const colonne of TOUTES) {
+      if (TABLEAUX_ADMIS.some((admis) => colonne.endsWith(admis))) continue;
       const chemin = colonne.includes(":") ? colonne.slice(colonne.indexOf(":") + 1) : colonne;
       // Soit une colonne réelle de la table (pas de flèche), soit un chemin
       // JSON qui se termine par ->> : l'opérateur qui rend du TEXTE, donc une
@@ -183,14 +307,26 @@ describe("la requête ne lit que ce qu'elle affiche", () => {
       const scalaire = !chemin.includes("->") || chemin.includes("->>");
       // `->` final sur un nombre est admis aussi : PostgREST rend le nombre,
       // pas l'objet. On vérifie alors que la feuille est un champ connu.
-      const FEUILLES_NOMBRE = ["amount_eur", "in_kind_value_eur", "total_low", "total_high", "duration_months", "perpetual", "present"];
+      const FEUILLES_NOMBRE = [
+        "amount_eur",
+        "in_kind_value_eur",
+        "total_low",
+        "total_high",
+        "duration_months",
+        "perpetual",
+        "present",
+        // Mission #169, le chiffrage enregistré : des nombres et un booléen.
+        "compared",
+        "ceiling",
+        "pricing_unavailable",
+      ];
       const feuille = chemin.split("->").at(-1) ?? "";
       expect(scalaire || FEUILLES_NOMBRE.includes(feuille), colonne).toBe(true);
     }
   });
 
   it("le fichier de la route ne lit aucun champ de marque", () => {
-    const source = readFileSync("app/api/carte/route.tsx", "utf8") + readFileSync("lib/share-card/verdict-data.ts", "utf8");
+    const source = readFileSync("app/api/carte/[id]/route.tsx", "utf8") + readFileSync("lib/share-card/verdict-data.ts", "utf8");
     // Les commentaires expliquent justement pourquoi : on ne regarde que le
     // code, lignes de commentaire retirées.
     const code = source
@@ -323,7 +459,7 @@ describe("le barème affiché est celui qui a produit les chiffres", () => {
   });
 
   it("la version n'est écrite en dur nulle part dans la carte", () => {
-    const source = readFileSync("lib/share-card/verdict-card.tsx", "utf8") + readFileSync("app/api/carte/route.tsx", "utf8");
+    const source = readFileSync("lib/share-card/verdict-card.tsx", "utf8") + readFileSync("app/api/carte/[id]/route.tsx", "utf8");
     expect(source).not.toMatch(/fr-20\d\d\.\d/);
   });
 
@@ -390,12 +526,31 @@ describe("le bouton de partage", () => {
 describe("la page de résultat propose la carte là où elle existe", () => {
   const PAGE = readFileSync("app/analyse/resultat/[id]/page.tsx", "utf8");
 
-  it("au visiteur anonyme, qui a le cookie ; à la personne connectée, la carte de #064", () => {
-    // Se connecter EFFACE le cookie anonyme (lib/auth/sign-in.ts) : la carte
-    // de verdict n'a alors plus de quoi se construire, et proposer son bouton
-    // serait proposer un 404.
-    expect(PAGE).toContain("user === null ? <VerdictCardShare /> : <ShareCardLink");
+  it("UN SEUL BOUTON, dans les deux états", () => {
+    // Mission #169 — il y en avait deux : celui de la #064 pour la personne
+    // connectée, celui de la #165 pour la visiteuse anonyme. Se connecter
+    // EFFACE le cookie anonyme (lib/auth/sign-in.ts), et c'est pour ça que la
+    // route lit maintenant la session EN COMPLÉMENT du cookie : le même
+    // bouton sert les deux.
     expect(readFileSync("lib/auth/sign-in.ts", "utf8")).toContain("expiredCookieHeader(ANON_COOKIE)");
+    expect(PAGE.match(/<VerdictCardShare/g)).toHaveLength(1);
+    expect(PAGE).not.toContain("ShareCardLink");
+    expect(PAGE).not.toContain("user === null ?");
+  });
+
+  it("le bouton ne mène jamais à un 404 : la page et la route jugent avec la même fonction", () => {
+    // La règle du point 3 de la #169. La page tient le fil en mémoire, la
+    // route lit des colonnes projetées — mais les deux passent par
+    // verdictCardAvailable, sur une carte construite par le même code.
+    expect(PAGE).toContain("verdictCardAvailable(carte)");
+    expect(PAGE).toContain("carteDuFilCharge(thread)");
+    const route = readFileSync("app/api/carte/[id]/route.tsx", "utf8");
+    expect(route).toContain("verdictCardAvailable(data)");
+    expect(route).toContain("carteDuFil(fil)");
+    // Et des deux côtés, « indisponible » devient un refus, JAMAIS la carte
+    // de l'offre d'origine : c'est la règle du point 3 de la #169.
+    expect(PAGE).toContain('carteDuTour === "indisponible" ? null :');
+    expect(route).toContain('if (courant === "indisponible") return rien();');
   });
 });
 

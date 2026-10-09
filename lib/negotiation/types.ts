@@ -14,6 +14,7 @@ import {
   TERM_GROUPS,
   TIER_VALUES,
   TURN_SCHEMA_VERSION,
+  BANDS,
 } from "@/lib/negotiation/libelles";
 
 // Mission #080 — la négociation après le premier message.
@@ -71,6 +72,19 @@ export type TurnReading = z.infer<typeof turnReadingSchema>;
 // ─── Ce qui est enregistré ───────────────────────────────────────────────────
 
 // Chiffrage d'un état du deal : UNIQUEMENT des sorties du moteur de tarifs.
+//
+// Mission #169 — il porte désormais de quoi faire une CARTE DE VERDICT sans
+// rien recalculer. C'était le point de blocage de la #168 : chiffrer les
+// termes actuels oblige à tenir un Deal complet en mémoire, donc le nom de la
+// marque et le texte libre que le moteur lit (le « format » d'un livrable est
+// analysé et facturé, lib/rates/engine.ts). La route de la carte ne peut pas
+// se le permettre. Le chiffrage se fait donc ICI, à l'enregistrement du tour,
+// à l'endroit qui tient déjà le deal légitimement, et la route LIT.
+//
+// Les quatre valeurs ajoutées ont toutes un défaut : un tour enregistré avant
+// cette mission continue de se relire sans erreur, et porte simplement
+// « aucune bande ». Sans ce défaut, safeParse échouerait et le tour
+// disparaîtrait du fil (lib/negotiation/store.ts l'écarte en silence).
 export const pricingSchema = z.object({
   total_low: z.number().nullable(),
   total_high: z.number().nullable(),
@@ -78,6 +92,18 @@ export const pricingSchema = z.object({
   counter_high: z.number().nullable(),
   rate_table_version: z.string(),
   tier: z.enum(TIER_VALUES),
+  // La note du moteur sur ces termes. Sert à recalculer la bande quand le
+  // montant comparé change (plafond annoncé), sans refaire tourner le moteur.
+  score: z.number().nullable().default(null),
+  // La bande affichée par la carte. null : chiffrage d'avant la #169, ou
+  // offre non chiffrable. Dans les deux cas, pas de carte ET pas de bouton.
+  band: z.enum(BANDS).nullable().default(null),
+  // LE MONTANT COMPARÉ (#167) : celui qui affronte la fourchette, et celui
+  // qui s'affiche. Un seul nombre, jamais deux.
+  compared: z.number().nullable().default(null),
+  // Le montant comparé est un PLAFOND annoncé par la marque, pas un accord
+  // ferme : la carte écrit « jusqu'à X €, à confirmer ».
+  ceiling: z.boolean().default(false),
 });
 export type Pricing = z.infer<typeof pricingSchema>;
 
@@ -250,5 +276,10 @@ export const conclusionPayloadSchema = z.object({
   tier: z.enum(TIER_VALUES),
   deal: dealSchema,
   conclusion: conclusionSchema,
+  // Mission #169 — une négociation CONCLUE doit produire une carte : c'est le
+  // cas qui compte le plus, celui qu'on a envie de montrer. La ligne de
+  // conclusion ne portait aucun chiffrage ; elle porte maintenant le même
+  // bloc que les tours. null : conclusion enregistrée avant cette mission.
+  pricing: pricingSchema.nullable().default(null),
 });
 export type ConclusionPayload = z.infer<typeof conclusionPayloadSchema>;

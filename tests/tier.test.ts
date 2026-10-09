@@ -9,9 +9,11 @@ import { extractionSchema, type Extraction } from "@/lib/llm/prompt";
 import { formatEur } from "@/lib/money";
 import { LEGACY_ENGINE_ASSUMPTIONS, PLAUSIBILITY_ASSUMPTION, UPLIFT_CAPPED_ASSUMPTION } from "@/lib/rates/engine";
 import rates from "@/lib/rates/fr-2026.3.json";
-import { DEFAULT_TIER, TIER_LABEL, TIERS, type Tier } from "@/lib/rates/tier";
+import { DEFAULT_TIER, TIER_LABEL, TIERS } from "@/lib/rates/tier";
 import { analysisSchema } from "@/lib/schema";
-import { withTier } from "@/lib/share-card/tier-param";
+import { sampleAnalysis } from "@/lib/sample-analysis";
+import { verdictCardTexts } from "@/lib/share-card/verdict-card";
+import { carteDeLAnalyse } from "@/lib/share-card/verdict-data";
 
 // Mission #039 : le niveau de la créatrice est un choix, recalculé dans le
 // navigateur. Le recalcul doit donner EXACTEMENT ce qu'une analyse lancée à ce
@@ -248,9 +250,17 @@ describe("A2 — changer de niveau n'appelle ni le modèle ni le serveur", () =>
 });
 
 describe("B2 — la carte porte le niveau affiché", () => {
-  it("adresse de la carte : le niveau s'ajoute, avec ou sans paramètres existants", () => {
-    const tier: Tier = "experienced";
-    expect(withTier("/analyse/resultat/abc/carte", tier)).toBe("/analyse/resultat/abc/carte?niveau=experienced");
-    expect(withTier("/dev/carte?etat=debloque", tier)).toBe("/dev/carte?etat=debloque&niveau=experienced");
+  // Mission #169 — le niveau ne voyage plus dans l'adresse de la carte : il
+  // est lu dans l'analyse enregistrée et ÉCRIT SUR L'IMAGE. C'est plus sûr
+  // (aucun paramètre à manipuler) et plus vrai (le niveau affiché est celui
+  // qui a produit les chiffres).
+  it("le niveau est écrit sur la carte, et c'est celui des chiffres", () => {
+    const base = analysisSchema.parse(sampleAnalysis);
+    for (const tier of TIERS) {
+      const vue = recomputeForTier(base, tier);
+      const pied = verdictCardTexts(carteDeLAnalyse(vue)).pied;
+      expect(pied, tier).toContain(TIER_LABEL[vue.profile_tier].short);
+      expect(pied, tier).toContain(vue.estimate.rate_table_version);
+    }
   });
 });

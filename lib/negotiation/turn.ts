@@ -10,7 +10,7 @@ import { fallbackMessage, finalMessage, stripRedundantQuestions } from "@/lib/ne
 import type { Attribution } from "@/lib/negotiation/points";
 import { brandSettled, emptyPoints, everythingSettled, pointsOfSentence, readPoints, settledForDoubts, splitReserves } from "@/lib/negotiation/points";
 import { tableOf } from "@/lib/analysis/recompute";
-import { originPricing, priceFor, unavailablePricing } from "@/lib/negotiation/pricing";
+import { originPricing, priceFor, unavailablePricing, withCeiling } from "@/lib/negotiation/pricing";
 import { checkQuote, quoteIsIn } from "@/lib/negotiation/quotes";
 import { applyGroups, groupLabel } from "@/lib/negotiation/terms";
 import { groupsOf } from "@/lib/negotiation/topics";
@@ -447,6 +447,17 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
         ? { text: stripRedundantQuestions(simple(), closed, dealAfter).text, tone: TONES.firm, fallback: drafted.fallback, fallback_reasons: drafted.fallback_reasons }
         : { ...drafted, text: cleaned.text };
 
+  // Mission #169 — LE MONTANT SUR LA TABLE ENTRE DANS LE CHIFFRAGE ENREGISTRÉ.
+  // Jusqu'ici, le plafond annoncé par la marque ne vivait que dans le message
+  // d'acceptation ; la carte devait donc aller le rechercher. Il est désormais
+  // porté par le chiffrage lui-même, avec la bande recalculée sur CE montant :
+  // un seul nombre affronte la fourchette, et c'est celui qui s'affiche.
+  const surLaTable = conclusion?.offered ?? closing?.accept.offered ?? null;
+  // Un tour qui ne change aucun terme n'a pas de « pricing_after » : c'est
+  // « pricing_before » qui fait foi, et c'est donc lui qui porte le plafond.
+  const pricingAfterFinal = pricingAfter ? withCeiling(pricingAfter, surLaTable) : null;
+  const pricingBeforeFinal = pricingAfter ? pricingBefore : withCeiling(pricingBefore, surLaTable);
+
   return {
     kind: "turn",
     payload: {
@@ -459,8 +470,8 @@ export function processTurn(context: TurnContext, reading: TurnReading): TurnRes
       deal_before: before.deal,
       deal_after: dealAfter,
       changed_since_origin: changedSinceOrigin,
-      pricing_before: pricingBefore,
-      pricing_after: pricingAfter,
+      pricing_before: pricingBeforeFinal,
+      pricing_after: pricingAfterFinal,
       pricing_unavailable: pricingUnavailable,
       brand_questions: questions,
       uncertainties,
@@ -491,8 +502,14 @@ export function concludeNow(original: ResultView, previous: readonly TurnPayload
   const state = stateBefore(original, previous, offerText);
   const last = previous.at(-1);
   const pricing = last ? (last.pricing_after ?? last.pricing_before) : originPricing(original, tier);
+  const offered = offeredAmount(state.deal, last?.stated_ceiling ?? null, pricing);
   return {
     deal: state.deal,
+    // Mission #169 — la ligne de conclusion porte son chiffrage, avec le
+    // montant réellement sur la table. Une négociation conclue est le cas
+    // qu'on a le plus envie de montrer : sans ce bloc, elle n'avait pas de
+    // carte du tout.
+    pricing: withCeiling(pricing, offered),
     conclusion: buildConclusion({
       deal: state.deal,
       asks: state.asks,
@@ -505,7 +522,7 @@ export function concludeNow(original: ResultView, previous: readonly TurnPayload
       // Mission #099 (audit B1) — la mémoire des points vaut ici aussi : rien
       // n'est dit « sans réponse » quand elle affiche la phrase de la marque.
       points: state.points,
-      offered: offeredAmount(state.deal, last?.stated_ceiling ?? null, pricing),
+      offered,
     }),
   };
 }

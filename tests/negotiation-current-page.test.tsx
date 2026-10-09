@@ -9,6 +9,10 @@ import { computeFrLegal } from "@/lib/legal/fr";
 import { changedGroups, currentState, splitByChange } from "@/lib/negotiation/current";
 import { loadScenarios, runScenario } from "@/lib/negotiation/scenarios";
 import type { TurnPayload } from "@/lib/negotiation/types";
+import type { ResultView } from "@/lib/analysis/lock";
+import { verdictCardAvailable, verdictCardTexts } from "@/lib/share-card/verdict-card";
+import { carteDeLAnalyse, carteDepuisChiffrage, ligneOffreDuDeal } from "@/lib/share-card/verdict-data";
+import { projectionAnalyse, projectionFil } from "./helpers/carte-projection";
 import { TONES, toneLabel } from "@/lib/tone";
 
 // Mission #084 — après un tour, aucune partie de la page n'affirme un terme
@@ -17,15 +21,45 @@ import { TONES, toneLabel } from "@/lib/tone";
 const thread = vi.hoisted(() => ({ current: null as unknown }));
 const rendered = vi.hoisted(() => ({ last: null as unknown }));
 const loaded = vi.hoisted(() => ({ current: null as unknown }));
-vi.mock("@/lib/negotiation/store", () => ({ loadThread: async () => thread.current }));
+vi.mock("@/lib/negotiation/store", () => ({ TURNS_TABLE: "negotiation_turns", loadThread: async () => thread.current }));
 vi.mock("@/lib/analysis/load", () => ({ loadResultForViewer: async () => loaded.current }));
 vi.mock("@/lib/auth/request-user", async () => (await import("./helpers/request-session")).requestSessionMock(() => ({ id: "u1", email: "u@exemple.fr" })));
-vi.mock("@/lib/share-card/render", () => ({
-  renderShareCard: async (analysis: unknown) => {
-    rendered.last = analysis;
-    return new Response("png", { status: 200, headers: { "Content-Type": "image/png" } });
+// Mission #169 — la carte ne passe plus par loadResultForViewer ni par
+// loadThread : elle lit des colonnes projetées. Le mock rend donc la
+// PROJECTION de ce que ces deux-là contiennent, pour que le test vérifie
+// vraiment ce que la route a le droit de voir.
+vi.mock("@/lib/supabase/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/supabase/server")>()),
+  selectRows: async (table: string) => {
+    if (table === "analyses") {
+      const charge = loaded.current as { analysis: ResultView } | null;
+      return charge
+        ? [projectionAnalyse(charge.analysis, { rate_table_version: charge.analysis.estimate.rate_table_version })]
+        : [];
+    }
+    if (thread.current === "panne") throw new Error("fil injoignable");
+    const fil = thread.current as { turns: Array<{ turnNumber: number; payload: unknown }>; conclusion: unknown } | null;
+    return (fil?.turns ?? []).map((tour) =>
+      projectionFil({ kind: "reply", turn_number: tour.turnNumber, payload: tour.payload }),
+    );
   },
 }));
+vi.mock("next/og", () => ({
+  ImageResponse: class {
+    status = 200;
+    headers = new Headers({ "Content-Type": "image/png" });
+    constructor(element: unknown) {
+      rendered.last = element;
+    }
+  },
+}));
+
+async function carte() {
+  const { GET } = await import("@/app/api/carte/[id]/route");
+  return GET(new Request("http://localhost/api/carte/abc", { headers: { cookie: "deal_anon_token=x" } }), {
+    params: Promise.resolve({ id: "abc" }),
+  });
+}
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/[\s  ]+/g, " ");
 
@@ -109,39 +143,61 @@ describe("A4 — la carte partageable porte les termes actuels", () => {
     loaded.current = { analysis: original, unlocked: true };
   });
 
-  it("après un tour : score et fourchette des termes actuels", async () => {
+  it("après un tour : verdict et fourchette des termes actuels", async () => {
     thread.current = { turns: [{ id: "t", turnNumber: 2, brandReply: null, createdAt: "", payload }], conclusion: null };
-    const { GET } = await import("@/app/analyse/resultat/[id]/carte/route");
-    const response = await GET(new Request("http://localhost/analyse/resultat/abc/carte"), { params: Promise.resolve({ id: "abc" }) });
-    expect(response.status).toBe(200);
-    const card = rendered.last as typeof original;
-    expect(card.estimate.total_low).toBe(payload.pricing_after?.total_low);
-    expect(card.deal.payment.amount_eur).toBe(450);
+    expect((await carte()).status).toBe(200);
+    const attendu = verdictCardTexts(carteDepuisChiffrage(payload.pricing_after!, ligneOffreDuDeal(payload.deal_after)));
+    const texte = JSON.stringify(rendered.last);
+    // La fourchette du tour, pas celle de l'offre d'origine.
+    expect(texte).toContain(attendu.vaut);
+    expect(attendu.vaut).not.toBe(verdictCardTexts(carteDepuisChiffrage(payload.pricing_before, ligneOffreDuDeal(payload.deal_before))).vaut);
+    // Et le montant des termes actuels : 450 €, pas celui de l'offre.
+    expect(payload.deal_after.payment.amount_eur).toBe(450);
+    expect(payload.pricing_after?.compared).toBe(450);
+    expect(texte).toContain(attendu.propose);
   });
 
   it("fil illisible : pas de carte, plutôt que des chiffres peut-être périmés", async () => {
-    thread.current = Promise.reject(new Error("panne"));
-    const { GET } = await import("@/app/analyse/resultat/[id]/carte/route");
-    const response = await GET(new Request("http://localhost/analyse/resultat/abc/carte"), { params: Promise.resolve({ id: "abc" }) });
-    expect(response.status).toBe(503);
+    thread.current = "panne";
+    expect((await carte()).status).toBe(503);
     expect(rendered.last).toBeNull();
   });
 
   it("mission #085 — après un tour, table de l'analyse disparue du code : pas de carte aux chiffres d'origine", async () => {
+    // Mission #169 — LE SIGNAL A CHANGÉ DE PLACE, PAS DE SENS. La route de la
+    // #064 recalculait et constatait l'échec ; celle-ci ne recalcule rien,
+    // elle lit le drapeau que l'écriture du tour a posé (pricing_unavailable).
+    // Ce qui est interdit reste interdit : aucun repli sur les chiffres de
+    // l'offre d'origine, qui ne décrivent plus ce qui est sur la table.
     loaded.current = { analysis: { ...original, estimate: { ...original.estimate, rate_table_version: "fr-2026.1" } }, unlocked: true };
-    thread.current = { turns: [{ id: "t", turnNumber: 2, brandReply: null, createdAt: "", payload }], conclusion: null };
-    const { GET } = await import("@/app/analyse/resultat/[id]/carte/route");
-    const response = await GET(new Request("http://localhost/analyse/resultat/abc/carte"), { params: Promise.resolve({ id: "abc" }) });
-    expect(response.status).toBe(404);
+    const sansTable: TurnPayload = { ...payload, pricing_unavailable: true, pricing_after: null };
+    thread.current = { turns: [{ id: "t", turnNumber: 2, brandReply: null, createdAt: "", payload: sansTable }], conclusion: null };
+    expect((await carte()).status).toBe(404);
     expect(rendered.last).toBeNull();
+  });
+
+  it("un tour enregistré avant la #169 : pas de carte, et surtout pas celle de l'origine", async () => {
+    // Son chiffrage n'a pas de bande. On ne retombe pas sur l'offre d'origine :
+    // la page ne proposera donc pas le bouton (même règle, même fonction).
+    loaded.current = { analysis: original, unlocked: true };
+    const ancien: TurnPayload = {
+      ...payload,
+      pricing_after: { ...payload.pricing_after!, score: null, band: null, compared: null, ceiling: false },
+    };
+    thread.current = { turns: [{ id: "t", turnNumber: 2, brandReply: null, createdAt: "", payload: ancien }], conclusion: null };
+    expect((await carte()).status).toBe(404);
+    expect(rendered.last).toBeNull();
+    // Et la carte de l'origine, elle, existerait : c'est bien un refus, pas
+    // une absence de données.
+    expect(verdictCardAvailable(carteDeLAnalyse(original))).toBe(true);
   });
 
   it("aucun tour : la carte de l'offre analysée", async () => {
     thread.current = { turns: [], conclusion: null };
     expect(currentState(thread.current as never)).toBeNull();
-    const { GET } = await import("@/app/analyse/resultat/[id]/carte/route");
-    await GET(new Request("http://localhost/analyse/resultat/abc/carte"), { params: Promise.resolve({ id: "abc" }) });
-    expect((rendered.last as typeof original).estimate).toEqual(original.estimate);
+    expect((await carte()).status).toBe(200);
+    const attendu = verdictCardTexts(carteDeLAnalyse(original));
+    expect(JSON.stringify(rendered.last)).toContain(attendu.vaut);
   });
 });
 

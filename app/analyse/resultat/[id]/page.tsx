@@ -6,7 +6,6 @@ import { AnalysisResult } from "@/components/result/analysis-result";
 import { EstimateFeedback } from "@/components/result/estimate-feedback";
 import { NegotiationThread } from "@/components/result/negotiation/negotiation-thread";
 import { RetryPanel, type RetryPanelState } from "@/components/result/retry-panel";
-import { ShareCardLink } from "@/components/result/share-card-link";
 import { VerdictCardShare } from "@/components/result/verdict-card-share";
 import { SessionUnavailable } from "@/components/session-unavailable";
 import { SiteFooter } from "@/components/site-footer";
@@ -20,7 +19,8 @@ import { getViewerState } from "@/lib/auth/viewer";
 import { currentState } from "@/lib/negotiation/current";
 import { loadSentMessages, type SentMessage } from "@/lib/negotiation/sent";
 import { loadThread, type Thread } from "@/lib/negotiation/store";
-import { shareCardAvailable } from "@/lib/share-card/element";
+import { verdictCardAvailable } from "@/lib/share-card/verdict-card";
+import { carteDeLAnalyse, carteDuFilCharge } from "@/lib/share-card/verdict-data";
 import { ANON_COOKIE } from "@/lib/security/request";
 
 export const metadata: Metadata = {
@@ -65,7 +65,19 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   const negotiated = thread && thread !== "missing" ? currentState(thread) : null;
   // Table disparue du code après un tour (mission #085) : pas de carte.
   const cardAnalysis = negotiated ? recomputeForDeal(result.analysis, negotiated.deal) : result.analysis;
-  const cardAvailable = cardAnalysis !== null && shareCardAvailable(cardAnalysis);
+  // Mission #169 — LE BOUTON ET LA ROUTE JUGENT AVEC LA MÊME FONCTION.
+  //
+  // Le bouton ne doit jamais mener à un 404. La page tient le fil en mémoire,
+  // la route lit des colonnes projetées, mais les deux passent par
+  // carteDuFilCharge / carteDuFil, qui appliquent la même règle, puis par le
+  // même verdictCardAvailable.
+  //
+  // Un tour enregistré avant la #169 n'a pas de bande : « indisponible », donc
+  // pas de bouton. C'est voulu — on ne retombe pas sur les chiffres de
+  // l'offre d'origine, qui ne décrivent plus ce qui est sur la table.
+  const carteDuTour = thread === "missing" ? null : carteDuFilCharge(thread);
+  const carte = carteDuTour === "indisponible" ? null : (carteDuTour ?? carteDeLAnalyse(result.analysis));
+  const cardAvailable = carte !== null && verdictCardAvailable(carte);
   // Mission #086 : le tour dont la page affiche les chiffres. Table de
   // l'analyse disparue : la page montre ceux d'origine, tour 0.
   const judgedTurn = negotiated && cardAnalysis !== null ? negotiated.turn : 0;
@@ -112,16 +124,13 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
           ) : null
         }
       >
-        {/* Mission #165 — DEUX CARTES, DEUX RÉGIMES, jamais les deux à la fois.
-            La carte de verdict (4:5, crème) se construit à partir du cookie
-            anonyme : elle n'existe donc que pour la visiteuse qui vient
-            d'analyser et n'a pas encore de compte — exactement le moment où
-            elle a envie de montrer son verdict. Se connecter efface ce cookie
-            (lib/auth/sign-in.ts), et c'est alors la carte de #064, rattachée à
-            la session, qui reste proposée. */}
-        {cardAvailable ? (
-          user === null ? <VerdictCardShare /> : <ShareCardLink href={`/analyse/resultat/${id}/carte`} />
-        ) : null}
+{/* Mission #169 — UNE SEULE CARTE, UN SEUL BOUTON, dans les deux états.
+            Il y en avait deux : celle de la #064 pour la personne connectée,
+            celle de la #165 pour la visiteuse anonyme. La route lit désormais
+            la session EN COMPLÉMENT du cookie — se connecter efface le cookie
+            anonyme (lib/auth/sign-in.ts) —, donc le même bouton sert les deux.
+            Les deux drapeaux de mesure couvrent de ce fait les deux états. */}
+        {cardAvailable ? <VerdictCardShare href={`/api/carte/${id}`} /> : null}
         {askFeedback ? (
           <EstimateFeedback
             action={`/api/analyses/${id}/avis`}

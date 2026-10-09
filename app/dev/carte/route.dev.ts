@@ -1,26 +1,31 @@
+import { ImageResponse } from "next/og";
 import { recomputeForTier } from "@/lib/analysis/recompute";
 import { PREVIEW_STATES, previewAnalysis, type PreviewState } from "@/lib/fixtures/preview-states";
-import { shareCardAvailable } from "@/lib/share-card/element";
-import { renderShareCard } from "@/lib/share-card/render";
-import { tierFromUrl } from "@/lib/share-card/tier-param";
-import { bandFor } from "@/lib/rates/score";
+import { parseTier } from "@/lib/rates/tier";
+import { loadFonts } from "@/lib/share-card/render";
+import { VERDICT_CARD_SIZE, verdictCardAvailable, verdictCardElement } from "@/lib/share-card/verdict-card";
+import { carteDeLAnalyse } from "@/lib/share-card/verdict-data";
 
 // DÉVELOPPEMENT UNIQUEMENT (extension .dev.ts, voir next.config.ts) : la carte
-// partageable rendue depuis une fixture, sans base ni appel au modèle.
+// de verdict rendue depuis une fixture, sans base, sans session et sans appel
+// au modèle.
 // /dev/carte?etat=verrouille|debloque|complete|au-dessus|unpriced|terms_unknown
-// &score=0..100 : force la valeur du score (vérification de la jauge aux extrêmes).
 // &niveau=starter|confirmed|experienced : recalcule au niveau choisi.
+// &plafond=1 : le cas « On m'a proposé jusqu'à X €, à confirmer ».
 export async function GET(request: Request) {
-  const requested = new URL(request.url).searchParams.get("etat") ?? "debloque";
+  const params = new URL(request.url).searchParams;
+  const requested = params.get("etat") ?? "debloque";
   const state = (PREVIEW_STATES as readonly string[]).includes(requested) ? (requested as PreviewState) : "debloque";
   const { analysis: stored } = previewAnalysis(state);
-  const tier = tierFromUrl(request.url);
-  const preview = tier ? recomputeForTier(stored, tier) : stored;
-  const forced = new URL(request.url).searchParams.get("score");
-  const analysis =
-    forced !== null && /^\d+$/.test(forced) && preview.score
-      ? { ...preview, score: { value: Math.min(100, Number(forced)), band: bandFor(Math.min(100, Number(forced))) } }
-      : preview;
-  if (!shareCardAvailable(analysis)) return new Response("Pas de carte pour cet état.", { status: 404 });
-  return renderShareCard(analysis, { "Cache-Control": "no-store" });
+  const tier = parseTier(params.get("niveau"));
+  const data = {
+    ...carteDeLAnalyse(tier ? recomputeForTier(stored, tier) : stored),
+    plafond: params.get("plafond") === "1",
+  };
+  if (!verdictCardAvailable(data)) return new Response("Pas de carte pour cet état.", { status: 404 });
+  return new ImageResponse(verdictCardElement(data), {
+    ...VERDICT_CARD_SIZE,
+    fonts: await loadFonts(),
+    headers: { "Cache-Control": "no-store" },
+  });
 }

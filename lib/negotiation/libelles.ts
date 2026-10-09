@@ -144,6 +144,12 @@ export const OFF_TOPIC_MESSAGE = {
 // qui a lancé l'analyse, quelle que soit sa formule, gratuite comprise.
 export type ThreadAccess = "open" | "signed_out";
 
+// Mission #169 — les cinq bandes de verdict, pour que le chiffrage d'un tour
+// puisse en porter une. Même liste que lib/rates/score.ts, vérifiée par
+// tests/carte-fil.test.ts : deux listes qui divergeraient feraient refuser
+// une bande valide à l'enregistrement.
+export const BANDS = ["bad", "weak", "fair", "good", "excellent"] as const;
+
 
 export const TURN_FAILURE_MESSAGE = {
   timeout: "La lecture de la réponse a pris trop de temps et n'a pas abouti. Réessaie dans quelques minutes.",

@@ -10,7 +10,8 @@ import { dealRecapRows } from "@/lib/display";
 import { computeFrLegal } from "@/lib/legal/fr";
 import { computeEstimate, countFilledFields, FOREIGN_CURRENCY_ASSUMPTION } from "@/lib/rates/engine";
 import { appliedPriceCap, computeScore, hasUnknownQuantity, priceRatio, UNKNOWN_QUANTITY_SCORE_CAP } from "@/lib/rates/score";
-import { shareCardTexts } from "@/lib/share-card/element";
+import { verdictCardTexts } from "@/lib/share-card/verdict-card";
+import { carteDeLAnalyse } from "@/lib/share-card/verdict-data";
 import type { Analysis } from "@/lib/schema";
 
 // Mission #057 — deux corrections :
@@ -174,10 +175,13 @@ describe("B — un 0 vaut une absence, partout où le champ est lu", () => {
   });
 
   it("carte partageable : elle ne propose pas 0 €", () => {
+    const carte = (part: Partial<Deal>) => verdictCardTexts(carteDeLAnalyse(analysis(part)));
     for (const part of [zeroProduits, zeroArgent]) {
-      expect(shareCardTexts(analysis(part)).proposes).toBeNull();
+      expect(carte(part).propose).toBeNull();
     }
-    expect(shareCardTexts(analysis({ payment: paiement(null), in_kind_value_eur: 89 })).proposes).toContain("en produits");
+    // Mission #169 — sans argent, c'est la valeur des produits qui est
+    // comparée, donc celle qui s'affiche (comparedAmountOf, #167).
+    expect(carte({ payment: paiement(null), in_kind_value_eur: 89 }).propose).toContain("89");
   });
 
   it("les analyses déjà enregistrées avec un 0 sont nettoyées au chargement", () => {

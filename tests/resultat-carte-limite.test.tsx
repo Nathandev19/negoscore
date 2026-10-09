@@ -12,7 +12,10 @@ import { computeEstimate } from "@/lib/rates/engine";
 import { TIERS, type Tier } from "@/lib/rates/tier";
 import { clientIp, hashIp } from "@/lib/security/request";
 import { limitRule, limitVerdict, OPENINGS_ACCOUNT, OPENINGS_ANON } from "@/lib/security/limite";
-import { shareCardTexts } from "@/lib/share-card/element";
+import { withCeiling } from "@/lib/negotiation/pricing";
+import type { Pricing } from "@/lib/negotiation/types";
+import { verdictCardTexts } from "@/lib/share-card/verdict-card";
+import { carteDepuisChiffrage, ligneOffreDuDeal } from "@/lib/share-card/verdict-data";
 import sample from "@/lib/fixtures/sample-extraction.json";
 import { analysisSchema, type Analysis } from "@/lib/schema";
 
@@ -254,14 +257,23 @@ const fil = (turns: Array<{ turnNumber: number; dealAmount: number | null; offer
         },
 });
 
-const view = (amount: number | null) =>
-  ({
-    deal: deal({ payment: { amount_eur: amount, currency: "EUR", terms_days: null, schedule: null }, in_kind_value_eur: null }),
-    estimate: { total_low: 1260, total_high: 3060, rate_table_version: "fr-2026.3" },
-    evaluability: "complete" as const,
-    score: { value: 60, band: "fair" as const },
-    profile_tier: "confirmed" as const,
-  }) as unknown as Parameters<typeof shareCardTexts>[0];
+// Mission #169 — la carte ne reçoit plus une analyse et un montant : elle
+// reçoit LE CHIFFRAGE ENREGISTRÉ, où le montant comparé a déjà été tranché.
+const chiffrage = (amount: number | null): Pricing => ({
+  total_low: 1260,
+  total_high: 3060,
+  counter_low: null,
+  counter_high: null,
+  rate_table_version: "fr-2026.3",
+  tier: "confirmed",
+  score: 60,
+  band: "fair",
+  compared: amount,
+  ceiling: false,
+});
+
+const carteDe = (amount: number | null, offered: number | null) =>
+  verdictCardTexts(carteDepuisChiffrage(withCeiling(chiffrage(amount), offered), ligneOffreDuDeal(deal({}))));
 
 describe("D — carte et message d'acceptation disent le même montant", () => {
   // Six états de négociation, du plus simple au plus retors.
@@ -274,12 +286,30 @@ describe("D — carte et message d'acceptation disent le même montant", () => {
     { nom: "conclusion enregistrée", thread: fil([{ turnNumber: 2, dealAmount: 600, offered: 900 }], 900), attendu: 900 },
   ];
 
-  it("le montant de la carte est LU, pas recalculé", () => {
-    const route = readFileSync("app/analyse/resultat/[id]/carte/route.ts", "utf8");
-    expect(route).toContain("negotiated?.offered");
-    // Plus aucun second calcul dans la route.
-    expect(route).not.toContain("offeredAmount");
-    expect(route).not.toContain("pricingOf");
+  it("LA ROUTE LIT, ELLE NE CALCULE PAS", () => {
+    // Mission #169, la règle du point 2. La route de la #064 rechargeait
+    // l'analyse et le fil entiers pour recalculer les termes actuels — donc
+    // le nom de la marque et le texte des messages. Celle-ci ne contient plus
+    // un seul appel de calcul : tout est lu.
+    const route = readFileSync("app/api/carte/[id]/route.tsx", "utf8");
+    const code = route
+      .split("\n")
+      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+      .join("\n");
+    for (const interdit of [
+      "offeredAmount",
+      "pricingOf",
+      "priceFor",
+      "computeScore",
+      "computeEstimate",
+      "recompute",
+      "loadResultForViewer",
+      "loadThread",
+      "brand",
+      "raw_text",
+    ]) {
+      expect(code, interdit).not.toContain(interdit);
+    }
   });
 
   it("sur six états, carte = message d'acceptation", () => {
@@ -290,27 +320,29 @@ describe("D — carte et message d'acceptation disent le même montant", () => {
       expect(state?.offered, nom).toBe(attendu);
 
       // Ce que la carte affiche, à partir de cette même valeur.
-      const carte = shareCardTexts(view(state?.deal.payment.amount_eur ?? null), state?.offered ?? null);
+      const carte = carteDe(state?.deal.payment.amount_eur ?? null, state?.offered ?? null);
       const montant = state?.offered ?? state?.deal.payment.amount_eur ?? null;
       if (montant === null) {
-        expect(carte.proposes, nom).toBeNull();
+        expect(carte.propose, nom).toBeNull();
       } else {
-        expect(carte.proposes, nom).toContain(String(montant).slice(0, 1));
-        expect(carte.proposes, nom).not.toBeNull();
+        expect(carte.propose, nom).toContain(String(montant).slice(0, 1));
+        expect(carte.propose, nom).not.toBeNull();
       }
+      // Et quand c'est un plafond, la carte le dit.
+      expect(carte.aConfirmer, nom).toBe(state?.offered === null ? null : "à confirmer");
     }
   });
 
   it("le plafond annoncé passe devant les termes, et 600 € ne s'affiche plus", () => {
     const state = currentState(fil([{ turnNumber: 2, dealAmount: 600, offered: 900 }]));
-    const carte = shareCardTexts(view(600), state?.offered ?? null);
-    expect(carte.proposes).toContain("900");
-    expect(carte.proposes).not.toContain("600");
+    const carte = carteDe(600, state?.offered ?? null);
+    expect(carte.propose).toContain("900");
+    expect(carte.propose).not.toContain("600");
+    expect(carte.proposeLabel).toBe("On m'a proposé jusqu'à");
   });
 
   it("la carte reste anonyme", () => {
-    const carte = shareCardTexts(view(600), 900);
-    expect(JSON.stringify(carte)).not.toMatch(/marque exemple|camille/i);
+    expect(JSON.stringify(carteDe(600, 900))).not.toMatch(/marque exemple|camille/i);
   });
 });
 
