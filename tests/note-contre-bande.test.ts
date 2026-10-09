@@ -141,14 +141,31 @@ describe("tant qu'elle n'est pas réparée, la note reste invisible", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-describe("ce que la #174 laisse à réécrire", () => {
-  // L'accueil PROMET encore une note sur 100, en toutes lettres. Ce n'est pas
-  // un reste d'affichage oublié : c'est une phrase de vente, et sa réécriture
-  // n'est pas une décision technique. Consignée ici en `it.fails` plutôt que
-  // réécrite à la place de son auteur.
-  it.fails("aucun texte public ne promet une note sur 100", async () => {
-    const { FAQ, STEPS } = await import("@/lib/content/home");
-    const textes = [...STEPS, ...FAQ].map((entree) => Object.values(entree).join(" ")).join(" ");
+describe("aucun texte public ne promet une note sur 100", () => {
+  // Mission #175 — le constat était en `it.fails` depuis la #174 : l'accueil
+  // promettait encore « un score sur 100 » et « 90/100 ». Les deux phrases
+  // sont réécrites, et la garde devient une vraie garde.
+  //
+  // Elle porte sur la NOTE CHIFFRÉE, pas sur le mot « score » : le produit
+  // calcule toujours une note, et plusieurs textes nomment encore ce qu'elle
+  // lit. Ces mentions-là sont listées dans le rapport de la #175, en attente
+  // d'arbitrage — les transformer en échec ici, ce serait trancher à la place
+  // de leur auteur.
+  it("ni l'accueil, ni les formules, ni le champ d'analyse", async () => {
+    const { FAQ, STEPS, TRUST } = await import("@/lib/content/home");
+    const { PLANS } = await import("@/lib/billing/plans");
+    const textes = [
+      ...[...STEPS, ...TRUST, ...FAQ].map((entree) => Object.values(entree).join(" ")),
+      ...PLANS.flatMap((plan) => [plan.name, plan.summary, ...plan.features]),
+      readFileSync("app/page.tsx", "utf8"),
+    ].join(" ");
     expect(textes).not.toMatch(/sur 100|\/100/);
+  });
+
+  it("ni les titres et descriptions des pages publiques", async () => {
+    const { PUBLIC_PAGES } = await import("@/lib/seo");
+    for (const page of PUBLIC_PAGES) {
+      expect(`${page.title} ${page.description}`, page.path).not.toMatch(/sur 100|\/100/);
+    }
   });
 });
