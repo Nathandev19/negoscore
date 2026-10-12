@@ -135,16 +135,12 @@ export async function accountFreeUsage(userId: string): Promise<number | "missin
   return freeUsed({ kind: "user", id: userId });
 }
 
-// Analyse gratuite déjà consommée par ce compte (mission #067, page /compte).
-// Lecture seule, même règle que le droit réel : compteur durable, ou analyses
-// déjà faites. Ne réserve et ne compte rien.
-export async function accountFreeAnalysisUsedFrom(userId: string, used: number | "missing"): Promise<boolean> {
-  return freeUsedFromCounter({ kind: "user", id: userId }, used);
-}
-
-export async function accountFreeAnalysisUsed(userId: string): Promise<boolean> {
-  return freeAlreadyUsed({ kind: "user", id: userId });
-}
+// Mission #183 — accountFreeAnalysisUsedFrom et accountFreeAnalysisUsed
+// vivaient ici pour la ligne « Négociation gratuite » de /compte, retirée avec
+// cette mission : le solde de la #182 répond à la même question, en un nombre.
+// Sans appelant, elles n'étaient plus que du code que personne ne vérifie.
+// freeUsedFromCounter, qui faisait leur travail, reste : le droit réel et le
+// solde s'en servent tous les deux.
 
 type Context = {
   user: SessionUser | null;

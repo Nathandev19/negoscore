@@ -3,7 +3,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { BoneLine, LoadingAnnouncement } from "@/components/ui/skeleton";
-import { analysesCount, analysesCountTruncated } from "@/lib/content/labels";
+import { negociationsCount, negociationsCountTruncated } from "@/lib/content/labels";
 import { BAND_LABEL, BAND_STYLE, formatEur } from "@/lib/display";
 import type { NegotiationSummary } from "@/lib/negotiation/history";
 import { rateTable } from "@/lib/rates/tables";
@@ -82,7 +82,7 @@ const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", y
 // Nombre de lignes du squelette : fixe, sans rapport avec l'historique réel (C4).
 const SKELETON_ROWS = 3;
 
-// Page Tes analyses. rows null : squelette (app/historique/loading.tsx). Chaque
+// Page Tes négociations. rows null : squelette (app/historique/loading.tsx). Chaque
 // ligne fantôme a la hauteur d'une vraie ligne (date, montant, niveau) ; la
 // colonne du score n'a pas d'os, pour ne pas dessiner la forme d'un score.
 // Mission #181 — `total` est le nombre RÉEL d'analyses de la personne,
@@ -101,16 +101,16 @@ export function HistoryView({
   // Le squelette ne compte rien : afficher un chiffre avant les lignes
   // donnerait un nombre que la liste n'a pas encore confirmé.
   const compteur =
-    rows === null || total === null ? null : total > rows.length ? analysesCountTruncated(total, rows.length) : analysesCount(total);
+    rows === null || total === null ? null : total > rows.length ? negociationsCountTruncated(total, rows.length) : negociationsCount(total);
   return (
     <>
       <SiteHeader />
       <main id="contenu" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         {rows ? null : <LoadingAnnouncement />}
         <h1 className="text-h1 font-extrabold">Tes négociations</h1>
-        {/* Sobre, en tête de liste : un nombre et un mot. Les missions #174
-            à #178 ont retiré la note de tous ces écrans — le compteur compte
-            des analyses, et la phrase vient de lib/content/labels.ts. */}
+        {/* Sobre, en tête de liste : un nombre et un mot. Le mot est celui du
+            titre depuis la #183 — « négociation » —, et la phrase vient de
+            lib/content/labels.ts. */}
         {compteur ? (
           <p data-compteur-analyses className="-mt-6 text-small text-attenue">
             {compteur}
@@ -139,7 +139,7 @@ export function HistoryView({
             {/* Le compteur au-dessus dit déjà qu'il n'y en a aucune : ici,
                 seulement ce qu'il y a à faire. Si le comptage a échoué, la
                 phrase redevient complète — l'écran ne reste pas muet. */}
-            {compteur ? null : "Aucune analyse pour l'instant. "}
+            {compteur ? null : "Aucune négociation pour l'instant. "}
             <Link href="/analyse" className="link font-semibold">Analyser un deal</Link>
           </p>
         ) : (

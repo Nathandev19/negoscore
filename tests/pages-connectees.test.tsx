@@ -123,10 +123,15 @@ describe("/compte — solde, accès offert et gratuité partent ensemble", () =>
     renderToStaticMarkup(await AccountPage());
 
     // Une seule vague : solde, accès offert et compteur de gratuité partent
-    // ensemble. Le repli sur les analyses déjà faites ne part qu'après, et
-    // seulement quand le compteur ne tranche pas.
+    // ensemble.
     expect(db.calls.slice(0, 3).sort()).toEqual(["service:admin_entitlements", "service:credits", "service:free_usage"]);
-    expect(db.waves).toBe(2);
+    // Mission #183 — UNE vague, et plus deux. La seconde servait au repli sur
+    // les deals déjà analysés, qui ne nourrissait que la ligne « Négociation
+    // gratuite » retirée avec cette mission. Le compteur free_usage entre
+    // directement dans le solde : pour un compte gratuit, la page ne touche
+    // plus la table deals du tout.
+    expect(db.waves).toBe(1);
+    expect(db.calls).not.toContain("service:deals");
   });
 
   it("compte payant : la ligne de gratuité n'est pas affichée", async () => {

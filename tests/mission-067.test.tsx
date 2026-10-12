@@ -112,37 +112,78 @@ describe("C — plus de « débloquée » au-dessus d'une page introuvable", () 
   });
 });
 
-describe("D — /compte dit où en est l'analyse gratuite", () => {
+// Mission #183 — CE QUE LA #067 DISAIT, LE SOLDE LE DIT MAINTENANT.
+//
+// La ligne « Négociation gratuite : Encore disponible / Déjà utilisée » est
+// retirée. Elle répondait à une question que « Négociations restantes » ne
+// savait pas traiter : cette ligne-là affichait credits.balance, donc 0 pour
+// un compte gratuit, qu'il lui reste sa gratuité ou non. Depuis la #182 elle
+// porte le solde réel, et la question est répondue par le nombre.
+//
+// Ce bloc vérifie qu'AUCUN ÉTAT N'EST DEVENU MUET. C'est la seule raison pour
+// laquelle la ligne peut partir.
+describe("D — /compte dit toujours où en est la gratuité, par le solde", () => {
   const free = accountSummary({ plan: "free", balance: 0, period_end: null });
+  const vue = (summary: ReturnType<typeof accountSummary>, restantes: number | null | "illisible") =>
+    text(renderToStaticMarkup(<AccountView data={{ email: "n@e.test", summary, restantes }} />));
 
-  it("encore disponible", () => {
-    const html = text(renderToStaticMarkup(<AccountView data={{ email: "n@e.test", summary: free, freeAnalysis: "available" }} />));
-    expect(html).toContain("Négociation gratuite Encore disponible");
+  it("la ligne de la #067 a bien disparu de l'écran", () => {
+    for (const restantes of [0, 1] as const) {
+      expect(vue(free, restantes)).not.toContain("Négociation gratuite");
+    }
+    expect(read("components/account/account-view.tsx")).not.toContain("FREE_ANALYSIS_LABEL");
   });
 
-  it("déjà utilisée", () => {
-    const html = text(renderToStaticMarkup(<AccountView data={{ email: "n@e.test", summary: free, freeAnalysis: "used" }} />));
-    expect(html).toContain("Négociation gratuite Déjà utilisée");
+  it("gratuité encore disponible : le solde le dit", () => {
+    expect(vue(free, 1)).toContain("1 négociation");
   });
 
-  it("formule payante ou lecture impossible : la ligne n'apparaît pas", () => {
-    const html = text(renderToStaticMarkup(<AccountView data={{ email: "n@e.test", summary: free, freeAnalysis: null }} />));
-    expect(html).not.toContain("Analyse gratuite");
+  it("gratuité déjà prise, et aucune réserve : le solde le dit aussi", () => {
+    // L'état que la ligne retirée couvrait. Il reste lisible : 0 et 1 ne
+    // s'affichent pas pareil.
+    const zero = vue(free, 0);
+    expect(zero).toContain("0 négociation");
+    expect(zero).not.toContain("1 négociation");
   });
 
-  it("la ligne n'est affichée que pour un compte gratuit", () => {
-    // Mission #107 — la lecture part EN MÊME TEMPS que le solde, au lieu de
-    // l'attendre : elle ne dépendait pas de lui, seul son affichage en dépend.
-    // Ce qui compte pour la personne est inchangé : un compte payant ne voit
-    // pas cette ligne.
-    const source = read("app/compte/page.tsx");
-    // Mission #107 — le compteur se lit avec le solde ; c'est son
-    // interprétation, et le repli qui la complète, qui restent réservés au
-    // compte gratuit.
-    expect(source).toMatch(/summary\.plan === "free"\s*\?\s*await accountFreeAnalysisUsedFrom/);
-    expect(source).toMatch(/accountFreeUsage\(user\.id\)/);
+  it("LE CAS CROISÉ — gratuité prise MAIS une réserve achetée : le nombre est celui de la réserve", () => {
+    // C'est l'état que la ligne de la #067 ne savait pas montrer : elle ne
+    // s'affichait que pour un compte gratuit, et ce compte-ci n'en est plus un.
+    const pack = accountSummary({ plan: "pack", balance: 3, period_end: null });
+    const html = vue(pack, 3);
+    expect(html).toContain("3 négociations");
+    expect(html).not.toContain("Négociation gratuite");
+  });
+
+  it("L'INVERSE — une réserve existe et la gratuité est intacte : un seul nombre, celui du moteur", () => {
+    // Le solde ne cumule pas la gratuité avec une réserve achetée : un compte
+    // qui a payé ne repasse pas par la gratuité (lib/billing/entitlement.ts).
+    // La page affiche donc le nombre du moteur, sans l'additionner elle-même.
+    const pack = accountSummary({ plan: "pack", balance: 2, period_end: null });
+    const html = vue(pack, 2);
+    expect(html).toContain("2 négociations");
+    expect(html).not.toContain("3 négociations");
+  });
+
+  it("compte payant : rien ne manque, et aucune ligne de gratuité ne revient", () => {
     const payant = accountSummary({ plan: "pro", balance: 0, period_end: new Date(Date.now() + 86_400_000).toISOString() });
-    const rendu = text(renderToStaticMarkup(<AccountView data={{ email: "n@e.test", summary: payant, freeAnalysis: null }} />));
-    expect(rendu).not.toContain("Analyse gratuite");
+    const html = vue(payant, 28);
+    expect(html).toContain("28 négociations");
+    expect(html).not.toContain("gratuite");
+  });
+
+  it("lecture impossible : un tiret, et toujours pas de zéro inventé", () => {
+    expect(vue(free, "illisible")).toContain("—");
+    expect(vue(free, "illisible")).not.toContain("0 négociation");
+  });
+
+  it("le compteur de gratuité est toujours lu — il entre dans le solde", () => {
+    // Mission #107 : il part dans la même vague que le reste. Ce qui change,
+    // c'est qu'il n'est plus interprété par la page mais par le moteur.
+    const source = read("app/compte/page.tsx");
+    expect(source).toMatch(/accountFreeUsage\(user\.id\)/);
+    expect(source).toContain("analysisBalanceFrom(user, credits ?? null, adminGrant, freeCounter)");
+    // Et la page ne l'interprète plus elle-même.
+    expect(source).not.toContain("accountFreeAnalysisUsedFrom");
   });
 });

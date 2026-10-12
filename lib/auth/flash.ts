@@ -41,7 +41,7 @@ export type FlashMessage = { title: string; text: string | null; link: { href: s
 // Message selon la page d'arrivée. Jamais d'adresse email.
 export function flashMessage(kind: FlashKind, pathname: string): FlashMessage {
   if (kind === "deconnexion") {
-    return { title: "Déconnexion réussie.", text: "Ce navigateur n'a plus accès à ton compte ni à tes analyses.", link: null };
+    return { title: "Déconnexion réussie.", text: "Ce navigateur n'a plus accès à ton compte ni à tes négociations.", link: null };
   }
   const title = "Connexion réussie.";
   // Page de résultat : le bandeau ne dit rien de l'analyse (mission #067). Il
@@ -50,9 +50,11 @@ export function flashMessage(kind: FlashKind, pathname: string): FlashMessage {
   // elle-même qui le dit, et seulement quand elle l'affiche : pastille
   // « Débloqué à l'instant » sur les blocs ouverts, ou explication sur la 404.
   if (pathname.startsWith("/analyse/resultat/")) return { title, text: null, link: null };
-  if (pathname === "/historique") return { title, text: "Voici toutes tes analyses.", link: null };
+  if (pathname === "/historique") return { title, text: "Voici toutes tes négociations.", link: null };
   if (pathname === "/compte") return { title, text: "Voici ton compte et tes négociations.", link: null };
   if (pathname === "/tarifs") return { title, text: "Tu peux maintenant choisir une formule.", link: null };
   if (pathname === "/analyse") return { title, text: "Colle l'offre d'une marque pour l'analyser.", link: null };
-  return { title, text: "Tu peux analyser un deal et retrouver tes analyses.", link: { href: "/historique", label: "Mes analyses" } };
+  // Le libellé est celui de la barre de navigation, au mot près : les deux
+  // mènent au même endroit, ils ne peuvent pas s'appeler autrement.
+  return { title, text: "Tu peux analyser un deal et retrouver tes négociations.", link: { href: "/historique", label: "Mes négociations" } };
 }

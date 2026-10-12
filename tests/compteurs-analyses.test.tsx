@@ -44,7 +44,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
 });
 
 const { ANALYSES_COUNT_LABELS, analysesNotice, loadAdminAnalyses, loadAnalysesCounts } = await import("@/lib/admin/data");
-const { analysesCount, analysesCountTruncated } = await import("@/lib/content/labels");
+const { negociationsCount, negociationsCountTruncated } = await import("@/lib/content/labels");
 const { HistoryView } = await import("@/components/account/history-view");
 const { default: AdminAnalyses } = await import("@/app/admin/analyses/page");
 
@@ -171,21 +171,21 @@ describe("les cinq nombres sont À L'ÉCRAN, pas seulement calculés", () => {
 
 describe("le compteur de l'historique", () => {
   it("zéro se dit « Aucune analyse », jamais « 0 analyse »", () => {
-    expect(analysesCount(0)).toBe("Aucune analyse enregistrée pour l'instant.");
-    expect(analysesCount(0)).not.toContain("0 analyse");
+    expect(negociationsCount(0)).toBe("Aucune négociation enregistrée pour l'instant.");
+    expect(negociationsCount(0)).not.toContain("0 négociation");
     // Un nombre négatif n'existe pas, mais s'il arrivait il ne doit pas
-    // produire « -1 analyses ».
-    expect(analysesCount(-3)).toBe(analysesCount(0));
+    // produire « -1 négociations ».
+    expect(negociationsCount(-3)).toBe(negociationsCount(0));
   });
 
   it("un se dit au singulier, deux et plus au pluriel", () => {
-    expect(analysesCount(1)).toBe("1 analyse enregistrée.");
-    expect(analysesCount(2)).toBe("2 analyses enregistrées.");
-    expect(analysesCount(140)).toBe("140 analyses enregistrées.");
+    expect(negociationsCount(1)).toBe("1 négociation enregistrée.");
+    expect(negociationsCount(2)).toBe("2 négociations enregistrées.");
+    expect(negociationsCount(140)).toBe("140 négociations enregistrées.");
   });
 
   it("aucune de ces phrases ne ramène le vocabulaire retiré en #174-#178", () => {
-    const phrases = [0, 1, 2, 140].map(analysesCount).concat(analysesCountTruncated(140, 100));
+    const phrases = [0, 1, 2, 140].map(negociationsCount).concat(negociationsCountTruncated(140, 100));
     for (const phrase of phrases) {
       expect(phrase, phrase).not.toMatch(/\bscores?\b/i);
       // « noté » ne contient pas « note » (n-o-t-é) : le motif cherche le
@@ -196,8 +196,8 @@ describe("le compteur de l'historique", () => {
   });
 
   it("liste tronquée : le compteur dit le vrai total, et dit que la liste est plus courte", () => {
-    const phrase = analysesCountTruncated(140, 100);
-    expect(phrase).toContain("140 analyses enregistrées.");
+    const phrase = negociationsCountTruncated(140, 100);
+    expect(phrase).toContain("140 négociations enregistrées.");
     expect(phrase).toContain("100 plus récentes");
   });
 });
@@ -228,20 +228,20 @@ describe("l'historique, à l'écran", () => {
   it("le compteur est en tête de liste, et il dit le nombre réel", () => {
     const html = renderToStaticMarkup(<HistoryView rows={[ligne("a"), ligne("b")]} total={2} />);
     expect(html).toContain("data-compteur-analyses");
-    expect(texte(html)).toContain("2 analyses enregistrées.");
+    expect(texte(html)).toContain("2 négociations enregistrées.");
   });
 
-  it("une seule analyse : singulier", () => {
-    expect(texte(renderToStaticMarkup(<HistoryView rows={[ligne("a")]} total={1} />))).toContain("1 analyse enregistrée.");
+  it("une seule négociation : singulier", () => {
+    expect(texte(renderToStaticMarkup(<HistoryView rows={[ligne("a")]} total={1} />))).toContain("1 négociation enregistrée.");
   });
 
   it("aucune : la phrase est juste, et le lien pour commencer reste", () => {
     const html = renderToStaticMarkup(<HistoryView rows={[]} total={0} />);
     const lu = texte(html);
-    expect(lu).toContain("Aucune analyse enregistrée pour l'instant.");
-    expect(lu).not.toContain("0 analyse");
+    expect(lu).toContain("Aucune négociation enregistrée pour l'instant.");
+    expect(lu).not.toContain("0 négociation");
     // Et le fait n'est pas dit deux fois.
-    expect(lu.match(/Aucune analyse/g)).toHaveLength(1);
+    expect(lu.match(/Aucune négociation/g)).toHaveLength(1);
     expect(html).toContain('href="/analyse"');
   });
 
@@ -249,13 +249,13 @@ describe("l'historique, à l'écran", () => {
     const html = renderToStaticMarkup(<HistoryView rows={[]} total={null} />);
     expect(html).not.toContain("data-compteur-analyses");
     // Le repli n'est pas un zéro inventé : c'est la phrase d'avant.
-    expect(texte(html)).toContain("Aucune analyse pour l'instant.");
+    expect(texte(html)).toContain("Aucune négociation pour l'instant.");
   });
 
   it("plus de 100 analyses : le compteur dit le vrai nombre, et pourquoi la liste est plus courte", () => {
     const rows = Array.from({ length: 100 }, (_, i) => ligne(`a${i}`));
     const lu = texte(renderToStaticMarkup(<HistoryView rows={rows} total={140} />));
-    expect(lu).toContain("140 analyses enregistrées.");
+    expect(lu).toContain("140 négociations enregistrées.");
     expect(lu).toContain("100 plus récentes");
   });
 

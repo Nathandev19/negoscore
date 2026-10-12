@@ -40,29 +40,33 @@ export function counterFirstStepSentence(step: string, full: string): string {
 }
 
 
-// Mission #181 — COMBIEN D'ANALYSES CETTE PERSONNE A, dit sobrement en tête
-// de sa liste.
+// Mission #181 — COMBIEN CETTE PERSONNE EN A, dit sobrement en tête de sa
+// liste. Mission #183 — et le mot est « négociation ».
 //
-// Le vocabulaire est contraint. Les missions #174 à #178 ont retiré de tout
-// écran de créatrice la note sur 100 et les mots qui la nommaient : « score »
-// et « note » ne doivent pas reparaître ici (lib/content/vocabulaire.ts,
-// bloc de décision de la #176, et tests/note-contre-bande.test.tsx). Le
-// compteur ne compte donc pas des notes : il compte des ANALYSES, ce qui est
-// exactement ce que la liste contient.
+// Le compteur disait « analyses » sous un titre qui dit « Tes négociations » :
+// deux mots pour le même contenu, sur le même écran. vocabulaire.ts tranche —
+// l'unité est la négociation, « analyse » ne nomme plus que l'étape. Le
+// compteur compte les lignes de la liste, que la page appelle des
+// négociations : le nombre et le mot disent donc la même chose qu'elle.
 //
-// Zéro se dit « Aucune analyse », jamais « 0 analyse » : un chiffre nu au
-// singulier devant un pluriel approximatif est la faute que cette fonction
-// existe pour éviter. Un seul élément se dit au singulier.
-export function analysesCount(total: number): string {
-  if (total <= 0) return "Aucune analyse enregistrée pour l'instant.";
-  return total === 1 ? "1 analyse enregistrée." : `${total} analyses enregistrées.`;
+// Le vocabulaire est contraint par ailleurs : les missions #174 à #178 ont
+// retiré de tout écran de créatrice la note sur 100 et les mots qui la
+// nommaient — ni « score » ni « note » ici (bloc de décision de la #176 dans
+// vocabulaire.ts, et tests/note-contre-bande.test.tsx).
+//
+// Zéro se dit « Aucune négociation », jamais « 0 négociation » : un chiffre nu
+// devant un pluriel approximatif est la faute que cette fonction existe pour
+// éviter. Un seul élément se dit au singulier.
+export function negociationsCount(total: number): string {
+  if (total <= 0) return "Aucune négociation enregistrée pour l'instant.";
+  return `${negotiations(total)} enregistrée${total > 1 ? "s" : ""}.`;
 }
 
 // La liste s'arrête à 100 lignes. Au-delà, le compteur dit la vérité — le
 // nombre réel — et cette phrase dit pourquoi la liste est plus courte que
 // lui. Sans elle, l'écran afficherait deux nombres qui se contredisent.
-export function analysesCountTruncated(total: number, shown: number): string {
-  return `${analysesCount(total)} Les ${shown} plus récentes sont listées.`;
+export function negociationsCountTruncated(total: number, shown: number): string {
+  return `${negociationsCount(total)} Les ${shown} plus récentes sont listées.`;
 }
 
 // ══════════════ LE SOLDE DE NÉGOCIATIONS, ET SON TON ══════════════════════

@@ -87,7 +87,7 @@ export default async function DeleteAccountPage({ searchParams }: PageProps<"/co
           <ul className="list-disc pl-5 text-sm">
             <li>Ton compte et ton adresse email de connexion</li>
             <li>Les offres que tu as déposées, et leurs fichiers</li>
-            <li>Tes analyses</li>
+            <li>Tes négociations</li>
             <li>Tes négociations restantes</li>
           </ul>
         </section>

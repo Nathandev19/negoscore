@@ -3,7 +3,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { PLANS, PRICE } from "@/lib/billing/plans";
 import { FAQ, STEPS, TRUST } from "@/lib/content/home";
-import { NEGOTIATION_EXCHANGES, NEGOTIATION_TURNS, NEGOTIATIONS, negotiations, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
+import { NEGOTIATION_EXCHANGES, NEGOTIATION_TURNS, NEGOTIATIONS, negociationsCount, negotiations, WHAT_IS_A_NEGOTIATION } from "@/lib/content/vocabulaire";
+import { flashMessage } from "@/lib/auth/flash";
+import { navItems } from "@/components/header-nav";
 import { LAST_TURN } from "@/lib/negotiation/types";
 import {
   CANONICAL_ORIGIN,
@@ -44,6 +46,18 @@ const PUBLIC_COPY_FILES = [
   "components/account/account-view.tsx",
   "components/merci/credits-waiter.tsx",
   "lib/billing/right-hint.ts",
+  // Mission #183 — les surfaces de COMPTE entrent dans la garde. Elles
+  // portaient « analyses » là où le reste du produit dit « négociations » :
+  // le compteur de /historique sous un titre « Tes négociations », les
+  // bandeaux d'arrivée, et la page de suppression. L'admin n'y est pas : il
+  // garde son propre vocabulaire (lib/content/vocabulaire.ts, #176).
+  "lib/content/labels.ts",
+  "components/account/history-view.tsx",
+  "components/solde-negociations.tsx",
+  "lib/auth/flash.ts",
+  "app/compte/supprimer/page.tsx",
+  "app/compte/supprime/page.tsx",
+  "components/account/cancel-view.tsx",
 ] as const;
 
 describe("1 et 8 — les nombres viennent du code", () => {
@@ -91,7 +105,33 @@ describe("2 et 3 — un seul vocabulaire dans la copie publique", () => {
     { pattern: /(?:ton|ta|une|la)\s+(?:première\s+)?analyse\s+(?:gratuite|est gratuite)/i, quoi: "l'analyse comme unité offerte" },
     { pattern: /crédits?\s+d['’]analyse/i, quoi: "des crédits d'analyse" },
     { pattern: /crédit/i, quoi: "le mot « crédit », réservé au code" },
+    // ─── Mission #183 — « ANALYSE » NE NOMME PLUS UN ÉLÉMENT DE LA LISTE ───
+    //
+    // Trois formes relevées, et toutes les trois accentuées à la fin : c'est
+    // là que \b ne marche PAS (missions #158 et #177 — une limite de mot
+    // après « é » ne se déclenche jamais, parce que les lettres accentuées
+    // sont hors de \w). Le motif se termine donc par (?![a-zà-ÿ]).
+    {
+      pattern: /analyses?\s+(?:enregistrées?|utilisées?|achetées?|consommées?|listées?)(?![a-zà-ÿ])/i,
+      quoi: "un nombre d'analyses là où la page dit « négociations »",
+    },
+    // L'ensemble des éléments de la personne : « tes analyses », « Mes
+    // analyses », « toutes tes analyses ».
+    {
+      pattern: /(?:mes|tes|ses|toutes\s+(?:mes|tes|ses))\s+analyses(?![a-zà-ÿ])/i,
+      quoi: "l'ensemble des négociations appelé « analyses »",
+    },
+    // L'état vide de la liste.
+    { pattern: /aucune\s+analyse(?![a-zà-ÿ])/i, quoi: "la liste vide appelée « analyse »" },
   ];
+
+  // Les trois motifs posés par la #183, nommés : le test ci-dessous vérifie
+  // qu'ils ne s'appuient pas sur \b et qu'ils portent le terminateur sûr.
+  const MOTIFS_183 = [
+    "un nombre d'analyses là où la page dit « négociations »",
+    "l'ensemble des négociations appelé « analyses »",
+    "la liste vide appelée « analyse »",
+  ] as const;
 
   it("aucune formulation ne vend une « analyse » ni un « crédit »", () => {
     for (const file of PUBLIC_COPY_FILES) {
@@ -109,6 +149,112 @@ describe("2 et 3 — un seul vocabulaire dans la copie publique", () => {
     expect(TRUST.some((point) => point.text.includes("copilote de négociation"))).toBe(true);
     // Le compteur du compte dit « négociations restantes ».
     expect(read("components/account/account-view.tsx")).toContain("Négociations restantes");
+    // Mission #183 — et le compteur de /historique dit le mot de son titre.
+    expect(negociationsCount(2)).toBe("2 négociations enregistrées.");
+    expect(negociationsCount(0)).toContain("Aucune négociation");
+    expect(flashMessage("connexion", "/historique").text).toBe("Voici toutes tes négociations.");
+    expect(flashMessage("connexion", "/autre").link?.label).toBe("Mes négociations");
+    // Au mot près celui de la barre de navigation : les deux mènent au même
+    // endroit, ils ne peuvent pas s'appeler autrement.
+    expect(navItems(true).main.map((item) => item.label)).toContain("Mes négociations");
+  });
+
+  // Le piège des missions #158 et #177, vérifié sur la garde elle-même : un
+  // motif écrit avec \b après une lettre accentuée ne se déclenche JAMAIS.
+  // Sans ce test, la garde ci-dessus pourrait être réécrite « proprement » et
+  // cesser silencieusement de garder quoi que ce soit.
+  it("la garde se déclenche sur le mot ACCENTUÉ, pas seulement sur sa racine", () => {
+    const motif = UNIT_PATTERNS.find((p) => p.quoi === "un nombre d'analyses là où la page dit « négociations »")?.pattern;
+    expect(motif).toBeDefined();
+    if (!motif) return;
+    // Les formes réelles, toutes terminées par une voyelle accentuée ou par
+    // un « s » qui la suit.
+    for (const phrase of [
+      "2 analyses enregistrées.",
+      "1 analyse enregistrée.",
+      "des analyses utilisées",
+      "tes analyses achetées",
+      "les analyses listées",
+    ]) {
+      expect(motif.test(phrase), phrase).toBe(true);
+    }
+    // LE PIÈGE, MESURÉ PLUTÔT QUE SUPPOSÉ. \b n'échoue PAS sur « enregistrées » :
+    // le mot finit par « s », une lettre de \w. Il échoue sur un mot qui finit
+    // PAR l'accent — et c'est exactement ce qui avait fait passer la #177 à
+    // côté de « noté » : entre « é » et un non-mot, il n'y a pas de limite de
+    // mot, parce qu'aucun des deux côtés n'est dans \w.
+    expect(/\bnoté\b/.test("noté.")).toBe(false);
+    expect(/\bnoté(?![a-zà-ÿ])/.test("noté.")).toBe(true);
+// D'où le terminateur des trois motifs de cette mission : aucun ne
+    // s'appuie sur \b, donc aucun ne peut être mis en échec par une finale
+    // accentuée, aujourd'hui ou après une reformulation.
+    for (const quoi of MOTIFS_183) {
+      const trouve = UNIT_PATTERNS.find((p) => p.quoi === quoi);
+      expect(trouve, quoi).toBeDefined();
+      expect(trouve?.pattern.source.includes("\\b"), `${quoi} s'appuie sur \b`).toBe(false);
+      expect(trouve?.pattern.source.includes("(?![a-zà-ÿ])"), `${quoi} n'a pas de terminateur sûr`).toBe(true);
+    }
+    // Et la RACINE seule ne suffirait pas : elle attraperait « cette analyse »,
+    // qui est l'étape et reste permise.
+    expect(/analyses?(?![a-zà-ÿ])/i.test("Supprimer cette analyse")).toBe(true);
+    expect(motif.test("Supprimer cette analyse")).toBe(false);
+    // L'étape, elle, reste permise : « analyse » suivi d'autre chose passe.
+    for (const permis of ["Supprimer cette analyse", "une analyse éducative", "l'analyse continue"]) {
+      expect(motif.test(permis), permis).toBe(false);
+    }
+  });
+
+  it("l'ensemble des éléments de la personne ne s'appelle plus « analyses »", () => {
+    const motif = UNIT_PATTERNS.find((p) => p.quoi.startsWith("l'ensemble"))?.pattern;
+    expect(motif).toBeDefined();
+    if (!motif) return;
+    for (const phrase of ["Mes analyses", "tes analyses", "Voici toutes tes analyses."]) {
+      expect(motif.test(phrase), phrase).toBe(true);
+    }
+    for (const permis of ["tes négociations", "Mes négociations", "cette analyse"]) {
+      expect(motif.test(permis), permis).toBe(false);
+    }
+  });
+
+  // Mission #183 — LA COUVERTURE DE LA GARDE EST GARDÉE.
+  //
+  // Relevé par la batterie de mutation : sortir un fichier de
+  // PUBLIC_COPY_FILES ne faisait échouer aucun test. Les motifs étaient
+  // verrouillés, la LISTE sur laquelle ils s'appliquent ne l'était pas.
+  it("toutes les surfaces destinées à la créatrice sont surveillées", () => {
+    const SURFACES = [
+      // Copie publique (mission #093).
+      "lib/content/home.ts",
+      "lib/content/vocabulaire.ts",
+      "lib/billing/plans.ts",
+      "app/page.tsx",
+      "app/tarifs/page.tsx",
+      "app/cgv/page.tsx",
+      // Écrans de compte (mission #183).
+      "lib/content/labels.ts",
+      "components/account/account-view.tsx",
+      "components/account/history-view.tsx",
+      "components/account/cancel-view.tsx",
+      "components/solde-negociations.tsx",
+      "lib/auth/flash.ts",
+      "app/compte/supprimer/page.tsx",
+      "app/compte/supprime/page.tsx",
+    ];
+    for (const surface of SURFACES) {
+      expect(PUBLIC_COPY_FILES as readonly string[], `${surface} n'est plus surveillée`).toContain(surface);
+    }
+    // L'admin n'y est pas, et ne doit pas y entrer : il garde son propre
+    // vocabulaire (mission #176, exception nommée dans vocabulaire.ts).
+    for (const file of PUBLIC_COPY_FILES) expect(file, file).not.toMatch(/admin/);
+  });
+
+  it("la liste vide ne s'appelle plus « aucune analyse »", () => {
+    const motif = UNIT_PATTERNS.find((p) => p.quoi.startsWith("la liste vide"))?.pattern;
+    expect(motif).toBeDefined();
+    if (!motif) return;
+    expect(motif?.test("Aucune analyse pour l'instant.")).toBe(true);
+    expect(motif?.test("Aucune analyse enregistrée pour l'instant.")).toBe(true);
+    expect(motif?.test("Aucune négociation pour l'instant.")).toBe(false);
   });
 
   it("aucune promesse de gain, aucun avis, aucun compteur d'utilisateurs", () => {

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AccountView } from "@/components/account/account-view";
 import { accountSummary } from "@/lib/account/summary";
 import { getViewer } from "@/lib/auth/viewer";
-import { analysisBalanceFrom, accountFreeAnalysisUsedFrom, accountFreeUsage } from "@/lib/billing/entitlement";
+import { analysisBalanceFrom, accountFreeUsage } from "@/lib/billing/entitlement";
 import type { PlanState } from "@/lib/billing/plan-access";
 import { selectRows } from "@/lib/supabase/server";
 import { activeAdminGrant } from "@/lib/billing/access";
@@ -47,15 +47,9 @@ export default async function AccountPage() {
   const solde = await analysisBalanceFrom(user, credits ?? null, adminGrant, freeCounter).catch(() => null);
 
   const summary = accountSummary(credits ?? null, new Date(), adminGrant);
-  // Compte gratuit : « Crédits d'analyse : 0 » ne dit pas si l'analyse gratuite
-  // reste disponible (mission #067).
-  const freeAnalysis =
-    summary.plan === "free"
-      ? await accountFreeAnalysisUsedFrom(user.id, freeCounter).then(
-          (used) => (used ? ("used" as const) : ("available" as const)),
-          () => null,
-        )
-      : null;
 
-  return <AccountView data={{ email: user.email, summary, freeAnalysis, restantes: solde ? solde.restantes : "illisible" }} />;
+  // Mission #183 — le compteur de gratuité n'est plus interprété ici : il
+  // entre dans le solde (analysisBalanceFrom, au-dessus), et c'est le solde
+  // qui dit s'il reste une négociation. Une lecture, un nombre, une ligne.
+  return <AccountView data={{ email: user.email, summary, restantes: solde ? solde.restantes : "illisible" }} />;
 }

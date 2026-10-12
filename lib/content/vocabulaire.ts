@@ -170,7 +170,7 @@ export { RAW_FOOTAGE_LABEL } from "@/lib/content/labels";
 // Mission #109 — la phrase de verdict selon la position du montant dans la
 // fourchette, et le premier palier de contre-offre.
 export { COUNTER_FIRST_STEP_TITLE, counterFirstStepSentence, WITHIN_RANGE_SENTENCE, type WithinRange } from "@/lib/content/labels";
-// Mission #181 — le compteur de l'historique. Il compte des ANALYSES : ni
-// « score » ni « note » n'ont le droit d'y reparaître (bloc de décision de
-// la #176, plus haut dans ce fichier).
-export { analysesCount, analysesCountTruncated } from "@/lib/content/labels";
+// Mission #181, corrigée en #183 — le compteur de l'historique. Il compte des
+// NÉGOCIATIONS, comme le titre de la page : ni « analyse » pour l'unité, ni
+// « score », ni « note » (blocs de décision des #176 et #093, plus haut).
+export { negociationsCount, negociationsCountTruncated } from "@/lib/content/labels";

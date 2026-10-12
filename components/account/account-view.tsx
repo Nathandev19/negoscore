@@ -11,9 +11,15 @@ const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", y
 // Page Mon compte. data null : squelette (app/compte/loading.tsx), même
 // structure et mêmes hauteurs, sans aucune donnée. Le squelette montre les trois
 // lignes communes à tous les comptes, jamais celles d'un abonnement (C4).
-// freeAnalysis : compte gratuit seulement, l'état réel de son analyse gratuite
-// (mission #067). null ou absent : ligne non affichée.
-export const FREE_ANALYSIS_LABEL = { available: "Encore disponible", used: "Déjà utilisée" } as const;
+//
+// Mission #183 — LA LIGNE « NÉGOCIATION GRATUITE » A ÉTÉ RETIRÉE.
+//
+// Elle venait de la #067, à une époque où cette page affichait
+// « Négociations restantes : credits.balance » — la réserve ACHETÉE, donc 0
+// pour un compte gratuit, sans dire si la gratuité était encore là. La #182 a
+// remplacé ce nombre par le solde réel : il vaut 1 quand la gratuité est
+// disponible et 0 quand elle est prise. Les deux lignes disaient alors le même
+// fait, l'une avec un nombre et l'autre avec une phrase.
 
 export function AccountView({
   data,
@@ -21,7 +27,6 @@ export function AccountView({
   data: {
     email: string | null;
     summary: AccountSummary;
-    freeAnalysis?: keyof typeof FREE_ANALYSIS_LABEL | null;
     // Mission #182 — ce qu'il reste VRAIMENT (lib/billing/entitlement.ts), et
     // plus credits.balance. Trois valeurs distinctes, et il ne faut pas les
     // confondre : un nombre, null pour AUCUN PLAFOND, et « illisible » quand
@@ -55,14 +60,6 @@ export function AccountView({
               {summary ? summary.planLabel : <BoneLine width="w-20" className="justify-end" />}
             </dd>
           </div>
-          {data?.freeAnalysis ? (
-            <div className="flex justify-between gap-4 py-3">
-              <dt className="text-sm text-attenue">Négociation gratuite</dt>
-              <dd data-free-analysis={data.freeAnalysis} className="text-right text-sm font-medium text-encre">
-                {FREE_ANALYSIS_LABEL[data.freeAnalysis]}
-              </dd>
-            </div>
-          ) : null}
           <div className="flex justify-between gap-4 py-3">
             <dt className="text-sm text-attenue">Négociations restantes</dt>
             <dd data-restantes className="text-right text-sm font-medium text-encre">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BoneLine, LoadingAnnouncement } from "@/components/ui/skeleton";
 import { isCancelled, isProActive, periodEndsAt, type PlanState } from "@/lib/billing/plan-access";
 import { PRICE, PRO_PERIOD } from "@/lib/billing/plans";
+import { negotiations } from "@/lib/content/labels";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
@@ -79,7 +80,7 @@ function CancelContent({ data }: { data: CancelViewData }) {
           <p className="text-lg font-semibold text-encre">Tu n&apos;as aucun abonnement en cours.</p>
           <p>
             {credits && credits.balance > 0
-              ? `Il te reste ${credits.balance} analyse${credits.balance > 1 ? "s" : ""} achetée${credits.balance > 1 ? "s" : ""} : elles n'expirent pas.`
+              ? `Il te reste ${negotiations(credits.balance)} achetée${credits.balance > 1 ? "s" : ""} : elle${credits.balance > 1 ? "s" : ""} n'expire${credits.balance > 1 ? "nt" : ""} pas.`
               : "Rien n'est prélevé sur ton compte."}
           </p>
           <Link href="/historique" className="link flex min-h-11 w-fit items-center font-semibold">
@@ -96,7 +97,7 @@ function CancelContent({ data }: { data: CancelViewData }) {
               ? `Ton abonnement Pro reste actif jusqu'au ${endsAt}, puis il s'arrête. Aucun nouveau paiement ne sera prélevé.`
               : "Ton abonnement Pro s'arrête à la fin de la période en cours. Aucun nouveau paiement ne sera prélevé."}
           </p>
-          <p>Les crédits d&apos;analyse achetés séparément restent acquis.</p>
+          <p>Les négociations achetées séparément restent acquises.</p>
           <Link href="/historique" className="link flex min-h-11 w-fit items-center font-semibold">
             Retour à mon compte
           </Link>
@@ -112,7 +113,7 @@ function CancelContent({ data }: { data: CancelViewData }) {
           </div>
           <p>
             La résiliation est gratuite et prend effet à la fin de la période en cours : tu gardes ton accès jusque-là.
-            Les crédits d&apos;analyse achetés séparément restent acquis.
+            Les négociations achetées séparément restent acquises.
           </p>
           <form action="/api/resilier" method="post">
             <Button type="submit" size="lg" className="h-12 w-full text-base">
