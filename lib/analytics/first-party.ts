@@ -91,7 +91,9 @@ export async function recordProductEvent(input: {
       // Mission #118 — le compte qui produit l'événement, pour les écritures
       // sans navigateur : le webhook Whop écrit purchase_completed depuis une
       // requête de Whop, qui ne porte pas le cookie interne.
-      { userId: input.userId ?? null, diagnostic: true },
+      // Un événement ne porte pas d'adresse : l'appelant ne connaît qu'un
+      // identifiant de compte. Le cookie de #118 couvre les navigateurs.
+      { account: { id: input.userId ?? null, email: null }, diagnostic: true },
     );
   } catch (error) {
     console.error(JSON.stringify({ event: "product_telemetry_error", name: input.event, detail: error instanceof Error ? error.message.slice(0, 120) : "inconnu" }));

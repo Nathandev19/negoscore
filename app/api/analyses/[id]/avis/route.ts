@@ -44,7 +44,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     const judged = judgedFigures(result.analysis, input.data.tier, thread === "missing" ? null : thread, input.data.turn);
     if (!judged) return json(409, { error: "Cette page n'est plus à jour : recharge-la, puis donne ton avis sur les chiffres affichés." });
     const shown = judged.analysis;
-    const outcome = await saveFeedback(id, shown, input.data, judged.turn);
+    const outcome = await saveFeedback(id, shown, input.data, judged.turn, user);
     if (outcome === "missing") return json(503, { error: UNAVAILABLE });
     await recordProductEvent({
       event: "feedback_submitted", userId: user?.id ?? null, entityType: "analysis", entityId: id,

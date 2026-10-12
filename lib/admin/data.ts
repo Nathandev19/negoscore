@@ -279,29 +279,87 @@ export type AdminAnalysisRow = {
 // (`where a.environment='production' and not a.internal`) et ne le disait
 // nulle part. On cherchait des analyses de septembre écartées en silence.
 // Les deux compteurs viennent d'ici, pas de la RPC : aucune migration.
-export type AdminAnalysesPage = { total: number; items: AdminAnalysisRow[]; excluded?: number; internal?: number };
+export type AdminAnalysesPage = { total: number; items: AdminAnalysisRow[]; counts?: AnalysesCounts };
+
+// Mission #181 — CINQ NOMBRES QUI S'ADDITIONNENT, ET QUI DISENT CE QU'IL
+// RESTE.
+//
+// Le total de la RPC est DÉJÀ filtré (production, non interne) : il ne répond
+// donc pas à « combien de lignes existent ». Et les deux compteurs de #131 se
+// recouvraient — « hors production » comptait aussi les lignes « unknown »,
+// si bien qu'aucune soustraction ne tombait juste et qu'on ne pouvait pas
+// savoir ce qui reste exploitable.
+//
+// Les quatre premiers nombres forment une PARTITION : chaque ligne de la
+// table tombe dans un seul seau, et leur somme vaut le brut. C'est vérifié
+// par un test, et c'est la seule raison pour laquelle on peut les afficher
+// côte à côte sans mentir.
+//
+//   inconnu          environment = 'unknown' — avant la migration #103, le
+//                    DEFAULT a rempli l'historique ; ces lignes existent mais
+//                    on ne sait pas d'où elles viennent ;
+//   horsProduction   preview, development, test ;
+//   internes         production, mais mon compte ou mes appareils ;
+//   exploitable      production, et quelqu'un d'autre que moi. LE nombre.
+export type AnalysesCounts = {
+  brut: number;
+  internes: number;
+  horsProduction: number;
+  inconnu: number;
+  exploitable: number;
+};
+
+const SEAUX = {
+  brut: "select=id",
+  inconnu: "environment=eq.unknown&select=id",
+  horsProduction: "environment=neq.production&environment=neq.unknown&select=id",
+  internes: "environment=eq.production&internal=is.true&select=id",
+  exploitable: "environment=eq.production&internal=is.false&select=id",
+} as const;
+
+// Colonnes absentes (migrations #103/#118 pas encore passées) : zéro, comme
+// partout ailleurs. Un compteur muet vaut mieux qu'un écran cassé — mais le
+// brut, lui, ne dépend d'aucune colonne et reste vrai.
+export async function loadAnalysesCounts(): Promise<AnalysesCounts> {
+  const [brut, inconnu, horsProduction, internes, exploitable] = await Promise.all(
+    (["brut", "inconnu", "horsProduction", "internes", "exploitable"] as const).map((seau) =>
+      countRows("analyses", SEAUX[seau]).catch(() => 0),
+    ),
+  );
+  return { brut, inconnu, horsProduction, internes, exploitable };
+}
 
 export async function loadAdminAnalyses(page = 1): Promise<AdminAnalysesPage | "missing"> {
   try {
-    const [data, excluded, internal] = await Promise.all([
+    const [data, counts] = await Promise.all([
       rpc<AdminAnalysesPage>("admin_analyses_page", { p_offset: (Math.max(1, page) - 1) * ADMIN_PAGE_SIZE, p_limit: ADMIN_PAGE_SIZE }),
-      // Colonnes absentes (migrations #103/#118 pas encore passées) : zéro,
-      // comme partout ailleurs. Un compteur muet vaut mieux qu'un écran cassé.
-      countRows("analyses", "environment=neq.production&select=id").catch(() => 0),
-      countRows("analyses", "environment=eq.production&internal=is.true&select=id").catch(() => 0),
+      loadAnalysesCounts(),
     ]);
-    return { ...data, excluded, internal };
+    return { ...data, counts };
   } catch {
     return "missing";
   }
 }
 
-// La même phrase que la section Guides du cockpit, avec les mêmes mots : on
-// ne veut pas deux formulations pour une seule règle.
+// Les cinq libellés, écrits une seule fois. « Reste exploitable » est le seul
+// chiffre qui répond à la question du lancement — quelqu'un d'autre que moi
+// a-t-il utilisé le produit.
+export const ANALYSES_COUNT_LABELS: ReadonlyArray<{ cle: keyof AnalysesCounts; label: string; aide: string }> = [
+  { cle: "brut", label: "Analyses enregistrées", aide: "Toutes les lignes de la table, sans aucun filtre." },
+  { cle: "internes", label: "Dont internes", aide: "Production, mais produites par mon compte ou un de mes appareils." },
+  { cle: "horsProduction", label: "Dont hors production", aide: "Local, prévisualisation, tests." },
+  { cle: "inconnu", label: "Dont environnement inconnu", aide: "Écrites avant la migration 20260924000031 : on ne sait pas d'où elles viennent." },
+  { cle: "exploitable", label: "Reste exploitable", aide: "Production, et quelqu'un d'autre que moi." },
+];
+
+// La liste, elle, montre le reste exploitable : la ligne le dit, et renvoie
+// aux quatre nombres au-dessus plutôt que de redonner les siens.
 export function analysesNotice(page: AdminAnalysesPage): string {
-  return `Production uniquement. ${count(page.excluded ?? 0)} analyse(s) hors production exclue(s) (local, prévisualisation, tests, historique), et ${count(
-    page.internal ?? 0,
-  )} produite(s) par un compte ou un appareil interne.`;
+  const counts = page.counts;
+  if (!counts) return "Production uniquement, hors analyses internes.";
+  return `Production uniquement, hors analyses internes : ${count(counts.exploitable)} analyse(s) sur ${count(
+    counts.brut,
+  )} enregistrée(s). Le détail de ce qui est écarté est au-dessus.`;
 }
 
 // Mission #131 — LES ÉVÉNEMENTS UN PAR UN.

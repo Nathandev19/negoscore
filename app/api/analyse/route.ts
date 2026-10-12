@@ -15,6 +15,7 @@ import { classifyModelError, modelFailureMessage, rightNotUsed, UNREADABLE_OFFER
 import { PROMPT_VERSION } from "@/lib/llm/prompt";
 import { preferredTier } from "@/lib/rates/tier-preference";
 import { ANON_COOKIE, anonCookieHeader, clientIp, hashIp, newAnonToken, readCookie, sameToken } from "@/lib/security/request";
+import { INTERNAL_COOKIE, internalCookieHeader, isInternalEmail } from "@/lib/telemetry/internal";
 import { limitRule, limitVerdict } from "@/lib/security/limite";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
 import { isStoragePath, sniffMime } from "@/lib/storage/documents";
@@ -32,7 +33,7 @@ import {
 } from "@/lib/supabase/server";
 import { MAX_FILE_BYTES } from "@/lib/upload";
 import { hasAttribution, parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
-import { withEnvironment } from "@/lib/telemetry/tagged";
+import { internalReason, withEnvironment } from "@/lib/telemetry/tagged";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -113,8 +114,22 @@ export async function POST(request: Request) {
   // Un compte connecté n'a pas besoin de jeton anonyme.
   const anonToken = user ? null : (existingToken ?? newAnonToken());
   const cookie = !user && !existingToken && anonToken ? anonCookieHeader(anonToken) : null;
+  // Mission #181 — ET LE NAVIGATEUR EST MARQUÉ ICI, dès la première analyse.
+  //
+  // Le proxy ne pose ce cookie que sur les pages qui vérifient déjà la session
+  // (compte, connexion, /admin) : sur l'accueil, page publique, il ne vérifie
+  // rien, et c'est verrouillé par un test — une page publique ne doit coûter
+  // aucun appel à Supabase. Conséquence : un appareil interne qui analyse sans
+  // être jamais repassé par une page de compte restait non marqué, et toutes
+  // ses analyses ANONYMES suivantes avec lui.
+  //
+  // Cette route-ci a déjà l'adresse vérifiée dans les mains. Elle pose donc la
+  // marque sur sa propre réponse, une seule fois, et les analyses suivantes de
+  // ce navigateur sont couvertes même déconnecté. Aucun appel de plus : c'est
+  // la même adresse que celle qui décide du marquage de la ligne.
+  const marque = !readCookie(request, INTERNAL_COOKIE) && isInternalEmail(user?.email) ? internalCookieHeader() : null;
   const fail = (status: number, message: string, extra: Record<string, unknown> = {}) =>
-    json(status, { error: message, ...extra }, cookie);
+    json(status, { error: message, ...extra }, cookie, marque);
   // Visiteur sans compte dont l'analyse gratuite est prise (décomptée ou refusée) :
   // le formulaire le dira avant la prochaine saisie (lib/billing/right-hint.ts).
   const noFreeLeftHint = user ? null : rightHintCookieHeader(process.env.NODE_ENV === "production");
@@ -262,7 +277,7 @@ export async function POST(request: Request) {
       const replay = await replayableAnalysis(key, { user, anonToken: existingToken });
       if (replay.kind === "analysis") {
         console.log(JSON.stringify({ event: "analyse_rejouee", signed_in: user !== null }));
-        return json(200, { analysisId: replay.analysisId, meta: { replayed: true } }, cookie);
+        return json(200, { analysisId: replay.analysisId, meta: { replayed: true } }, cookie, marque);
       }
       if (replay.kind === "taken") {
         // Clé déjà employée ailleurs : on ne dit pas par qui, et on ne la réécrit
@@ -313,7 +328,7 @@ export async function POST(request: Request) {
       // au visiteur qu'il a déjà consommé quelque chose.
       const limited = entitlement.reason === "rate_limited";
       if (!limited) {
-        return json(402, { error: entitlement.message, paywall: true, reason: entitlement.reason }, cookie, noFreeLeftHint);
+        return json(402, { error: entitlement.message, paywall: true, reason: entitlement.reason }, cookie, marque, noFreeLeftHint);
       }
       return fail(429, entitlement.message, { reason: entitlement.reason });
     }
@@ -499,7 +514,7 @@ export async function POST(request: Request) {
               ...origine,
               ...extra,
             }),
-            { userId: user?.id ?? null },
+            { account: user },
           ),
         ),
       );
@@ -522,7 +537,7 @@ export async function POST(request: Request) {
         // analyse normale s'enregistre même si la migration n'est pas appliquée.
         ...(retry ? { retry_of: retry.originalId, is_retry: true } : {}),
       }),
-      { userId: user?.id ?? null },
+      { account: user },
     );
     if (document) savedDealId = dealId;
 
@@ -569,6 +584,7 @@ export async function POST(request: Request) {
           reason: user ? "no_credit" : "free_used",
         },
         cookie,
+        marque,
         noFreeLeftHint,
       );
     }
@@ -588,6 +604,10 @@ export async function POST(request: Request) {
         pdf_pages: pdfPages,
         plan: entitlement.plan,
         signed_in: user !== null,
+        // Mission #181 — pourquoi cette ligne compte, ou ne compte pas. Une
+        // valeur absente ne se lit pas ; « marquage: null » se lit, et nomme
+        // le maillon qui n'a pas repondu.
+        marquage: await internalReason(user),
         retry: retry !== null,
         model: result.model,
         input_tokens: result.inputTokens,
@@ -614,6 +634,7 @@ export async function POST(request: Request) {
         },
       },
       cookie,
+      marque,
       // L'analyse gratuite de ce navigateur vient d'être décomptée.
       entitlement.plan === "free" ? noFreeLeftHint : null,
     );

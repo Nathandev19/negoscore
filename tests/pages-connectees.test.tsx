@@ -57,6 +57,9 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => ({
 vi.mock("@/lib/supabase/as-user", () => ({
   selectRowsAsUser: async (_token: string, table: string, query: string) =>
     traced(`user:${table}${query.includes("payload&id=in") ? ":payloads" : ""}`, query.includes("payload&id=in") ? db.payloads : db.analyses),
+  // Mission #181 — le compteur de l'historique. Il part dans la MÊME vague
+  // que la liste : une requête HEAD de plus, aucune attente de plus.
+  countRowsAsUser: async (_token: string, table: string) => traced(`user:${table}:compte`, db.analyses.length),
 }));
 
 const { default: HistoryPage } = await import("@/app/historique/page");
@@ -93,7 +96,7 @@ describe("/historique — la liste et les tours partent ensemble", () => {
     renderToStaticMarkup(await HistoryPage());
 
     expect(db.waves).toBe(1);
-    expect(db.calls.sort()).toEqual(["service:negotiation_turns", "user:analyses"]);
+    expect(db.calls.sort()).toEqual(["service:negotiation_turns", "user:analyses", "user:analyses:compte"]);
   });
 
   it("avec des tours : deux vagues au lieu de trois, et la seconde ne part que si elle sert", async () => {

@@ -3,6 +3,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { BoneLine, LoadingAnnouncement } from "@/components/ui/skeleton";
+import { analysesCount, analysesCountTruncated } from "@/lib/content/labels";
 import { BAND_LABEL, BAND_STYLE, formatEur } from "@/lib/display";
 import type { NegotiationSummary } from "@/lib/negotiation/history";
 import { rateTable } from "@/lib/rates/tables";
@@ -84,13 +85,37 @@ const SKELETON_ROWS = 3;
 // Page Tes analyses. rows null : squelette (app/historique/loading.tsx). Chaque
 // ligne fantôme a la hauteur d'une vraie ligne (date, montant, niveau) ; la
 // colonne du score n'a pas d'os, pour ne pas dessiner la forme d'un score.
-export function HistoryView({ rows, negotiationUnavailable = false }: { rows: HistoryRow[] | null; negotiationUnavailable?: boolean }) {
+// Mission #181 — `total` est le nombre RÉEL d'analyses de la personne,
+// compté en base sous son identité, pas la longueur de la liste rendue.
+// `null` = le comptage n'a pas pu se faire : aucun nombre n'est affiché,
+// jamais un nombre de repli.
+export function HistoryView({
+  rows,
+  negotiationUnavailable = false,
+  total = null,
+}: {
+  rows: HistoryRow[] | null;
+  negotiationUnavailable?: boolean;
+  total?: number | null;
+}) {
+  // Le squelette ne compte rien : afficher un chiffre avant les lignes
+  // donnerait un nombre que la liste n'a pas encore confirmé.
+  const compteur =
+    rows === null || total === null ? null : total > rows.length ? analysesCountTruncated(total, rows.length) : analysesCount(total);
   return (
     <>
       <SiteHeader />
       <main id="contenu" className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-4 pt-10 pb-16 sm:px-6 md:pt-16 md:pb-24">
         {rows ? null : <LoadingAnnouncement />}
         <h1 className="text-h1 font-extrabold">Tes négociations</h1>
+        {/* Sobre, en tête de liste : un nombre et un mot. Les missions #174
+            à #178 ont retiré la note de tous ces écrans — le compteur compte
+            des analyses, et la phrase vient de lib/content/labels.ts. */}
+        {compteur ? (
+          <p data-compteur-analyses className="-mt-6 text-small text-attenue">
+            {compteur}
+          </p>
+        ) : null}
         {rows && rows.length > 0 && negotiationUnavailable ? (
           <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small">
             L&apos;état de tes négociations n&apos;a pas pu être lu : chaque ligne montre l&apos;offre d&apos;origine. Ouvre une
@@ -111,7 +136,11 @@ export function HistoryView({ rows, negotiationUnavailable = false }: { rows: Hi
           </ul>
         ) : rows.length === 0 ? (
           <p>
-            Aucune analyse pour l&apos;instant. <Link href="/analyse" className="link font-semibold">Analyser un deal</Link>
+            {/* Le compteur au-dessus dit déjà qu'il n'y en a aucune : ici,
+                seulement ce qu'il y a à faire. Si le comptage a échoué, la
+                phrase redevient complète — l'écran ne reste pas muet. */}
+            {compteur ? null : "Aucune analyse pour l'instant. "}
+            <Link href="/analyse" className="link font-semibold">Analyser un deal</Link>
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-filet border-y border-filet">

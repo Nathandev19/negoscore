@@ -158,7 +158,7 @@ describe("le repli quand la colonne n'existe pas encore", () => {
       calls.push(extra);
       if ("internal" in extra) throw new SupabaseRequestError("colonne absente", 400, "42703");
       return "écrit";
-    });
+    }, { account: null });
     expect(result).toBe("écrit");
     expect(calls).toHaveLength(2);
     expect(calls[0]).toEqual({ environment: "test", internal: false });
@@ -173,7 +173,7 @@ describe("le repli quand la colonne n'existe pas encore", () => {
       calls.push(extra);
       if ("environment" in extra || "internal" in extra) throw new SupabaseRequestError("colonne absente", 400, "42703");
       return "écrit";
-    });
+    }, { account: null });
     expect(result).toBe("écrit");
     expect(calls).toHaveLength(3);
     expect(calls[2]).toEqual({});
@@ -185,7 +185,7 @@ describe("le repli quand la colonne n'existe pas encore", () => {
       withEnvironment(async () => {
         attempts += 1;
         throw new SupabaseRequestError("doublon", 409, "23505");
-      }),
+      }, { account: null }),
     ).rejects.toThrow("doublon");
     // Une seule tentative : un insert non idempotent ne doit pas partir deux fois.
     expect(attempts).toBe(1);

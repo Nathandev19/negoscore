@@ -38,3 +38,29 @@ export const COUNTER_FIRST_STEP_TITLE = "Si tu ne veux pas tout demander d'un co
 export function counterFirstStepSentence(step: string, full: string): string {
   return `Commence à ${step} : c'est le bas de la fourchette, déjà au-dessus de ce que la marque propose. La fourchette complète, ${full}, est ce que ces droits valent — c'est toi qui choisis jusqu'où tu montes.`;
 }
+
+
+// Mission #181 — COMBIEN D'ANALYSES CETTE PERSONNE A, dit sobrement en tête
+// de sa liste.
+//
+// Le vocabulaire est contraint. Les missions #174 à #178 ont retiré de tout
+// écran de créatrice la note sur 100 et les mots qui la nommaient : « score »
+// et « note » ne doivent pas reparaître ici (lib/content/vocabulaire.ts,
+// bloc de décision de la #176, et tests/note-contre-bande.test.tsx). Le
+// compteur ne compte donc pas des notes : il compte des ANALYSES, ce qui est
+// exactement ce que la liste contient.
+//
+// Zéro se dit « Aucune analyse », jamais « 0 analyse » : un chiffre nu au
+// singulier devant un pluriel approximatif est la faute que cette fonction
+// existe pour éviter. Un seul élément se dit au singulier.
+export function analysesCount(total: number): string {
+  if (total <= 0) return "Aucune analyse enregistrée pour l'instant.";
+  return total === 1 ? "1 analyse enregistrée." : `${total} analyses enregistrées.`;
+}
+
+// La liste s'arrête à 100 lignes. Au-delà, le compteur dit la vérité — le
+// nombre réel — et cette phrase dit pourquoi la liste est plus courte que
+// lui. Sans elle, l'écran afficherait deux nombres qui se contredisent.
+export function analysesCountTruncated(total: number, shown: number): string {
+  return `${analysesCount(total)} Les ${shown} plus récentes sont listées.`;
+}

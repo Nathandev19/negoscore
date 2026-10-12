@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { HistoryView, type HistoryRow } from "@/components/account/history-view";
 import { getViewer, getViewerAccessToken } from "@/lib/auth/viewer";
 import { loadHistoryTurns, summariesFromTurns } from "@/lib/negotiation/history-load";
-import { selectRowsAsUser } from "@/lib/supabase/as-user";
+import { countRowsAsUser, selectRowsAsUser } from "@/lib/supabase/as-user";
 
 export const metadata: Metadata = {
   title: "Historique",
@@ -21,7 +21,14 @@ export default async function HistoryPage() {
   // (sous l'identité de la personne, la RLS ne renvoie que les siennes) et ses
   // tours de négociation, qui ne dépendent que de son compte. Avant, la
   // seconde attendait la première pour un filtre dont elle n'avait pas besoin.
-  const [rows, turns] = await Promise.all([
+  // Mission #181 — le compteur part AVEC les deux autres lectures, pas
+  // après : une requête HEAD de plus ne transfère aucune ligne, et elle est
+  // sous la même identité (la RLS ne compte que les analyses de la personne).
+  // Il compte le vrai total, pas les lignes rendues : la liste s'arrête à
+  // 100, et un compteur qui dirait « 100 » à quelqu'un qui en a 140 serait un
+  // chiffre faux à l'écran. Comptage impossible : on n'affiche AUCUN nombre
+  // plutôt qu'un nombre inventé — la liste parle d'elle-même.
+  const [rows, turns, total] = await Promise.all([
     selectRowsAsUser<HistoryRow>(
       token,
       "analyses",
@@ -33,6 +40,7 @@ export default async function HistoryPage() {
       "select=id,created_at,score,band:payload->score->>band,amount:payload->deal->payment->amount_eur,evaluability:payload->>evaluability,tier:payload->>profile_tier,rateTable:rate_table_version&order=created_at.desc&limit=100",
     ),
     loadHistoryTurns(user.id),
+    countRowsAsUser(token, "analyses", "select=id").catch(() => null),
   ]);
 
   // Mission #087 : état des échanges et chiffres actuels, pour les analyses
@@ -48,6 +56,7 @@ export default async function HistoryPage() {
     <HistoryView
       rows={rows.map((row) => ({ ...row, negotiation: summaries?.get(row.id) ?? null }))}
       negotiationUnavailable={summaries === null}
+      total={total}
     />
   );
 }

@@ -24,6 +24,31 @@ import { agentFamily, clientIp, dailySalt, visitorFingerprint, type AgentFamily 
 // pourquoi une ligne est écartée, `agent_family` d'où elle vient.
 export type InternalReason = "cookie" | "compte" | "mesure";
 
+// Mission #181 — CE QUE L'APPELANT DOIT FOURNIR, ET QU'IL NE PEUT PAS OMETTRE.
+//
+// Constat du 12/10 : sur 40 analyses enregistrées, UNE SEULE portait
+// internal = true. Le marquage n'était pas cassé, il était AVEUGLE sur le
+// seul chemin qui écrit des analyses (app/api/analyse/route.ts) :
+//
+//   - source 1, le cookie ns_interne : posé par le proxy uniquement sur les
+//     pages qui vérifient déjà la session (compte, connexion, /admin) et par
+//     la connexion elle-même. L'accueil, d'où partent les analyses, est une
+//     page publique où le proxy ne vérifie rien — c'est délibéré, et c'est
+//     verrouillé par un test. Un navigateur qui n'est jamais repassé par une
+//     page de compte depuis la #118 n'est donc pas marqué ;
+//   - source 2, le COMPTE : elle relisait l'adresse dans la table profiles
+//     par une requête, alors que la route tenait déjà l'adresse VÉRIFIÉE de
+//     la session dans les mains. Profil illisible, ligne absente, liste de
+//     test vide : on ne marquait pas, et personne ne pouvait le savoir.
+//
+// D'où ce type. L'adresse est celle de la session vérifiée par Supabase
+// (jamais une adresse lue dans un cookie ou dans un corps de requête) ;
+// l'identifiant reste là pour les écritures qui n'ont pas d'adresse sous la
+// main — le webhook Whop ne connaît qu'un identifiant de compte. Les deux
+// champs sont REQUIS : un appelant qui n'a que l'un passe null pour l'autre,
+// en le disant, plutôt que de laisser le marquage se taire.
+export type InternalAccount = { id: string | null; email: string | null };
+
 export type TelemetryTag = {
   environment?: TelemetryEnvironment;
   internal?: boolean;
@@ -36,12 +61,17 @@ export type TelemetryTag = {
 // sur product_events. Les quatre autres tables marquées (analyses, deals,
 // purchases, analysis_feedback) ne les ont pas et n'en ont pas l'usage : les
 // leur envoyer coûterait un aller-retour perdu à chaque écriture.
+//
+// Mission #181 — le compte n'a PAS de valeur par défaut, et l'objet d'options
+// non plus. C'est volontaire : un appelant qui l'oublie ne compile pas. Le
+// drapeau internal, lui, n'a jamais été un paramètre — il est calculé ici,
+// côté serveur, et aucun corps de requête ne peut le décider.
 export async function withEnvironment<T>(
   write: (extra: TelemetryTag) => Promise<T>,
-  options: { userId?: string | null; diagnostic?: boolean } = {},
+  options: { account: InternalAccount | null; diagnostic?: boolean },
 ): Promise<T> {
   const environment = currentEnvironment();
-  const raison = await internalReason(options.userId ?? null);
+  const raison = await internalReason(options.account);
   const internal = raison !== null;
   if (!options.diagnostic) return writeWithFallback(write, environment, internal);
   const diagnostic = await diagnosticTag();
@@ -113,15 +143,24 @@ async function diagnosticTag(): Promise<{ visitor: string | null; agent_family: 
 // Mission #131 — la source est NOMMÉE, pas seulement comptée. Sans elle, on
 // ne peut pas vérifier que le marquage de #118 et le jeton de #135 font ce
 // qu'on croit : une ligne écartée ressemble à une ligne absente.
-export async function internalReason(userId: string | null = null): Promise<InternalReason | null> {
+//
+// Mission #181 — L'ADRESSE DE LA SESSION PASSE AVANT LA REQUÊTE. Elle est
+// déjà vérifiée, elle ne coûte rien, et elle ne peut pas échouer en silence.
+// La lecture de profiles reste derrière, pour les écritures qui ne connaissent
+// qu'un identifiant. Les deux donnent la même raison, « compte » : c'est le
+// même fait — ce compte est interne — établi par deux chemins. Pas de
+// quatrième valeur, et donc aucune contrainte CHECK à rouvrir en base
+// (migration 20261002000036 : cookie, compte, mesure).
+export async function internalReason(account: InternalAccount | null = null): Promise<InternalReason | null> {
   if (await internalBrowser()) return "cookie";
   if (await measurementBrowser()) return "mesure";
-  if (await internalAccount(userId)) return "compte";
+  if (isInternalEmail(account?.email)) return "compte";
+  if (await internalAccount(account?.id ?? null)) return "compte";
   return null;
 }
 
-export async function internalTraffic(userId: string | null = null): Promise<boolean> {
-  return (await internalReason(userId)) !== null;
+export async function internalTraffic(account: InternalAccount | null = null): Promise<boolean> {
+  return (await internalReason(account)) !== null;
 }
 
 async function measurementBrowser(): Promise<boolean> {

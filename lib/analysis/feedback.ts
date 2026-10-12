@@ -2,7 +2,7 @@ import type { ResultView } from "@/lib/analysis/lock";
 import type { StoredFeedback } from "@/lib/analysis/feedback-options";
 import type { FeedbackInput } from "@/lib/analysis/feedback-schema";
 import { isMissingColumn, isMissingRelation, selectRows, upsertRow } from "@/lib/supabase/server";
-import { withEnvironment } from "@/lib/telemetry/tagged";
+import { withEnvironment, type InternalAccount } from "@/lib/telemetry/tagged";
 
 export { feedbackInputSchema } from "@/lib/analysis/feedback-schema";
 
@@ -107,13 +107,23 @@ export function feedbackRow(analysisId: string, analysis: ResultView, input: Fee
   };
 }
 
-export async function saveFeedback(analysisId: string, analysis: ResultView, input: FeedbackInput, turn: number): Promise<"saved" | "missing"> {
+// Mission #181 — le compte traverse jusqu'ici. Avant, cette écriture
+// n'interrogeait aucune source de compte : un avis donné depuis un compte
+// interne, sur un navigateur non marqué, entrait dans les chiffres.
+export async function saveFeedback(
+  analysisId: string,
+  analysis: ResultView,
+  input: FeedbackInput,
+  turn: number,
+  account: InternalAccount | null,
+): Promise<"saved" | "missing"> {
   try {
     // Un avis par tour : renvoyer un avis sur le même tour le remplace ; un
     // avis sur un autre tour s'ajoute, il n'écrase jamais celui d'origine.
     // Mission #103 : un retour donné en local ne doit pas peser sur le cockpit.
     await withEnvironment((environment) =>
       upsertRow("analysis_feedback", { ...feedbackRow(analysisId, analysis, input, turn), ...environment }, "analysis_id,turn_number"),
+      { account },
     );
     return "saved";
   } catch (caught) {

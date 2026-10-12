@@ -31,7 +31,11 @@ export async function recordPurchase(purchase: Purchase & { user_id: string }): 
   // d'être compté comme un revenu réel. `withEnvironment` porte les deux
   // champs et leur repli quand la migration n'est pas encore appliquée.
   try {
-    await withEnvironment((extra) => insertIfAbsent("purchases", { ...purchase, ...extra }), { userId: purchase.user_id });
+    // Le webhook Whop ne porte ni cookie ni session : seul l'identifiant du
+    // compte est connu, et la lecture de profiles reste le seul chemin.
+    await withEnvironment((extra) => insertIfAbsent("purchases", { ...purchase, ...extra }), {
+      account: { id: purchase.user_id, email: null },
+    });
   } catch (caught) {
     // Déploiement backward-compatible : le code peut précéder la migration qui
     // ajoute le montant. La trace d'achat historique reste prioritaire ; le
@@ -40,7 +44,9 @@ export async function recordPurchase(purchase: Purchase & { user_id: string }): 
       const { amount: _amount, currency: _currency, ...legacyPurchase } = purchase;
       void _amount;
       void _currency;
-      await withEnvironment((extra) => insertIfAbsent("purchases", { ...legacyPurchase, ...extra }), { userId: purchase.user_id });
+      await withEnvironment((extra) => insertIfAbsent("purchases", { ...legacyPurchase, ...extra }), {
+        account: { id: purchase.user_id, email: null },
+      });
       return;
     }
     if (!isMissingRelation(caught)) throw caught;

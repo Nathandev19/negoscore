@@ -91,12 +91,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const tag = async (options?: { userId?: string | null }) => {
+// Mission #181 — le compte est OBLIGATOIRE et porte l'adresse en plus de
+// l'identifiant. L'aide le rend explicite : « aucun compte » se dit null.
+const tag = async (account: { id: string | null; email: string | null } | null = null) => {
   let written: Record<string, unknown> = {};
   await withEnvironment(async (extra) => {
     written = extra;
     return null;
-  }, options);
+  }, { account });
   return written;
 };
 
@@ -213,38 +215,38 @@ describe("ce qui part en base", () => {
   it("cas 1 et 2 sans navigateur — le COMPTE décide (webhook Whop)", async () => {
     vi.stubEnv("INTERNAL_EMAILS", TEST_ACCOUNT);
     db.profiles = { "u-nathan": OWNER, "u-test": TEST_ACCOUNT, "u-camille": VISITEUSE };
-    expect(await tag({ userId: "u-nathan" })).toMatchObject({ internal: true });
-    expect(await tag({ userId: "u-test" })).toMatchObject({ internal: true });
-    expect(await tag({ userId: "u-camille" })).toMatchObject({ internal: false });
+    expect(await tag({ id: "u-nathan", email: null })).toMatchObject({ internal: true });
+    expect(await tag({ id: "u-test", email: null })).toMatchObject({ internal: true });
+    expect(await tag({ id: "u-camille", email: null })).toMatchObject({ internal: false });
   });
 
   it("profil sans adresse, ou introuvable : on ne marque pas", async () => {
     vi.stubEnv("INTERNAL_EMAILS", TEST_ACCOUNT);
     db.profiles = { "u-vide": null };
-    expect(await tag({ userId: "u-vide" })).toMatchObject({ internal: false });
-    expect(await tag({ userId: "u-inconnu" })).toMatchObject({ internal: false });
+    expect(await tag({ id: "u-vide", email: null })).toMatchObject({ internal: false });
+    expect(await tag({ id: "u-inconnu", email: null })).toMatchObject({ internal: false });
   });
 
   it("profil illisible : on ne marque pas, et on n'échoue pas", async () => {
     vi.stubEnv("INTERNAL_EMAILS", TEST_ACCOUNT);
     db.fail = true;
-    expect(await tag({ userId: "u-test" })).toMatchObject({ internal: false });
+    expect(await tag({ id: "u-test", email: null })).toMatchObject({ internal: false });
   });
 
   it("aucune adresse interne configurée : aucune requête n'est faite", async () => {
     vi.stubEnv("OWNER_EMAIL", "");
     vi.stubEnv("INTERNAL_EMAILS", "");
     db.profiles = { "u-nathan": OWNER };
-    expect(await tag({ userId: "u-nathan" })).toMatchObject({ internal: false });
+    expect(await tag({ id: "u-nathan", email: null })).toMatchObject({ internal: false });
     expect(db.reads).toEqual([]);
   });
 
   it("le même compte n'est pas relu à chaque événement d'une même analyse", async () => {
     vi.stubEnv("INTERNAL_EMAILS", TEST_ACCOUNT);
     db.profiles = { "u-test": TEST_ACCOUNT };
-    await tag({ userId: "u-test" });
-    await tag({ userId: "u-test" });
-    await tag({ userId: "u-test" });
+    await tag({ id: "u-test", email: null });
+    await tag({ id: "u-test", email: null });
+    await tag({ id: "u-test", email: null });
     expect(db.reads).toHaveLength(1);
   });
 
@@ -255,7 +257,7 @@ describe("ce qui part en base", () => {
 
   it("l'identifiant de compte est encodé avant d'entrer dans la requête", async () => {
     vi.stubEnv("INTERNAL_EMAILS", TEST_ACCOUNT);
-    await tag({ userId: "u/../x&select=*" });
+    await tag({ id: "u/../x&select=*", email: null });
     expect(db.reads[0]).toContain("u%2F..%2Fx%26select%3D*");
   });
 });
