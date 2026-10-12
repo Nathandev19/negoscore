@@ -1,3 +1,4 @@
+import { negotiations } from "@/lib/content/labels";
 import { FREE_ANALYSES, PACK_ANALYSES, PRO_ANALYSES_PER_PERIOD } from "@/lib/billing/plans";
 import { LAST_TURN } from "@/lib/negotiation/libelles";
 
@@ -52,10 +53,10 @@ export const NEGOTIATIONS = {
   proPerPeriod: PRO_ANALYSES_PER_PERIOD,
 } as const;
 
-// « 3 négociations », « 1 négociation ».
-export function negotiations(count: number): string {
-  return `${count} négociation${count > 1 ? "s" : ""}`;
-}
+// « 3 négociations », « 1 négociation », « 0 négociation » : en français, zéro
+// prend le singulier. Descendue dans lib/content/labels.ts en #182, où les
+// libellés du solde en ont besoin sans entraîner la facturation.
+export { negotiations } from "@/lib/content/labels";
 
 // Ce qu'une négociation contient, dit d'une seule façon partout.
 export const WHAT_IS_A_NEGOTIATION = `Une négociation couvre un deal en entier : ${EXCHANGES_PHRASE}, et la conclusion. Répondre à la marque ne coûte rien de plus.`;

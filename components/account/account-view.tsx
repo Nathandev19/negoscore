@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { BoneLine, LoadingAnnouncement } from "@/components/ui/skeleton";
 import type { AccountSummary } from "@/lib/account/summary";
+import { SOLDE_ILLIMITE, negotiations } from "@/lib/content/labels";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
@@ -17,9 +18,23 @@ export const FREE_ANALYSIS_LABEL = { available: "Encore disponible", used: "Déj
 export function AccountView({
   data,
 }: {
-  data: { email: string | null; summary: AccountSummary; freeAnalysis?: keyof typeof FREE_ANALYSIS_LABEL | null } | null;
+  data: {
+    email: string | null;
+    summary: AccountSummary;
+    freeAnalysis?: keyof typeof FREE_ANALYSIS_LABEL | null;
+    // Mission #182 — ce qu'il reste VRAIMENT (lib/billing/entitlement.ts), et
+    // plus credits.balance. Trois valeurs distinctes, et il ne faut pas les
+    // confondre : un nombre, null pour AUCUN PLAFOND, et « illisible » quand
+    // la lecture a échoué. Un plafond absent se dit « illimité » ; une lecture
+    // ratée ne se dit pas en nombre.
+    restantes?: number | null | "illisible";
+  } | null;
 }) {
   const summary = data?.summary ?? null;
+  // ?? ne convient PAS ici : null est une valeur LÉGITIME (aucun plafond),
+  // et un ?? l'écraserait en « illisible ». Seul le champ ABSENT veut dire
+  // qu'on n'a rien lu.
+  const restantes = data === null || data.restantes === undefined ? "illisible" : data.restantes;
   return (
     <>
       <SiteHeader />
@@ -50,8 +65,17 @@ export function AccountView({
           ) : null}
           <div className="flex justify-between gap-4 py-3">
             <dt className="text-sm text-attenue">Négociations restantes</dt>
-            <dd className="text-right text-sm font-medium text-encre">
-              {summary ? summary.balance : <BoneLine width="w-8" className="justify-end" />}
+            <dd data-restantes className="text-right text-sm font-medium text-encre">
+              {data === null ? (
+                <BoneLine width="w-8" className="justify-end" />
+              ) : restantes === "illisible" ? (
+                // Lecture impossible : on ne remplace pas par un zéro.
+                "—"
+              ) : restantes === null ? (
+                SOLDE_ILLIMITE
+              ) : (
+                negotiations(restantes)
+              )}
             </dd>
           </div>
           {summary?.accessEndsAt ? (

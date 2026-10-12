@@ -134,10 +134,17 @@ describe("/compte — solde, accès offert et gratuité partent ensemble", () =>
     const html = renderToStaticMarkup(await AccountPage());
 
     expect(html).not.toContain("Analyse gratuite");
-    // Compte payant : une seule vague, et surtout AUCUN repli sur les analyses
-    // déjà faites — il ne sert qu'à la ligne de gratuité, qui ne s'affiche pas.
-    expect(db.waves).toBe(1);
+    // Mission #182 — DEUX vagues pour un abonnement, et une seule raison : le
+    // quota d'un Pro n'est stocké nulle part, il EST le nombre d'analyses de
+    // la période. On ne peut pas le lire avant de savoir que le compte est Pro
+    // et quelle est sa période, et les deux viennent de credits. Cette vague
+    // achète un chiffre qui était FAUX avant (la ligne affichait la réserve
+    // achetée, donc 0 pour un abonné avec 30 négociations devant lui).
+    expect(db.waves).toBe(2);
+    // Et toujours AUCUN repli sur les deals : il ne sert qu'à la ligne de
+    // gratuité, qui ne s'affiche pas pour un compte payant.
     expect(db.calls).not.toContain("service:deals");
+    expect(db.calls).toContain("service:analyses");
   });
 
   it("sans session : redirection, et aucune lecture", async () => {

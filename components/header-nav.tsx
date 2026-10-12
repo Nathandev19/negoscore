@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Logo } from "@/components/brand/logo";
 import { NavPending } from "@/components/nav-pending";
+import { SoldeEntete } from "@/components/solde-negociations";
 import { WITHOUT_JS } from "@/lib/no-js";
 import { cn } from "@/lib/utils";
 
@@ -157,6 +158,11 @@ export function HeaderNav({
         </nav>
 
         <div className="hidden h-8 items-center gap-4 text-small lg:flex">
+          {/* Mission #182 — le solde, à côté de « Mon compte ». Il n'affirme
+              rien avant d'être lu : le composant ne rend rien tant qu'il ne
+              sait pas, donc aucun clignotement et aucune largeur réservée
+              pour un nombre qui pourrait ne jamais venir. */}
+          <SoldeEntete />
           {unknown ? (
             // Place réservée, invisible et inerte : rien n'est affirmé avant de
             // savoir. Sans JavaScript (mission #073), l'état ne sera jamais
@@ -216,6 +222,7 @@ export function HeaderNav({
             className={cn("absolute inset-x-0 top-14 px-4 pt-2 pb-4 sm:px-6", TONE[tone].panel)}
           >
             <nav aria-label="Navigation mobile" className="mx-auto flex max-w-6xl flex-col">
+              <SoldeEntete className="flex min-h-11 items-center border-b border-filet" />
               {[...main, ...(unknown ? [] : [account])].map((item) => (
                 <Link
                   key={item.href}

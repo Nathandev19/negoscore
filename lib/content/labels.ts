@@ -64,3 +64,84 @@ export function analysesCount(total: number): string {
 export function analysesCountTruncated(total: number, shown: number): string {
   return `${analysesCount(total)} Les ${shown} plus récentes sont listées.`;
 }
+
+// ══════════════ LE SOLDE DE NÉGOCIATIONS, ET SON TON ══════════════════════
+//
+// Mission #182 — ce qu'il RESTE, dit là où la personne décide de dépenser.
+//
+// LE MOT. C'est « négociation », pas « analyse » ni « crédit » : la mission
+// #093 a tranché que l'unité vendue — celle qui est réellement décomptée — est
+// la négociation, et c'est elle que ce solde compte. « Crédit » reste le mot
+// de la base et du code. Le compteur de la #181 sur /historique, lui, compte
+// des ANALYSES FAITES : deux nombres, deux mots, deux écrans.
+//
+// « 3 négociations », « 1 négociation », « 0 négociation » : en français, zéro
+// prend le singulier.
+export function negotiations(count: number): string {
+  return `${count} négociation${count > 1 ? "s" : ""}`;
+}
+
+// LE SEUIL, ICI ET PAS DANS UN COMPOSANT. À une négociation près de la fin, le
+// ton monte une fois. Pas plus bas : chez nous tout dépend de la PREMIÈRE
+// analyse d'une personne, et quelqu'un qui en a une devant lui n'a aucune
+// raison de rationner.
+export const SOLDE_SEUIL_BAS = 1;
+
+export type SoldeTon = "discret" | "bas" | "zero";
+
+// Trois états. null (aucun plafond) est discret : il n'y a rien à ménager.
+//
+// `intact` : rien n'a encore été dépensé sur ce stock. Il reste discret quel
+// que soit son nombre — une visiteuse qui arrive a UNE négociation, soit
+// exactement le seuil bas, et lui dire « c'est ta dernière » avant qu'elle ait
+// commencé est précisément le compteur criard que la mission interdit. Relevé
+// à l'écran, pas déduit.
+export function soldeTon(restantes: number | null, intact = false): SoldeTon {
+  if (restantes === null) return "discret";
+  if (restantes <= 0) return "zero";
+  if (intact) return "discret";
+  return restantes <= SOLDE_SEUIL_BAS ? "bas" : "discret";
+}
+
+export const SOLDE_ILLIMITE = "Négociations illimitées";
+
+const JOUR = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
+
+// LA PHRASE. Trois tons, et aucun compte à rebours.
+//
+//   discret   un nombre et un mot. On doit pouvoir l'ignorer.
+//   bas       le ton monte UNE fois, en langage clair : ce qui se passe, pas
+//             une urgence fabriquée. Ni « vite », ni « dernière chance ».
+//   zéro      ce qui se passe ENSUITE. La date si le quota se recharge, sinon
+//             par où en obtenir d'autres. Jamais un « 0 » sec.
+export function soldeTexte(restantes: number | null, rechargeLe: Date | null, intact = false): string {
+  if (restantes === null) return SOLDE_ILLIMITE;
+  if (restantes > 0 && intact) {
+    // Un stock intact s'annonce comme ce qu'il est : une offre, pas un reste.
+    return `${negotiations(restantes)} offerte${restantes > 1 ? "s" : ""}, pour commencer`;
+  }
+  if (restantes <= 0) {
+    return rechargeLe
+      ? `Plus de négociation pour cette période. Ton quota se recharge le ${JOUR.format(rechargeLe)}.`
+      : "Plus de négociation disponible. Les tarifs disent comment en avoir d'autres.";
+  }
+  if (restantes <= SOLDE_SEUIL_BAS) {
+    return rechargeLe
+      ? `${negotiations(restantes)} avant le ${JOUR.format(rechargeLe)}, où ton quota se recharge.`
+      : `${negotiations(restantes)}, c'est ta dernière. Après, les tarifs disent comment continuer.`;
+  }
+  return `${negotiations(restantes)} restantes`;
+}
+
+// Version courte, pour l'en-tête : la place y est comptée, et un en-tête n'est
+// pas l'endroit d'une phrase. Le ton, lui, est le même — c'est la même
+// fonction qui le décide.
+export function soldeBadge(restantes: number | null, intact = false): string {
+  if (restantes === null) return SOLDE_ILLIMITE;
+  if (restantes <= 0) return "Plus de négociation";
+  if (intact) return `${negotiations(restantes)} offerte${restantes > 1 ? "s" : ""}`;
+  return `${negotiations(restantes)} restante${restantes > 1 ? "s" : ""}`;
+}
+
+// Où aller quand il n'en reste plus. Un seul endroit l'écrit.
+export const SOLDE_LIEN = { href: "/tarifs", label: "Voir les tarifs" } as const;

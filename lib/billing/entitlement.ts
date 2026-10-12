@@ -6,7 +6,7 @@ import { NO_FREE_LEFT_MESSAGE } from "@/lib/billing/right-hint";
 import { hashIp } from "@/lib/security/request";
 import { hitUsageGuard, releaseUsageGuard } from "@/lib/security/usage-guard";
 import { adjustInteger, countRows, isMissingColumn, selectRows } from "@/lib/supabase/server";
-import { activeAdminGrant, grantPeriod } from "@/lib/billing/access";
+import { activeAdminGrant, grantPeriod, type AdminGrant } from "@/lib/billing/access";
 
 // Droit d'analyser, décidé uniquement côté serveur.
 //
@@ -256,4 +256,131 @@ export async function analysisRightStatus(
 ): Promise<{ allowed: true } | Omit<Denial, "allowed"> & { allowed: false }> {
   const decision = await decideRight(user, anonToken);
   return decision.allowed ? { allowed: true } : decision;
+}
+
+// ══════════════════════ COMBIEN IL EN RESTE ════════════════════════════════
+//
+// Mission #182 — un seul endroit répond, et c'est celui-ci.
+//
+// CE QUI N'ALLAIT PAS. Trois magasins différents portent le quota, selon la
+// formule : le compteur durable free_usage pour la gratuité, credits.balance
+// pour une réserve achetée, et le NOMBRE D'ANALYSES DE LA PÉRIODE pour un
+// abonnement (analysesInPeriod, plus haut) — un Pro n'a pas de compteur
+// stocké, son quota EST ce comptage. Et deux écrans prétendaient déjà dire ce
+// qu'il reste sans se parler : /api/droits, qui applique la vraie règle, et
+// « Négociations restantes » sur /compte, qui affichait credits.balance brut.
+// Pour un abonné Pro avec 30 analyses devant lui, cette ligne affichait 0.
+//
+// La fonction ci-dessous ne recompte RIEN de son côté : elle appelle les mêmes
+// lectures que decideRight, dans le même ordre de priorité. Et un test de
+// concordance refuse qu'elle en diverge — restantes === 0 doit valoir
+// exactement « le droit est refusé ».
+export type AnalysisBalance = {
+  // null : AUCUN PLAFOND. Aucun palier n'en produit aujourd'hui ; le mot
+  // existe pour que le jour où l'un apparaît, l'affichage dise « illimité »
+  // au lieu d'un nombre inventé ou d'un tiret.
+  restantes: number | null;
+  // Date à laquelle le quota se recharge, quand il se recharge. null : il ne
+  // se recharge pas (gratuité, réserve achetée), et l'écran dit alors par où
+  // en obtenir d'autres.
+  rechargeLe: Date | null;
+  source: "gratuit" | "pack" | "pro" | "pro_offert";
+  // Mission #182 — RIEN N'A ENCORE ÉTÉ DÉPENSÉ sur ce stock.
+  //
+  // Mesuré à l'écran : une visiteuse qui arrive a une négociation, soit
+  // exactement le seuil bas — elle lisait « c'est ta dernière » avant d'avoir
+  // commencé. Un stock intact n'est pas un stock bas, et chez nous tout
+  // dépend de cette première analyse.
+  //
+  // Renseigné pour la gratuité seulement : son stock est une constante
+  // (FREE_ANALYSES), on sait donc le comparer. Une réserve achetée
+  // s'additionne au fil des achats et son stock d'origine n'est stocké nulle
+  // part : à une négociation de la fin, elle est bel et bien basse.
+  intact: boolean;
+};
+
+// La gratuité restante, par le compteur durable. Table absente (migration 015
+// pas appliquée) : on retombe sur la règle du moteur, pas sur une estimation.
+async function freeRemaining(subject: FreeSubject): Promise<number> {
+  const used = await freeUsed(subject);
+  if (used !== "missing") return Math.max(0, FREE_ANALYSES - used);
+  return (await freeUsedFromCounter(subject, used)) ? 0 : FREE_ANALYSES;
+}
+
+// La façade : pour les appelants qui n'ont encore rien lu (la route
+// /api/solde, et un navigateur sans compte).
+export async function analysisBalance(user: SessionUser | null, anonToken: string | null): Promise<AnalysisBalance> {
+  // Sans compte : la gratuité de CE navigateur. Sans jeton, aucune analyse n'a
+  // encore été lancée ici — la gratuité est entière.
+  if (!user) {
+    const restantes = anonToken ? await freeRemaining({ kind: "anon", token: anonToken }) : FREE_ANALYSES;
+    return { restantes, rechargeLe: null, source: "gratuit", intact: restantes >= FREE_ANALYSES };
+  }
+  const [[credits], adminGrant, freeCounter] = await Promise.all([
+    selectRows<PlanState>("credits", `select=plan,balance,period_end&user_id=eq.${user.id}&limit=1`),
+    activeAdminGrant(user.id),
+    accountFreeUsage(user.id).catch(() => "missing" as const),
+  ]);
+  return analysisBalanceFrom(user, credits ?? null, adminGrant, freeCounter);
+}
+
+// La règle, à partir de ce qui est DÉJÀ lu. Seul le quota d'un abonnement
+// demande encore une lecture : il n'existe nulle part ailleurs que dans le
+// nombre d'analyses de la période (analysesInPeriod, plus haut).
+export async function analysisBalanceFrom(
+  user: SessionUser,
+  credits: PlanState | null,
+  adminGrant: AdminGrant | null,
+  freeCounter: number | "missing",
+): Promise<AnalysisBalance> {
+  const balance = credits?.balance ?? 0;
+
+  // Abonnement en cours. Le quota du mois ET la réserve achetée s'additionnent,
+  // parce que le moteur les additionne : quota épuisé, les crédits prennent le
+  // relais (decideRight, plus haut). Le nombre affiché est donc bien « ce que
+  // je peux lancer maintenant », et la date de recharge ne porte que sur le
+  // quota — c'est ce que la phrase dit.
+  if (displayedPlan(credits) === "pro") {
+    const periodEnd = periodEndsAt(credits) as Date;
+    const periodStart = new Date(periodEnd);
+    periodStart.setMonth(periodStart.getMonth() - 1);
+    const used = await analysesInPeriod(user.id, periodStart, periodEnd);
+    return {
+      restantes: Math.max(0, PRO_ANALYSES_PER_PERIOD - used) + balance,
+      rechargeLe: periodEnd,
+      source: "pro",
+      intact: false,
+    };
+  }
+
+  // Accès Pro offert : même droit, mais la fenêtre est glissante (access.ts).
+  // Il n'y a de date de recharge que si l'accès a une fin déclarée.
+  if (adminGrant) {
+    const { start, end } = grantPeriod(adminGrant);
+    const used = await analysesInPeriod(user.id, start, end);
+    return {
+      restantes: Math.max(0, PRO_ANALYSES_PER_PERIOD - used) + balance,
+      rechargeLe: adminGrant.expires_at ? new Date(adminGrant.expires_at) : null,
+      source: "pro_offert",
+      intact: false,
+    };
+  }
+
+  if (balance > 0) return { restantes: balance, rechargeLe: null, source: "pack", intact: false };
+
+  // Compte qui a DÉJÀ payé et n'a plus rien : il ne repasse pas par la
+  // gratuité. La même règle que decideRight, écrite ici pour la même raison —
+  // sinon l'écran annoncerait une analyse que le serveur refuserait.
+  if (credits?.plan === "pro" || credits?.plan === "pack") {
+    return { restantes: 0, rechargeLe: null, source: credits.plan === "pro" ? "pro" : "pack", intact: false };
+  }
+
+  const subject = { kind: "user", id: user.id } as const;
+  const restantes =
+    freeCounter !== "missing"
+      ? Math.max(0, FREE_ANALYSES - freeCounter)
+      : (await freeUsedFromCounter(subject, freeCounter))
+        ? 0
+        : FREE_ANALYSES;
+  return { restantes, rechargeLe: null, source: "gratuit", intact: restantes >= FREE_ANALYSES };
 }

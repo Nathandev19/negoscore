@@ -13,6 +13,7 @@ import { ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
 import { currentAttribution } from "@/components/analytics/first-party-view";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
+import { SoldeLigne } from "@/components/solde-negociations";
 import { clearDraft, readDraft, saveDraft, subscribeDraft } from "@/lib/draft";
 import { clearPendingKey, pendingKey } from "@/lib/analysis/pending-key";
 import { nextResume, RESUME_TICK_MS, revealDelay, type ServerAttempt } from "@/lib/analysis/resume";
@@ -395,7 +396,11 @@ export function DealInput({ note }: { note?: string } = {}) {
         void analyse(mode);
       }}
     >
-      {right.blocked ? <NoRightNotice message={right.message} offerSignIn={right.offerSignIn} /> : null}
+      {/* Mission #182 — ce qu'il reste, au-dessus du champ, là où la
+          personne décide de dépenser. Quand le droit est refusé, le refus dit
+          déjà tout : afficher en plus « plus de négociation » répéterait le
+          même fait deux fois de suite. */}
+      {right.blocked ? <NoRightNotice message={right.message} offerSignIn={right.offerSignIn} /> : <SoldeLigne />}
       {PAUSED ? (
         <p role="status" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
           {ANALYSIS_PAUSED_MESSAGE}
