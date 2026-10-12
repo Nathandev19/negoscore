@@ -552,7 +552,7 @@ describe("A — un seul endroit dit ce qu'il reste", () => {
             canCancel: false,
             accessSource: "subscription",
           },
-          restantes,
+          solde: restantes === "illisible" ? "illisible" : { restantes, rechargeLe: null, intact: false },
         }}
       />,
     );

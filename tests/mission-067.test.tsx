@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AccountView } from "@/components/account/account-view";
 import { ReadyMessage, CounterOffer } from "@/components/result/unlocked-blocks";
 import { accountSummary } from "@/lib/account/summary";
+import { SOLDE_EPUISE, negociationsCount, soldeBadge, soldeTexte } from "@/lib/content/labels";
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { nextFromEmailLink } from "@/lib/auth/sign-in";
 import { baseExtraction } from "@/lib/fixtures/preview-states";
@@ -124,8 +125,16 @@ describe("C — plus de « débloquée » au-dessus d'une page introuvable", () 
 // laquelle la ligne peut partir.
 describe("D — /compte dit toujours où en est la gratuité, par le solde", () => {
   const free = accountSummary({ plan: "free", balance: 0, period_end: null });
-  const vue = (summary: ReturnType<typeof accountSummary>, restantes: number | null | "illisible") =>
-    text(renderToStaticMarkup(<AccountView data={{ email: "n@e.test", summary, restantes }} />));
+  // Mission #184 — la vue reçoit le solde entier : le zéro a besoin de la
+  // date de recharge pour dire ce qui se passe ensuite.
+  const vue = (summary: ReturnType<typeof accountSummary>, restantes: number | null | "illisible", rechargeLe: Date | null = null) =>
+    text(
+      renderToStaticMarkup(
+        <AccountView
+          data={{ email: "n@e.test", summary, solde: restantes === "illisible" ? "illisible" : { restantes, rechargeLe, intact: false } }}
+        />,
+      ),
+    );
 
   it("la ligne de la #067 a bien disparu de l'écran", () => {
     for (const restantes of [0, 1] as const) {
@@ -138,12 +147,61 @@ describe("D — /compte dit toujours où en est la gratuité, par le solde", () 
     expect(vue(free, 1)).toContain("1 négociation");
   });
 
-  it("gratuité déjà prise, et aucune réserve : le solde le dit aussi", () => {
+  it("gratuité déjà prise, et aucune réserve : le solde le dit, SANS zéro sec", () => {
     // L'état que la ligne retirée couvrait. Il reste lisible : 0 et 1 ne
     // s'affichent pas pareil.
+    //
+    // Mission #184 — et il ne s'affiche plus en nombre. La règle de la #182
+    // vaut sur toute surface de solde : zéro dit ce qui se passe ENSUITE.
     const zero = vue(free, 0);
-    expect(zero).toContain("0 négociation");
+    expect(zero).not.toContain("0 négociation");
     expect(zero).not.toContain("1 négociation");
+    expect(zero).toContain("Plus de négociation");
+    // Et la suite : par où en obtenir d'autres, puisque rien ne se recharge.
+    expect(zero).toContain("Les tarifs disent comment en avoir d'autres.");
+  });
+
+  it("zéro avec un quota qui se recharge : la phrase dit QUAND", () => {
+    const pro = accountSummary({ plan: "pro", balance: 0, period_end: new Date("2026-11-03T00:00:00Z").toISOString() });
+    const zero = vue(pro, 0, new Date("2026-11-03T00:00:00Z"));
+    expect(zero).toContain("Plus de négociation");
+    expect(zero).toContain("3 novembre");
+    expect(zero).not.toContain("0 négociation");
+  });
+
+  it("la phrase n'apparaît QUE quand il ne reste rien : un solde confortable reste muet", () => {
+    for (const restantes of [1, 3, 28] as const) {
+      const html = vue(free, restantes);
+      expect(html, String(restantes)).not.toContain("Plus de négociation");
+      expect(html, String(restantes)).not.toContain("Les tarifs disent");
+    }
+  });
+
+  it("la phrase et la valeur courte viennent des libellés de la #182, pas d'un texte neuf", () => {
+    // Aucun libellé réécrit : soldeTexte et soldeBadge existaient déjà.
+    const source = read("components/account/account-view.tsx");
+    expect(source).toContain("soldeTexte(");
+    expect(source).toContain("soldeTon(");
+    // Et la phrase est RIGOUREUSEMENT celle de l'en-tête et de l'écran de saisie.
+    expect(vue(free, 0)).toContain(soldeTexte(0, null));
+    const quand = new Date("2026-11-03T00:00:00Z");
+    expect(vue(free, 0, quand)).toContain(soldeTexte(0, quand));
+  });
+
+  it("aucun texte n'est tronqué : la phrase est en pleine largeur, sous la liste", () => {
+    const html = renderToStaticMarkup(
+      <AccountView data={{ email: "n@e.test", summary: free, solde: { restantes: 0, rechargeLe: null, intact: false } }} />,
+    );
+    // La phrase n'est pas dans la colonne des valeurs (<dd>), qui est large de
+    // quelques caractères : elle est après la liste.
+    const finDeListe = html.indexOf("</dl>");
+    expect(finDeListe).toBeGreaterThan(0);
+    expect(html.indexOf("data-solde-suite")).toBeGreaterThan(finDeListe);
+    // Et la case de valeur garde une valeur courte — la MÊME que celle de
+    // l'en-tête, pas une copie du texte : SOLDE_EPUISE est lu par les deux.
+    expect(html).toContain(`data-restantes="true" class="text-right text-sm font-medium text-encre">${SOLDE_EPUISE}<`);
+    expect(soldeBadge(0)).toBe(SOLDE_EPUISE);
+    expect(read("components/account/account-view.tsx")).not.toContain('"Plus de négociation"');
   });
 
   it("LE CAS CROISÉ — gratuité prise MAIS une réserve achetée : le nombre est celui de la réserve", () => {
@@ -175,6 +233,32 @@ describe("D — /compte dit toujours où en est la gratuité, par le solde", () 
   it("lecture impossible : un tiret, et toujours pas de zéro inventé", () => {
     expect(vue(free, "illisible")).toContain("—");
     expect(vue(free, "illisible")).not.toContain("0 négociation");
+    // Ni la phrase de zéro : on ne sait pas qu'il n'en reste plus.
+    expect(vue(free, "illisible")).not.toContain("Plus de négociation");
+  });
+
+  it("la page transmet le solde ENTIER, date de recharge comprise", () => {
+    // Relevé par la batterie : la page pouvait passer { ...solde,
+    // rechargeLe: null } sans qu'aucun test tombe, et la phrase de zéro
+    // perdait son « ton quota se recharge le … » en silence.
+    const source = read("app/compte/page.tsx");
+    expect(source).toContain('solde: solde ?? "illisible"');
+    // Rien ne reconstruit l'objet en route : pas de champ réécrit.
+    expect(source).not.toMatch(/solde:\s*solde\s*\?\s*\{/);
+  });
+
+  it("le libellé du solde épuisé ne se confond pas avec celui d'un historique vide", () => {
+    // Deux faits différents, deux phrases différentes : « plus aucune
+    // négociation DISPONIBLE » n'est pas « aucune négociation FAITE »
+    // (le compteur de la #181 sur /historique). Si les deux se mettaient à
+    // commencer par « Aucune négociation », les deux écrans deviendraient
+    // illisibles ensemble.
+    expect(SOLDE_EPUISE).toBe("Plus de négociation");
+    expect(SOLDE_EPUISE).not.toMatch(/^Aucune/);
+    expect(negociationsCount(0)).toMatch(/^Aucune/);
+    // Et jamais un chiffre nu, sur aucune des deux surfaces.
+    expect(SOLDE_EPUISE).not.toMatch(/\d/);
+    expect(soldeTexte(0, null)).not.toMatch(/^0\b/);
   });
 
   it("le compteur de gratuité est toujours lu — il entre dans le solde", () => {

@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { BoneLine, LoadingAnnouncement } from "@/components/ui/skeleton";
 import type { AccountSummary } from "@/lib/account/summary";
-import { SOLDE_ILLIMITE, negotiations } from "@/lib/content/labels";
+import { SOLDE_EPUISE, SOLDE_ILLIMITE, negotiations, soldeTexte, soldeTon } from "@/lib/content/labels";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
@@ -28,18 +28,28 @@ export function AccountView({
     email: string | null;
     summary: AccountSummary;
     // Mission #182 — ce qu'il reste VRAIMENT (lib/billing/entitlement.ts), et
-    // plus credits.balance. Trois valeurs distinctes, et il ne faut pas les
-    // confondre : un nombre, null pour AUCUN PLAFOND, et « illisible » quand
-    // la lecture a échoué. Un plafond absent se dit « illimité » ; une lecture
-    // ratée ne se dit pas en nombre.
-    restantes?: number | null | "illisible";
+    // plus credits.balance. Dans « restantes », trois valeurs distinctes qu'il
+    // ne faut pas confondre : un nombre, null pour AUCUN PLAFOND, et
+    // « illisible » quand la lecture a échoué. Un plafond absent se dit
+    // « illimité » ; une lecture ratée ne se dit pas en nombre.
+    //
+    // Mission #184 — la DATE DE RECHARGE entre avec le solde : sans elle, le
+    // zéro ne peut pas dire ce qui se passe ensuite.
+    solde?: { restantes: number | null; rechargeLe: Date | null; intact: boolean } | "illisible";
   } | null;
 }) {
   const summary = data?.summary ?? null;
-  // ?? ne convient PAS ici : null est une valeur LÉGITIME (aucun plafond),
-  // et un ?? l'écraserait en « illisible ». Seul le champ ABSENT veut dire
-  // qu'on n'a rien lu.
-  const restantes = data === null || data.restantes === undefined ? "illisible" : data.restantes;
+  // Le champ ABSENT veut dire qu'on n'a rien lu. À l'intérieur, restantes vaut
+  // null pour « aucun plafond », et c'est une valeur légitime.
+  const solde = data === null || data.solde === undefined ? "illisible" : data.solde;
+  const restantes = solde === "illisible" ? "illisible" : solde.restantes;
+  // La phrase entière, affichée sous la liste quand le ton n'est plus discret
+  // — c'est-à-dire, sur cet écran, quand il ne reste rien. Elle vient du même
+  // endroit que celle de l'en-tête et de l'écran de saisie.
+  const phrase =
+    solde === "illisible" || soldeTon(solde.restantes, solde.intact) === "discret"
+      ? null
+      : soldeTexte(solde.restantes, solde.rechargeLe, solde.intact);
   return (
     <>
       <SiteHeader />
@@ -70,7 +80,13 @@ export function AccountView({
                 "—"
               ) : restantes === null ? (
                 SOLDE_ILLIMITE
+              ) : restantes <= 0 ? (
+                // Mission #184 — jamais « 0 négociation ». La valeur courte de
+                // la #182, et la phrase qui dit la suite est sous la liste.
+                SOLDE_EPUISE
               ) : (
+                // « 1 négociation », pas « 1 négociation restante » : le
+                // libellé de gauche le dit déjà.
                 negotiations(restantes)
               )}
             </dd>
@@ -87,6 +103,16 @@ export function AccountView({
             </div>
           ) : null}
         </dl>
+
+        {/* Mission #184 — ce qui se passe ENSUITE : la date de recharge si le
+            quota se recharge, sinon par où en obtenir d'autres. En pleine
+            largeur, parce qu'une phrase ne tient pas dans la colonne des
+            valeurs. Le lien vers les tarifs est déjà sous ce bloc. */}
+        {phrase ? (
+          <p data-solde-suite role="status" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
+            {phrase}
+          </p>
+        ) : null}
 
         <div className="flex flex-col gap-2">
           <Button asChild size="lg" className="h-12 text-base">

@@ -51,5 +51,15 @@ export default async function AccountPage() {
   // Mission #183 — le compteur de gratuité n'est plus interprété ici : il
   // entre dans le solde (analysisBalanceFrom, au-dessus), et c'est le solde
   // qui dit s'il reste une négociation. Une lecture, un nombre, une ligne.
-  return <AccountView data={{ email: user.email, summary, restantes: solde ? solde.restantes : "illisible" }} />;
+  return (
+    <AccountView
+      data={{
+        email: user.email,
+        summary,
+        // Mission #184 — le solde ENTIER, date de recharge comprise : le zéro
+        // doit pouvoir dire quand il se recharge.
+        solde: solde ?? "illisible",
+      }}
+    />
+  );
 }

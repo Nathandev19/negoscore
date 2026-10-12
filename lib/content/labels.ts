@@ -109,6 +109,11 @@ export function soldeTon(restantes: number | null, intact = false): SoldeTon {
 
 export const SOLDE_ILLIMITE = "Négociations illimitées";
 
+// Mission #184 — la valeur COURTE d'un solde épuisé, pour les cases où une
+// phrase ne tient pas : l'en-tête, et la colonne des valeurs de /compte. La
+// phrase qui dit la suite, elle, est dans soldeTexte.
+export const SOLDE_EPUISE = "Plus de négociation";
+
 const JOUR = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
 
 // LA PHRASE. Trois tons, et aucun compte à rebours.
@@ -142,7 +147,7 @@ export function soldeTexte(restantes: number | null, rechargeLe: Date | null, in
 // fonction qui le décide.
 export function soldeBadge(restantes: number | null, intact = false): string {
   if (restantes === null) return SOLDE_ILLIMITE;
-  if (restantes <= 0) return "Plus de négociation";
+  if (restantes <= 0) return SOLDE_EPUISE;
   if (intact) return `${negotiations(restantes)} offerte${restantes > 1 ? "s" : ""}`;
   return `${negotiations(restantes)} restante${restantes > 1 ? "s" : ""}`;
 }
