@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Logo } from "@/components/brand/logo";
+import { MobileAnalyzeBar } from "@/components/mobile-analyze-bar";
 import { NavPending } from "@/components/nav-pending";
 import { SoldeEntete } from "@/components/solde-negociations";
 import { WITHOUT_JS } from "@/lib/no-js";
@@ -19,7 +20,8 @@ export const OWNER_NAV_ITEMS: NavItem[] = [
   { href: "/dev/retours", label: "Retours" },
 ];
 
-export function navItems(signedIn: boolean, owner = false): { main: NavItem[]; account: NavItem; cta: NavItem } {
+export function navItems(signedIn: boolean, owner = false): { main: NavItem[]; menu: NavItem[]; account: NavItem; cta: NavItem } {
+  const account = signedIn ? { href: "/compte", label: "Mon compte" } : { href: "/connexion", label: "Se connecter" };
   return {
     main: [
       { href: "/#methode", label: "Comment ça marche" },
@@ -27,7 +29,14 @@ export function navItems(signedIn: boolean, owner = false): { main: NavItem[]; a
       ...(signedIn ? [{ href: "/historique", label: "Mes négociations" }] : []),
       ...(signedIn && owner ? OWNER_NAV_ITEMS : []),
     ],
-    account: signedIn ? { href: "/compte", label: "Mon compte" } : { href: "/connexion", label: "Se connecter" },
+    menu: [
+      { href: "/#methode", label: "Comment ça marche" },
+      { href: "/tarifs", label: "Tarifs" },
+      ...(signedIn && owner ? [{ href: "/dev/retours", label: "Retours" }] : []),
+      account,
+      ...(signedIn && owner ? [{ href: "/admin", label: "Admin" }] : []),
+    ],
+    account,
     cta: { href: "/analyse", label: "Analyser un deal" },
   };
 }
@@ -78,10 +87,11 @@ export function HeaderNav({
   const LINK = TONE[tone].link;
   const CTA = TONE[tone].cta;
   const unknown = signedIn === null;
-  const { main, account, cta } = navItems(signedIn === true, owner);
+  const { main, menu, account, cta } = navItems(signedIn === true, owner);
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const bottomToggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const current = (href: string) => (pathname !== null && href === pathname ? ("page" as const) : undefined);
 
@@ -90,7 +100,7 @@ export function HeaderNav({
     panelRef.current?.querySelector<HTMLElement>("a, button")?.focus();
     const onPointer = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!panelRef.current?.contains(target) && !toggleRef.current?.contains(target)) setOpen(false);
+      if (!panelRef.current?.contains(target) && !toggleRef.current?.contains(target) && !bottomToggleRef.current?.contains(target)) setOpen(false);
     };
     document.addEventListener("pointerdown", onPointer);
     return () => document.removeEventListener("pointerdown", onPointer);
@@ -115,7 +125,8 @@ export function HeaderNav({
 
   function close() {
     setOpen(false);
-    toggleRef.current?.focus();
+    const bottom = signedIn === true && window.matchMedia("(max-width: 767px)").matches;
+    (bottom ? bottomToggleRef.current : toggleRef.current)?.focus();
   }
 
   // Échap ferme et rend le focus au bouton. Tab n'est plus retenu (mission
@@ -142,6 +153,7 @@ export function HeaderNav({
   }
 
   return (
+    <>
     <header className={cn("sticky top-0 z-40 h-14", TONE[tone].header)}>
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" aria-label="Accueil">
@@ -204,7 +216,7 @@ export function HeaderNav({
             aria-expanded={open}
             aria-controls={panelId}
             onClick={toggle}
-            className={cn("inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-control border-2 px-3 text-sm font-semibold", TONE[tone].toggle)}
+            className={cn("inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-control border-2 px-3 text-sm font-semibold", signedIn === true && "max-md:hidden", TONE[tone].toggle)}
           >
             {open ? "Fermer" : "Menu"}
             <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -219,11 +231,10 @@ export function HeaderNav({
             ref={panelRef}
             id={panelId}
             hidden={!open}
-            className={cn("absolute inset-x-0 top-14 px-4 pt-2 pb-4 sm:px-6", TONE[tone].panel)}
+            className={cn("absolute inset-x-0 top-14 px-4 pt-2 pb-4 sm:px-6", signedIn === true && "max-md:fixed max-md:top-auto max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:border-t-2", TONE[tone].panel)}
           >
             <nav aria-label="Navigation mobile" className="mx-auto flex max-w-6xl flex-col">
-              <SoldeEntete className="flex min-h-11 items-center border-b border-filet" />
-              {[...main, ...(unknown ? [] : [account])].map((item) => (
+              {menu.filter((item) => !unknown || item.href !== account.href).map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -235,19 +246,12 @@ export function HeaderNav({
                   <NavPending />
                 </Link>
               ))}
-              <Link
-                href={cta.href}
-                aria-current={current(cta.href)}
-                onClick={() => onItemClick(cta.href)}
-                className={cn(CTA, "relative flex min-h-11 items-center text-base")}
-              >
-                {cta.label}
-                <NavPending />
-              </Link>
             </nav>
           </div>
         </div>
       </div>
     </header>
+    <MobileAnalyzeBar signedIn={signedIn === true} menuId={panelId} menuOpen={open} onMenuToggle={toggle} menuButtonRef={bottomToggleRef} />
+    </>
   );
 }

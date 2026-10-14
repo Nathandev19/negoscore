@@ -49,7 +49,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => {
 
 const { analysisBalance, analysisRightStatus } = await import("@/lib/billing/entitlement");
 const { FREE_ANALYSES, PRO_ANALYSES_PER_PERIOD } = await import("@/lib/billing/plans");
-const { SOLDE_ILLIMITE, SOLDE_SEUIL_BAS, soldeBadge, soldeTexte, soldeTon } = await import("@/lib/content/labels");
+const { SOLDE_ILLIMITE, SOLDE_SEUIL_BAS, soldeBadge, soldePastille, soldeTexte, soldeTon } = await import("@/lib/content/labels");
 const { AccountView } = await import("@/components/account/account-view");
 
 const USER = { id: "u-createur", email: "camille@exemple.test" };
@@ -314,10 +314,12 @@ describe("D5 — si la lecture échoue, aucun nombre", () => {
     expect(response.headers.getSetCookie()).toEqual([]);
   });
 
-  it("le composant n'affiche rien tant qu'il ne sait pas", () => {
+  it("le composant n'invente aucun nombre tant qu'il ne sait pas", () => {
     const source = readFileSync("components/solde-negociations.tsx", "utf8");
-    // Deux retours vides, un par surface : pas de nombre de repli, pas de « 0 ».
-    expect(source.split("if (!solde) return null;")).toHaveLength(3);
+    // Le solde du champ reste absent ; la cellule mobile indique seulement
+    // que la lecture est en cours et garde une cible accessible.
+    expect(source).toContain("if (!solde && !compact) return null;");
+    expect(source).toContain("if (!solde) return <Link");
     // Et aucune valeur par défaut, ni dans le magasin ni au rendu serveur.
     expect(source).toContain("{ cle: null, valeur: null, fini: false, abonnes: new Set() }");
     expect(source).toMatch(/\(\) => null,\s*\);/);
@@ -472,6 +474,12 @@ describe("C — le ton change avec le solde, et le seuil n'est pas dans un compo
     expect(soldeTexte(1, null)).toContain("1 négociation,");
     expect(soldeTexte(2, null)).toBe("2 négociations restantes");
   });
+
+  it("la pastille montre le nombre d'abord et garde une destination à zéro", () => {
+    expect(soldePastille(3, false)).toMatchObject({ nombre: "3", libelle: "négociations restantes", href: "/compte" });
+    expect(soldePastille(0, false)).toMatchObject({ nombre: "0", libelle: "Recharger", href: "/tarifs" });
+    expect(soldePastille(null, false)).toMatchObject({ nombre: "∞", href: "/compte" });
+  });
 });
 
 // ════════════════════════ E. LE VOCABULAIRE ═══════════════════════════════
@@ -512,11 +520,11 @@ describe("E — le vocabulaire des missions #093 et #174-#178 est respecté", ()
 // ═══════════════ B. OÙ ÇA S'AFFICHE, ET OÙ ÇA NE S'AFFICHE PAS ════════════
 
 describe("B — les deux surfaces, et seulement elles", () => {
-  it("l'en-tête porte le solde, à côté du lien de compte, bureau et mobile", () => {
+  it("le solde est dans l'en-tête bureau et dans la barre basse mobile", () => {
     const nav = readFileSync("components/header-nav.tsx", "utf8");
-    expect(nav).toContain("SoldeEntete");
-    // Deux emplacements : la barre de bureau et le panneau mobile.
-    expect(nav.split("<SoldeEntete")).toHaveLength(3);
+    const barre = readFileSync("components/mobile-analyze-bar.tsx", "utf8");
+    expect(nav.split("<SoldeEntete")).toHaveLength(2);
+    expect(barre).toContain("<SoldeEntete compact");
   });
 
   it("l'écran de saisie le porte au-dessus du champ", () => {

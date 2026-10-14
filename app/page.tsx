@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { FirstPartyView } from "@/components/analytics/first-party-view";
+import { InternalViewportGate } from "@/components/internal-viewport-gate";
 import { DealInput } from "@/components/deal-input";
 import { ScoreBand } from "@/components/result/score-band";
 import { SiteFooter } from "@/components/site-footer";
@@ -36,6 +38,7 @@ export default function HomePage() {
       <JsonLd data={softwareApplicationJsonLd()} />
       {/* La FAQ affichée plus bas, balisée mot pour mot : même source (FAQ). */}
       <JsonLd data={faqJsonLd()} />
+      <Suspense fallback={null}><InternalViewportGate /></Suspense>
       <SiteHeader />
       <FirstPartyView event="landing_view" />
       <main id="contenu" className="flex-1">

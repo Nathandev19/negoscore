@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
-import { SOLDE_LIEN, soldeBadge, soldeTexte, soldeTon } from "@/lib/content/labels";
+import { SOLDE_EN_ATTENTE, SOLDE_LIEN, soldePastille, soldeTexte, soldeTon } from "@/lib/content/labels";
 import { cn } from "@/lib/utils";
 
 // Mission #182 — COMBIEN IL EN RESTE, à l'endroit où ça sert.
@@ -113,22 +113,29 @@ export function useSolde(): Solde | null {
 
 // ─── L'en-tête ─────────────────────────────────────────────────────────────
 //
-// Discret par construction : la taille du texte courant de l'en-tête, la même
-// couleur atténuée que les liens, aucune icône, aucune bordure. À zéro et au
-// seuil bas, le ton monte d'un cran — une graisse, pas une couleur d'alerte :
-// un en-tête qui crie suit la personne sur toutes les pages.
-export function SoldeEntete({ className }: { className?: string }) {
+// Pastille cliquable sur fond distinct, avec le nombre en premier. Le ton du
+// solde reste disponible pour les autres surfaces qui expliquent la recharge.
+export function SoldeEntete({ className, compact = false }: { className?: string; compact?: boolean }) {
   const solde = useSolde();
-  if (!solde) return null;
+  if (!solde && !compact) return null;
+  if (!solde) return <Link href="/compte" aria-busy="true" className={cn("flex min-h-11 min-w-11 items-center justify-center rounded-pill border border-filet bg-creme px-1 text-xs text-encre", className)}>{SOLDE_EN_ATTENTE}</Link>;
   const ton = soldeTon(solde.restantes, solde.intact);
+  const pastille = soldePastille(solde.restantes, solde.intact);
   return (
-    <span
+    <Link
+      href={pastille.href}
       data-solde-entete
       data-ton={ton}
-      className={cn("whitespace-nowrap text-small", ton === "discret" ? "font-normal opacity-70" : "font-semibold", className)}
+      aria-label={`${pastille.nombre} ${pastille.libelle}`}
+      className={cn(
+        "inline-flex min-h-11 min-w-11 items-center justify-center rounded-pill border-2 border-marque bg-creme px-2 text-marque hover:bg-filet",
+        compact ? "flex-col gap-0 px-0.5 text-[9px] leading-tight" : "gap-1.5 whitespace-nowrap text-small",
+        className,
+      )}
     >
-      {soldeBadge(solde.restantes, solde.intact)}
-    </span>
+      <strong className="font-extrabold tabular-nums">{pastille.nombre}</strong>
+      <span>{compact ? pastille.court : pastille.libelle}</span>
+    </Link>
   );
 }
 

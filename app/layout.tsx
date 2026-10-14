@@ -78,7 +78,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             il est ajouté avant l'hydratation, volontairement). */}
         <script dangerouslySetInnerHTML={{ __html: JS_FLAG_SCRIPT }} />
       </head>
-      <body className="flex min-h-full flex-col bg-creme">
+      <body className="flex min-h-full flex-col bg-creme pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
         {/* L'entité derrière le site : nom, adresse canonique, logo, compte
             public. Rien de chiffré, rien d'invérifiable (mission #051). */}
         <JsonLd data={organizationJsonLd()} />

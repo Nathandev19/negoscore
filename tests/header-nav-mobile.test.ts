@@ -15,6 +15,14 @@ function destinationApresTap(href: string, next: EventTarget | null): string | n
 }
 
 describe("navigation mobile au toucher", () => {
+  it("réserve le panneau au secondaire, et la barre connectée à l'action, l'historique et le solde", () => {
+    expect(navItems(true, true).menu.map((item) => item.label)).toEqual([
+      "Comment ça marche", "Tarifs", "Retours", "Mon compte", "Admin",
+    ]);
+    expect(navItems(false, false).menu.map((item) => item.label)).toEqual([
+      "Comment ça marche", "Tarifs", "Se connecter",
+    ]);
+  });
   it("laisse chaque lien naviguer quand WebKit produit un blur sans relatedTarget", () => {
     for (const state of [
       navItems(false, false),

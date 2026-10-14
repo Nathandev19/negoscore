@@ -231,10 +231,12 @@ describe("usage des couleurs dans le code", () => {
     expect(offenders.map(rel)).toEqual([]);
   });
 
-  it("le bleu marque en fond seulement : en-tête et bandeau de résultat, bouton principal, exemple de l'accueil", () => {
+  it("le bleu marque en fond seulement : en-tête, résultat, actions principales et exemple", () => {
     const allowed = [
       "components/ui/button.tsx",
       "components/header-nav.tsx",
+      // Mission #186 : l'action principale de la navigation basse connectée.
+      "components/mobile-analyze-bar.tsx",
       "components/result/analysis-result.tsx",
       // Piste bleu foncé de la jauge, dans le bandeau des résultats.
       "components/result/score-band.tsx",

@@ -87,6 +87,14 @@ describe("le bouton mobile d'analyse", () => {
     }
   });
 
+  it("la navigation connectée couvre les pages de compte sans jamais recouvrir le verdict", () => {
+    expect(showMobileAnalyzeBar("/compte", [], 560, [], false, true)).toBe(true);
+    expect(showMobileAnalyzeBar("/historique", [], 560, [], false, true)).toBe(true);
+    expect(showMobileAnalyzeBar("/analyse/resultat/123", [], 460, [{ top: 330, bottom: 510 }], false, true)).toBe(false);
+    expect(showMobileAnalyzeBar("/analyse/resultat/123", [], 460, [{ top: -400, bottom: 20 }], false, true)).toBe(true);
+    expect(showMobileAnalyzeBar("/compte", [], 560, [], true, true)).toBe(false);
+  });
+
   it("porte une origine interne et aucun paramètre d'acquisition", () => {
     const url = new URL(MOBILE_ANALYZE_HREF, "https://www.negoscore.fr");
     expect(url.pathname).toBe("/analyse");

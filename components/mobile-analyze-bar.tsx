@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
+import { SoldeEntete } from "@/components/solde-negociations";
 import { EXAMPLE_ORIGIN_PARAM, GUIDE_PATHS } from "@/lib/analytics/views";
 
 export const PAGES = new Set<string>(["/", "/analyse/demo", "/exemple", "/tarifs", ...GUIDE_PATHS]);
 const PAGE_CTA_SELECTOR = 'main a[href="/analyse"], main button[type="submit"], footer a[href="/analyse"]';
-const SCORE_BLOCK_SELECTOR = "main [data-score-block]";
+const SCORE_BLOCK_SELECTOR = 'main [data-score-block], main [aria-label="Verdict"]';
 // Mission #172 — l'écran d'attente, où qu'il soit dans la page.
 const RUNNING_SELECTOR = "[data-analysis-running]";
 const HEADER_HEIGHT = 56;
@@ -38,18 +39,25 @@ export function showMobileAnalyzeBar(
   // pas, et on ne propose pas d'en lancer une deuxième parce qu'on a fait
   // défiler la page.
   analysisRunning = false,
+  signedIn = false,
 ): boolean {
   if (analysisRunning) return false;
   const approach = pathname === "/analyse/demo" || pathname === "/exemple" ? CTA_APPROACH : 0;
-  return pathname !== null && PAGES.has(pathname)
+  return pathname !== null && (signedIn || PAGES.has(pathname))
     && !scoreBlocks.some((score) => score.bottom > HEADER_HEIGHT && score.top < viewportHeight)
     && !ctas.some((cta) => cta.bottom > HEADER_HEIGHT && cta.top < viewportHeight + approach);
 }
 
-export function MobileAnalyzeBar() {
+export function MobileAnalyzeBar({ signedIn, menuId, menuOpen, onMenuToggle, menuButtonRef }: {
+  signedIn: boolean;
+  menuId: string;
+  menuOpen: boolean;
+  onMenuToggle: () => void;
+  menuButtonRef: RefObject<HTMLButtonElement | null>;
+}) {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
-  const eligible = pathname !== null && PAGES.has(pathname);
+  const eligible = pathname !== null && (signedIn || PAGES.has(pathname));
 
   useEffect(() => {
     if (!eligible) return;
@@ -57,12 +65,14 @@ export function MobileAnalyzeBar() {
     const update = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const ctas = [...document.querySelectorAll<HTMLElement>(PAGE_CTA_SELECTOR)].map((element) => element.getBoundingClientRect());
+        const ctas = pathname !== null && PAGES.has(pathname)
+          ? [...document.querySelectorAll<HTMLElement>(PAGE_CTA_SELECTOR)].map((element) => element.getBoundingClientRect())
+          : [];
         const scoreBlocks = [...document.querySelectorAll<HTMLElement>(SCORE_BLOCK_SELECTOR)].map((element) => element.getBoundingClientRect());
         const running = document.querySelector(RUNNING_SELECTOR) !== null;
         setVisible(
           window.matchMedia("(max-width: 767px)").matches &&
-            showMobileAnalyzeBar(pathname, ctas, window.innerHeight, scoreBlocks, running),
+            showMobileAnalyzeBar(pathname, ctas, window.innerHeight, scoreBlocks, running, signedIn),
         );
       });
     };
@@ -78,25 +88,45 @@ export function MobileAnalyzeBar() {
       window.removeEventListener("resize", update);
       resizeObserver?.disconnect();
     };
-  }, [eligible, pathname]);
+  }, [eligible, pathname, signedIn]);
 
   if (!eligible) return null;
 
-  return (
-    <>
-      {/* La réserve est au bas du pied de page : elle ne déplace rien au-dessus
-          de la ligne de flottaison et laisse atteindre le dernier contenu. */}
-      <div aria-hidden="true" className="h-[calc(4rem+env(safe-area-inset-bottom))] md:hidden" />
-      {visible ? (
-        <div
-          data-mobile-analyze-bar
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-filet bg-creme px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden"
+  if (!visible) return null;
+  return signedIn ? (
+    <nav
+      data-mobile-bottom-nav
+      aria-label="Navigation basse"
+      className="fixed inset-x-0 bottom-[env(safe-area-inset-bottom)] z-30 h-18 border-t-2 border-encre bg-creme px-2 py-2 md:hidden"
+    >
+      <div className="mx-auto grid h-full max-w-xl grid-cols-[1.75fr_1.2fr_0.8fr_0.8fr] gap-1">
+        <Link href={MOBILE_ANALYZE_HREF} className="flex min-h-11 items-center justify-center rounded-control bg-marque px-1 text-center text-xs font-bold leading-tight text-creme">
+          Analyser un deal
+        </Link>
+        <Link href="/historique" className="flex min-h-11 items-center justify-center rounded-control border border-filet px-1 text-center text-[10px] font-semibold leading-tight text-encre">
+          Mes négociations
+        </Link>
+        <SoldeEntete compact className="h-full w-full rounded-control" />
+        <button
+          ref={menuButtonRef}
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls={menuId}
+          onClick={onMenuToggle}
+          className="min-h-11 min-w-11 rounded-control border border-filet px-1 text-xs font-semibold text-encre"
         >
-          <Button asChild size="lg" className="h-12 w-full text-base">
-            <Link href={MOBILE_ANALYZE_HREF}>Analyser un deal</Link>
-          </Button>
-        </div>
-      ) : null}
-    </>
+          Menu
+        </button>
+      </div>
+    </nav>
+  ) : (
+    <div
+      data-mobile-analyze-bar
+      className="fixed inset-x-0 bottom-[env(safe-area-inset-bottom)] z-30 border-t border-filet bg-creme px-4 py-2 md:hidden"
+    >
+      <Button asChild size="lg" className="h-12 w-full text-base">
+        <Link href={MOBILE_ANALYZE_HREF}>Analyser un deal</Link>
+      </Button>
+    </div>
   );
 }
