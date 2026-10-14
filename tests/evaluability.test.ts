@@ -177,10 +177,10 @@ describe("règle d'évaluabilité", () => {
 describe("CASE A — offre complète mesurée en production", () => {
   // Mission #050 : au niveau confirmé, l'offre paie moins de 40 % du plancher,
   // le plafond prix la ramène de 32 à 29, donc « Mauvais deal ».
-  it("reste « complete », « Deal faible » (41/100 au niveau starter, 29/100 au niveau confirmé, plafonné par le prix), confiance moyenne", () => {
+  it("reste « complete », « Deal faible » (40/100 au niveau starter, 29/100 au niveau confirmé, plafonné par le prix), confiance moyenne", () => {
     const analysis = composeAnalysis(extraction(CASE_A));
     expect(analysis.evaluability).toBe("complete");
-    expect(analysis.score).toEqual({ value: 41, band: "weak" });
+    expect(analysis.score).toEqual({ value: 40, band: "weak" });
     expect(composeAnalysis(extraction(CASE_A), { tier: "confirmed" }).score).toEqual({ value: 29, band: "bad" });
     expect(analysis.score).toEqual(computeScore(CASE_A, computeEstimate(CASE_A)));
     expect(BAND_LABEL[analysis.score!.band]).toBe("Deal faible");

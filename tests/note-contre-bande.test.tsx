@@ -11,8 +11,8 @@ import { baseExtraction, PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/
 import { BAND_LABEL, priceCapNote, QUANTITY_CAP_NOTE } from "@/lib/display";
 import { bandWithinRange, comparedAmountOf, computeScore, priceCapFor, uncappedScore } from "@/lib/rates/score";
 
-// Mission #190 : la bande garde sa priorité sur l'échelle de points. La note
-// enregistrée descend, si nécessaire, jusqu'au haut de cette bande.
+// Missions #190 et #193 : la bande garde sa priorité sur l'échelle de points.
+// Sous le plancher, le plafond de la bande faible progresse avec le rapport.
 
 // Le CODE d'un fichier, commentaires retirés : ceux-ci nomment justement ce
 // qui a été enlevé, et c'est leur travail de le dire.
@@ -52,37 +52,67 @@ function casRapporte() {
 describe("la note enregistrée ne dépasse pas le haut de sa bande", () => {
   const maximum = { bad: 29, weak: 49, fair: 69, good: 84, excellent: 100 } as const;
 
-  it("le cas rapporté garde sa bande et descend de 58 à 49", () => {
+  it("le cas rapporté garde sa bande et descend de 58 à 38", () => {
     const { deal, estimate, score } = composeAnalysis(casRapporte() as never, { tier: "starter" });
     expect([estimate.total_low, estimate.total_high]).toEqual([610, 1310]);
     expect(comparedAmountOf(deal)).toBe(400);
     expect(priceCapFor(400, 610, 1310)?.cap).toBe(59);
     expect(bandWithinRange(58, 400, 610)).toBe("weak");
-    expect(score).toEqual({ value: 49, band: "weak" });
+    expect(score).toEqual({ value: 38, band: "weak" });
   });
 
   it("balaye montants, niveaux et délais sans laisser de note au-dessus de sa bande", () => {
     for (const tier of ["starter", "confirmed", "experienced"] as const) {
       const { deal: base, estimate } = composeAnalysis(casRapporte() as never, { tier });
       const low = estimate.total_low as number;
+      const adverse = {
+        ...base,
+        usage: { ...base.usage, perpetual: true },
+        ip_transfer: "full_assignment" as const,
+        ai_training_rights: "present" as const,
+        revisions: { ...base.revisions, unlimited: true },
+        raw_footage: true,
+        exclusivity: { ...base.exclusivity, duration_months: 12 },
+      };
       const amounts = new Set([
         ...Array.from({ length: 121 }, (_, step) => Math.round((step / 100) * low)),
         ...[0.4, 0.6, 0.85, 1].flatMap((ratio) => [Math.floor(ratio * low) - 1, Math.ceil(ratio * low), Math.ceil(ratio * low) + 1]),
       ]);
       for (const amount of amounts) {
         if (amount < 0) continue;
-        for (const terms_days of [null, 30, 60, 90]) {
-          const deal = { ...base, payment: { ...base.payment, amount_eur: amount, terms_days } };
-          const score = computeScore(deal, estimate);
-          const before = Math.min(uncappedScore(deal, estimate).value, priceCapFor(amount, low, estimate.total_high)?.cap ?? Infinity);
-          const context = `${tier}, ${amount}/${low}, délai ${terms_days}, ${before} → ${score.value} ${score.band}`;
-          expect(score.band, context).toBe(bandWithinRange(before, comparedAmountOf(deal), low));
-          expect(score.value, context).toBeLessThanOrEqual(maximum[score.band]);
-          expect(score.value, context).toBeLessThanOrEqual(before);
-          if (before <= maximum[score.band]) expect(score.value, context).toBe(before);
+        for (const variant of [base, adverse]) {
+          for (const terms_days of [null, 30, 60, 90]) {
+            const deal = { ...variant, payment: { ...variant.payment, amount_eur: amount, terms_days } };
+            const score = computeScore(deal, estimate);
+            const before = Math.min(uncappedScore(deal, estimate).value, priceCapFor(amount, low, estimate.total_high)?.cap ?? Infinity);
+            const context = `${tier}, ${amount}/${low}, délai ${terms_days}, ${before} → ${score.value} ${score.band}`;
+            expect(score.band, context).toBe(bandWithinRange(before, comparedAmountOf(deal), low));
+            expect(score.value, context).toBeLessThanOrEqual(maximum[score.band]);
+            const previous = Math.min(before, maximum[score.band]);
+            expect(score.value, context).toBeLessThanOrEqual(previous);
+            if (score.band !== "weak" || amount >= low || amount < 0.4 * low) {
+              expect(score.value, context).toBe(previous);
+            }
+          }
         }
       }
     }
+  });
+
+  it("la bande faible progresse sans recul et prend au moins dix valeurs", () => {
+    const { deal: base, estimate } = composeAnalysis(casRapporte() as never, { tier: "starter" });
+    const low = estimate.total_low as number;
+    const values: number[] = [];
+    for (let amount = Math.ceil(0.4 * low); amount <= Math.floor(0.99 * low); amount++) {
+      const deal = { ...base, payment: { ...base.payment, amount_eur: amount } };
+      const score = computeScore(deal, estimate);
+      expect(score.band, `${amount}/${low}`).toBe("weak");
+      if (values.length) expect(score.value, `${amount}/${low}`).toBeGreaterThanOrEqual(values.at(-1) as number);
+      values.push(score.value);
+    }
+    expect(new Set(values).size).toBeGreaterThanOrEqual(10);
+    expect(values[0]).toBe(30);
+    expect(values.at(-1)).toBe(49);
   });
 
   it("les six états d'aperçu respectent aussi le plafond de leur bande", () => {

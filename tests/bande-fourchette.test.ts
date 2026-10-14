@@ -18,8 +18,8 @@ import { bandFor, comparedAmount, comparedAmountOf, pricePoints, RATIO_ZERO, unc
 // prix de #050 calculait 59 : il manquait la bande d'un point.
 //
 // La bande ne peut pas être meilleure que la position du montant SOUS le
-// plancher. Depuis #190, la note enregistrée descend ensuite au haut de la
-// bande : 58 calculé donne 49 enregistré dans ce cas.
+// plancher. Depuis #193, la note enregistrée descend selon le rapport :
+// 58 calculé donne 38 enregistré dans ce cas.
 //
 // CE QU'ELLE NE FAIT PAS, et pourquoi : voir le rapport de #167. La moitié
 // haute de la règle (« au-dessus du haut, c'est sur-évalué ») fait changer
@@ -62,8 +62,8 @@ describe("aucun montant sous le plancher ne porte la bande « correct »", () =>
     expect(estimate.total_low).toBe(610);
     expect(estimate.total_high).toBe(1310);
     // La bande décidée sur la note calculée reste « faible » ; la note
-    // enregistrée ne dépasse plus son maximum.
-    expect(score?.value).toBe(49);
+    // enregistrée suit le plafond progressif de cette bande.
+    expect(score?.value).toBe(38);
     expect(bandFor(58)).toBe("fair");
     // La priorité de la bande sous le plancher reste celle de #167.
     expect(score?.band).toBe("weak");

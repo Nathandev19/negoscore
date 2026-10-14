@@ -14,8 +14,9 @@ type Score = NonNullable<Analysis["score"]>;
 // prix (PRICE_CAPS ci-dessous). Aucune composante de points n'a été touchée à
 // cette occasion — ni la base, ni les points prix, ni les malus, ni les bonus,
 // ni les seuils de libellés : seule une borne supérieure a été ajoutée. Le gel
-// Mission #190 : la note enregistrée est aussi bornée par le haut de la bande
-// retenue, sans toucher aux points, aux seuils ni à la règle de bande.
+// Mission #190 : la note enregistrée est bornée par le haut de la bande
+// retenue. Mission #193 : sous le plancher, la bande faible a un plafond
+// progressif selon la part du plancher payée.
 //
 // Score déterministe sur 100.
 // Base 50, puis ajustements additifs, puis borne entre 0 et 100.
@@ -275,11 +276,24 @@ const BAND_MAX_SCORE: Record<Score["band"], number> = {
   excellent: 100,
 };
 
+// Le plafond progresse de 30 à 49 entre 40 % et 99 % du plancher. On le
+// combine avec la note déjà calculée : une mauvaise condition peut garder
+// celle-ci plus basse, mais le rapport ne peut jamais la faire monter.
+function weakScoreCap(ratio: number): number {
+  return Math.min(BAND_MAX_SCORE.weak, Math.round(30 + (19 * (ratio - RATIO_ZERO)) / (0.99 - RATIO_ZERO)));
+}
+
 export function computeScore(deal: Deal, estimate: Estimate): Score {
   const priceCap = priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
   const value = Math.min(withoutPriceCap(deal, estimate), priceCap?.cap ?? Number.POSITIVE_INFINITY);
-  const band = bandWithinRange(value, comparedAmountOf(deal), estimate.total_low);
-  return { value: Math.min(value, BAND_MAX_SCORE[band]), band };
+  const amount = comparedAmountOf(deal);
+  const low = estimate.total_low;
+  const band = bandWithinRange(value, amount, low);
+  const ratio = amount !== null && low !== null && low > 0 ? amount / low : null;
+  const bandCap = band === "weak" && ratio !== null && ratio >= RATIO_ZERO && ratio < 1
+    ? weakScoreCap(ratio)
+    : BAND_MAX_SCORE[band];
+  return { value: Math.min(value, bandCap), band };
 }
 
 // Score sans le plafond de quantité inconnue : ce que vaudrait l'offre si un

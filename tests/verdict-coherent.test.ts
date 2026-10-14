@@ -443,14 +443,14 @@ describe("les quatre fourchettes des vidéos déjà tournées", () => {
     expect(range(gros, "starter")).toEqual([970, 2210]);
   });
 
-  it("les quatre notes et bandes filmées restent 29, 29, 39 et 29", () => {
+  it("les trois notes mauvaises filmées restent 29 ; la faible descend à 35", () => {
     for (const [subject, tier, expected] of [
       [gros, "starter", 29],
       [filmed({ deliverables: [video(2)] }), "experienced", 29],
-      [lot, "starter", 39],
+      [lot, "starter", 35],
       [lot, "experienced", 29],
     ] as const) {
-      expect(computeScore(subject, computeEstimate(subject, { tier }))).toEqual({ value: expected, band: expected === 39 ? "weak" : "bad" });
+      expect(computeScore(subject, computeEstimate(subject, { tier }))).toEqual({ value: expected, band: expected === 35 ? "weak" : "bad" });
     }
   });
 

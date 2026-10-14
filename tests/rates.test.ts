@@ -359,14 +359,14 @@ describe("computeScore", () => {
     const estimate = computeEstimate(deal);
     expect([estimate.total_low, estimate.total_high]).toEqual([100, 180]);
     expect(uncappedScore(deal, estimate).value).toBe(50 + 9 + 5);
-    // Le plafond prix reste 59 ; sous le plancher, la bande faible borne la
-    // note enregistrée à 49 (mission #190).
-    expect(computeScore(deal, estimate).value).toBe(49);
+    // Le plafond prix reste 59 ; le plafond progressif de la bande faible
+    // place la note à 40 (mission #193).
+    expect(computeScore(deal, estimate).value).toBe(40);
     const confirmedDeal = makeDeal({ payment: { amount_eur: 175, currency: "EUR", terms_days: null, schedule: null } });
     const confirmed = computeEstimate(confirmedDeal, { tier: "confirmed" });
     expect([confirmed.total_low, confirmed.total_high]).toEqual([250, 500]);
     expect(uncappedScore(confirmedDeal, confirmed).value).toBe(50 + 9 + 5);
-    expect(computeScore(confirmedDeal, confirmed).value).toBe(49);
+    expect(computeScore(confirmedDeal, confirmed).value).toBe(40);
   });
 });
 
