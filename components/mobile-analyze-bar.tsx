@@ -77,14 +77,15 @@ export function MobileAnalyzeBar({ signedIn, menuId, menuOpen, onMenuToggle, men
     <nav
       data-mobile-bottom-nav
       aria-label="Navigation basse"
-      className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 h-14 border-t-2 border-encre bg-creme px-2 py-1 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 h-[72px] border-t border-encre bg-creme pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
     >
-      <div className="mx-auto grid h-full max-w-xl grid-cols-[1fr_1.7fr_1fr] gap-1">
-        <Link href="/historique" className="flex min-h-11 items-center justify-center rounded-control border border-filet px-1 text-center text-[10px] font-semibold leading-tight text-encre">
+      <div className="grid h-full w-full grid-cols-3">
+        <Link href="/historique" className="flex items-center justify-center px-1 text-center text-[10px] font-semibold leading-[11px] text-encre">
           Mes négociations
         </Link>
-        <Link href={MOBILE_ANALYZE_HREF} aria-disabled={analysisRunning} tabIndex={analysisRunning ? -1 : undefined} onClick={analysisRunning ? (event) => event.preventDefault() : undefined} className="flex min-h-11 items-center justify-center rounded-control bg-marque px-1 text-center text-xs font-bold leading-tight text-creme aria-disabled:opacity-60">
-          Analyser un deal
+        <Link href={MOBILE_ANALYZE_HREF} aria-label="Analyser un deal" aria-disabled={analysisRunning} tabIndex={analysisRunning ? -1 : undefined} onClick={analysisRunning ? (event) => event.preventDefault() : undefined} className="flex flex-col items-center justify-center text-center text-[10px] font-semibold leading-[11px] text-encre aria-disabled:opacity-60">
+          <span aria-hidden="true" className="flex size-12 items-center justify-center rounded-full bg-marque text-[30px] font-medium leading-none text-creme">+</span>
+          <span>Analyser</span>
         </Link>
         <button
           ref={menuButtonRef}
@@ -92,7 +93,7 @@ export function MobileAnalyzeBar({ signedIn, menuId, menuOpen, onMenuToggle, men
           aria-expanded={menuOpen}
           aria-controls={menuId}
           onClick={onMenuToggle}
-          className="min-h-11 min-w-11 rounded-control border border-filet px-1 text-xs font-semibold text-encre"
+          className="px-1 text-[10px] font-semibold leading-[11px] text-encre"
         >
           Menu
         </button>
@@ -101,9 +102,9 @@ export function MobileAnalyzeBar({ signedIn, menuId, menuOpen, onMenuToggle, men
   ) : (
     <div
       data-mobile-analyze-bar
-      className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 border-t border-filet bg-creme px-4 py-1 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 h-[72px] border-t border-encre bg-creme pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
     >
-      <Button asChild size="lg" className="h-12 w-full text-base">
+      <Button asChild size="lg" className="h-full w-full rounded-none text-base">
         <Link href={MOBILE_ANALYZE_HREF} aria-disabled={analysisRunning} tabIndex={analysisRunning ? -1 : undefined} onClick={analysisRunning ? (event) => event.preventDefault() : undefined}>Analyser un deal</Link>
       </Button>
     </div>

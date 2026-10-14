@@ -90,14 +90,19 @@ describe("la navigation basse mobile", () => {
     expect(showMobileAnalyzeBar("/analyse/resultat/123", 774, [{ top: -800, bottom: -500 }])).toBe(true);
   });
 
-  it("la navigation connectée donne le centre à l'analyse et réserve au moins 16 px en bas", () => {
+  it("la navigation est une surface continue collée au bas, avec une réserve intérieure", () => {
     const barre = readFileSync("components/mobile-analyze-bar.tsx", "utf8");
     const layout = readFileSync("app/layout.tsx", "utf8");
-    expect(barre).toContain("grid-cols-[1fr_1.7fr_1fr]");
+    expect(barre).toContain("grid h-full w-full grid-cols-3");
     expect(barre.indexOf('href="/historique"')).toBeLessThan(barre.indexOf("href={MOBILE_ANALYZE_HREF}"));
     expect(barre.indexOf("href={MOBILE_ANALYZE_HREF}")).toBeLessThan(barre.indexOf("ref={menuButtonRef}"));
-    expect(barre).toContain("bottom-[max(1rem,env(safe-area-inset-bottom))]");
-    expect(layout).toContain("pb-[calc(4rem+max(1rem,env(safe-area-inset-bottom)))]");
+    expect(barre.split("bottom-0 z-30 h-[72px]")).toHaveLength(3);
+    expect(barre.split("pb-[max(0.75rem,env(safe-area-inset-bottom))]")).toHaveLength(3);
+    expect(barre).not.toContain("gap-1");
+    expect(barre).toContain("size-12 items-center justify-center rounded-full bg-marque");
+    expect(barre).toContain("<span>Analyser</span>");
+    expect(barre).toContain('aria-label="Analyser un deal"');
+    expect(layout).toContain("pb-[4.5rem] md:pb-0");
   });
 
   it("porte une origine interne et aucun paramètre d'acquisition", () => {

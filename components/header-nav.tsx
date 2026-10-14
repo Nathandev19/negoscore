@@ -232,7 +232,7 @@ export function HeaderNav({
             ref={panelRef}
             id={panelId}
             hidden={!open}
-            className={cn("absolute inset-x-0 top-14 px-4 pt-2 pb-4 sm:px-6", signedIn === true && "max-md:fixed max-md:top-auto max-md:bottom-[calc(3.5rem+max(1rem,env(safe-area-inset-bottom)))] max-md:border-t-2", TONE[tone].panel)}
+            className={cn("absolute inset-x-0 top-14 px-4 pt-2 pb-4 sm:px-6", signedIn === true && "max-md:fixed max-md:top-auto max-md:bottom-[4.5rem] max-md:border-t-2", TONE[tone].panel)}
           >
             <nav aria-label="Navigation mobile" className="mx-auto flex max-w-6xl flex-col">
               {menu.filter((item) => !unknown || item.href !== account.href).map((item) => (
