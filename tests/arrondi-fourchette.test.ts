@@ -282,7 +282,7 @@ describe("l'arrondi d'affichage ne touche à rien d'autre", () => {
     expect(arrondi).toEqual(exact);
   });
 
-  it("sur tout l'échantillon, arrondir ne change pas la bande", async () => {
+  it("sur tout l'échantillon, le score varie d'au plus 3 points sauf si le plancher est franchi", async () => {
     const { computeScore } = await import("@/lib/rates/score");
     for (const tier of TIERS as readonly Tier[]) {
       for (const { nom, deal: subject } of ECHANTILLON) {
@@ -296,7 +296,17 @@ describe("l'arrondi d'affichage ne touche à rien d'autre", () => {
             total_low: (estimate.total_low ?? 0) + 9,
             total_high: (estimate.total_high ?? 0) - 9,
           } as never);
-          expect(Math.abs(arrondi.value - decale.value), `${nom} / ${tier} / ${montant} €`).toBeLessThanOrEqual(3);
+          // Depuis #190, passer de « au plancher » à « sous le plancher »
+          // impose la bande faible et peut ramener la note à 49. Ce saut
+          // métier n'est pas une variation des points due à l'arrondi.
+          const crossedFloor = estimate.total_low !== null && montant >= estimate.total_low && montant < estimate.total_low + 9;
+          if (crossedFloor) {
+            expect(decale.band, `${nom} / ${tier} / ${montant} €`).toBe("weak");
+            expect(decale.value).toBeLessThanOrEqual(49);
+            expect(decale.value).toBeLessThanOrEqual(arrondi.value);
+          } else {
+            expect(Math.abs(arrondi.value - decale.value), `${nom} / ${tier} / ${montant} €`).toBeLessThanOrEqual(3);
+          }
         }
       }
     }

@@ -10,11 +10,12 @@ type Score = NonNullable<Analysis["score"]>;
 // réels « trop basse / juste / trop haute » soient exploitables. Toute
 // modification avant cela rendrait ces avis incomparables entre eux.
 //
-// UNE SEULE EXCEPTION, le 17/09/2026 (mission #050) : l'ajout du plafond par le
+// Première exception, le 17/09/2026 (mission #050) : l'ajout du plafond par le
 // prix (PRICE_CAPS ci-dessous). Aucune composante de points n'a été touchée à
 // cette occasion — ni la base, ni les points prix, ni les malus, ni les bonus,
 // ni les seuils de libellés : seule une borne supérieure a été ajoutée. Le gel
-// s'applique de nouveau ensuite.
+// Mission #190 : la note enregistrée est aussi bornée par le haut de la bande
+// retenue, sans toucher aux points, aux seuils ni à la règle de bande.
 //
 // Score déterministe sur 100.
 // Base 50, puis ajustements additifs, puis borne entre 0 et 100.
@@ -228,8 +229,9 @@ function withoutPriceCap(deal: Deal, estimate: Estimate): number {
 // exactement ce cas et l'a manqué d'UN point : il plafonnait à 59.
 //
 // LA RÈGLE : un montant sous le plancher de la fourchette ne peut pas porter
-// « correct », quoi que disent les conditions. Le score, lui, ne bouge pas —
-// l'échelle de la #042 reste gelée, et aucun chiffre déjà mesuré ne change.
+// « correct », quoi que disent les conditions. La bande est choisie avec la
+// note calculée ; la note enregistrée est ensuite bornée par le haut de cette
+// bande (mission #190). Aucune analyse déjà enregistrée n'est réécrite.
 // Au-dessus du plancher, rien n'est touché : c'est là que les conditions
 // doivent continuer à peser, et que la phrase de verdict lit la bande pour
 // dire « ce sont tes conditions qui pèsent » (lib/analysis/verdict.ts).
@@ -255,21 +257,29 @@ export function comparedAmountOf(deal: Deal): number | null {
   return comparedAmount(deal.payment.amount_eur, deal.in_kind_value_eur);
 }
 
-// La bande, corrigée par la position du montant comparé. Rien d'autre ne
-// change : même score, même échelle, mêmes seuils.
+// La bande, corrigée par la position du montant comparé. Ses seuils et son
+// comportement restent inchangés ; computeScore ajuste ensuite la note.
 export function bandWithinRange(value: number, amount: number | null, low: number | null): Score["band"] {
   const band = bandFor(value);
   if (amount === null || low === null || !(low > 0) || amount >= low) return band;
   return amount < RATIO_ZERO * low ? "bad" : "weak";
 }
 
-// Score avec les deux plafonds appliqués : quantité inconnue et prix. Quand les
-// deux existent, le plus bas l'emporte. Ce sont des bornes supérieures : elles
-// ne peuvent que faire baisser le score, jamais le monter.
+// Score avec les plafonds de quantité inconnue et de prix. La bande est décidée
+// avec cette note, puis le plafond de la bande ne peut que la faire descendre.
+const BAND_MAX_SCORE: Record<Score["band"], number> = {
+  bad: 29,
+  weak: 49,
+  fair: 69,
+  good: 84,
+  excellent: 100,
+};
+
 export function computeScore(deal: Deal, estimate: Estimate): Score {
   const priceCap = priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
   const value = Math.min(withoutPriceCap(deal, estimate), priceCap?.cap ?? Number.POSITIVE_INFINITY);
-  return { value, band: bandWithinRange(value, comparedAmountOf(deal), estimate.total_low) };
+  const band = bandWithinRange(value, comparedAmountOf(deal), estimate.total_low);
+  return { value: Math.min(value, BAND_MAX_SCORE[band]), band };
 }
 
 // Score sans le plafond de quantité inconnue : ce que vaudrait l'offre si un

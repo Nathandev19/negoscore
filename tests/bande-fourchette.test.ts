@@ -17,10 +17,9 @@ import { bandFor, comparedAmount, comparedAmountOf, pricePoints, RATIO_ZERO, unc
 // 50–69 de l'échelle gelée en #042, qui s'appelle « correct ». Le plafond de
 // prix de #050 calculait 59 : il manquait la bande d'un point.
 //
-// CE QUE CETTE GARDE FAIT, ET RIEN DE PLUS : elle interdit la bande d'être
-// meilleure que la position du montant quand ce montant est SOUS le plancher.
-// L'échelle, les seuils et la valeur du score ne bougent pas — le score reste
-// 58 dans le cas ci-dessus, c'est la bande qui descend.
+// La bande ne peut pas être meilleure que la position du montant SOUS le
+// plancher. Depuis #190, la note enregistrée descend ensuite au haut de la
+// bande : 58 calculé donne 49 enregistré dans ce cas.
 //
 // CE QU'ELLE NE FAIT PAS, et pourquoi : voir le rapport de #167. La moitié
 // haute de la règle (« au-dessus du haut, c'est sur-évalué ») fait changer
@@ -62,11 +61,11 @@ describe("aucun montant sous le plancher ne porte la bande « correct »", () =>
     // La fourchette mesurée, telle qu'elle s'affiche.
     expect(estimate.total_low).toBe(610);
     expect(estimate.total_high).toBe(1310);
-    // Le score ne bouge pas : l'échelle de #042 est gelée.
-    expect(score?.value).toBe(58);
+    // La bande décidée sur la note calculée reste « faible » ; la note
+    // enregistrée ne dépasse plus son maximum.
+    expect(score?.value).toBe(49);
     expect(bandFor(58)).toBe("fair");
-    // C'est la bande qui descend. CE TEST ÉCHOUE sur le code d'avant #167,
-    // où elle valait « fair ».
+    // La priorité de la bande sous le plancher reste celle de #167.
     expect(score?.band).toBe("weak");
   });
 

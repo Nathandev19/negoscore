@@ -9,36 +9,10 @@ vi.mock("@/components/analytics/track-view", () => ({ TrackView: () => null }));
 import { composeAnalysis } from "@/lib/analysis/compose";
 import { baseExtraction, PREVIEW_STATES, previewAnalysis } from "@/lib/fixtures/preview-states";
 import { BAND_LABEL, priceCapNote, QUANTITY_CAP_NOTE } from "@/lib/display";
-import { bandFor, comparedAmountOf, priceCapFor } from "@/lib/rates/score";
+import { bandWithinRange, comparedAmountOf, computeScore, priceCapFor, uncappedScore } from "@/lib/rates/score";
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  CE FICHIER GARDE UNE DETTE CONNUE, PAS UN DÉFAUT D'AFFICHAGE.
-//  Ouvert le 09/10/2026 (#172), réécrit le 10/10/2026 (#174).
-// ═══════════════════════════════════════════════════════════════════════════
-//
-// CE QUI EST VRAI AUJOURD'HUI : la note ENREGISTRÉE peut contredire la bande
-// ENREGISTRÉE. Une offre à 400 € sous un plancher de 610 € porte la bande
-// « faible » et la note 58, et 58 est dans la tranche que l'échelle de la
-// #042 appelle « correct ».
-//
-// POURQUOI CE N'EST PLUS VISIBLE : depuis la #174, la note sur 100 n'est
-// affichée nulle part — ni sur la page de résultat, ni dans l'historique.
-// La contradiction ne peut donc plus être LUE par personne. Elle n'est pas
-// réparée pour autant : elle est dans la base, dans chaque analyse
-// enregistrée, et elle ressortirait le jour où la note reviendrait à l'écran.
-//
-// POURQUOI ELLE N'A PAS ÉTÉ RÉPARÉE : aligner le plafond de la #050 sur la
-// règle de bande de la #167 fait bouger huit tests, dont l'invariant
-// d'arrondi — un décalage de 9 € sur le plancher déplacerait la note de
-// 8 points contre 3 au plus aujourd'hui, parce que le nouveau plafond crée
-// une falaise de 20 points au plancher. Mesuré en #172.
-//
-// CE QUE CE FICHIER EXIGE :
-//   1. que la contradiction reste exactement celle qu'on a décrite — si elle
-//      change de forme, on veut le savoir ;
-//   2. que la note reste INVISIBLE tant qu'elle n'est pas réparée ;
-//   3. que sa réparation soit signalée : la garde explicite deviendra rouge
-//      le jour où la note et la bande s'accorderont.
+// Mission #190 : la bande garde sa priorité sur l'échelle de points. La note
+// enregistrée descend, si nécessaire, jusqu'au haut de cette bande.
 
 // Le CODE d'un fichier, commentaires retirés : ceux-ci nomment justement ce
 // qui a été enlevé, et c'est leur travail de le dire.
@@ -75,47 +49,52 @@ function casRapporte() {
   };
 }
 
-describe("la dette : la note enregistrée peut contredire la bande enregistrée", () => {
-  it("le cas est toujours exactement celui qu'on a décrit : 610 – 1 310 €, « faible », 58", () => {
-    const { estimate, score } = composeAnalysis(casRapporte() as never, { tier: "starter" });
-    expect(estimate.total_low).toBe(610);
-    expect(estimate.total_high).toBe(1310);
-    expect(score?.band).toBe("weak");
-    expect(score?.value).toBe(58);
-  });
+describe("la note enregistrée ne dépasse pas le haut de sa bande", () => {
+  const maximum = { bad: 29, weak: 49, fair: 69, good: 84, excellent: 100 } as const;
 
-  it("la contradiction tient au plafond de la #050, pas à la bande", () => {
+  it("le cas rapporté garde sa bande et descend de 58 à 49", () => {
     const { deal, estimate, score } = composeAnalysis(casRapporte() as never, { tier: "starter" });
-    const plafond = priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
-    expect(plafond?.reason).toBe("ratio");
-    expect(plafond?.cap).toBe(59);
-    // 59 est dans « correct », alors que le montant est sous le plancher.
-    expect(bandFor(plafond!.cap)).toBe("fair");
-    expect(score!.band).toBe("weak");
+    expect([estimate.total_low, estimate.total_high]).toEqual([610, 1310]);
     expect(comparedAmountOf(deal)).toBe(400);
-    expect(estimate.total_low).toBeGreaterThan(400);
+    expect(priceCapFor(400, 610, 1310)?.cap).toBe(59);
+    expect(bandWithinRange(58, 400, 610)).toBe("weak");
+    expect(score).toEqual({ value: 49, band: "weak" });
   });
 
-  // La dette est réelle et connue. Une assertion positive la surveille sans
-  // déclarer un échec « attendu » dans une suite qui doit être entièrement verte.
-  it("le cas connu garde sa contradiction tant que la note reste masquée", () => {
-    const { score } = composeAnalysis(casRapporte() as never, { tier: "starter" });
-    expect(BAND_LABEL[bandFor(score!.value)]).not.toBe(BAND_LABEL[score!.band]);
+  it("balaye montants, niveaux et délais sans laisser de note au-dessus de sa bande", () => {
+    for (const tier of ["starter", "confirmed", "experienced"] as const) {
+      const { deal: base, estimate } = composeAnalysis(casRapporte() as never, { tier });
+      const low = estimate.total_low as number;
+      const amounts = new Set([
+        ...Array.from({ length: 121 }, (_, step) => Math.round((step / 100) * low)),
+        ...[0.4, 0.6, 0.85, 1].flatMap((ratio) => [Math.floor(ratio * low) - 1, Math.ceil(ratio * low), Math.ceil(ratio * low) + 1]),
+      ]);
+      for (const amount of amounts) {
+        if (amount < 0) continue;
+        for (const terms_days of [null, 30, 60, 90]) {
+          const deal = { ...base, payment: { ...base.payment, amount_eur: amount, terms_days } };
+          const score = computeScore(deal, estimate);
+          const before = Math.min(uncappedScore(deal, estimate).value, priceCapFor(amount, low, estimate.total_high)?.cap ?? Infinity);
+          const context = `${tier}, ${amount}/${low}, délai ${terms_days}, ${before} → ${score.value} ${score.band}`;
+          expect(score.band, context).toBe(bandWithinRange(before, comparedAmountOf(deal), low));
+          expect(score.value, context).toBeLessThanOrEqual(maximum[score.band]);
+          expect(score.value, context).toBeLessThanOrEqual(before);
+          if (before <= maximum[score.band]) expect(score.value, context).toBe(before);
+        }
+      }
+    }
   });
 
-  it("la dette ne touche pas les six états d'aperçu : elle vit entre 0,60 et 1 fois le plancher", () => {
+  it("les six états d'aperçu respectent aussi le plafond de leur bande", () => {
     for (const etat of PREVIEW_STATES) {
       const { analysis } = previewAnalysis(etat);
       if (analysis.score === null) continue;
-      expect(BAND_LABEL[bandFor(analysis.score.value)], etat).toBe(BAND_LABEL[analysis.score.band]);
+      expect(analysis.score.value, etat).toBeLessThanOrEqual(maximum[analysis.score.band]);
     }
   });
 });
 
-describe("tant qu'elle n'est pas réparée, la note reste invisible", () => {
-  // Mission #174 — c'est la seule raison pour laquelle on peut vivre avec la
-  // dette. Si la note revenait à l'écran sans que le plafond soit aligné, la
-  // contradiction redeviendrait lisible le jour même.
+describe("la note reste invisible dans les surfaces publiques", () => {
   const SURFACES: Array<[string, string]> = [
     ["la page de résultat", "components/result/score-band.tsx"],
     // Mission #174 — ajoutée après la batterie de mutation : la région live

@@ -69,12 +69,13 @@ describe("plafond du score par le prix", () => {
     expect(bandFor(39)).toBe("weak");
   });
 
-  it("0,60 ≤ r < 0,85 : 59 au plus, « Deal correct »", () => {
+  it("0,60 ≤ r < 0,85 : plafond prix 59, puis plafond de bande faible 49", () => {
     const { deal, estimate, ratio } = dealAtRatio(0.7);
     expect(ratio).toBeGreaterThanOrEqual(0.6);
     expect(ratio).toBeLessThan(0.85);
     expect(uncappedScore(deal, estimate).value).toBeGreaterThan(59);
-    expect(computeScore(deal, estimate).value).toBe(59);
+    expect(priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high)?.cap).toBe(59);
+    expect(computeScore(deal, estimate)).toEqual({ value: 49, band: "weak" });
     expect(bandFor(59)).toBe("fair");
   });
 
@@ -89,7 +90,7 @@ describe("plafond du score par le prix", () => {
     expect(ratio).toBeGreaterThanOrEqual(PRICE_CAP_FREE_RATIO);
     expect(priceScoreCap(ratio)).toBeNull();
     expect(priceCapFor(deal.payment.amount_eur, estimate.total_low, estimate.total_high)).toEqual({ cap: 69, reason: "ratio" });
-    expect(computeScore(deal, estimate).value).toBe(Math.min(uncappedScore(deal, estimate).value, 69));
+    expect(computeScore(deal, estimate)).toEqual({ value: 49, band: "weak" });
   });
 
   it("les bornes de la table sont celles décidées", () => {
