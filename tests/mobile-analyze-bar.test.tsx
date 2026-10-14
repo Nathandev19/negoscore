@@ -116,8 +116,19 @@ describe("la navigation basse mobile", () => {
     expect(barre).toContain("<span>Négociations</span>");
     expect(activeMobileSection("/historique")).toBe("negociations");
     expect(activeMobileSection("/analyse")).toBe("analyser");
-    expect(activeMobileSection("/")).toBe("menu");
-    expect(activeMobileSection("/tarifs")).toBe("menu");
+    expect(activeMobileSection("/")).toBe("analyser");
+    expect(activeMobileSection("/tarifs")).toBeNull();
+  });
+
+  it("Menu n'est jamais une section active, quelle que soit la page", () => {
+    const barre = readFileSync("components/mobile-analyze-bar.tsx", "utf8");
+    for (const pathname of [null, "", "/", "/tarifs", "/historique", "/historique/123", "/analyse", "/analyse/resultat/123", "/compte", "/admin", ...GUIDE_PATHS]) {
+      expect(activeMobileSection(pathname), String(pathname)).not.toBe("menu");
+    }
+    const menu = barre.slice(barre.indexOf("ref={menuButtonRef}"), barre.indexOf("</button>", barre.indexOf("ref={menuButtonRef}")));
+    expect(menu).toContain("text-encre");
+    expect(menu).not.toContain("text-marque");
+    expect(menu).not.toContain("aria-current");
   });
 
   it("porte une origine interne et aucun paramètre d'acquisition", () => {

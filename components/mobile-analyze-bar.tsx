@@ -19,10 +19,10 @@ const HEADER_HEIGHT = 56;
 // qui décrivent l'arrivée sur le site.
 export const MOBILE_ANALYZE_HREF = `/analyse?${EXAMPLE_ORIGIN_PARAM}=bouton-mobile`;
 
-export function activeMobileSection(pathname: string | null): "negociations" | "analyser" | "menu" {
+export function activeMobileSection(pathname: string | null): "negociations" | "analyser" | null {
   if (pathname === "/historique" || pathname?.startsWith("/historique/")) return "negociations";
-  if (pathname === "/analyse" || pathname?.startsWith("/analyse/resultat/") || pathname === "/dev/resultat") return "analyser";
-  return "menu";
+  if (pathname === "/" || pathname === "/analyse" || pathname?.startsWith("/analyse/resultat/") || pathname === "/dev/resultat") return "analyser";
+  return null;
 }
 
 type VerticalRect = Pick<DOMRect, "top" | "bottom">;
@@ -93,7 +93,7 @@ export function MobileAnalyzeBar({ signedIn, menuId, menuOpen, onMenuToggle, men
           <ListIcon aria-hidden="true" className="mb-0.5 size-6 self-end" strokeWidth={1.75} />
           <span>Négociations</span>
         </Link>
-        <Link href={MOBILE_ANALYZE_HREF} aria-label="Analyser un deal" aria-current={active === "analyser" ? "page" : undefined} aria-disabled={analysisRunning} tabIndex={analysisRunning ? -1 : undefined} onClick={analysisRunning ? (event) => event.preventDefault() : undefined} className={cn("grid min-h-0 grid-rows-[minmax(0,1fr)_11px] justify-items-center text-center text-[9px] font-semibold leading-[11px] aria-disabled:opacity-60", active === "analyser" ? "text-marque" : "text-encre")}>
+        <Link href={MOBILE_ANALYZE_HREF} aria-label="Analyser un deal" aria-current={pathname !== "/" && active === "analyser" ? "page" : undefined} aria-disabled={analysisRunning} tabIndex={analysisRunning ? -1 : undefined} onClick={analysisRunning ? (event) => event.preventDefault() : undefined} className={cn("grid min-h-0 grid-rows-[minmax(0,1fr)_11px] justify-items-center text-center text-[9px] font-semibold leading-[11px] aria-disabled:opacity-60", active === "analyser" ? "text-marque" : "text-encre")}>
           <span aria-hidden="true" className="relative z-10 mb-0.5 flex size-12 self-end items-center justify-center rounded-full bg-marque text-creme"><PlusIcon className="size-6" strokeWidth={1.75} /></span>
           <span>Analyser</span>
         </Link>
@@ -103,7 +103,7 @@ export function MobileAnalyzeBar({ signedIn, menuId, menuOpen, onMenuToggle, men
           aria-expanded={menuOpen}
           aria-controls={menuId}
           onClick={onMenuToggle}
-          className={cn("grid min-h-0 grid-rows-[minmax(0,1fr)_11px] justify-items-center px-1 text-center text-[9px] font-semibold leading-[11px]", active === "menu" ? "text-marque" : "text-encre")}
+          className="grid min-h-0 grid-rows-[minmax(0,1fr)_11px] justify-items-center px-1 text-center text-[9px] font-semibold leading-[11px] text-encre"
         >
           <MenuIcon aria-hidden="true" className="mb-0.5 size-6 self-end" strokeWidth={1.75} />
           <span>Menu</span>
