@@ -6,41 +6,32 @@ import { WaitingScreen } from "@/components/loading-steps";
 import { MOBILE_ANALYZE_HREF, PAGES, showMobileAnalyzeBar } from "@/components/mobile-analyze-bar";
 import { GUIDE_PATHS } from "@/lib/analytics/views";
 
-describe("le bouton mobile d'analyse", () => {
-  it("apparaît quand l'appel à l'action de la page est sous l'écran", () => {
-    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: 578, bottom: 626 }], 460, [{ top: -500, bottom: 40 }])).toBe(true);
-    expect(showMobileAnalyzeBar("/", [{ top: 571, bottom: 619 }], 560)).toBe(true);
+describe("la navigation basse mobile", () => {
+  it("apparaît sur l'accueil tant que le score est hors champ", () => {
+    expect(showMobileAnalyzeBar("/", 560, [{ top: -500, bottom: 40 }])).toBe(true);
+    expect(showMobileAnalyzeBar("/", 560)).toBe(true);
   });
 
   it("reste masqué à 320 × 460 tant que le bloc de score est visible", () => {
-    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: 578, bottom: 626 }], 460, [{ top: 340, bottom: 558 }])).toBe(false);
-    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: -100, bottom: 40 }], 460, [{ top: -160, bottom: 80 }])).toBe(false);
+    expect(showMobileAnalyzeBar("/analyse/demo", 460, [{ top: 340, bottom: 558 }])).toBe(false);
+    expect(showMobileAnalyzeBar("/analyse/demo", 460, [{ top: -160, bottom: 80 }])).toBe(false);
   });
 
-  it("disparaît dès que l'appel à l'action entre dans l'écran", () => {
-    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: 489, bottom: 537 }], 560)).toBe(false);
-    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: 450, bottom: 498 }], 460)).toBe(false);
+  it("reste visible sur l'accueil et les tarifs sans garde sur les autres appels à l'action", () => {
+    expect(showMobileAnalyzeBar("/", 560)).toBe(true);
+    expect(showMobileAnalyzeBar("/tarifs", 460)).toBe(true);
+    expect(readFileSync("components/mobile-analyze-bar.tsx", "utf8")).not.toContain("PAGE_CTA_SELECTOR");
   });
 
-  it("revient quand l'appel à l'action sort par le haut", () => {
-    expect(showMobileAnalyzeBar("/analyse/demo", [{ top: 0, bottom: 48 }], 560)).toBe(true);
+  it("revient quand le verdict sort par le haut", () => {
+    expect(showMobileAnalyzeBar("/analyse/demo", 560, [{ top: -500, bottom: 48 }])).toBe(true);
   });
 
-  // Mission #172, point 3 — RAPPORTÉ SUR IPHONE, SAFARI, NAVIGATION PRIVÉE.
-  //
-  // Pendant « On analyse ton offre », la barre proposait de lancer ce qui
-  // tournait déjà. La cause est à l'envers de ce qu'on croirait : l'écran
-  // d'attente REMPLACE le formulaire, donc le bouton d'envoi que la barre
-  // surveillait disparaît — et la barre, qui se cachait justement parce
-  // qu'un bouton d'analyse était à l'écran, se montrait.
-  it("une analyse en cours masque la barre, quel que soit le défilement", () => {
-    // Aucun bouton d'analyse visible (le formulaire a laissé la place à
-    // l'écran d'attente) : sans la garde, la barre s'afficherait.
-    expect(showMobileAnalyzeBar("/", [], 560)).toBe(true);
-    expect(showMobileAnalyzeBar("/", [], 560, [], true)).toBe(false);
-    // Et le défilement n'y change rien : une analyse tourne ou ne tourne pas.
-    expect(showMobileAnalyzeBar("/", [{ top: 0, bottom: 48 }], 560, [], true)).toBe(false);
-    expect(showMobileAnalyzeBar("/analyse/demo", [], 460, [], true)).toBe(false);
+  it("une analyse en cours garde la navigation visible mais désactive son action", () => {
+    expect(showMobileAnalyzeBar("/", 560)).toBe(true);
+    const barre = readFileSync("components/mobile-analyze-bar.tsx", "utf8");
+    expect(barre).toContain("aria-disabled={analysisRunning}");
+    expect(barre).toContain("event.preventDefault()");
   });
 
   it("l'écran d'attente porte bien le repère que la barre lit", () => {
@@ -73,26 +64,40 @@ describe("le bouton mobile d'analyse", () => {
   it("chaque guide est couvert par la barre, sans exception", () => {
     for (const chemin of GUIDE_PATHS) {
       expect(PAGES.has(chemin), chemin).toBe(true);
-      expect(showMobileAnalyzeBar(chemin, [], 560), chemin).toBe(true);
+      expect(showMobileAnalyzeBar(chemin, 560), chemin).toBe(true);
     }
     expect(GUIDE_PATHS.length).toBeGreaterThanOrEqual(5);
   });
 
   it("respecte chaque page prévue et exclut l'analyse et les pages privées", () => {
     for (const path of ["/", "/exemple", "/tarifs", "/combien-facturer", "/droits-utilisation", "/produits-offerts"]) {
-      expect(showMobileAnalyzeBar(path, [], 560), path).toBe(true);
+      expect(showMobileAnalyzeBar(path, 560), path).toBe(true);
     }
     for (const path of ["/analyse", "/admin", "/compte", "/compte/supprime", "/historique", "/connexion", "/mentions-legales", "/confidentialite", "/cgv"]) {
-      expect(showMobileAnalyzeBar(path, [], 560), path).toBe(false);
+      expect(showMobileAnalyzeBar(path, 560), path).toBe(false);
     }
   });
 
   it("la navigation connectée couvre les pages de compte sans jamais recouvrir le verdict", () => {
-    expect(showMobileAnalyzeBar("/compte", [], 560, [], false, true)).toBe(true);
-    expect(showMobileAnalyzeBar("/historique", [], 560, [], false, true)).toBe(true);
-    expect(showMobileAnalyzeBar("/analyse/resultat/123", [], 460, [{ top: 330, bottom: 510 }], false, true)).toBe(false);
-    expect(showMobileAnalyzeBar("/analyse/resultat/123", [], 460, [{ top: -400, bottom: 20 }], false, true)).toBe(true);
-    expect(showMobileAnalyzeBar("/compte", [], 560, [], true, true)).toBe(false);
+    expect(showMobileAnalyzeBar("/compte", 560, [], true)).toBe(true);
+    expect(showMobileAnalyzeBar("/historique", 560, [], true)).toBe(true);
+    expect(showMobileAnalyzeBar("/analyse/resultat/123", 460, [{ top: 330, bottom: 510 }], true)).toBe(false);
+    expect(showMobileAnalyzeBar("/analyse/resultat/123", 460, [{ top: -400, bottom: 20 }], true)).toBe(true);
+  });
+
+  it("réapparaît aussi sur un résultat déconnecté après le verdict", () => {
+    expect(showMobileAnalyzeBar("/analyse/resultat/123", 774, [{ top: 143, bottom: 358 }])).toBe(false);
+    expect(showMobileAnalyzeBar("/analyse/resultat/123", 774, [{ top: -800, bottom: -500 }])).toBe(true);
+  });
+
+  it("la navigation connectée donne le centre à l'analyse et réserve au moins 16 px en bas", () => {
+    const barre = readFileSync("components/mobile-analyze-bar.tsx", "utf8");
+    const layout = readFileSync("app/layout.tsx", "utf8");
+    expect(barre).toContain("grid-cols-[1fr_1.7fr_1fr]");
+    expect(barre.indexOf('href="/historique"')).toBeLessThan(barre.indexOf("href={MOBILE_ANALYZE_HREF}"));
+    expect(barre.indexOf("href={MOBILE_ANALYZE_HREF}")).toBeLessThan(barre.indexOf("ref={menuButtonRef}"));
+    expect(barre).toContain("bottom-[max(1rem,env(safe-area-inset-bottom))]");
+    expect(layout).toContain("pb-[calc(4rem+max(1rem,env(safe-area-inset-bottom)))]");
   });
 
   it("porte une origine interne et aucun paramètre d'acquisition", () => {

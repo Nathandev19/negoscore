@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
-import { SOLDE_EN_ATTENTE, SOLDE_LIEN, soldePastille, soldeTexte, soldeTon } from "@/lib/content/labels";
+import { SOLDE_LIEN, soldePastille, soldeTexte, soldeTon } from "@/lib/content/labels";
 import { cn } from "@/lib/utils";
 
 // Mission #182 — COMBIEN IL EN RESTE, à l'endroit où ça sert.
@@ -115,12 +115,11 @@ export function useSolde(): Solde | null {
 //
 // Pastille cliquable sur fond distinct, avec le nombre en premier. Le ton du
 // solde reste disponible pour les autres surfaces qui expliquent la recharge.
-export function SoldeEntete({ className, compact = false }: { className?: string; compact?: boolean }) {
+export function SoldeEntete({ className }: { className?: string }) {
   const solde = useSolde();
-  if (!solde && !compact) return null;
-  if (!solde) return <Link href="/compte" aria-busy="true" className={cn("flex min-h-11 min-w-11 items-center justify-center rounded-pill border border-filet bg-creme px-1 text-xs text-encre", className)}>{SOLDE_EN_ATTENTE}</Link>;
+  if (!solde) return null;
   const ton = soldeTon(solde.restantes, solde.intact);
-  const pastille = soldePastille(solde.restantes, solde.intact);
+  const pastille = soldePastille(solde.restantes);
   return (
     <Link
       href={pastille.href}
@@ -128,13 +127,12 @@ export function SoldeEntete({ className, compact = false }: { className?: string
       data-ton={ton}
       aria-label={`${pastille.nombre} ${pastille.libelle}`}
       className={cn(
-        "inline-flex min-h-11 min-w-11 items-center justify-center rounded-pill border-2 border-marque bg-creme px-2 text-marque hover:bg-filet",
-        compact ? "flex-col gap-0 px-0.5 text-[9px] leading-tight" : "gap-1.5 whitespace-nowrap text-small",
+        "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-control border-2 border-encre bg-filet px-2 text-[13px] whitespace-nowrap text-encre hover:bg-creme max-[359px]:px-1 max-[359px]:text-[10px]",
         className,
       )}
     >
       <strong className="font-extrabold tabular-nums">{pastille.nombre}</strong>
-      <span>{compact ? pastille.court : pastille.libelle}</span>
+      <span><span>{pastille.court}</span><span className="max-[359px]:hidden">{pastille.libelle.slice(pastille.court.length)}</span></span>
     </Link>
   );
 }

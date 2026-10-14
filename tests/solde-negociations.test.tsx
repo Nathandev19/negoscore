@@ -316,10 +316,8 @@ describe("D5 — si la lecture échoue, aucun nombre", () => {
 
   it("le composant n'invente aucun nombre tant qu'il ne sait pas", () => {
     const source = readFileSync("components/solde-negociations.tsx", "utf8");
-    // Le solde du champ reste absent ; la cellule mobile indique seulement
-    // que la lecture est en cours et garde une cible accessible.
-    expect(source).toContain("if (!solde && !compact) return null;");
-    expect(source).toContain("if (!solde) return <Link");
+    // L'en-tête et le champ restent absents tant que la lecture ne tranche pas.
+    expect(source.split("if (!solde) return null;")).toHaveLength(3);
     // Et aucune valeur par défaut, ni dans le magasin ni au rendu serveur.
     expect(source).toContain("{ cle: null, valeur: null, fini: false, abonnes: new Set() }");
     expect(source).toMatch(/\(\) => null,\s*\);/);
@@ -476,9 +474,10 @@ describe("C — le ton change avec le solde, et le seuil n'est pas dans un compo
   });
 
   it("la pastille montre le nombre d'abord et garde une destination à zéro", () => {
-    expect(soldePastille(3, false)).toMatchObject({ nombre: "3", libelle: "négociations restantes", href: "/compte" });
-    expect(soldePastille(0, false)).toMatchObject({ nombre: "0", libelle: "Recharger", href: "/tarifs" });
-    expect(soldePastille(null, false)).toMatchObject({ nombre: "∞", href: "/compte" });
+    expect(soldePastille(3)).toMatchObject({ nombre: "3", libelle: "négociations restantes", href: "/compte" });
+    expect(soldePastille(1)).toMatchObject({ nombre: "1", libelle: "négociation restante" });
+    expect(soldePastille(0)).toMatchObject({ nombre: "0", libelle: "négociation · Recharger", href: "/tarifs" });
+    expect(soldePastille(null)).toMatchObject({ nombre: "∞", href: "/compte" });
   });
 });
 
@@ -520,11 +519,11 @@ describe("E — le vocabulaire des missions #093 et #174-#178 est respecté", ()
 // ═══════════════ B. OÙ ÇA S'AFFICHE, ET OÙ ÇA NE S'AFFICHE PAS ════════════
 
 describe("B — les deux surfaces, et seulement elles", () => {
-  it("le solde est dans l'en-tête bureau et dans la barre basse mobile", () => {
+  it("le solde est dans l'en-tête bureau et mobile, jamais dans la barre basse", () => {
     const nav = readFileSync("components/header-nav.tsx", "utf8");
     const barre = readFileSync("components/mobile-analyze-bar.tsx", "utf8");
-    expect(nav.split("<SoldeEntete")).toHaveLength(2);
-    expect(barre).toContain("<SoldeEntete compact");
+    expect(nav.split("<SoldeEntete")).toHaveLength(3);
+    expect(barre).not.toContain("<SoldeEntete");
   });
 
   it("l'écran de saisie le porte au-dessus du champ", () => {

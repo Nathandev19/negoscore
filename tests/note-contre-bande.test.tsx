@@ -37,10 +37,8 @@ import { bandFor, comparedAmountOf, priceCapFor } from "@/lib/rates/score";
 //   1. que la contradiction reste exactement celle qu'on a décrite — si elle
 //      change de forme, on veut le savoir ;
 //   2. que la note reste INVISIBLE tant qu'elle n'est pas réparée ;
-//   3. que sa réparation soit signalée : la garde en `it.fails` deviendra
-//      rouge le jour où la note et la bande s'accorderont, et c'est le
-//      signal qu'on peut retirer le marqueur — et rouvrir la question de
-//      l'affichage.
+//   3. que sa réparation soit signalée : la garde explicite deviendra rouge
+//      le jour où la note et la bande s'accorderont.
 
 // Le CODE d'un fichier, commentaires retirés : ceux-ci nomment justement ce
 // qui a été enlevé, et c'est leur travail de le dire.
@@ -98,12 +96,11 @@ describe("la dette : la note enregistrée peut contredire la bande enregistrée"
     expect(estimate.total_low).toBeGreaterThan(400);
   });
 
-  // LA GARDE. `it.fails` : elle échoue aujourd'hui, et c'est le constat. Le
-  // jour où elle passera, c'est CE fichier qui échouera, en demandant qu'on
-  // retire le marqueur — et qu'on rouvre la question de l'affichage.
-  it.fails("aucune analyse ne porte une note dont la tranche nommée contredit sa bande", () => {
+  // La dette est réelle et connue. Une assertion positive la surveille sans
+  // déclarer un échec « attendu » dans une suite qui doit être entièrement verte.
+  it("le cas connu garde sa contradiction tant que la note reste masquée", () => {
     const { score } = composeAnalysis(casRapporte() as never, { tier: "starter" });
-    expect(BAND_LABEL[bandFor(score!.value)]).toBe(BAND_LABEL[score!.band]);
+    expect(BAND_LABEL[bandFor(score!.value)]).not.toBe(BAND_LABEL[score!.band]);
   });
 
   it("la dette ne touche pas les six états d'aperçu : elle vit entre 0,60 et 1 fois le plancher", () => {

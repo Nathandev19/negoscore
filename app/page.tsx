@@ -138,7 +138,7 @@ export default function HomePage() {
               </Link>
             </div>
             {score ? (
-              <div className="on-marque grain flex flex-col overflow-hidden rounded-control bg-marque text-creme">
+              <div data-score-verdict className="on-marque grain flex flex-col overflow-hidden rounded-control bg-marque text-creme">
                 <ScoreBand analysis={sampleAnalysis} className="p-5 sm:p-7 lg:grid-cols-1 lg:gap-6" />
                 {total ? (
                   <div className="flex flex-col gap-1 border-t border-creme/30 px-5 py-4 sm:px-7">

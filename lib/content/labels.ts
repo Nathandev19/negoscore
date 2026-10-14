@@ -154,16 +154,15 @@ export function soldeBadge(restantes: number | null, intact = false): string {
 
 // Où aller quand il n'en reste plus. Un seul endroit l'écrit.
 export const SOLDE_LIEN = { href: "/tarifs", label: "Voir les tarifs" } as const;
-export const SOLDE_EN_ATTENTE = "Solde";
 
-export function soldePastille(restantes: number | null, intact = false): { nombre: string; libelle: string; court: string; href: string } {
-  if (restantes === null) return { nombre: "∞", libelle: "négociations illimitées", court: "Solde", href: "/compte" };
-  if (restantes <= 0) return { nombre: "0", libelle: "Recharger", court: "Recharger", href: SOLDE_LIEN.href };
+export function soldePastille(restantes: number | null): { nombre: string; libelle: string; court: string; href: string } {
+  if (restantes === null) return { nombre: "∞", libelle: "négociations illimitées", court: "négociations", href: "/compte" };
+  if (restantes <= 0) return { nombre: "0", libelle: "négociation · Recharger", court: "négociation", href: SOLDE_LIEN.href };
   const pluriel = restantes > 1 ? "s" : "";
   return {
     nombre: String(restantes),
-    libelle: `négociation${pluriel} ${intact ? `offerte${pluriel}` : `restante${pluriel}`}`,
-    court: "Solde",
+    libelle: `négociation${pluriel} restante${pluriel}`,
+    court: `négociation${pluriel}`,
     href: "/compte",
   };
 }

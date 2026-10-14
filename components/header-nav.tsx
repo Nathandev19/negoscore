@@ -155,9 +155,9 @@ export function HeaderNav({
   return (
     <>
     <header className={cn("sticky top-0 z-40 h-14", TONE[tone].header)}>
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-2 px-4 sm:px-6 lg:gap-4">
         <Link href="/" aria-label="Accueil">
-          <Logo variant={tone === "marque" ? "creme" : "marque"} />
+          <Logo variant={tone === "marque" ? "creme" : "marque"} className="max-[359px]:[&>span]:hidden" />
         </Link>
 
         <nav aria-label="Navigation principale" className="hidden h-8 items-center gap-6 text-small lg:flex">
@@ -202,7 +202,8 @@ export function HeaderNav({
           </Link>
         </div>
 
-        <div className="flex items-center gap-4 lg:hidden" onKeyDown={onMenuKeyDown} onBlur={onMenuBlur}>
+        <div className="flex items-center gap-2 lg:hidden" onKeyDown={onMenuKeyDown} onBlur={onMenuBlur}>
+          <SoldeEntete />
           {/* Mobile sans JavaScript (mission #073) : le menu ne peut pas
               s'ouvrir, la connexion est donc offerte à côté du bouton. */}
           {unknown ? (
@@ -231,7 +232,7 @@ export function HeaderNav({
             ref={panelRef}
             id={panelId}
             hidden={!open}
-            className={cn("absolute inset-x-0 top-14 px-4 pt-2 pb-4 sm:px-6", signedIn === true && "max-md:fixed max-md:top-auto max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:border-t-2", TONE[tone].panel)}
+            className={cn("absolute inset-x-0 top-14 px-4 pt-2 pb-4 sm:px-6", signedIn === true && "max-md:fixed max-md:top-auto max-md:bottom-[calc(3.5rem+max(1rem,env(safe-area-inset-bottom)))] max-md:border-t-2", TONE[tone].panel)}
           >
             <nav aria-label="Navigation mobile" className="mx-auto flex max-w-6xl flex-col">
               {menu.filter((item) => !unknown || item.href !== account.href).map((item) => (

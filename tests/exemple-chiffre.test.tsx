@@ -344,9 +344,10 @@ describe("la page d'exemple mène à l'analyse", () => {
 // ───────────────────────────────────────────────────────────────────────────
 // Mission #148 — SOUS 400 px, LE MESSAGE REÇU SE REPLIE.
 //
-// Les créatrices arrivent du navigateur intégré d'Instagram, qui retire 120 à
-// 150 px de hauteur utile. Le bloc entier repoussait le bouton sous la ligne
-// de flottaison. On le replie à trois lignes — on ne le coupe pas.
+// La sonde #186 a mesuré 430 × 829 dans Instagram et 430 × 774 dans Safari
+// sur un iPhone réel : Instagram y avait plus de hauteur utile. Le bloc entier
+// repoussait le bouton sous la ligne de flottaison aux petites tailles testées
+// en #148. On le replie à trois lignes — on ne le coupe pas.
 describe("le message reçu se replie sur les petits écrans", () => {
   const rendu = () => renderToStaticMarkup(<SampleOfferQuote />);
   const CSS = readFileSync("app/globals.css", "utf8");

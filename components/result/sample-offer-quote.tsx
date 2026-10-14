@@ -23,10 +23,11 @@ import { WITH_JS_ONLY } from "@/lib/no-js";
 // ───────────────────────────────────────────────────────────────────────────
 // Mission #148 — SOUS 400 px, LE BLOC SE REPLIE.
 //
-// Les créatrices n'arrivent pas ici depuis Chrome : elles arrivent du
-// navigateur intégré d'Instagram, qui pose une barre en haut et une en bas et
-// retire 120 à 150 px de hauteur utile. Ce bloc, entier, repoussait le bouton
-// « Analyser mon offre » sous la ligne de flottaison sur les petits écrans.
+// Les créatrices arrivent souvent du navigateur intégré d'Instagram. La sonde
+// #186 a mesuré 430 × 829 dans Instagram et 430 × 774 dans Safari sur un
+// iPhone réel : Instagram avait donc plus de hauteur utile sur cet appareil.
+// Ce bloc, entier, repoussait néanmoins le bouton « Analyser mon offre » sous
+// la ligne de flottaison sur les petits écrans testés en #148.
 //
 // Le texte n'est NI raccourci NI réécrit : c'est toujours SAMPLE_OFFER.body,
 // d'un seul tenant, dans un seul nœud. On le replie à trois lignes, et le
