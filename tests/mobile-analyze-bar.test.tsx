@@ -3,7 +3,7 @@ import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { WaitingScreen } from "@/components/loading-steps";
-import { MOBILE_ANALYZE_HREF, PAGES, showMobileAnalyzeBar } from "@/components/mobile-analyze-bar";
+import { activeMobileSection, MOBILE_ANALYZE_HREF, PAGES, showMobileAnalyzeBar } from "@/components/mobile-analyze-bar";
 import { GUIDE_PATHS } from "@/lib/analytics/views";
 
 describe("la navigation basse mobile", () => {
@@ -96,13 +96,28 @@ describe("la navigation basse mobile", () => {
     expect(barre).toContain("grid h-full w-full grid-cols-3");
     expect(barre.indexOf('href="/historique"')).toBeLessThan(barre.indexOf("href={MOBILE_ANALYZE_HREF}"));
     expect(barre.indexOf("href={MOBILE_ANALYZE_HREF}")).toBeLessThan(barre.indexOf("ref={menuButtonRef}"));
-    expect(barre.split("bottom-0 z-30 h-[72px]")).toHaveLength(3);
-    expect(barre.split("pb-[max(0.75rem,env(safe-area-inset-bottom))]")).toHaveLength(3);
+    expect(barre.split("bottom-0 z-30 h-[calc(50px+max(8px,env(safe-area-inset-bottom)))]")).toHaveLength(3);
+    expect(barre.split("pb-[max(8px,env(safe-area-inset-bottom))]")).toHaveLength(3);
     expect(barre).not.toContain("gap-1");
-    expect(barre).toContain("size-12 items-center justify-center rounded-full bg-marque");
+    expect(barre).toContain("size-12 self-end items-center justify-center rounded-full bg-marque");
     expect(barre).toContain("<span>Analyser</span>");
     expect(barre).toContain('aria-label="Analyser un deal"');
-    expect(layout).toContain("pb-[4.5rem] md:pb-0");
+    expect(layout).toContain("pb-[calc(50px+max(8px,env(safe-area-inset-bottom)))] md:pb-0");
+  });
+
+  it("les trois cellules ont une icône de même trait, une légende et un état actif", () => {
+    const barre = readFileSync("components/mobile-analyze-bar.tsx", "utf8");
+    expect(barre).toContain("ListIcon");
+    expect(barre).toContain("MenuIcon");
+    expect(barre).toContain("PlusIcon");
+    expect(barre.split("strokeWidth={1.75}")).toHaveLength(4);
+    expect(barre.split("grid-rows-[minmax(0,1fr)_11px]")).toHaveLength(4);
+    expect(barre.split("text-[9px] font-semibold")).toHaveLength(4);
+    expect(barre).toContain("<span>Négociations</span>");
+    expect(activeMobileSection("/historique")).toBe("negociations");
+    expect(activeMobileSection("/analyse")).toBe("analyser");
+    expect(activeMobileSection("/")).toBe("menu");
+    expect(activeMobileSection("/tarifs")).toBe("menu");
   });
 
   it("porte une origine interne et aucun paramètre d'acquisition", () => {
