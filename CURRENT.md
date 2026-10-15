@@ -145,11 +145,16 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
    seconds dans l'interface ne donne rien.
 4. **Un achat réel a été passé le 24/09**, libellé de relevé « WHOP NEGOSCORE »
    vérifié. **Reliquat** : le double contrôle Pack PUIS Pro n'a pas été fait.
-5. **Les 40 migrations sont appliquées.** Contrôlé le 15/10 sur celles dont
-   l'absence serait invisible : 33, 36, 38, les deux portant le préfixe 39, et
-   40. L'outil CLI de Supabase n'a jamais été utilisé : **les migrations sont
-   appliquées à la main, c'est la méthode, et ce n'est pas un défaut** — inutile
-   de proposer de l'outiller.
+5. **Les 40 migrations sont appliquées.** Contrôlé le 15/10 sur les **six**
+   dont l'absence serait invisible (33, 36, 38, 39a, 39b, 40).
+   - **Pourquoi 34, 35 et 37 n'y sont pas**, et ce n'est pas un oubli : 34, 35,
+     37 et 38 réécrivent la même fonction, `admin_dashboard_metrics`, par
+     `create or replace`. Chaque passage remplace la fonction entière, donc la
+     présence du marqueur de la 38 les clôt toutes les trois : la fonction est
+     dans son état le plus récent, que les précédentes aient été jouées ou non.
+   - L'outil CLI de Supabase n'a jamais été utilisé : **les migrations sont
+     appliquées à la main, c'est la méthode, et ce n'est pas un défaut** —
+     inutile de proposer de l'outiller.
 6. **Le rattrapage de données du 12/10 est appliqué.**
 7. **La mesure de la #184 est faite** : zéro offre n'occupe plus d'une ligne, sur
    42 offres au total dont 5 hors nos propres données. Le regroupement de
