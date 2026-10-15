@@ -1,8 +1,6 @@
 import { getRequestSession, logAuthUnavailable } from "@/lib/auth/request-user";
 import { analysisBalance } from "@/lib/billing/entitlement";
-import { ANON_COOKIE, clientIp, hashIp, readCookie } from "@/lib/security/request";
-import { hitUsageGuard } from "@/lib/security/usage-guard";
-import { RIGHTS_PER_HOUR } from "@/lib/security/limits";
+import { ANON_COOKIE, readCookie } from "@/lib/security/request";
 
 export const runtime = "nodejs";
 
@@ -19,6 +17,22 @@ export const runtime = "nodejs";
 // Aucune réponse ne contient de nombre inventé : quand la lecture échoue, le
 // champ est ABSENT et l'écran n'affiche rien (même règle que le compteur de la
 // mission #181).
+//
+// ─── Mission #194, D — PLUS AUCUN FILET HORAIRE ICI, ET C'EST VOULU ───────
+//
+// Cette route portait hitUsageGuard, repris de /api/droits. Or ce filet fait
+// un rpc usage_guard_hit, c'est-à-dire une ÉCRITURE en base — à chaque
+// chargement de page, sur une route dont le commentaire ci-dessus dit qu'elle
+// ne touche aucun compteur. Deux allers-retours pour une lecture, dont un en
+// écriture, sur le chemin critique de l'en-tête de TOUTES les pages.
+//
+// Il ne protégeait rien : son échec était déjà ignoré (le catch le disait en
+// toutes lettres), donc un attaquant n'avait qu'à le faire tomber. Et il n'y a
+// rien à protéger — cette route ne réserve rien, ne décompte rien et n'appelle
+// aucun modèle payant. Elle lit un compteur et un solde.
+//
+// /api/droits et la route d'analyse GARDENT leur filet : là, il protège une
+// opération qui coûte de l'argent.
 export async function GET(request: Request) {
   const session = await getRequestSession(request);
   if (session.kind === "unavailable") {
@@ -26,16 +40,6 @@ export async function GET(request: Request) {
     return Response.json({ unknown: true }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
   const user = session.kind === "valid" ? session.user : null;
-  // Même filet horaire que /api/droits, sur le même compteur : l'en-tête
-  // n'appelle qu'au chargement d'une page, un usage normal n'y touche pas.
-  try {
-    const guard = await hitUsageGuard(hashIp(`solde:${clientIp(request)}`), { limit: RIGHTS_PER_HOUR });
-    if (!guard.allowed) {
-      return Response.json({ unknown: true }, { status: 429, headers: { "Cache-Control": "no-store" } });
-    }
-  } catch {
-    // Compteur indisponible : on ne bloque pas une lecture sans effet.
-  }
   try {
     const solde = await analysisBalance(user, readCookie(request, ANON_COOKIE));
     return Response.json(

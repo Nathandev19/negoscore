@@ -2,6 +2,8 @@
 // service_role. Ce module ne doit jamais être importé par un composant client :
 // la clé ne quitte pas le serveur (vérifié par tests/security.test.ts).
 
+import { avecDelai, DELAI_POSTGREST_MS, DELAI_STORAGE_MS, estDelaiDepasse } from "@/lib/supabase/delais";
+
 export const DOCUMENTS_BUCKET = "deal-documents";
 
 export class SupabaseConfigError extends Error {}
@@ -55,18 +57,36 @@ export function isMissingColumn(caught: unknown): boolean {
   return caught instanceof SupabaseRequestError && (caught.code === "PGRST204" || caught.code === "42703");
 }
 
+// Mission #194 — l'appel sortant, avec son plafond, et le délai dépassé
+// traduit dans le vocabulaire du projet. 504 : « on n'a pas pu demander ».
+// Le message nomme l'opération ET le plafond, pour qu'un journal dise lequel
+// a sauté plutôt que de laisser deviner.
+async function appel(cible: string, init: RequestInit, ms: number, what: string): Promise<Response> {
+  try {
+    return await fetch(cible, avecDelai(init, ms));
+  } catch (caught) {
+    if (!estDelaiDepasse(caught)) throw caught;
+    throw new SupabaseRequestError(`${what} : délai de ${ms} ms dépassé`, 504, "delai");
+  }
+}
+
 async function rest<T>(path: string, init: RequestInit & { what: string }): Promise<T> {
   const { url, serviceKey } = config();
-  const response = await fetch(`${url}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      ...authHeaders(serviceKey),
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-      ...init.headers,
+  const response = await appel(
+    `${url}/rest/v1/${path}`,
+    {
+      ...init,
+      headers: {
+        ...authHeaders(serviceKey),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+        ...init.headers,
+      },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
+    DELAI_POSTGREST_MS,
+    init.what,
+  );
   if (!response.ok) throw await failure(response, init.what);
   const text = await response.text();
   return (text ? JSON.parse(text) : null) as T;
@@ -112,11 +132,12 @@ export async function selectRows<T>(table: string, query: string): Promise<T[]> 
 
 export async function countRows(table: string, query: string): Promise<number> {
   const { url, serviceKey } = config();
-  const response = await fetch(`${url}/rest/v1/${table}?${query}`, {
-    method: "HEAD",
-    headers: { ...authHeaders(serviceKey), Prefer: "count=exact" },
-    cache: "no-store",
-  });
+  const response = await appel(
+    `${url}/rest/v1/${table}?${query}`,
+    { method: "HEAD", headers: { ...authHeaders(serviceKey), Prefer: "count=exact" }, cache: "no-store" },
+    DELAI_POSTGREST_MS,
+    `comptage ${table}`,
+  );
   if (!response.ok) throw await failure(response, `comptage ${table}`);
   const total = response.headers.get("content-range")?.split("/")[1];
   return total && total !== "*" ? Number(total) : 0;
@@ -154,12 +175,17 @@ function objectPath(path: string): string {
 // fichier directement : il ne transite jamais par une route de l'application.
 export async function createSignedUploadUrl(path: string): Promise<string> {
   const { url, serviceKey } = config();
-  const response = await fetch(`${url}/storage/v1/object/upload/sign/${DOCUMENTS_BUCKET}/${objectPath(path)}`, {
-    method: "POST",
-    headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
-    body: "{}",
-    cache: "no-store",
-  });
+  const response = await appel(
+    `${url}/storage/v1/object/upload/sign/${DOCUMENTS_BUCKET}/${objectPath(path)}`,
+    {
+      method: "POST",
+      headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
+      body: "{}",
+      cache: "no-store",
+    },
+    DELAI_STORAGE_MS,
+    "URL de dépôt signée",
+  );
   if (!response.ok) throw await failure(response, "URL de dépôt signée");
   const body = (await response.json()) as { url?: string };
   if (!body.url) throw new SupabaseRequestError("URL de dépôt signée : réponse sans url", 502, null);
@@ -168,22 +194,29 @@ export async function createSignedUploadUrl(path: string): Promise<string> {
 
 export async function downloadDocument(path: string): Promise<Uint8Array> {
   const { url, serviceKey } = config();
-  const response = await fetch(`${url}/storage/v1/object/${DOCUMENTS_BUCKET}/${objectPath(path)}`, {
-    headers: authHeaders(serviceKey),
-    cache: "no-store",
-  });
+  const response = await appel(
+    `${url}/storage/v1/object/${DOCUMENTS_BUCKET}/${objectPath(path)}`,
+    { headers: authHeaders(serviceKey), cache: "no-store" },
+    DELAI_STORAGE_MS,
+    "lecture du document",
+  );
   if (!response.ok) throw await failure(response, "lecture du document");
   return new Uint8Array(await response.arrayBuffer());
 }
 
 export async function removeDocument(path: string): Promise<void> {
   const { url, serviceKey } = config();
-  const response = await fetch(`${url}/storage/v1/object/${DOCUMENTS_BUCKET}`, {
-    method: "DELETE",
-    headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
-    body: JSON.stringify({ prefixes: [path] }),
-    cache: "no-store",
-  });
+  const response = await appel(
+    `${url}/storage/v1/object/${DOCUMENTS_BUCKET}`,
+    {
+      method: "DELETE",
+      headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
+      body: JSON.stringify({ prefixes: [path] }),
+      cache: "no-store",
+    },
+    DELAI_STORAGE_MS,
+    "suppression du document",
+  );
   if (!response.ok) throw await failure(response, "suppression du document");
 }
 
@@ -192,12 +225,17 @@ export async function removeDocument(path: string): Promise<void> {
 export async function removeDocuments(paths: string[]): Promise<string[]> {
   if (paths.length === 0) return [];
   const { url, serviceKey } = config();
-  const response = await fetch(`${url}/storage/v1/object/${DOCUMENTS_BUCKET}`, {
-    method: "DELETE",
-    headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
-    body: JSON.stringify({ prefixes: paths }),
-    cache: "no-store",
-  });
+  const response = await appel(
+    `${url}/storage/v1/object/${DOCUMENTS_BUCKET}`,
+    {
+      method: "DELETE",
+      headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
+      body: JSON.stringify({ prefixes: paths }),
+      cache: "no-store",
+    },
+    DELAI_STORAGE_MS,
+    "suppression des documents",
+  );
   if (!response.ok) throw await failure(response, "suppression des documents");
   const removed = (await response.json().catch(() => [])) as Array<{ name?: string }>;
   return removed.map((object) => object.name ?? "").filter(Boolean);
@@ -236,11 +274,16 @@ export async function deleteRowsReturning(table: string, filter: string, key: st
 // Suppression définitive d'un utilisateur Supabase Auth (API d'administration).
 export async function deleteAuthUser(userId: string): Promise<void> {
   const { url, serviceKey } = config();
-  const response = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
-    method: "DELETE",
-    headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
-    body: JSON.stringify({ should_soft_delete: false }),
-    cache: "no-store",
-  });
+  const response = await appel(
+    `${url}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
+    {
+      method: "DELETE",
+      headers: { ...authHeaders(serviceKey), "Content-Type": "application/json" },
+      body: JSON.stringify({ should_soft_delete: false }),
+      cache: "no-store",
+    },
+    DELAI_POSTGREST_MS,
+    "suppression de l'identité",
+  );
   if (!response.ok && response.status !== 404) throw await failure(response, "suppression de l'identité");
 }

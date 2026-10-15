@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { sessionStateFrom } from "@/lib/auth/session-state";
+import { avecDelai, DELAI_AUTH_MS } from "@/lib/supabase/delais";
 
 // Session Supabase Auth côté serveur, par l'API REST. Magic link uniquement,
 // en PKCE : le vérificateur reste dans un cookie httpOnly, le code du lien
@@ -23,18 +24,40 @@ function authConfig(): { url: string; anonKey: string } {
   return { url: url.replace(/\/+$/, ""), anonKey };
 }
 
+// Mission #194, B — le plafond de l'authentification, et LE PIÈGE.
+//
+// Un délai dépassé fait rejeter ce fetch. Les trois appelants
+// (refreshSessionOutcome, checkAccessToken, sessionFromAccessToken) attrapent
+// déjà toute erreur de fetch et répondent « unavailable » — c'est-à-dire
+// « on n'a PAS PU demander », et surtout pas « ce jeton ne vaut rien ».
+//
+// La distinction n'est pas cosmétique : proxy.ts EFFACE LES COOKIES DE SESSION
+// sur « rejected ». Un délai classé « rejected » déconnecterait quelqu'un pour
+// un simple ralentissement de réseau — exactement ce que la mission #089 avait
+// corrigé pour la panne, et qui reviendrait par la porte du délai.
+//
+// Conséquence : on ne traduit RIEN ici. Pas de SupabaseRequestError, pas de
+// statut inventé. L'erreur remonte telle quelle et le classement existant
+// (lib/auth/session-state.ts, « injoignable » → « indisponible ») fait le
+// travail. tests/delais-supabase.test.ts le prouve, cookies compris.
 async function authFetch(path: string, init: RequestInit & { token?: string } = {}): Promise<Response> {
   const { url, anonKey } = authConfig();
-  return fetch(`${url}/auth/v1${path}`, {
-    ...init,
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${init.token ?? anonKey}`,
-      "Content-Type": "application/json",
-      ...init.headers,
-    },
-    cache: "no-store",
-  });
+  return fetch(
+    `${url}/auth/v1${path}`,
+    avecDelai(
+      {
+        ...init,
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${init.token ?? anonKey}`,
+          "Content-Type": "application/json",
+          ...init.headers,
+        },
+        cache: "no-store",
+      },
+      DELAI_AUTH_MS,
+    ),
+  );
 }
 
 function toSession(body: unknown): Session | null {

@@ -13,7 +13,8 @@ import { ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
 import { currentAttribution } from "@/components/analytics/first-party-view";
 import { hasSessionHint } from "@/lib/auth/session-hint";
 import { hasNoFreeRightHint, rightView } from "@/lib/billing/right-hint";
-import { SoldeLigne } from "@/components/solde-negociations";
+import { SoldeLigne, soldeBloque, useSolde } from "@/components/solde-negociations";
+import { SOLDE_EPUISE } from "@/lib/content/labels";
 import { clearDraft, readDraft, saveDraft, subscribeDraft } from "@/lib/draft";
 import { clearPendingKey, pendingKey } from "@/lib/analysis/pending-key";
 import { nextResume, RESUME_TICK_MS, revealDelay, type ServerAttempt } from "@/lib/analysis/resume";
@@ -211,16 +212,44 @@ export function DealInput({ note }: { note?: string } = {}) {
   const startedRef = useRef<Record<Mode, boolean>>({ text: false, photo: false, pdf: false });
 
   const textLength = text.trim().length;
-  const canSubmit = !PAUSED && (mode === "text" ? textLength >= MIN_TEXT_LENGTH : files[mode] !== null);
+
+  // Mission #194, C — LE BOUTON ET LE SOLDE DISENT LA MÊME CHOSE.
+  //
+  // Le bloc au-dessus du champ choisissait déjà entre un refus et le solde,
+  // mais canSubmit n'en tenait aucun compte : à solde nul, le bouton restait
+  // actif, partait au serveur, et revenait refusé plusieurs secondes plus
+  // tard. Deux lectures du même droit, deux réponses.
+  //
+  // Le magasin de solde est partagé par chemin (components/solde-negociations.tsx) :
+  // cette lecture-ci ne coûte aucune requête de plus que la ligne affichée.
+  const { valeur: solde } = useSolde();
+
+  // LA RÈGLE À NE PAS ENFREINDRE : un solde INCONNU n'est pas zéro. Elle est
+  // écrite dans soldeBloque (components/solde-negociations.tsx), où elle se
+  // teste seule. On ne bloque jamais quelqu'un sur une absence de réponse :
+  // même règle que la #089 pour l'authentification, et que le « jamais un
+  // nombre inventé » de la #182 pour l'affichage.
+  const soldeEpuise = soldeBloque(solde);
+
+  // À distinguer de right.blocked juste en dessous, qui peut venir d'un
+  // indicateur de navigateur en retard sur un achat (lib/billing/right-hint.ts) :
+  // celui-là laisse le bouton actif exprès. Le solde, lui, est une lecture
+  // fraîche du quota côté serveur — il a autorité.
+  const canSubmit = !PAUSED && !soldeEpuise && (mode === "text" ? textLength >= MIN_TEXT_LENGTH : files[mode] !== null);
   const reasonId = useId();
   const countId = useId();
   // Au-delà de la limite, le serveur n'analyse que le début : on le dit avant
   // de lancer l'analyse, pas après (mission #062, D1).
   const overMax = textLength > MAX_TEXT_LENGTH;
   // Bouton désactivé : on dit pourquoi, à l'écran et au lecteur d'écran.
+  // La raison du solde épuisé est le libellé COURT de la #182 : la phrase
+  // complète, avec le chemin vers les tarifs, est déjà affichée au-dessus du
+  // champ par SoldeLigne. On ne la dit pas deux fois.
   const disabledReason = PAUSED
     ? "Analyse momentanément indisponible"
-    : mode === "text" ? `${MIN_TEXT_LENGTH} caractères minimum` : mode === "photo" ? "Ajoute une photo" : "Ajoute un PDF";
+    : soldeEpuise
+      ? SOLDE_EPUISE
+      : mode === "text" ? `${MIN_TEXT_LENGTH} caractères minimum` : mode === "photo" ? "Ajoute une photo" : "Ajoute un PDF";
 
   // Émis une seule fois par mode, au premier geste réel de l'utilisateur.
   function markInputStarted(current: Mode) {

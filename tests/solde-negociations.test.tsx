@@ -51,6 +51,7 @@ const { analysisBalance, analysisRightStatus } = await import("@/lib/billing/ent
 const { FREE_ANALYSES, PRO_ANALYSES_PER_PERIOD } = await import("@/lib/billing/plans");
 const { SOLDE_ILLIMITE, SOLDE_SEUIL_BAS, soldeBadge, soldePastille, soldeTexte, soldeTon } = await import("@/lib/content/labels");
 const { AccountView } = await import("@/components/account/account-view");
+const { SoldeEntete, SoldeLigne, affichageSolde, soldeBloque } = await import("@/components/solde-negociations");
 
 const USER = { id: "u-createur", email: "camille@exemple.test" };
 const JETON = "jeton-de-navigateur";
@@ -314,13 +315,69 @@ describe("D5 — si la lecture échoue, aucun nombre", () => {
     expect(response.headers.getSetCookie()).toEqual([]);
   });
 
-  it("le composant n'invente aucun nombre tant qu'il ne sait pas", () => {
+  it("le composant n'invente aucun nombre dans aucun des trois états", () => {
     const source = readFileSync("components/solde-negociations.tsx", "utf8");
-    // L'en-tête et le champ restent absents tant que la lecture ne tranche pas.
-    expect(source.split("if (!solde) return null;")).toHaveLength(3);
-    // Et aucune valeur par défaut, ni dans le magasin ni au rendu serveur.
-    expect(source).toContain("{ cle: null, valeur: null, fini: false, abonnes: new Set() }");
-    expect(source).toMatch(/\(\) => null,\s*\);/);
+    // Aucune valeur par défaut, ni dans le magasin ni au rendu serveur.
+    expect(source).toContain("{ cle: null, etat: { fini: false, valeur: null }, abonnes: new Set() }");
+    expect(source).toContain("() => EN_ATTENTE,");
+    // Les deux surfaces passent par la MÊME décision : elles ne peuvent pas
+    // répondre différemment à « que montrer quand on ne sait pas ».
+    expect(source.split('affichageSolde({ fini, valeur: solde }) === "rien"')).toHaveLength(3);
+  });
+
+  // ─── Mission #194, E ────────────────────────────────────────────────────
+  it("les trois états se distinguent, et l'attente ne ressemble pas à l'échec", () => {
+    expect(affichageSolde({ fini: false, valeur: null })).toBe("attente");
+    expect(affichageSolde({ fini: true, valeur: null })).toBe("rien");
+    expect(affichageSolde({ fini: true, valeur: { restantes: 3, rechargeLe: null, intact: false } })).toBe("contenu");
+    // Un solde lu AVANT la fin de la lecture reste du contenu : il n'y a plus
+    // rien à attendre une fois qu'on a le nombre.
+    expect(affichageSolde({ fini: false, valeur: { restantes: 0, rechargeLe: null, intact: false } })).toBe("contenu");
+  });
+
+  it("MONTÉ AVANT LA RÉPONSE : la place est occupée, et sans aucun chiffre", () => {
+    // Le rendu serveur voit EN_ATTENTE par construction (getServerSnapshot) :
+    // c'est exactement l'état d'un composant monté avant la réponse.
+    // Le cadratin U+2003 donne la hauteur de ligne du texte final sans
+    // écrire un seul caractère visible. React le rend tel quel, pas en entité.
+    const CADRATIN = " ";
+    for (const [nom, html] of [
+      ["en-tête", renderToStaticMarkup(<SoldeEntete />)],
+      ["ligne", renderToStaticMarkup(<SoldeLigne />)],
+    ] as const) {
+      expect(html, nom).toContain("data-solde-attente");
+      expect(html, nom).toContain(CADRATIN);
+      // ET AUCUN CHIFFRE dans ce qui s'affiche. C'est la règle de la #182,
+      // intacte : le texte rendu, attributs retirés, ne contient rien.
+      const affiche = html.replace(/<[^>]*>/g, "").replace(new RegExp(CADRATIN, "g"), "").trim();
+      expect(affiche, `${nom} affiche « ${affiche} »`).toBe("");
+      // Rien à lire pour un lecteur d'écran : une place vide annoncée serait
+      // du bruit.
+      expect(html, nom).toContain('aria-hidden="true"');
+      // Et surtout, aucun « 0 », aucun mot du solde.
+      expect(html, nom).not.toContain("négociation");
+    }
+  });
+
+  it("l'en-tête en attente garde les dimensions de la pastille finale", () => {
+    const attente = renderToStaticMarkup(<SoldeEntete />);
+    // Les classes qui tiennent la place sont les mêmes que celles de la
+    // pastille rendue : même hauteur minimale, même largeur minimale, même
+    // taille de texte, même arrondi.
+    for (const classe of ["min-h-11", "min-w-11", "rounded-control", "border-2", "px-2", "text-[13px]"]) {
+      expect(attente, classe).toContain(classe);
+    }
+    // Un pouls discret, pas un contenu.
+    expect(attente).toContain("animate-pulse");
+  });
+
+  it("APRÈS UN ÉCHEC : plus rien, la place est rendue", () => {
+    // L'échec ne se rend pas côté serveur (il faut une lecture finie) : la
+    // décision est donc vérifiée là où elle se prend, et la source montre que
+    // les deux surfaces en tirent un retour nul.
+    expect(affichageSolde({ fini: true, valeur: null })).toBe("rien");
+    const source = readFileSync("components/solde-negociations.tsx", "utf8");
+    expect(source.split('affichageSolde({ fini, valeur: solde }) === "rien") return null;')).toHaveLength(3);
   });
 });
 
@@ -368,10 +425,21 @@ describe("D6 — le solde est frais après une analyse", () => {
 describe("C — le ton change avec le solde, et le seuil n'est pas dans un composant", () => {
   it("le seuil vit dans lib/content/, et aucun composant n'écrit de nombre à sa place", () => {
     expect(SOLDE_SEUIL_BAS).toBeGreaterThan(0);
-    const composant = readFileSync("components/solde-negociations.tsx", "utf8");
+    // Mission #194 — le code SANS les commentaires : ils citent la règle, et
+    // la citer n'est pas l'enfreindre.
+    const composant = readFileSync("components/solde-negociations.tsx", "utf8")
+      .split("\n")
+      .filter((ligne) => !ligne.trim().startsWith("//"))
+      .join("\n");
     expect(composant).toContain("soldeTon(");
-    // Aucune comparaison chiffrée dans le composant : il ne décide pas du ton.
-    expect(composant).not.toMatch(/restantes\s*[<>]=?\s*\d/);
+    // Le composant ne décide pas du TON : aucune comparaison à un seuil. La
+    // seule comparaison chiffrée permise est « <= 0 » — « il n'en reste
+    // aucune » n'est pas un seuil, c'est la borne du domaine, et soldeBloque
+    // en a besoin pour refuser l'envoi (mission #194, C).
+    const comparaisons = [...composant.matchAll(/restantes\s*[<>]=?\s*(\d+)/g)].map((m) => m[1]);
+    expect(comparaisons.filter((n) => n !== "0")).toEqual([]);
+    // Et le seuil lui-même n'apparaît jamais en dur.
+    expect(composant).not.toContain("SOLDE_SEUIL_BAS");
   });
 
   it("solde confortable : discret", () => {
@@ -603,5 +671,121 @@ describe("A — un seul endroit dit ce qu'il reste", () => {
     // Et la seule lecture du quota d'abonnement reste celle du moteur.
     const moteur = readFileSync("lib/billing/entitlement.ts", "utf8");
     expect(moteur.split("analysesInPeriod(")).toHaveLength(6);
+  });
+});
+
+// ═══════ Mission #194, C — LE BOUTON ET LE SOLDE DISENT LA MÊME CHOSE ═════
+//
+// Le bloc au-dessus du champ choisissait déjà entre un refus et le solde, mais
+// canSubmit n'en tenait aucun compte : à solde nul, le bouton partait au
+// serveur et revenait refusé plusieurs secondes plus tard.
+//
+// CE QUI N'EST PAS VÉRIFIÉ ICI, ET POURQUOI : le projet n'a pas
+// d'environnement DOM (ni jsdom, ni @testing-library). On ne peut donc pas
+// cliquer le bouton, et on ne peut pas amorcer le magasin de module avant un
+// rendu — le rendu serveur voit EN_ATTENTE par construction, et c'est VOULU :
+// un magasin partagé qui servirait au rendu serveur ferait fuir le solde
+// d'une personne vers la requête d'une autre. Ce qui est vérifié, c'est la
+// règle elle-même, et que le seul chemin vers le réseau passe par elle.
+describe("C — un solde connu à zéro refuse l'envoi, un solde inconnu non", () => {
+  it("SOLDE 0 LU : la règle bloque", () => {
+    expect(soldeBloque({ restantes: 0, rechargeLe: null, intact: false })).toBe(true);
+    // Un négatif n'existe pas, mais s'il arrivait il bloquerait aussi.
+    expect(soldeBloque({ restantes: -1, rechargeLe: null, intact: false })).toBe(true);
+  });
+
+  it("SOLDE INCONNU : la règle ne bloque PAS — ni avant la lecture, ni après un échec", () => {
+    // C'est la règle à ne pas enfreindre. Les deux situations arrivent au
+    // composant sous la même forme : valeur null.
+    expect(soldeBloque(null)).toBe(false);
+    expect(affichageSolde({ fini: false, valeur: null })).toBe("attente");
+    expect(affichageSolde({ fini: true, valeur: null })).toBe("rien");
+  });
+
+  it("solde disponible, ou sans plafond : la règle ne bloque pas", () => {
+    expect(soldeBloque({ restantes: 1, rechargeLe: null, intact: true })).toBe(false);
+    expect(soldeBloque({ restantes: 28, rechargeLe: null, intact: false })).toBe(false);
+    // null = aucun plafond, pas zéro. Les confondre bloquerait un palier
+    // illimité.
+    expect(soldeBloque({ restantes: null, rechargeLe: null, intact: false })).toBe(false);
+  });
+
+  it("le bouton lit cette règle, et pas un nombre à lui", () => {
+    const source = readFileSync("components/deal-input.tsx", "utf8");
+    expect(source).toContain("const soldeEpuise = soldeBloque(solde);");
+    expect(source).toContain("const canSubmit = !PAUSED && !soldeEpuise &&");
+    // Aucune comparaison chiffrée du solde dans le composant : la règle n'est
+    // pas réécrite sur place.
+    expect(source).not.toMatch(/restantes\s*[<>]=?\s*\d/);
+  });
+
+  it("AUCUN APPEL RÉSEAU AU CLIC : le seul chemin vers /api/analyse est gardé par canSubmit", () => {
+    const source = readFileSync("components/deal-input.tsx", "utf8");
+    // Un seul endroit lance l'analyse, et il est derrière la garde.
+    expect(source.split("void analyse(")).toHaveLength(2);
+    expect(source).toMatch(/if \(!canSubmit\) return;\s*\n\s*void analyse\(mode\);/);
+    // Et c'est bien là que part la requête.
+    expect(source.split('postJson("/api/analyse"')).toHaveLength(2);
+  });
+
+  it("la raison affichée est le libellé COURT de la #182, pas une phrase neuve", () => {
+    const source = readFileSync("components/deal-input.tsx", "utf8");
+    expect(source).toContain("? SOLDE_EPUISE");
+    // La phrase complète, avec le chemin vers les tarifs, est déjà au-dessus
+    // du champ : on ne la dit pas deux fois.
+    expect(source).toContain("<SoldeLigne />");
+    expect(source).not.toContain("Les tarifs disent");
+  });
+
+  it("le solde du bouton et celui de la ligne viennent du MÊME magasin", () => {
+    const source = readFileSync("components/deal-input.tsx", "utf8");
+    // Une seule lecture, partagée : pas de requête de plus pour le bouton.
+    expect(source).toContain("const { valeur: solde } = useSolde();");
+    expect(source.split("useSolde()")).toHaveLength(2);
+  });
+});
+
+// ═══════ Mission #194, D — /api/solde n'écrit plus en base ════════════════
+describe("D — la lecture du solde est une lecture, et rien d'autre", () => {
+  const route = readFileSync("app/api/solde/route.ts", "utf8");
+  const sansCommentaires = route
+    .split("\n")
+    .filter((ligne) => !ligne.trim().startsWith("//"))
+    .join("\n");
+
+  it("plus aucun filet horaire : il écrivait en base à chaque chargement de page", () => {
+    // hitUsageGuard fait un rpc usage_guard_hit, donc une ÉCRITURE, sur une
+    // route que son propre en-tête décrit comme ne touchant aucun compteur.
+    expect(sansCommentaires).not.toContain("hitUsageGuard");
+    expect(sansCommentaires).not.toContain("usage-guard");
+    expect(sansCommentaires).not.toContain("RIGHTS_PER_HOUR");
+    // Les imports devenus inutiles sont partis avec.
+    expect(sansCommentaires).not.toContain("clientIp");
+    expect(sansCommentaires).not.toContain("hashIp");
+  });
+
+  it("l'en-tête dit POURQUOI il n'y en a plus", () => {
+    expect(route).toContain("PLUS AUCUN FILET HORAIRE ICI, ET C'EST VOULU");
+    expect(route).toContain("hitUsageGuard");
+  });
+
+  it("là où le filet protège de l'argent, il reste APPELÉ", () => {
+    // Le mot dans un import ne prouve rien : c'est l'APPEL qui protège. La
+    // batterie de mutation l'a montré — remplacer le résultat du filet par
+    // « allowed: true » laissait l'import en place et ne cassait rien.
+    for (const [chemin, appel] of [
+      ["app/api/droits/route.ts", "await hitUsageGuard(hashIp(`droits:${clientIp(request)}`), { limit: RIGHTS_PER_HOUR })"],
+      ["app/api/analyse/route.ts", "await hitUsageGuard(hourlyKey, { limit: rule.limit, windowSeconds: rule.windowSeconds })"],
+    ] as const) {
+      expect(readFileSync(chemin, "utf8"), chemin).toContain(appel);
+    }
+  });
+
+  it("la route ne fait plus qu'une chose : lire le solde", () => {
+    // Un seul appel qui parle à la base, et c'est la lecture annoncée.
+    expect(sansCommentaires).toContain("analysisBalance(user, readCookie(request, ANON_COOKIE))");
+    expect(sansCommentaires).not.toContain("rpc(");
+    expect(sansCommentaires).not.toContain("insertRow");
+    expect(sansCommentaires).not.toContain("updateRows");
   });
 });

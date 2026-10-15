@@ -41,8 +41,11 @@ export type Solde = { restantes: number | null; rechargeLe: Date | null; intact:
 // analyse, la page de résultat resservirait le nombre d'avant. Le chemin
 // change, la lecture repart — c'est ce qui rend le solde frais sans vider le
 // cache ni se reconnecter.
-type Magasin = { cle: string | null; valeur: Solde | null; fini: boolean; abonnes: Set<() => void> };
-const magasin: Magasin = { cle: null, valeur: null, fini: false, abonnes: new Set() };
+// « etat » est un objet STABLE, remplacé seulement quand il change :
+// useSyncExternalStore compare par identité, et en reconstruire un à chaque
+// lecture ferait boucler le rendu.
+type Magasin = { cle: string | null; etat: { fini: boolean; valeur: Solde | null }; abonnes: Set<() => void> };
+const magasin: Magasin = { cle: null, etat: { fini: false, valeur: null }, abonnes: new Set() };
 
 function prevenir() {
   for (const abonne of magasin.abonnes) abonne();
@@ -68,21 +71,21 @@ function charger(cle: string) {
   // Déjà lu, ou en cours, pour ce chemin : on ne redemande pas.
   if (magasin.cle === cle) return;
   magasin.cle = cle;
-  magasin.valeur = null;
-  magasin.fini = false;
+  magasin.etat = { fini: false, valeur: null };
   prevenir();
+  let lu: Solde | null = null;
   fetch("/api/solde", { cache: "no-store" })
     .then((response) => (response.ok ? (response.json() as Promise<Record<string, unknown>>) : null))
     .then((value) => {
       // Le chemin a changé pendant la lecture : cette réponse n'est plus celle
       // de la page affichée, et on ne l'affiche pas.
       if (magasin.cle !== cle) return;
-      magasin.valeur = value ? lireLeCorps(value) : null;
+      lu = value ? lireLeCorps(value) : null;
     })
     .catch(() => undefined)
     .finally(() => {
       if (magasin.cle !== cle) return;
-      magasin.fini = true;
+      magasin.etat = { fini: true, valeur: lu };
       prevenir();
     });
 }
@@ -94,21 +97,70 @@ function sabonner(abonne: () => void) {
   };
 }
 
-// null : pas encore lu, ou illisible. Les deux se comportent pareil à l'écran
-// (rien), et c'est voulu : « je ne sais pas » ne s'affiche pas en nombre.
-export function useSolde(): Solde | null {
+// Mission #194, E — DEUX ÉTATS QUI NE SE RESSEMBLENT PAS, et on cesse de les
+// confondre.
+//
+// « valeur null » couvrait jusqu'ici deux situations opposées : la lecture
+// n'est pas finie, et la lecture a échoué. Le magasin distinguait déjà les
+// deux par « fini » ; les composants, eux, le devinaient — c'est-à-dire ne le
+// savaient pas. D'où un écran vide dans les deux cas, et un contenu qui
+// surgissait en poussant la mise en page.
+//
+//   { fini: false, valeur: null }  on attend  → la place est réservée, vide
+//   { fini: true,  valeur: null }  échec      → la place est rendue
+//   { fini: true,  valeur: … }     lu         → le contenu
+//
+// « valeur » ne contient JAMAIS de nombre inventé dans aucun des trois cas :
+// c'est la règle de la #182, et elle est intacte.
+export type EtatSolde = { fini: boolean; valeur: Solde | null };
+
+const EN_ATTENTE: EtatSolde = { fini: false, valeur: null };
+
+// CE QUE L'ÉCRAN FAIT DE CES TROIS ÉTATS, décidé une seule fois pour les deux
+// surfaces. Sans ça, la règle était écrite deux fois et pouvait diverger.
+//
+//   contenu   le solde est lu : on l'affiche ;
+//   attente   la lecture n'est pas finie : la place est réservée, VIDE ;
+//   rien      la lecture est finie sans résultat : la place est rendue.
+//
+// L'attente et l'échec ne se ressemblent donc pas, et aucun des trois états
+// ne produit de chiffre que le serveur n'a pas donné.
+export type Affichage = "contenu" | "attente" | "rien";
+
+export function affichageSolde(etat: EtatSolde): Affichage {
+  if (etat.valeur !== null) return "contenu";
+  return etat.fini ? "rien" : "attente";
+}
+
+// Mission #194, C — LE SOLDE INTERDIT-IL D'ENVOYER ?
+//
+// Sortie du composant parce que c'est la seule partie subtile, et que s'en
+// tromper se paie des deux côtés : bloquer quelqu'un qui a le droit, ou
+// laisser partir une requête qui reviendra refusée dans plusieurs secondes.
+//
+//   valeur === null        pas encore lu, ou lecture échouée → NON. On ne
+//                          bloque jamais sur une absence de réponse ;
+//   restantes === null     aucun plafond → NON, il n'y a rien à bloquer ;
+//   restantes <= 0         lu, et il ne reste rien → OUI.
+export function soldeBloque(valeur: Solde | null): boolean {
+  return valeur !== null && valeur.restantes !== null && valeur.restantes <= 0;
+}
+
+export function useSolde(): EtatSolde {
   const chemin = usePathname() ?? "/";
-  const solde = useSyncExternalStore(
+  const etat = useSyncExternalStore(
     sabonner,
-    () => (magasin.cle === chemin ? magasin.valeur : null),
-    () => null,
+    () => (magasin.cle === chemin ? magasin.etat : EN_ATTENTE),
+    // Rendu serveur : on attend, par définition. La place est donc réservée
+    // dès le premier affichage, et rien ne bouge à l'hydratation.
+    () => EN_ATTENTE,
   );
   // Lancée dans un effet, jamais pendant le rendu : un rendu qui déclenche une
   // requête réseau n'est pas un rendu.
   useEffect(() => {
     charger(chemin);
   }, [chemin]);
-  return solde;
+  return etat;
 }
 
 // ─── L'en-tête ─────────────────────────────────────────────────────────────
@@ -116,8 +168,29 @@ export function useSolde(): Solde | null {
 // Pastille cliquable sur fond distinct, avec le nombre en premier. Le ton du
 // solde reste disponible pour les autres surfaces qui expliquent la recharge.
 export function SoldeEntete({ className }: { className?: string }) {
-  const solde = useSolde();
-  if (!solde) return null;
+  const { fini, valeur: solde } = useSolde();
+  // Attente : la pastille, aux mêmes dimensions, SANS TEXTE. Elle n'annonce
+  // aucun nombre — il n'y en a pas encore — mais elle prend la place que le
+  // nombre prendra, pour que rien ne pousse la mise en page à son arrivée.
+  // aria-hidden : il n'y a rien à lire, et une pastille vide annoncée serait
+  // du bruit.
+  if (solde === null) {
+    if (affichageSolde({ fini, valeur: solde }) === "rien") return null;
+    return (
+      <span
+        aria-hidden
+        data-solde-attente
+        className={cn(
+          "inline-flex min-h-11 min-w-11 animate-pulse items-center justify-center rounded-control border-2 border-filet bg-filet px-2 text-[13px] max-[359px]:px-1 max-[359px]:text-[10px]",
+          className,
+        )}
+      >
+        {/* Un espace insécable large : il donne la hauteur de ligne du texte
+            final sans écrire un seul caractère visible. */}
+        &#8195;
+      </span>
+    );
+  }
   const ton = soldeTon(solde.restantes, solde.intact);
   const pastille = soldePastille(solde.restantes);
   return (
@@ -144,8 +217,17 @@ export function SoldeEntete({ className }: { className?: string }) {
 // sans couleur ni icône. Le ton bas monte UNE fois. Zéro dit ce qui se passe
 // ensuite, et porte le lien — jamais un mur.
 export function SoldeLigne({ className }: { className?: string }) {
-  const solde = useSolde();
-  if (!solde) return null;
+  const { fini, valeur: solde } = useSolde();
+  // Même règle qu'au-dessus : une ligne de la même hauteur, vide, pendant
+  // l'attente ; plus rien quand la lecture a échoué.
+  if (solde === null) {
+    if (affichageSolde({ fini, valeur: solde }) === "rien") return null;
+    return (
+      <p aria-hidden data-solde-attente className={cn("text-small text-attenue", className)}>
+        &#8195;
+      </p>
+    );
+  }
   const ton = soldeTon(solde.restantes, solde.intact);
   const texte = soldeTexte(solde.restantes, solde.rechargeLe, solde.intact);
   return (
