@@ -155,6 +155,54 @@ export function soldeBadge(restantes: number | null, intact = false): string {
 // Où aller quand il n'en reste plus. Un seul endroit l'écrit.
 export const SOLDE_LIEN = { href: "/tarifs", label: "Voir les tarifs" } as const;
 
+// Mission #195 — LE GABARIT DE LA PASTILLE.
+//
+// La forme la plus large que soldePastille puisse rendre, avec un emplacement
+// de DEUX caractères pour le nombre. tabular-nums (déjà posé sur le nombre)
+// donne la même avance à tous les chiffres : à deux chiffres réservés, 1 et 28
+// occupent exactement la même largeur, et le saut tombe à zéro.
+//
+// « négociation · Recharger » est la plus longue des quatre formes — plus
+// longue que « négociations illimitées » et que « négociations restantes ».
+// Vérifié par test, pour qu'une cinquième forme ajoutée un jour ne déborde pas
+// en silence.
+//
+// Au-delà de 99 négociations, le nombre reprend une avance de plus. Le cas
+// n'existe pas aujourd'hui (le quota Pro est de 30) et il est nommé ici plutôt
+// que laissé à découvrir.
+export const SOLDE_PASTILLE_CHIFFRES = 2;
+
+// Le nombre du gabarit est VIDE : sa largeur vient de min-width, pas de
+// chiffres. Aucun nombre inventé n'entre dans le document, même invisible.
+//
+// Le libellé, lui, est ASSEMBLÉ : le « court » le plus long de toutes les
+// formes, suivi du suffixe le plus long. Ce n'est pas une phrase que la
+// pastille peut rendre, c'est une BORNE — et elle se recalcule d'elle-même
+// si une forme est ajoutée ou reformulée.
+//
+// Pourquoi l'assembler plutôt que prendre la forme la plus longue : le
+// « court » le plus long et le suffixe le plus long n'appartiennent pas à la
+// même forme. « négociations » (pluriel) est le court le plus large, et
+// « · Recharger » (la forme à zéro, au singulier) est le suffixe le plus
+// large. Réserver l'une des deux formes laissait l'autre déborder.
+export function soldePastilleGabarit(): { nombre: string; libelle: string; court: string } {
+  const formes = soldePastilleFormes();
+  const plusLong = (valeurs: string[]) => valeurs.reduce((garde, v) => (v.length > garde.length ? v : garde), "");
+  const court = plusLong(formes.map((f) => f.court));
+  const suffixe = plusLong(formes.map((f) => f.libelle.slice(f.court.length)));
+  return { nombre: "", libelle: `${court}${suffixe}`, court };
+}
+
+// Toutes les formes que la pastille peut prendre. Elles servent deux fois :
+// à construire le gabarit ci-dessus, et au test qui vérifie qu'aucune ne
+// dépasse ce gabarit.
+export function soldePastilleFormes(): Array<{ nombre: string; libelle: string; court: string }> {
+  return [null, 0, 1, 2, 28, 99].map((restantes) => {
+    const { nombre, libelle, court } = soldePastille(restantes);
+    return { nombre, libelle, court };
+  });
+}
+
 export function soldePastille(restantes: number | null): { nombre: string; libelle: string; court: string; href: string } {
   if (restantes === null) return { nombre: "∞", libelle: "négociations illimitées", court: "négociations", href: "/compte" };
   if (restantes <= 0) return { nombre: "0", libelle: "négociation · Recharger", court: "négociation", href: SOLDE_LIEN.href };

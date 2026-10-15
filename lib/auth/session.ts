@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { sessionStateFrom } from "@/lib/auth/session-state";
-import { avecDelai, DELAI_AUTH_MS } from "@/lib/supabase/delais";
+import { avecDelai, DELAI_AUTH_MS } from "@/lib/reseau/delais";
 
 // Session Supabase Auth côté serveur, par l'API REST. Magic link uniquement,
 // en PKCE : le vérificateur reste dans un cookie httpOnly, le code du lien

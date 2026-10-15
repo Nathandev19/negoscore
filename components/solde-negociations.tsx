@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
-import { SOLDE_LIEN, soldePastille, soldeTexte, soldeTon } from "@/lib/content/labels";
+import type { ReactNode } from "react";
+import {
+  SOLDE_LIEN,
+  SOLDE_PASTILLE_CHIFFRES,
+  soldePastille,
+  soldePastilleGabarit,
+  soldeTexte,
+  soldeTon,
+} from "@/lib/content/labels";
 import { cn } from "@/lib/utils";
 
 // Mission #182 — COMBIEN IL EN RESTE, à l'endroit où ça sert.
@@ -167,27 +175,58 @@ export function useSolde(): EtatSolde {
 //
 // Pastille cliquable sur fond distinct, avec le nombre en premier. Le ton du
 // solde reste disponible pour les autres surfaces qui expliquent la recharge.
+// La boîte de la pastille : les mêmes dimensions dans les deux états. Seuls
+// la bordure et le fond changent — une place en attente n'est pas un lien.
+const PASTILLE_BOITE =
+  "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-control border-2 px-2 text-[13px] whitespace-nowrap max-[359px]:px-1 max-[359px]:text-[10px]";
+
+// Le contenu, écrit UNE fois et rendu deux : visible pour le solde lu,
+// invisible pour le gabarit qui réserve la largeur. Les deux passent par la
+// même fonction, donc la largeur réservée ne PEUT PAS diverger de la largeur
+// finale — ce n'est pas une coïncidence de classes recopiées.
+//
+// Le nombre occupe un emplacement de deux chiffres (SOLDE_PASTILLE_CHIFFRES)
+// avec tabular-nums : 1 et 28 y tiennent la même largeur.
+function contenuPastille(forme: { nombre: string; libelle: string; court: string }) {
+  return (
+    <>
+      <strong className="inline-block text-right font-extrabold tabular-nums" style={{ minWidth: `${SOLDE_PASTILLE_CHIFFRES}ch` }}>
+        {forme.nombre}
+      </strong>
+      <span>
+        <span>{forme.court}</span>
+        <span className="max-[359px]:hidden">{forme.libelle.slice(forme.court.length)}</span>
+      </span>
+    </>
+  );
+}
+
+// L'emplacement : une grille d'une seule cellule. Le gabarit invisible la
+// dimensionne, le contenu réel se superpose dedans. Sous 360 px, le gabarit
+// masque le même suffixe que le contenu (max-[359px]:hidden) : la variante
+// courte réserve donc d'elle-même sa propre largeur courte.
+function EmplacementPastille({ children }: { children?: ReactNode }) {
+  return (
+    <span className="grid">
+      <span aria-hidden className="invisible col-start-1 row-start-1 flex items-center gap-1">
+        {contenuPastille(soldePastilleGabarit())}
+      </span>
+      <span className="col-start-1 row-start-1 flex items-center gap-1">{children}</span>
+    </span>
+  );
+}
+
 export function SoldeEntete({ className }: { className?: string }) {
   const { fini, valeur: solde } = useSolde();
-  // Attente : la pastille, aux mêmes dimensions, SANS TEXTE. Elle n'annonce
-  // aucun nombre — il n'y en a pas encore — mais elle prend la place que le
-  // nombre prendra, pour que rien ne pousse la mise en page à son arrivée.
+  // Attente : la pastille, aux mêmes dimensions ET à la même largeur, sans
+  // aucun chiffre. Le gabarit réserve la place ; la cellule visible est vide.
   // aria-hidden : il n'y a rien à lire, et une pastille vide annoncée serait
   // du bruit.
   if (solde === null) {
     if (affichageSolde({ fini, valeur: solde }) === "rien") return null;
     return (
-      <span
-        aria-hidden
-        data-solde-attente
-        className={cn(
-          "inline-flex min-h-11 min-w-11 animate-pulse items-center justify-center rounded-control border-2 border-filet bg-filet px-2 text-[13px] max-[359px]:px-1 max-[359px]:text-[10px]",
-          className,
-        )}
-      >
-        {/* Un espace insécable large : il donne la hauteur de ligne du texte
-            final sans écrire un seul caractère visible. */}
-        &#8195;
+      <span aria-hidden data-solde-attente className={cn(PASTILLE_BOITE, "animate-pulse border-filet bg-filet", className)}>
+        <EmplacementPastille />
       </span>
     );
   }
@@ -199,13 +238,9 @@ export function SoldeEntete({ className }: { className?: string }) {
       data-solde-entete
       data-ton={ton}
       aria-label={`${pastille.nombre} ${pastille.libelle}`}
-      className={cn(
-        "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-control border-2 border-encre bg-filet px-2 text-[13px] whitespace-nowrap text-encre hover:bg-creme max-[359px]:px-1 max-[359px]:text-[10px]",
-        className,
-      )}
+      className={cn(PASTILLE_BOITE, "border-encre bg-filet text-encre hover:bg-creme", className)}
     >
-      <strong className="font-extrabold tabular-nums">{pastille.nombre}</strong>
-      <span><span>{pastille.court}</span><span className="max-[359px]:hidden">{pastille.libelle.slice(pastille.court.length)}</span></span>
+      <EmplacementPastille>{contenuPastille(pastille)}</EmplacementPastille>
     </Link>
   );
 }

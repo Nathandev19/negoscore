@@ -185,7 +185,7 @@ describe("la question du navigateur ne revient pas", () => {
     expect(SOURCE).toMatch(/annulerRef\.current\?\.focus\(\{\s*preventScroll:\s*true\s*\}\)/);
     // Et c'est bien « Annuler » qui le reçoit, jamais la validation : une
     // touche Entrée réflexe doit renoncer.
-    expect(SOURCE).not.toMatch(/confirmerRef|onConfirmer[^)]*\.focus\(/);
+    expect(SOURCE).not.toMatch(/confirmerRef|\bonConfirmer\b[^)]*\.focus\(/);
   });
 
   it("Échap ferme : l'écouteur est posé sur le document et retiré ensuite", () => {

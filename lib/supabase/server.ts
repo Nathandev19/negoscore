@@ -2,7 +2,7 @@
 // service_role. Ce module ne doit jamais être importé par un composant client :
 // la clé ne quitte pas le serveur (vérifié par tests/security.test.ts).
 
-import { avecDelai, DELAI_POSTGREST_MS, DELAI_STORAGE_MS, estDelaiDepasse } from "@/lib/supabase/delais";
+import { avecDelai, DELAI_POSTGREST_MS, DELAI_STORAGE_MS, estDelaiDepasse } from "@/lib/reseau/delais";
 
 export const DOCUMENTS_BUCKET = "deal-documents";
 

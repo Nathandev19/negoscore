@@ -1,4 +1,4 @@
-import { avecDelai, DELAI_POSTGREST_MS, estDelaiDepasse } from "@/lib/supabase/delais";
+import { avecDelai, DELAI_POSTGREST_MS, estDelaiDepasse } from "@/lib/reseau/delais";
 import { SupabaseConfigError, SupabaseRequestError } from "@/lib/supabase/server";
 
 // Mission #194, B — même plafond que les lectures de service : c'est le même

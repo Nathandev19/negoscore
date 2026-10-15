@@ -1,5 +1,28 @@
 // Client Whop côté serveur. Docs : https://docs.whop.com/api-reference/checkout-configurations/create-checkout-configuration
 
+import { avecDelai, DELAI_WHOP_MS } from "@/lib/reseau/delais";
+
+// Mission #195, B — LE PLAFOND, ET POURQUOI ON NE TRADUIT RIEN.
+//
+// Les trois appels sortants de ce fichier portent le plafond de 10 s posé par
+// lib/reseau/delais.ts. Un dépassement se traite comme une panne du
+// fournisseur, jamais comme un refus de paiement ni comme un droit absent — et
+// il n'y a rien à écrire pour cela, parce que les issues d'une panne réseau
+// sont déjà les bonnes :
+//
+//   createCheckoutUrl   son catch renvoie null → la page de paiement n'ouvre
+//                       pas. Rien n'est retiré, rien n'est encaissé.
+//   membershipRequest   aucun catch : l'erreur se propage. /api/resilier
+//                       l'attrape et répond « indisponible » SANS écrire
+//                       cancelled_at — l'abonnement reste en place.
+//   readMembership      son catch rend { kind: "unavailable" }, les trois
+//                       états de la #114 : le webhook rejoue au lieu de
+//                       conclure. Aucun droit retiré.
+//
+// Un délai dépassé emprunte exactement ces chemins. Le convertir en erreur
+// typée (comme le fait lib/supabase/server.ts avec son 504) changerait ce qui
+// se propage hors de membershipRequest, pour aucun gain.
+
 const API_BASE = "https://api.whop.com/api/v1";
 const CHECKOUT_BASE = "https://whop.com";
 // Whop versionne son API par date. Sans cet en-tête, les requêtes repartent
@@ -58,16 +81,22 @@ export async function createCheckoutUrl(options: {
   const apiKey = process.env.WHOP_API_KEY;
   if (!apiKey) return null;
   try {
-    const response = await fetch(`${API_BASE}/checkout_configurations`, {
-      method: "POST",
-      headers: whopHeaders(apiKey),
-      body: JSON.stringify({
-        plan_id: planId(options.plan),
-        metadata: options.metadata,
-        redirect_url: options.redirectUrl,
-      }),
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${API_BASE}/checkout_configurations`,
+      avecDelai(
+        {
+          method: "POST",
+          headers: whopHeaders(apiKey),
+          body: JSON.stringify({
+            plan_id: planId(options.plan),
+            metadata: options.metadata,
+            redirect_url: options.redirectUrl,
+          }),
+          cache: "no-store",
+        },
+        DELAI_WHOP_MS,
+      ),
+    );
     if (!response.ok) {
       console.error(JSON.stringify({ event: "whop_checkout_error", status: response.status }));
       return null;
@@ -116,11 +145,14 @@ function membershipFrom(body: unknown): WhopMembership | null {
 async function membershipRequest(path: string, init: RequestInit): Promise<WhopMembership | null> {
   const apiKey = process.env.WHOP_API_KEY;
   if (!apiKey) throw new WhopConfigError("Clé API Whop absente");
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: { ...whopHeaders(apiKey), ...init.headers },
-    cache: "no-store",
-  });
+  // Pas de try/catch ici, et c'est voulu : l'erreur se propage jusqu'à la
+  // route, qui répond « indisponible » sans rien écrire. Un null, lui,
+  // signifierait « Whop a répondu que ça n'a pas marché » — ce n'est pas la
+  // même chose, et l'appelant n'en tire pas les mêmes conclusions.
+  const response = await fetch(
+    `${API_BASE}${path}`,
+    avecDelai({ ...init, headers: { ...whopHeaders(apiKey), ...init.headers }, cache: "no-store" }, DELAI_WHOP_MS),
+  );
   if (!response.ok) {
     console.error(JSON.stringify({ event: "whop_membership_error", path, status: response.status }));
     return null;
@@ -152,11 +184,10 @@ export async function readMembership(id: string): Promise<MembershipRead> {
   if (!apiKey) return { kind: "unavailable", detail: "cle_absente" };
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}/memberships/${encodeURIComponent(id)}`, {
-      method: "GET",
-      headers: whopHeaders(apiKey),
-      cache: "no-store",
-    });
+    response = await fetch(
+      `${API_BASE}/memberships/${encodeURIComponent(id)}`,
+      avecDelai({ method: "GET", headers: whopHeaders(apiKey), cache: "no-store" }, DELAI_WHOP_MS),
+    );
   } catch (error) {
     return { kind: "unavailable", detail: error instanceof Error ? error.message.slice(0, 120) : "reseau" };
   }

@@ -54,7 +54,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers(),
 }));
 
-const { avecDelai, estDelaiDepasse, DELAI_AUTH_MS, DELAI_POSTGREST_MS, DELAI_STORAGE_MS } = await import("@/lib/supabase/delais");
+const { avecDelai, estDelaiDepasse, DELAI_AUTH_MS, DELAI_POSTGREST_MS, DELAI_STORAGE_MS } = await import("@/lib/reseau/delais");
 const { checkAccessToken, refreshSessionOutcome, sessionFromAccessToken } = await import("@/lib/auth/session");
 const { sessionState } = await import("@/lib/auth/session-state");
 const { selectRows, countRows, SupabaseRequestError } = await import("@/lib/supabase/server");

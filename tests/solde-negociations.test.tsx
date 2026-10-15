@@ -52,6 +52,7 @@ const { FREE_ANALYSES, PRO_ANALYSES_PER_PERIOD } = await import("@/lib/billing/p
 const { SOLDE_ILLIMITE, SOLDE_SEUIL_BAS, soldeBadge, soldePastille, soldeTexte, soldeTon } = await import("@/lib/content/labels");
 const { AccountView } = await import("@/components/account/account-view");
 const { SoldeEntete, SoldeLigne, affichageSolde, soldeBloque } = await import("@/components/solde-negociations");
+const { SOLDE_PASTILLE_CHIFFRES, soldePastilleFormes, soldePastilleGabarit } = await import("@/lib/content/labels");
 
 const USER = { id: "u-createur", email: "camille@exemple.test" };
 const JETON = "jeton-de-navigateur";
@@ -338,25 +339,91 @@ describe("D5 — si la lecture échoue, aucun nombre", () => {
   it("MONTÉ AVANT LA RÉPONSE : la place est occupée, et sans aucun chiffre", () => {
     // Le rendu serveur voit EN_ATTENTE par construction (getServerSnapshot) :
     // c'est exactement l'état d'un composant monté avant la réponse.
-    // Le cadratin U+2003 donne la hauteur de ligne du texte final sans
-    // écrire un seul caractère visible. React le rend tel quel, pas en entité.
-    const CADRATIN = " ";
     for (const [nom, html] of [
       ["en-tête", renderToStaticMarkup(<SoldeEntete />)],
       ["ligne", renderToStaticMarkup(<SoldeLigne />)],
     ] as const) {
       expect(html, nom).toContain("data-solde-attente");
-      expect(html, nom).toContain(CADRATIN);
-      // ET AUCUN CHIFFRE dans ce qui s'affiche. C'est la règle de la #182,
-      // intacte : le texte rendu, attributs retirés, ne contient rien.
-      const affiche = html.replace(/<[^>]*>/g, "").replace(new RegExp(CADRATIN, "g"), "").trim();
-      expect(affiche, `${nom} affiche « ${affiche} »`).toBe("");
-      // Rien à lire pour un lecteur d'écran : une place vide annoncée serait
-      // du bruit.
+      // AUCUN CHIFFRE dans le document, visible ou non : la règle de la #182
+      // interdit un nombre inventé, et un « 00 » invisible en serait un. Les
+      // attributs de présentation portent légitimement des chiffres (classes
+      // Tailwind, min-width) : c'est le CONTENU qui est vérifié.
+      const sansPresentation = html.replace(/ (?:class|style)="[^"]*"/g, "");
+      expect(sansPresentation, nom).not.toMatch(/\d/);
+      // Rien à lire pour un lecteur d'écran.
       expect(html, nom).toContain('aria-hidden="true"');
-      // Et surtout, aucun « 0 », aucun mot du solde.
-      expect(html, nom).not.toContain("négociation");
     }
+  });
+
+  it("l'attente de l'en-tête réserve la largeur par un GABARIT, pas par un espace", () => {
+    const attente = renderToStaticMarkup(<SoldeEntete />);
+    // La forme la plus large que la pastille puisse prendre, rendue invisible :
+    // c'est elle qui dimensionne l'emplacement dans les deux états.
+    // Le libellé est rendu en DEUX morceaux : le suffixe disparaît sous
+    // 360 px (max-[359px]:hidden), et c'est ce qui fait que la variante courte
+    // réserve d'elle-même sa propre largeur courte.
+    const gabarit = soldePastilleGabarit();
+    expect(attente).toContain(`>${gabarit.court}<`);
+    expect(attente).toContain(gabarit.libelle.slice(gabarit.court.length));
+    expect(attente).toContain("invisible");
+    // L'emplacement du nombre fait deux chiffres, et il est vide.
+    expect(attente).toContain(`min-width:${SOLDE_PASTILLE_CHIFFRES}ch`);
+  });
+
+  it("la liste des formes couvre les QUATRE cas que la pastille peut rendre", () => {
+    // Le gabarit est construit à partir de cette liste. Si elle se vide, le
+    // gabarit se rétrécit avec elle — et un test qui la parcourrait pour se
+    // vérifier ne verrait rien. D'où ce test-ci, qui la borne par le bas.
+    const libelles = soldePastilleFormes().map((f) => f.libelle);
+    for (const attendu of ["négociation restante", "négociations restantes", "négociation · Recharger", "négociations illimitées"]) {
+      expect(libelles, attendu).toContain(attendu);
+    }
+  });
+
+  it("le gabarit est bien la forme la plus LARGE : aucune forme réelle ne le dépasse", () => {
+    // Si une cinquième forme était ajoutée un jour, elle déborderait du
+    // gabarit et la largeur se remettrait à sauter. Ce test l'attrape.
+    //
+    // Les formes sont reconstruites ICI, sans passer par soldePastilleFormes :
+    // c'est cette liste qui construit le gabarit, et s'en servir pour le
+    // vérifier comparerait la mesure à elle-même.
+    const gabarit = soldePastilleGabarit();
+    const reelles = [null, 0, 1, 2, 28, 99].map((restantes) => soldePastille(restantes));
+    for (const forme of reelles) {
+      expect(forme.libelle.length, `« ${forme.libelle} » dépasse le gabarit`).toBeLessThanOrEqual(gabarit.libelle.length);
+      expect(forme.court.length, `« ${forme.court} » dépasse le gabarit court`).toBeLessThanOrEqual(gabarit.court.length);
+      // Et le nombre tient dans l'emplacement réservé.
+      expect(forme.nombre.length, `« ${forme.nombre} » dépasse ${SOLDE_PASTILLE_CHIFFRES} chiffres`).toBeLessThanOrEqual(
+        SOLDE_PASTILLE_CHIFFRES,
+      );
+    }
+  });
+
+  it("le suffixe porte le point de rupture : la variante courte réserve sa propre largeur", () => {
+    // Sous 360 px, la pastille ne garde que le libellé court. Le suffixe du
+    // GABARIT porte la même classe que celui du contenu — c'est ce qui fait
+    // que la largeur réservée rétrécit exactement comme la largeur finale.
+    // Le retirer ferait disparaître la variante courte sans bruit.
+    const source = readFileSync("components/solde-negociations.tsx", "utf8");
+    expect(source).toContain('<span className="max-[359px]:hidden">{forme.libelle.slice(forme.court.length)}</span>');
+    // Une seule occurrence : le suffixe est écrit une fois, donc gabarit et
+    // contenu ne peuvent pas porter des points de rupture différents.
+    expect(source.split('max-[359px]:hidden">{forme.libelle')).toHaveLength(2);
+    // Mesuré dans le navigateur : en masquant ce suffixe, la pastille passe de
+    // 174,6 px à 109,4 px, dans l'attente comme dans le contenu.
+    const attente = renderToStaticMarkup(<SoldeEntete />);
+    expect(attente.split("max-[359px]:hidden")).toHaveLength(2);
+  });
+
+  it("la largeur réservée et la largeur finale sortent de la MÊME fonction", () => {
+    const source = readFileSync("components/solde-negociations.tsx", "utf8");
+    // Le contenu est écrit une fois et rendu deux : la largeur réservée ne
+    // peut pas diverger de la largeur finale par une classe recopiée de
+    // travers.
+    expect(source.split("contenuPastille(")).toHaveLength(4);
+    expect(source.split("<EmplacementPastille")).toHaveLength(3);
+    // Et la boîte est la même chaîne de classes dans les deux états.
+    expect(source.split("PASTILLE_BOITE")).toHaveLength(4);
   });
 
   it("l'en-tête en attente garde les dimensions de la pastille finale", () => {

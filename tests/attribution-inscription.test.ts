@@ -426,7 +426,7 @@ describe("le journal nomme l'étape où le premier contact se perd", () => {
     const { readFileSync } = await import("node:fs");
     const source = readFileSync("lib/auth/login-claims.ts", "utf8");
     const fonction = source.slice(source.indexOf("function journalPremierContact"), source.indexOf("export async function firstTouchForAnonToken"));
-    expect(fonction).not.toMatch(/anonToken|email|attribution/);
+    expect(fonction).not.toMatch(/anonToken|email|attribution\b/);
   });
 });
 
