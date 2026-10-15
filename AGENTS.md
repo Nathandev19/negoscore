@@ -16,6 +16,11 @@ voir sa référence avant de l'écarter.
 
 ### La mission
 
+- **Le sujet du commit d'une mission commence par son numéro** : « #198 — … ».
+  Sans ça, le dépôt ne sait plus quelle mission a produit quoi, et personne ne
+  peut le reconstituer après coup. Constaté en #197 : après `87a939a` « #192 »,
+  plus aucun sujet ne nomme sa mission, et les numéros #193 à #196 ne se lisent
+  nulle part dans le journal.
 - **Toute mission se termine par le commit ET le push.** Le rapport donne le
   hash poussé, et le résultat des tests, du build, du typecheck ET du lint.
   Les quatre, nommés, pas « tout est vert ».
