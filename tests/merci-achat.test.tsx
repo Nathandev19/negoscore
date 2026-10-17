@@ -42,8 +42,20 @@ const { recentPurchases } = await import("@/lib/billing/purchases");
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/[\s  ]+/g, " ").trim();
 const USER = "11111111-1111-4111-8111-111111111111";
+// Une période d'abonnement ENCORE EN COURS. Écrite en dur, elle vieillissait :
+// une fois la date passée, displayedPlan ne voit plus d'abonnement actif et la
+// page cesse de dire « actif jusqu'au… ». Le test tombait alors tout seul.
+// « affiche » est formaté comme le composant le formate : les deux ne peuvent
+// pas diverger.
+function periodeEnCours(jours: number): { iso: string; affiche: string } {
+  const fin = new Date(Date.now() + jours * 24 * 60 * 60 * 1000);
+  return { iso: fin.toISOString(), affiche: fin.toLocaleDateString("fr-FR") };
+}
+const PERIODE_PRO = periodeEnCours(5);
+const PERIODE_COMPTE = periodeEnCours(12);
+
 const PACK = { event_id: "evt_1", plan: "pack" as const, analyses_added: 3, period_end: null, paid_at: "2026-09-22T10:00:00.000Z" };
-const PRO = { event_id: "evt_2", plan: "pro" as const, analyses_added: 0, period_end: "2026-10-22T10:00:00.000Z", paid_at: "2026-09-22T10:00:00.000Z" };
+const PRO = { event_id: "evt_2", plan: "pro" as const, analyses_added: 0, period_end: PERIODE_PRO.iso, paid_at: "2026-09-22T10:00:00.000Z" };
 const render = (account: { plan: "free" | "pack" | "pro"; balance: number; period_end: string | null } | null, bought: Parameters<typeof CreditsWaiter>[0]["bought"]) =>
   text(renderToStaticMarkup(<CreditsWaiter initial={account} bought={bought} />));
 
@@ -64,15 +76,15 @@ describe("A1, A4 — les trois cas d'achat", () => {
 
   it("Pro seul : la date de fin de période", () => {
     const html = render({ plan: "pro", balance: 0, period_end: PRO.period_end }, { purchase: PRO, duplicates: 1, analysesAdded: 0 });
-    expect(html).toContain("ton achat est enregistré : abonnement Pro. Ton abonnement Pro est actif jusqu'au 22/10/2026.");
+    expect(html).toContain(`ton achat est enregistré : abonnement Pro. Ton abonnement Pro est actif jusqu'au ${PERIODE_PRO.affiche}.`);
   });
 
   it("le défaut constaté : un Pack acheté par une abonnée Pro confirme le PACK, l'abonnement n'arrive qu'après", () => {
-    const html = render({ plan: "pro", balance: 5, period_end: "2026-10-16T00:00:00.000Z" }, { purchase: PACK, duplicates: 1, analysesAdded: 3 });
+    const html = render({ plan: "pro", balance: 5, period_end: PERIODE_COMPTE.iso }, { purchase: PACK, duplicates: 1, analysesAdded: 3 });
     expect(html).toContain("C'est bon, ton achat est enregistré : Pack Deal. 3 négociations ajoutées, il t'en reste 5.");
     // L'état du compte reste, mais après la confirmation et séparé d'elle.
     const confirmation = html.indexOf("ton achat est enregistré");
-    const account = html.indexOf("Ton compte : abonnement Pro actif jusqu'au 16/10/2026 · 5 négociations disponibles.");
+    const account = html.indexOf(`Ton compte : abonnement Pro actif jusqu'au ${PERIODE_COMPTE.affiche} · 5 négociations disponibles.`);
     expect(account).toBeGreaterThan(confirmation);
     // Ce que disait la page avant : l'abonnement présenté comme la confirmation.
     expect(html).not.toContain("ton compte est crédité");
