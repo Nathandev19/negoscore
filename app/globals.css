@@ -324,6 +324,57 @@ summary::-webkit-details-marker {
   }
 }
 
+/* Les blocs de la page de résultat arrivent l'un après l'autre (lib/ui/devoile.ts).
+   220 ms, sortie douce, fondu et 8 px de translation verticale.
+
+   DEUX CHOIX QUI TIENNENT TOUT :
+
+   1. On n'anime QUE l'opacité et la transformation. Ni l'une ni l'autre
+      n'entre dans le calcul de mise en page : chaque bloc occupe sa place
+      définitive dès le premier rendu, et rien ne se déplace pendant la
+      séquence. La hauteur finale de la page est celle d'avant, au pixel.
+
+   2. L'ANIMATION N'EXISTE QUE LÀ OÙ LE MOUVEMENT EST AUTORISÉ, et l'état
+      initial vit dans @keyframes, jamais dans la classe. Partout ailleurs —
+      mouvement réduit demandé, impression — la classe ne pose aucune règle :
+      les blocs gardent leurs styles normaux et s'affichent, sans qu'aucune
+      animation n'ait à démarrer.
+
+      Relevé dans le navigateur, et c'est la raison de cette forme : la
+      première version s'appuyait sur la règle globale de mouvement réduit,
+      qui ramène la durée à 0,01 ms. Une animation si courte se termine au
+      premier tick et laisse l'élément à son état final — SAUF si aucun tick
+      n'arrive. Onglet en arrière-plan, rendu suspendu : l'animation reste à
+      son premier état, et les sept blocs mesuraient une opacité de 0. La page
+      était vide. Faire dépendre la visibilité du contenu de l'exécution d'une
+      animation était la faute.
+
+   Le décalage entre deux blocs est posé par un animation-delay EN LIGNE
+   (lib/ui/devoile.ts) : une propriété longue en ligne l'emporte sur le
+   raccourci de cette règle, et le nombre reste au même endroit que l'ordre. */
+@media (prefers-reduced-motion: no-preference) {
+  .devoile {
+    animation: devoile 220ms cubic-bezier(0.22, 1, 0.36, 1) 0ms both;
+  }
+}
+/* À l'impression, rien ne s'anime : une page imprimée pendant la séquence
+   sortirait avec des blocs manquants. */
+@media print {
+  .devoile {
+    animation: none;
+  }
+}
+@keyframes devoile {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ── Mission #132 — le cockpit change de période sans recharger ─────────── */
 /* Les barres se déplacent vers leur nouvelle valeur ; elles ne clignotent
    pas, et le composant n'est jamais démonté puis remonté. 240 ms, ease-out :

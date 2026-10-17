@@ -10,6 +10,7 @@ import {
 import { missingClausesView } from "@/lib/legal/fr";
 import { rateTable } from "@/lib/rates/tables";
 import type { Analysis } from "@/lib/schema";
+import { DEVOILE_CLASSE, devoileDelai, type PlanDevoile } from "@/lib/ui/devoile";
 import { cn } from "@/lib/utils";
 
 // Mission #084 — blocs écrits par le modèle sur l'offre d'origine, affichés
@@ -211,13 +212,25 @@ export function Estimate({
   estimate,
   children,
   counterSame = false,
+  devoile = null,
 }: {
   estimate: Analysis["estimate"];
   children?: ReactNode;
   counterSame?: boolean;
+  // Positions du dévoilement échelonné (lib/ui/devoile.ts). null : aucune
+  // séquence, le bloc s'affiche d'un coup comme avant. Purement
+  // présentationnel — aucun chiffre ne dépend de ce paramètre.
+  devoile?: PlanDevoile | null;
 }) {
   const base = formatEurRange(estimate.base_low, estimate.base_high);
   const total = formatEurRange(estimate.total_low, estimate.total_high);
+  // Les classes de la ligne, plus son tour de dévoilement s'il en a un. Les
+  // positions viennent de planDevoile, qui applique les MÊMES conditions de
+  // rendu que ci-dessous : une ligne absente ne laisse pas de trou de 90 ms.
+  const ligne = (classes: string, position?: number | null) =>
+    position === null || position === undefined
+      ? { className: classes }
+      : { className: cn(classes, DEVOILE_CLASSE), style: devoileDelai(position) };
   return (
     <Section title="Ce que ça vaut">
       <div className="flex flex-col gap-5">
@@ -231,7 +244,7 @@ export function Estimate({
 
         <dl className="flex flex-col divide-y divide-filet border-y border-filet text-small">
           {base ? (
-            <div className="flex justify-between gap-4 py-2">
+            <div {...ligne("flex justify-between gap-4 py-2", devoile?.creation)}>
               <dt className="text-attenue">Création (base)</dt>
               <dd className="text-right font-semibold text-encre tabular-nums">{base}</dd>
             </div>
@@ -239,8 +252,8 @@ export function Estimate({
           {/* Libellé et montant en euros seulement. Les pourcentages et tarifs
               unitaires (line.low, line.high) restent dans les données pour le
               calcul et le débogage : ils n'apprennent rien à une créatrice. */}
-          {estimate.lines.map((line) => (
-            <div key={line.label} className="flex justify-between gap-4 py-2">
+          {estimate.lines.map((line, index) => (
+            <div key={line.label} {...ligne("flex justify-between gap-4 py-2", devoile?.lignes[index])}>
               <dt className="text-attenue">{line.label}</dt>
               <dd className="text-right font-semibold whitespace-nowrap text-encre tabular-nums">
                 + {formatEurRange(line.eur_low, line.eur_high)}
@@ -248,7 +261,7 @@ export function Estimate({
             </div>
           ))}
           {total ? (
-            <div className="flex justify-between gap-4 py-2 font-bold text-encre">
+            <div {...ligne("flex justify-between gap-4 py-2 font-bold text-encre", devoile?.total)}>
               <dt>Total</dt>
               <dd className="text-right tabular-nums">{total}</dd>
             </div>

@@ -26,6 +26,7 @@ import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
 import { BAND_LABEL } from "@/lib/display";
 import { formatEurRange } from "@/lib/money";
 import { isShowing, showOnce } from "@/lib/shown-once";
+import { DEVOILE_CLASSE, devoileDelai, planDevoile } from "@/lib/ui/devoile";
 
 // Page de résultat, sous l'en-tête bleu (SiteHeader tone="marque") :
 // 1. bandeau bleu : phrase de verdict, score, pastille, jauge, niveau ;
@@ -205,6 +206,10 @@ export function AnalysisResult({
   // Mission #109, C — montant sous le plancher : un premier palier, à côté de
   // la fourchette complète. Calculé sur l'offre d'origine, comme la contre-offre.
   const firstStep = counterFirstStep(deal.payment.amount_eur, estimate.total_low, estimate.total_high);
+  // L'ordre d'apparition des blocs, et lui seul : aucune donnée affichée n'en
+  // dépend (lib/ui/devoile.ts). Offre incomplète : le bloc de chiffrage n'est
+  // pas rendu, la réponse suit donc directement le verdict.
+  const devoile = planDevoile(incomplete ? null : analysis.estimate);
   return (
     <TierContext value={analysis.profile_tier}>
     <SentMessageContext value={{ analysisId, firstMessage: origin.ready_to_send_message?.text ?? null }}>
@@ -215,7 +220,9 @@ export function AnalysisResult({
           <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-10 sm:px-6 lg:pt-10 lg:pb-14">
             <h1 className="sr-only">Résultat de l&apos;analyse de ton deal</h1>
             {above}
-            <ScoreBand analysis={analysis} showTier={!incomplete} />
+            {/* Position 0 de la séquence : son délai vaut zéro, la classe
+                suffit. Rendu dans le bandeau bleu, inchangé par ailleurs. */}
+            <ScoreBand analysis={analysis} showTier={!incomplete} className={DEVOILE_CLASSE} />
             {belowScore}
           </div>
         </section>
@@ -254,7 +261,7 @@ export function AnalysisResult({
           <UnpricedCard confidence={analysis.confidence} />
         ) : null}
         {incomplete ? null : (
-          <Estimate estimate={analysis.estimate} counterSame={counterSame !== null}>
+          <Estimate estimate={analysis.estimate} counterSame={counterSame !== null} devoile={devoile}>
             <TierSelector tier={analysis.profile_tier} changeable={tierChangeAvailable(stored)} onChange={chooseTier} />
           </Estimate>
         )}
@@ -285,11 +292,18 @@ export function AnalysisResult({
         ) : (
           <LockedCounterOfferPlaceholder title={counterOfferTitle} />
         )}
-        {origin.ready_to_send_message ? (
-          <ReadyMessage message={origin.ready_to_send_message} justUnlocked={justUnlocked} />
-        ) : (
-          <LockedMessagePlaceholder />
-        )}
+        {/* Dernière position de la séquence. L'enveloppe porte le délai : les
+            deux blocs possibles sont rendus par des composants partagés, et
+            ajouter un style à leur signature pour une animation n'aurait pas
+            sa place. Elle est neutre pour la mise en page — un bloc de plus
+            dans une colonne flex, à la place exacte de celui qu'il entoure. */}
+        <div className={DEVOILE_CLASSE} style={devoileDelai(devoile.message)}>
+          {origin.ready_to_send_message ? (
+            <ReadyMessage message={origin.ready_to_send_message} justUnlocked={justUnlocked} />
+          ) : (
+            <LockedMessagePlaceholder />
+          )}
+        </div>
         {locked ? <UnlockCta href={unlockHref} /> : null}
         {/* La suite de l'échange reste collée au message : c'est ce qu'on fait
             APRÈS l'avoir envoyé, et elle n'aurait aucun sens ailleurs. */}
