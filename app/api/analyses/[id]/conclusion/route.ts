@@ -37,9 +37,12 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
   if (!tier) return json(400, { error: "Recharge la page et réessaie." });
 
   try {
-    const result = await loadResultForViewer(id, { user, anonToken: null });
+    // Mission #201 — les deux lectures partent ENSEMBLE. Elles s'attendaient
+    // l'une l'autre alors qu'aucune ne dépend du résultat de l'autre : toutes
+    // deux ne demandent que l'identifiant, qu'on a déjà. L'ordre des refus ne
+    // change pas, il est seulement décidé après.
+    const [result, thread] = await Promise.all([loadResultForViewer(id, { user, anonToken: null }), loadThread(id)]);
     if (!result || !result.unlocked) return json(404, { error: "Analyse introuvable." });
-    const thread = await loadThread(id);
     if (thread === "missing") return json(503, { error: UNAVAILABLE });
     if (threadConcluded(thread)) return json(200, { concluded: true });
 

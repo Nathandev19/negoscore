@@ -17,10 +17,11 @@ import { auMoins, MIN_ATTENTE_MS, THREAD_PENDING_ID } from "@/lib/ui/reveal";
 // est annoncé, le plancher d'affichage, et le fait que le bouton refuse un
 // second envoi.
 //
-// CE QUI NE PEUT PAS L'ÊTRE : le projet n'a pas d'environnement DOM (ni jsdom,
-// ni @testing-library). On ne clique donc pas sur le bouton. Les garanties qui
-// en dépendent sont vérifiées à la source, et le double envoi est vérifié là
-// où il compte vraiment — sur le serveur (tests/negotiation-route.test.ts).
+// CE QUI EST VÉRIFIÉ AILLEURS : le clic lui-même. Le dépôt n'avait alors pas
+// d'environnement DOM ; la mission #201 en a installé un, et
+// tests/clics-echange.dom.test.tsx enfonce les deux boutons pour de bon. Le
+// double envoi reste vérifié là où il compte le plus — sur le serveur
+// (tests/negotiation-route.test.ts).
 
 const FIL = readFileSync("components/result/negotiation/negotiation-thread.tsx", "utf8");
 const texte = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/\s+/g, " ").trim();
@@ -135,6 +136,13 @@ describe("le bouton refuse un second envoi", () => {
 
   it("l'attente est vraie dès l'envoi et jusqu'à l'arrivée du tour", () => {
     expect(FIL).toContain('const waiting: "turn" | "conclusion" | null = sending === "turn" && !arrived');
+  });
+
+  it("UN SEUL bloc d'erreur dans la section, pas deux", () => {
+    // Mission #201 — le bloc d'origine était resté en bas quand la #098 a
+    // remonté l'erreur à la place de l'attente : même message, même
+    // identifiant, deux role="alert". Le premier test de clic l'a trouvé.
+    expect(FIL.split("<ThreadError").length - 1).toBe(1);
   });
 
   it("une clé d'idempotence part avec chaque envoi, et survit au rechargement", () => {

@@ -69,16 +69,33 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
   // n'a jamais réservé de droit (la négociation est payée à l'analyse) : un
   // échec n'a donc rien à défaire. Le brouillon collé reste dans le navigateur.
   try {
-    // Propriétaire connecté seulement : l'analyse complète (message compris).
-    const result = await loadResultForViewer(id, { user, anonToken: null });
+    // Mission #201 — LES TROIS LECTURES PARTENT ENSEMBLE.
+    //
+    // Elles s'attendaient l'une l'autre : trois allers-retours en file
+    // indienne avant le moindre travail, alors qu'aucune ne dépend du résultat
+    // des autres — l'analyse, le fil et le tour déjà enregistré sous cette clé
+    // ne demandent que l'identifiant, qu'on a déjà. Même règle que la mission
+    // #107 pour les pages connectées : ce qui ne dépend de rien part en même
+    // temps.
+    //
+    // Le rejeu est vérifié APRÈS, sur un résultat déjà en main : l'ordre des
+    // refus ne change pas, et une lecture de plus sur un rejeu coûte moins que
+    // trois vagues sur chaque tour.
+    const [result, thread, replay, recorded] = await Promise.all([
+      // Propriétaire connecté seulement : l'analyse complète (message compris).
+      loadResultForViewer(id, { user, anonToken: null }),
+      loadThread(id),
+      key ? turnForKey(id, key) : Promise.resolve(null),
+      // Les messages déjà enregistrés comme envoyés : eux non plus ne
+      // dépendent de rien d'autre que l'identifiant.
+      loadSentMessages(id),
+    ]);
     if (!result || !result.unlocked) return json(404, { error: "Analyse introuvable." });
-    const thread = await loadThread(id);
     if (thread === "missing") return json(503, { error: UNAVAILABLE, reason: "unavailable" });
 
     // Rejeu : ce tour a déjà été enregistré, rien n'est refait.
     let keyToWrite = key;
     if (key) {
-      const replay = await turnForKey(id, key);
       if (replay?.kind === "turn") return json(200, { turnNumber: replay.turnNumber, replayed: true });
       if (replay?.kind === "taken") keyToWrite = null;
     }
@@ -105,19 +122,30 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
     // enregistré à la copie, sinon le message proposé, gardé comme hypothèse.
     const answeredTurn = turnNumber - 1;
     const corrected = cleanSentText(body?.sentMessage);
-    if (corrected) {
-      await saveSentMessage({ analysisId: id, userId: user.id, turnNumber: answeredTurn, text: corrected, source: "corrected" });
-    }
     const sent = messageForNextTurn({
       corrected,
-      recorded: (await loadSentMessages(id)).get(answeredTurn),
+      recorded: recorded.get(answeredTurn),
       proposed: previous.at(-1)?.message.text ?? recomputeForTier(original, tier).ready_to_send_message?.text ?? "",
     });
     const lastMessage = sent.text;
+    // Mission #201 — L'ENREGISTREMENT DE LA CORRECTION NE RETIENT PLUS LE
+    // MODÈLE. Il attendait son tour avant la lecture, puis la lecture des
+    // messages envoyés attendait derrière lui : deux allers-retours en file
+    // indienne avant l'appel, pour une écriture dont la lecture qui suit n'a
+    // pas besoin (le texte corrigé est déjà en main, et c'est LUI que
+    // messageForNextTurn retient). Elle part donc en même temps que l'appel
+    // au modèle, et on la rejoint après — une écriture perdue en silence
+    // ferait réapparaître l'ancien message au tour suivant.
+    const correctionEcrite = corrected
+      ? saveSentMessage({ analysisId: id, userId: user.id, turnNumber: answeredTurn, text: corrected, source: "corrected" })
+      : Promise.resolve();
 
     let read: Awaited<ReturnType<typeof readBrandReply>>;
     try {
-      read = await readBrandReply({ deal: state.deal, asks: state.asks, points: state.points, lastMessage, brandReply: reply });
+      [read] = await Promise.all([
+        readBrandReply({ deal: state.deal, asks: state.asks, points: state.points, lastMessage, brandReply: reply }),
+        correctionEcrite,
+      ]);
     } catch (caught) {
       const failure = classifyModelError(caught);
       if (!failure) throw caught;
@@ -158,19 +186,28 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
       }
       throw caught;
     }
-    if (thread.turns.length === 0) {
-      await recordProductEvent({ event: "negotiation_started", userId: user.id, entityType: "analysis", entityId: id, dedupeKey: `negotiation_started:${id}` });
-    }
-    await recordProductEvent({
-      event: "negotiation_turn", userId: user.id, entityType: "analysis", entityId: id,
-      metadata: { turn: turnNumber }, dedupeKey: `negotiation_turn:${id}:${turnNumber}`,
-    });
-    if (outcome.payload.conclusion !== null) {
-      await recordProductEvent({
-        event: "negotiation_concluded", userId: user.id, entityType: "analysis", entityId: id,
-        metadata: { turn: turnNumber, source: "brand_reply" }, dedupeKey: `negotiation_concluded:${id}`,
-      });
-    }
+    // Mission #201 — LES ÉVÉNEMENTS PARTENT ENSEMBLE, PAS L'UN APRÈS L'AUTRE.
+    //
+    // Jusqu'à trois écritures de télémétrie s'attendaient en file indienne,
+    // APRÈS l'appel au modèle, avec la personne qui regarde l'attente tourner.
+    // Aucune ne dépend du résultat d'une autre. Elles restent attendues — en
+    // serverless, une promesse non attendue est coupée avec la réponse, et un
+    // événement perdu fausse le tableau de bord — mais en une seule vague.
+    await Promise.all([
+      thread.turns.length === 0
+        ? recordProductEvent({ event: "negotiation_started", userId: user.id, entityType: "analysis", entityId: id, dedupeKey: `negotiation_started:${id}` })
+        : Promise.resolve(),
+      recordProductEvent({
+        event: "negotiation_turn", userId: user.id, entityType: "analysis", entityId: id,
+        metadata: { turn: turnNumber }, dedupeKey: `negotiation_turn:${id}:${turnNumber}`,
+      }),
+      outcome.payload.conclusion !== null
+        ? recordProductEvent({
+            event: "negotiation_concluded", userId: user.id, entityType: "analysis", entityId: id,
+            metadata: { turn: turnNumber, source: "brand_reply" }, dedupeKey: `negotiation_concluded:${id}`,
+          })
+        : Promise.resolve(),
+    ]);
 
     console.log(
       JSON.stringify({

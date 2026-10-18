@@ -99,8 +99,15 @@ describe("point 3 (audit C2) — « ok » ne déclenche plus d'appel au modèle"
     expect(TOO_SHORT_REPLY_MESSAGE).not.toMatch(/erreur|invalide/i);
     // La route refuse AVANT tout appel au modèle : le contrôle est la première
     // chose qu'elle fait du corps de la requête.
+    // Mission #201 — l'ancre était « await readBrandReply( ». L'appel part
+    // maintenant dans un Promise.all avec l'écriture de la correction : le
+    // « await » n'est plus collé au nom, et indexOf rendait -1, ce qui faisait
+    // passer la garde par accident. On ancre sur l'appel lui-même, et on
+    // vérifie qu'il est bien trouvé.
     const route = read("app/api/analyses/[id]/tours/route.ts");
-    expect(route.indexOf("MIN_REPLY_LENGTH")).toBeLessThan(route.indexOf("await readBrandReply("));
+    const appelModele = route.indexOf("readBrandReply({");
+    expect(appelModele).toBeGreaterThan(0);
+    expect(route.indexOf("MIN_REPLY_LENGTH")).toBeLessThan(appelModele);
   });
 });
 

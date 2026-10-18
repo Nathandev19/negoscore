@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 15/10/2026 (mission #198).** Ce fichier se met à jour
+**Dernière mise à jour : 18/10/2026 (mission #201).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,12 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 40 fichiers
-de migration et 156 fichiers de test.
+de migration et 159 fichiers de test.
+
+**Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
+`node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
+`@testing-library/react`, tous les autres sous Node. C'est le premier endroit
+du dépôt où un bouton est réellement cliqué par un test.
 
 En ligne sur **www.negoscore.fr** — le domaine ne se lit pas dans le dépôt
 (`NEXT_PUBLIC_SITE_URL` est une variable d'environnement), il vient du point 2
@@ -164,11 +169,28 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
-**#198 — les neuf réponses, et deux dettes.** Les neuf points « à confirmer » de
-la #197 inscrits tels que l'éditeur les a constatés, `.env.example` complété de
-ses deux variables manquantes, et la règle du numéro de mission dans le sujet du
-commit ajoutée à `AGENTS.md`. Aucun code applicatif modifié.
+**#201 — où passent les secondes d'un tour, et le projet clique ses boutons.**
+
+- **Les allers-retours en file indienne ont été mesurés, pas supposés** : une
+  fausse couche réseau marque l'instant de départ de chaque appel sortant, et
+  on compte les paliers. Route du tour **8 vagues → 4**, route de conclusion
+  **4 → 3**, page de résultat (refaite par `router.refresh()` pendant que
+  l'attente tourne encore) **6 → 4**.
+- **Ce que la mesure a surtout établi, c'est où les secondes NE sont PAS** :
+  à 60 ms l'aller-retour, tout le chemin hors modèle tenait en 874 ms avant,
+  479 ms après. Les ~33 s restantes d'un tour sont l'appel au modèle.
+  **UNKNOWN : sa latence réelle, et celle de la première analyse.** Elles sont
+  enregistrées (`analyses.latency_ms`, `negotiation_turns.latency_ms`) ; le
+  SELECT est dans le rapport de la mission, il n'a pas été exécuté ici.
+- **`conclude()` a reçu le traitement du tour** : son propre panneau d'attente
+  (`ConclusionPending`), son compteur, son plancher de 900 ms, son bouton
+  réellement désactivé. Le libellé dit « récapitulatif », pas « lecture » : la
+  conclusion n'appelle pas le modèle.
+- **Un défaut trouvé par le premier test de clic** : le message d'erreur du fil
+  était rendu **deux fois**, même identifiant, deux `role="alert"`. Il était là
+  depuis la #098 et trois relectures à la source ne l'avaient pas vu.
 
 ## NEXT MISSION
 
-À définir.
+À définir. Le point ouvert de la #201 est la latence réelle du modèle, qui se
+lit en base et pas dans le dépôt.

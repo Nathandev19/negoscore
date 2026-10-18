@@ -44,22 +44,41 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   // Mission #089 bis — même garde que le layout, pour elle-même : la page est
   // rendue en parallèle de lui, et lire la suite avec user = null pendant une
   // panne dirait « introuvable » à la propriétaire de l'analyse.
-  const { state, user } = await getViewerState();
+  // Mission #201 — CETTE PAGE EST DANS L'ATTENTE D'UN TOUR.
+  //
+  // Après un tour, le navigateur appelle router.refresh() : la personne
+  // regarde encore l'indicateur pendant que la page se refait entièrement.
+  // Elle enchaînait SEPT allers-retours Supabase en file indienne, dont
+  // plusieurs ne demandent que l'identifiant — qu'on a dès la première ligne.
+  //
+  // La dernière fourchette jugée n'en demande pas plus : elle part avec la
+  // session, pas derrière elle.
+  const [{ state, user }, lastJudged] = await Promise.all([getViewerState(), lastJudgedRange(id).catch(() => null)]);
   if (state === "indisponible") return <SessionUnavailable />;
   const result = await loadResultForViewer(id, { user, anonToken });
   if (!result) notFound();
-  // Offre incomplète : relance gratuite (mission #043). null : indisponible
-  // (migration 018 non appliquée, ou erreur de lecture), rien n'est affiché.
-  const retry =
-    result.analysis.evaluability === "incomplete" ? panelState(await retryStateFor(id).catch(() => null)) : null;
-  // Suite de l'échange (mission #080) : pour la personne connectée qui a lancé
-  // l'analyse. Table absente ou lecture en échec : le fil ne s'affiche pas,
-  // plutôt qu'un fil vide qui ferait croire qu'il n'y a rien.
+  // Compris dans l'analyse (mission #080 ter) : ouvert au propriétaire connecté.
   const owner = result.unlocked && user !== null;
-  const thread: Thread | "missing" | null = owner ? await loadThread(id).catch(() => "missing" as const) : null;
+  // Trois lectures que seul le droit d'accès conditionne, et qui ne dépendent
+  // pas les unes des autres : elles partent ensemble. Chacune reste
+  // CONDITIONNELLE — une visiteuse anonyme ne déclenche aucune des trois.
+  const [retryRead, thread, sentAll] = await Promise.all([
+    // Offre incomplète : relance gratuite (mission #043). null : indisponible
+    // (migration 018 non appliquée, ou erreur de lecture), rien n'est affiché.
+    result.analysis.evaluability === "incomplete" ? retryStateFor(id).catch(() => null) : Promise.resolve(null),
+    // Suite de l'échange (mission #080) : pour la personne connectée qui a
+    // lancé l'analyse. Table absente ou lecture en échec : le fil ne s'affiche
+    // pas, plutôt qu'un fil vide qui ferait croire qu'il n'y a rien.
+    owner
+      ? loadThread(id).catch(() => "missing" as const)
+      : Promise.resolve(null as Thread | "missing" | null),
+    // Message retenu comme envoyé (mission #080 bis) : le tour auquel la marque
+    // répond se déduit du fil, mais la table entière se lit sans le connaître.
+    owner ? loadSentMessages(id).catch(() => new Map<number, SentMessage>()) : Promise.resolve(null),
+  ]);
+  const retry = result.analysis.evaluability === "incomplete" ? panelState(retryRead) : null;
   // Compris dans l'analyse (mission #080 ter) : ouvert au propriétaire connecté.
   const showThread = thread !== "missing";
-  // Message retenu comme envoyé pour le dernier tour (mission #080 bis).
   const answeredTurn = 1 + (thread && thread !== "missing" ? thread.turns.length : 0);
   // Mission #084 : termes actuels après les tours (null : aucun tour).
   const negotiated = thread && thread !== "missing" ? currentState(thread) : null;
@@ -88,13 +107,12 @@ export default async function AnalysisPage({ params }: PageProps<"/analyse/resul
   // Mission #097 — la question n'est reposée que si la fourchette a changé
   // depuis la dernière réponse donnée sur cette analyse.
   const judgedAnalysis = cardAnalysis ?? result.analysis;
-  const lastJudged = await lastJudgedRange(id).catch(() => null);
   const askFeedback = shouldAskFeedback({
     current: { low: judgedAnalysis.estimate.total_low, high: judgedAnalysis.estimate.total_high },
     lastJudged,
     answeredThisTurn: feedback !== null && feedback !== "missing",
   });
-  const sent: SentMessage | undefined = owner ? (await loadSentMessages(id).catch(() => new Map<number, SentMessage>())).get(answeredTurn) : undefined;
+  const sent: SentMessage | undefined = sentAll?.get(answeredTurn);
 
   return (
     <>

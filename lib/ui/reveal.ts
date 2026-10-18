@@ -10,6 +10,9 @@
 
 export const THREAD_ERROR_ID = "echange-erreur";
 export const THREAD_PENDING_ID = "echange-lecture";
+// Mission #201 — la conclusion attend AU MÊME ENDROIT que le reste : là où
+// son récapitulatif va apparaître, pas sur le bouton tout en bas.
+export const CONCLUSION_PENDING_ID = "conclusion-preparation";
 
 // Mission #200 — UN TOUR EST RAPIDE, ET L'INDICATEUR NE DOIT PAS CLIGNOTER.
 //

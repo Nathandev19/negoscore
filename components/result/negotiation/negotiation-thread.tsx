@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { ConclusionView } from "@/components/result/negotiation/conclusion-view";
 import { useSentRecorder } from "@/components/result/negotiation/sent-message";
-import { ThreadError, ThreadPending } from "@/components/result/negotiation/thread-status";
+import { ConclusionPending, ThreadError, ThreadPending } from "@/components/result/negotiation/thread-status";
 import { TurnCard } from "@/components/result/negotiation/turn-card";
 import { useTier } from "@/components/result/tier-selector";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import { saveTurnWithoutJs, type TurnWithoutJsState } from "@/lib/forms/no-js-ac
 import { clearThreadDraft, draftSurvives, readThreadKey, readThreadReply, saveThreadDraft, subscribeThreadDraft } from "@/lib/negotiation/draft";
 import { DEFAULT_TIER } from "@/lib/rates/tier";
 import { nextResume } from "@/lib/analysis/resume";
-import { auMoins, nextReveal, prefersReducedMotion, reveal, THREAD_PENDING_ID, type ThreadSnapshot } from "@/lib/ui/reveal";
+import { auMoins, CONCLUSION_PENDING_ID, nextReveal, prefersReducedMotion, reveal, THREAD_PENDING_ID, type ThreadSnapshot } from "@/lib/ui/reveal";
 
 // Mission #080 — « La marque t'a répondu ? » : le fil de l'échange, sous le
 // message à envoyer. Chaque réponse collée s'ajoute à CETTE analyse (B1), les
@@ -186,8 +186,8 @@ export function NegotiationThread({
 
   // L'attente s'affiche là où la réponse apparaîtra, et la page y amène.
   useEffect(() => {
-    if (waiting !== "turn") return;
-    const pending = document.getElementById(THREAD_PENDING_ID);
+    if (waiting === null) return;
+    const pending = document.getElementById(waiting === "turn" ? THREAD_PENDING_ID : CONCLUSION_PENDING_ID);
     reveal(pending, { flash: pending, reducedMotion: prefersReducedMotion() });
   }, [waiting]);
 
@@ -245,6 +245,10 @@ export function NegotiationThread({
 
   async function conclude() {
     if (waiting) return;
+    // Mission #201 — même traitement que le tour : le départ de l'attente est
+    // posé dans le gestionnaire, jamais pendant un rendu.
+    const departAttente = Date.now();
+    setAttempt({ startedAt: departAttente, lastCheckAt: null });
     setSending("conclusion");
     setError(null);
     try {
@@ -254,6 +258,9 @@ export function NegotiationThread({
         body: JSON.stringify({ tier }),
       });
       const body = (await response.json().catch(() => ({}))) as { error?: string };
+      // La conclusion n'appelle pas le modèle : elle répond souvent en moins
+      // de 900 ms. Sans ce plancher, le panneau clignoterait.
+      await auMoins(departAttente);
       if (response.ok) {
         router.refresh();
         return;
@@ -280,7 +287,14 @@ export function NegotiationThread({
       {/* L'attente est ici, à la place qu'occupera le tour : pas seulement sur
           le bouton, tout en bas. */}
       {waiting === "turn" ? <ThreadPending turnNumber={nextTurn} startedAt={attempt?.startedAt} /> : null}
-      {/* L'échec s'affiche au même endroit que l'attente : là où on regardait. */}
+      {waiting === "conclusion" ? <ConclusionPending startedAt={attempt?.startedAt} /> : null}
+      {/* L'échec s'affiche au même endroit que l'attente : là où on regardait.
+          Mission #201 — IL N'Y EN A QU'UN. Le bloc d'origine était resté en
+          bas de la section quand la #098 a remonté l'erreur ici : le même
+          message s'affichait deux fois, avec le MÊME identifiant et deux
+          role="alert" — annoncé deux fois, et `getElementById` n'en voyait
+          qu'un. Trouvé par le premier test de clic du chantier C ; aucune
+          relecture à la source ne l'avait vu en trois missions. */}
       {error ?? (server.status === "error" ? server.message : null) ? (
         <ThreadError message={error ?? (server.status === "error" ? server.message : "")} />
       ) : null}
@@ -390,8 +404,6 @@ export function NegotiationThread({
           </Button>
         </div>
       ) : null}
-
-      {error ? <ThreadError message={error} /> : null}
     </section>
   );
 }
