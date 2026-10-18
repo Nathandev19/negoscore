@@ -38,3 +38,33 @@ export const MODEL: {
   reasoningEffort: null,
   textVerbosity: "low",
 };
+
+// Mission #202 — L'EFFORT DE RAISONNEMENT D'UN TOUR DE NÉGOCIATION, À PART.
+//
+// Ce n'est PAS le réglage de l'extraction d'une offre, qui reste non envoyé :
+// l'éval du 17/09/2026 a montré que baisser l'effort y perd de l'exactitude
+// (99,3 % → 96,4 %) et fait échouer une offre entière. Un tour est une autre
+// tâche : lire une réponse courte, relever des citations, remplir un schéma.
+//
+// Mesuré le 18/10/2026 sur 03-termes-a-la-hausse, 3 passes par réglage, même
+// fixture, même prompt, même schéma (evals/tour-effort.ts) :
+//
+//   non envoyé (= « medium », défaut du fournisseur)
+//     18 620 / 16 694 / 18 109 ms — sortie 2 061 / 1 852 / 2 161 jetons
+//     dont raisonnement 1 478 / 1 316 / 1 552
+//   « none »
+//      4 624 /  4 454 /  5 431 ms — sortie 551 / 609 / 583 jetons
+//     dont raisonnement 0 / 0 / 0
+//
+// Schéma valide du premier coup sur les six appels ; en aval, même issue,
+// mêmes trois changements de termes, aucun message de repli.
+//
+// LIMITE DE CETTE MESURE, à connaître avant de s'y fier : UNE fixture, trois
+// passes. Elle suffit à trancher le réglage, pas à certifier le modèle sur
+// tous les cas. Une éval large reste à faire ; revenir en arrière est une
+// ligne (remettre null).
+//
+// « none » est la valeur la plus basse que gpt-5.6-luna accepte : sa page
+// liste « none, low, medium (default), high, xhigh, max » — « minimal »,
+// présent dans le type du SDK openai 7.15, n'y est pas.
+export const TURN_REASONING_EFFORT: ReasoningEffort | null = "none";

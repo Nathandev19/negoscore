@@ -2,7 +2,7 @@ import { z } from "zod";
 import { PRICE_PLACEHOLDER, strictJsonSchema } from "@/lib/llm/prompt";
 import { SITUATION_PLACEHOLDER } from "@/lib/negotiation/gap";
 import { POINT_LABEL } from "@/lib/negotiation/points";
-import { POINT_STATUS_LABEL, type PointState, turnReadingSchema, type Ask, type Deal } from "@/lib/negotiation/types";
+import { POINT_STATUS_LABEL, turnDealSchema, type PointState, turnReadingSchema, type Ask, type Deal } from "@/lib/negotiation/types";
 
 // Mission #080 — lecture d'une réponse de marque, un appel par tour.
 //
@@ -12,7 +12,7 @@ import { POINT_STATUS_LABEL, type PointState, turnReadingSchema, type Ask, type 
 // 2025). L'état de référence est le deal structuré, pas l'historique.
 
 // À changer à chaque modification de TURN_SYSTEM_PROMPT ou du schéma de lecture.
-export const TURN_PROMPT_VERSION = "2026-09-22.8";
+export const TURN_PROMPT_VERSION = "2026-10-18.9";
 
 export function turnReadingJsonSchema(): { [key: string]: unknown } {
   return strictJsonSchema(z.toJSONSchema(turnReadingSchema) as { [key: string]: unknown });
@@ -92,8 +92,16 @@ export function buildTurnUserMessage({
             return `- ${POINT_LABEL[point.key]} : ${POINT_STATUS_LABEL[point.status]}${quote}`;
           })
           .join("\n");
+  // Mission #202 — L'ÉTAT ENVOYÉ EST CELUI QUE LE MODÈLE PEUT CHANGER.
+  //
+  // On lui envoyait le deal entier, dont dix champs qu'aucun groupe de termes
+  // n'atteint (brand, raw_footage, ip_transfer, ai_training_rights, revisions,
+  // variable_pay, deadlines, kill_fee, termination, governing_law). Il les
+  // lisait, il les recopiait en sortie, et le code les jetait. La projection
+  // passe par le MÊME schéma que la sortie : les deux ne peuvent pas diverger.
+  const etat = turnDealSchema.parse(deal);
   return `<etat_du_deal>
-${JSON.stringify(deal)}
+${JSON.stringify(etat)}
 </etat_du_deal>
 
 <demandes>

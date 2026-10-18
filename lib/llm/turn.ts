@@ -1,4 +1,5 @@
-import { callStructured, type StructuredUsage } from "@/lib/llm/extract";
+import { callStructured, type ExtractOptions, type StructuredUsage } from "@/lib/llm/extract";
+import { TURN_REASONING_EFFORT } from "@/lib/llm/model";
 import { buildTurnUserMessage, TURN_SYSTEM_PROMPT, turnReadingJsonSchema } from "@/lib/llm/turn-prompt";
 import { turnReadingSchema, type Ask, type Deal, type PointState, type TurnReading } from "@/lib/negotiation/types";
 
@@ -29,13 +30,19 @@ export async function readBrandReply(input: {
   points: readonly PointState[];
   lastMessage: string;
   brandReply: string;
-}): Promise<TurnReadResult> {
+}, options: ExtractOptions = {}): Promise<TurnReadResult> {
   const { value, usage } = await callStructured({
     instructions: TURN_SYSTEM_PROMPT,
     input: buildTurnUserMessage(input),
     schemaName: "brand_reply_reading",
     schema: turnReadingJsonSchema(),
     parse: parseReading,
+    // Mission #202 — l'effort de raisonnement d'un TOUR, qui n'est pas celui
+    // de l'extraction d'une offre (lib/llm/model.ts explique pourquoi et avec
+    // quelles mesures). Un appelant peut le remplacer : c'est ainsi que
+    // evals/tour-effort.ts mesure un réglage par le chemin de la production,
+    // et non par une copie qui pourrait en diverger.
+    options: { reasoningEffort: TURN_REASONING_EFFORT, ...options },
   });
   return { reading: value, usage };
 }

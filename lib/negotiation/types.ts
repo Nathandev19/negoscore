@@ -31,6 +31,39 @@ import {
 export const dealSchema = analysisSchema.shape.deal;
 export type Deal = z.infer<typeof dealSchema>;
 
+// Mission #202 — LE DEAL QU'UN TOUR DEMANDE AU MODÈLE N'EST PAS LE DEAL ENTIER.
+//
+// Un tour ne reprend de la lecture du modèle que les groupes de termes que la
+// marque a changés ET cités : applyGroup (lib/negotiation/terms.ts) part du
+// deal d'avant et n'y recopie que les champs des groupes vérifiés. Les autres
+// champs de `reading.deal` ne sont lus par AUCUN chemin de code — ni par
+// keepWritten, qui travaille sur le résultat de applyGroups, ni par le
+// chiffrage, qui part du deal composé.
+//
+// Les neuf groupes (TERM_GROUPS) couvrent exactement les champs ci-dessous.
+// Les dix autres champs du deal — brand, raw_footage, ip_transfer,
+// ai_training_rights, revisions, variable_pay, deadlines, kill_fee,
+// termination, governing_law — pesaient 1 037 des 2 996 caractères du schéma
+// de deal, et le modèle devait les RÉÉCRIRE à chaque tour pour qu'ils soient
+// jetés. Ils sortent du schéma du tour ; ils restent évidemment dans le deal
+// enregistré, qui vient du deal d'avant.
+//
+// Ce qui reste et porte un montant — payment.amount_eur, in_kind_value_eur —
+// y reste par nécessité : c'est le montant QUE LA MARQUE ÉCRIT, que le modèle
+// relève comme il relève une durée. Aucun montant calculé par le moteur
+// n'entre ni ne sort d'ici, et le modèle n'en produit aucun : la règle « le
+// modèle extrait, le code chiffre » est intacte. Retirer amount_eur ferait
+// perdre le nouveau prix annoncé par la marque, donc le chiffrage du tour.
+export const turnDealSchema = dealSchema.pick({
+  deliverables: true,
+  publication_required: true,
+  usage: true,
+  exclusivity: true,
+  payment: true,
+  in_kind_value_eur: true,
+});
+export type TurnDeal = z.infer<typeof turnDealSchema>;
+
 // ─── Sortie du modèle ────────────────────────────────────────────────────────
 
 export const turnReadingSchema = z.object({
@@ -58,8 +91,9 @@ export const turnReadingSchema = z.object({
   // qui le dit. Les nouvelles valeurs sont lues dans « deal ».
   changes: z.array(z.object({ group: z.enum(TERM_GROUPS), quote: z.string() })),
   // Le deal tel que le modèle le comprend après cette réponse. Seuls les groupes
-  // listés dans « changes » ET cités exactement en sont repris par le code.
-  deal: dealSchema,
+  // listés dans « changes » ET cités exactement en sont repris par le code —
+  // d'où turnDealSchema, qui ne contient que les champs atteignables.
+  deal: turnDealSchema,
   brand_questions: z.array(z.object({ question: z.string(), quote: z.string() })),
   // Ce que le modèle n'est pas sûr d'avoir compris (F7), en phrases courtes.
   uncertainties: z.array(z.string()),

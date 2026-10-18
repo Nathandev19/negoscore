@@ -1,0 +1,434 @@
+{
+ "scenario": "03-termes-a-la-hausse",
+ "systemeChars": 9024,
+ "userChars": 1990,
+ "schemaChars": 3191,
+ "lignes": [
+  {
+   "variante": "defaut",
+   "passe": 1,
+   "latencyMs": 20472,
+   "inputTokens": 3356,
+   "outputTokens": 2284,
+   "reasoningTokens": 1779,
+   "schemaValidFirstTry": true,
+   "attempts": 1,
+   "costEur": 0.002943409247757074,
+   "erreur": null,
+   "empreinte": {
+    "relevance": "reply",
+    "outcome": "counter",
+    "global_agreement": null,
+    "asks": [
+     "c1=countered«pouvoir les utiliser en pub pendant 12 mois»",
+     "c2=unanswered",
+     "c3=unanswered",
+     "c4=unanswered",
+     "c5=unanswered",
+     "prix=countered«On peut monter le budget à 450 €.»"
+    ],
+    "changes": [
+     "amount«budget à 450 €»",
+     "deliverables«3 vidéos au lieu de 2»",
+     "usage_duration«pendant 12 mois»"
+    ],
+    "deal": {
+     "deliverables": [
+      {
+       "type": "video",
+       "platform": "tiktok",
+       "quantity": 3,
+       "format": null
+      }
+     ],
+     "publication_required": false,
+     "usage": {
+      "organic": true,
+      "paid_ads": true,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": 12,
+      "territory": null,
+      "territory_zones": [],
+      "perpetual": false
+     },
+     "exclusivity": {
+      "present": true,
+      "duration_months": 3,
+      "category": "cosmétique"
+     },
+     "payment": {
+      "amount_eur": 450,
+      "currency": "EUR",
+      "terms_days": 60,
+      "schedule": null
+     },
+     "in_kind_value_eur": null
+    },
+    "questions": []
+   },
+   "aval": {
+    "kind": "turn",
+    "outcome": "counter",
+    "changes": 3,
+    "messageFallback": false,
+    "messageChars": 570
+   }
+  },
+  {
+   "variante": "defaut",
+   "passe": 2,
+   "latencyMs": 18790,
+   "inputTokens": 3356,
+   "outputTokens": 2124,
+   "reasoningTokens": 1658,
+   "schemaValidFirstTry": true,
+   "attempts": 1,
+   "costEur": 0.002257125603864734,
+   "erreur": null,
+   "empreinte": {
+    "relevance": "reply",
+    "outcome": "counter",
+    "global_agreement": null,
+    "asks": [
+     "c1=countered«pouvoir les utiliser en pub pendant 12 mois»",
+     "c2=unanswered",
+     "c3=unanswered",
+     "c4=unanswered",
+     "c5=unanswered",
+     "prix=countered«On peut monter le budget à 450 €.»"
+    ],
+    "changes": [
+     "amount«On peut monter le budget à 450 €.»",
+     "deliverables«3 vidéos au lieu de 2»",
+     "usage_duration«pouvoir les utiliser en pub pendant 12 mois»"
+    ],
+    "deal": {
+     "deliverables": [
+      {
+       "type": "video",
+       "platform": "tiktok",
+       "quantity": 3,
+       "format": null
+      }
+     ],
+     "publication_required": false,
+     "usage": {
+      "organic": true,
+      "paid_ads": true,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": 12,
+      "territory": null,
+      "territory_zones": [],
+      "perpetual": false
+     },
+     "exclusivity": {
+      "present": true,
+      "duration_months": 3,
+      "category": "cosmétique"
+     },
+     "payment": {
+      "amount_eur": 450,
+      "currency": "EUR",
+      "terms_days": 60,
+      "schedule": null
+     },
+     "in_kind_value_eur": null
+    },
+    "questions": []
+   },
+   "aval": {
+    "kind": "turn",
+    "outcome": "counter",
+    "changes": 3,
+    "messageFallback": false,
+    "messageChars": 420
+   }
+  },
+  {
+   "variante": "defaut",
+   "passe": 3,
+   "latencyMs": 18986,
+   "inputTokens": 3356,
+   "outputTokens": 2039,
+   "reasoningTokens": 1552,
+   "schemaValidFirstTry": true,
+   "attempts": 1,
+   "costEur": 0.002169133885438233,
+   "erreur": null,
+   "empreinte": {
+    "relevance": "reply",
+    "outcome": "counter",
+    "global_agreement": null,
+    "asks": [
+     "c1=unanswered",
+     "c2=unanswered",
+     "c3=unanswered",
+     "c4=unanswered",
+     "c5=unanswered",
+     "prix=countered«monter le budget à 450 €»"
+    ],
+    "changes": [
+     "amount«monter le budget à 450 €»",
+     "deliverables«3 vidéos au lieu de 2»",
+     "usage_duration«les utiliser en pub pendant 12 mois»"
+    ],
+    "deal": {
+     "deliverables": [
+      {
+       "type": "video",
+       "platform": "tiktok",
+       "quantity": 3,
+       "format": null
+      }
+     ],
+     "publication_required": false,
+     "usage": {
+      "organic": true,
+      "paid_ads": true,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": 12,
+      "territory": null,
+      "territory_zones": [],
+      "perpetual": false
+     },
+     "exclusivity": {
+      "present": true,
+      "duration_months": 3,
+      "category": "cosmétique"
+     },
+     "payment": {
+      "amount_eur": 450,
+      "currency": "EUR",
+      "terms_days": 60,
+      "schedule": null
+     },
+     "in_kind_value_eur": null
+    },
+    "questions": []
+   },
+   "aval": {
+    "kind": "turn",
+    "outcome": "counter",
+    "changes": 3,
+    "messageFallback": false,
+    "messageChars": 529
+   }
+  },
+  {
+   "variante": "production",
+   "passe": 1,
+   "latencyMs": 4230,
+   "inputTokens": 3356,
+   "outputTokens": 474,
+   "reasoningTokens": 0,
+   "schemaValidFirstTry": true,
+   "attempts": 1,
+   "costEur": 0.001069703243616287,
+   "erreur": null,
+   "empreinte": {
+    "relevance": "reply",
+    "outcome": "counter",
+    "global_agreement": null,
+    "asks": [
+     "c1=unanswered",
+     "c2=unanswered",
+     "c3=unanswered",
+     "c4=unanswered",
+     "c5=unanswered",
+     "prix=countered«On peut monter le budget à 450 €»"
+    ],
+    "changes": [
+     "amount«On peut monter le budget à 450 €»",
+     "deliverables«3 vidéos au lieu de 2»",
+     "usage_duration«les utiliser en pub pendant 12 mois»"
+    ],
+    "deal": {
+     "deliverables": [
+      {
+       "type": "video",
+       "platform": "tiktok",
+       "quantity": 3,
+       "format": null
+      }
+     ],
+     "publication_required": false,
+     "usage": {
+      "organic": true,
+      "paid_ads": true,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": 12,
+      "territory": null,
+      "territory_zones": [],
+      "perpetual": false
+     },
+     "exclusivity": {
+      "present": true,
+      "duration_months": 3,
+      "category": "cosmétique"
+     },
+     "payment": {
+      "amount_eur": 450,
+      "currency": "EUR",
+      "terms_days": 60,
+      "schedule": null
+     },
+     "in_kind_value_eur": null
+    },
+    "questions": []
+   },
+   "aval": {
+    "kind": "turn",
+    "outcome": "counter",
+    "changes": 3,
+    "messageFallback": false,
+    "messageChars": 641
+   }
+  },
+  {
+   "variante": "production",
+   "passe": 2,
+   "latencyMs": 4910,
+   "inputTokens": 3356,
+   "outputTokens": 504,
+   "reasoningTokens": 0,
+   "schemaValidFirstTry": true,
+   "attempts": 1,
+   "costEur": 0.0005801069703243616,
+   "erreur": null,
+   "empreinte": {
+    "relevance": "reply",
+    "outcome": "counter",
+    "global_agreement": null,
+    "asks": [
+     "c1=unanswered",
+     "c2=unanswered",
+     "c3=unanswered",
+     "c4=unanswered",
+     "c5=unanswered",
+     "prix=countered«On peut monter le budget à 450 €»"
+    ],
+    "changes": [
+     "amount«On peut monter le budget à 450 €»",
+     "deliverables«3 vidéos au lieu de 2»",
+     "usage_duration«les utiliser en pub pendant 12 mois»"
+    ],
+    "deal": {
+     "deliverables": [
+      {
+       "type": "video",
+       "platform": "tiktok",
+       "quantity": 3,
+       "format": null
+      }
+     ],
+     "publication_required": false,
+     "usage": {
+      "organic": true,
+      "paid_ads": true,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": 12,
+      "territory": null,
+      "territory_zones": [],
+      "perpetual": false
+     },
+     "exclusivity": {
+      "present": true,
+      "duration_months": 3,
+      "category": "cosmétique"
+     },
+     "payment": {
+      "amount_eur": 450,
+      "currency": "EUR",
+      "terms_days": 60,
+      "schedule": null
+     },
+     "in_kind_value_eur": null
+    },
+    "questions": []
+   },
+   "aval": {
+    "kind": "turn",
+    "outcome": "counter",
+    "changes": 3,
+    "messageFallback": false,
+    "messageChars": 509
+   }
+  },
+  {
+   "variante": "production",
+   "passe": 3,
+   "latencyMs": 4911,
+   "inputTokens": 3356,
+   "outputTokens": 506,
+   "reasoningTokens": 0,
+   "schemaValidFirstTry": true,
+   "attempts": 1,
+   "costEur": 0.0005821773636991028,
+   "erreur": null,
+   "empreinte": {
+    "relevance": "reply",
+    "outcome": "counter",
+    "global_agreement": null,
+    "asks": [
+     "c1=unanswered",
+     "c2=unanswered",
+     "c3=unanswered",
+     "c4=unanswered",
+     "c5=unanswered",
+     "prix=countered«On peut monter le budget à 450 €.»"
+    ],
+    "changes": [
+     "amount«monter le budget à 450 €»",
+     "deliverables«3 vidéos au lieu de 2»",
+     "usage_duration«les utiliser en pub pendant 12 mois»"
+    ],
+    "deal": {
+     "deliverables": [
+      {
+       "type": "video",
+       "platform": "tiktok",
+       "quantity": 3,
+       "format": null
+      }
+     ],
+     "publication_required": false,
+     "usage": {
+      "organic": true,
+      "paid_ads": true,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": 12,
+      "territory": null,
+      "territory_zones": [],
+      "perpetual": false
+     },
+     "exclusivity": {
+      "present": true,
+      "duration_months": 3,
+      "category": "cosmétique"
+     },
+     "payment": {
+      "amount_eur": 450,
+      "currency": "EUR",
+      "terms_days": 60,
+      "schedule": null
+     },
+     "in_kind_value_eur": null
+    },
+    "questions": []
+   },
+   "aval": {
+    "kind": "turn",
+    "outcome": "counter",
+    "changes": 3,
+    "messageFallback": false,
+    "messageChars": 576
+   }
+  }
+ ]
+}

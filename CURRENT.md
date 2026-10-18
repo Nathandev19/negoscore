@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 18/10/2026 (mission #201).** Ce fichier se met à jour
+**Dernière mise à jour : 18/10/2026 (mission #202).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 40 fichiers
-de migration et 159 fichiers de test.
+de migration et 160 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -169,6 +169,30 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#202 — la latence d'un tour vient du raisonnement, mesuré.**
+
+- **Le réglage de raisonnement d'un tour est désormais à part de celui d'une
+  offre** (`TURN_REASONING_EFFORT` dans `lib/llm/model.ts`). `null` ne
+  désactivait rien : le paramètre n'était pas envoyé, et le fournisseur
+  appliquait son défaut, « medium ». Mesuré sur une fixture, 3 passes par
+  réglage : **18,8 s médiane** contre **4,9 s** à « none », pour la même issue,
+  les mêmes trois changements de termes et aucun message de repli.
+- **Un tiers du schéma de sortie n'était lu par aucun code.** Dix champs du
+  deal qu'aucun groupe de termes n'atteint sortent du schéma ET de l'état
+  envoyé : **4 512 → 3 191 caractères** de schéma, **2 326 → 1 990** de message
+  utilisateur. `tests/tour-schema.test.ts` épingle la taille et prouve
+  l'inatteignabilité par `applyGroup`, pas à l'œil.
+- **Le prompt système n'a pas été touché**, et c'est un choix mesuré :
+  l'entrée n'est pas le goulot. Dit en toutes lettres dans le test.
+- **UNKNOWN : la médiane en production après ce changement.** Elle se relit
+  avec le même SELECT qu'avant, une fois quelques tours passés.
+- **Migration 41 écrite, NON appliquée** : `attempts` et
+  `schema_valid_first_try` sur `negotiation_turns`. Sans elles, une ligne à
+  36 s et une ligne à 18 s sont indiscernables, alors que `latency_ms`
+  enferme jusqu'à DEUX appels complets.
+
+## MISSION PRÉCÉDENTE
+
 **#201 — où passent les secondes d'un tour, et le projet clique ses boutons.**
 
 - **Les allers-retours en file indienne ont été mesurés, pas supposés** : une
@@ -192,5 +216,11 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## NEXT MISSION
 
-À définir. Le point ouvert de la #201 est la latence réelle du modèle, qui se
-lit en base et pas dans le dépôt.
+À définir. Deux chantiers nommés par la #202 et NON faits :
+
+- **Le chemin client d'un tour, du clic au tour affiché.** `latency_ms`
+  n'encadre que l'appel au modèle ; ce qui l'entoure côté navigateur — aller
+  simple vers Vercel, démarrage à froid, aller-retour RSC complet du
+  `router.refresh()` — n'a jamais été instrumenté. UNKNOWN.
+- **Une éval large du réglage « none » sur un tour.** Celui retenu l'a été sur
+  UNE fixture et trois passes, le minimum que la mission demandait.

@@ -1,6 +1,6 @@
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { deliverablesLine, formatEur, formatNumber } from "@/lib/display";
-import type { Deal, TermGroup } from "@/lib/negotiation/types";
+import type { Deal, TermGroup, TurnDeal } from "@/lib/negotiation/types";
 
 // Mission #080, B2 — les termes du deal d'un tour à l'autre, groupe par groupe.
 // Un groupe n'est repris de la lecture du modèle que si la marque le change
@@ -8,7 +8,13 @@ import type { Deal, TermGroup } from "@/lib/negotiation/types";
 // tels qu'ils étaient. Aucun terme ne bouge en silence.
 
 // Recopie un groupe de termes de « next » dans « base ».
-export function applyGroup(base: Deal, next: Deal, group: TermGroup): Deal {
+//
+// Mission #202 — « next » est un TurnDeal, pas un Deal : les neuf groupes
+// ci-dessous n'atteignent que ces champs-là, et le type le DIT maintenant.
+// C'est ce qui rend vérifiable la réduction du schéma de sortie du modèle —
+// ajouter un groupe qui lirait un champ absent ne compile plus. Un Deal
+// complet reste accepté : il a tous ces champs.
+export function applyGroup(base: Deal, next: TurnDeal, group: TermGroup): Deal {
   switch (group) {
     case "deliverables":
       return { ...base, deliverables: next.deliverables };
@@ -44,7 +50,7 @@ export function applyGroup(base: Deal, next: Deal, group: TermGroup): Deal {
   }
 }
 
-export function applyGroups(base: Deal, next: Deal, groups: readonly TermGroup[]): Deal {
+export function applyGroups(base: Deal, next: TurnDeal, groups: readonly TermGroup[]): Deal {
   return normalizeDeal(groups.reduce((deal, group) => applyGroup(deal, next, group), base));
 }
 
