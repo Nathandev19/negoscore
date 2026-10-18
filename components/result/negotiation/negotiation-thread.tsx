@@ -19,7 +19,7 @@ import { saveTurnWithoutJs, type TurnWithoutJsState } from "@/lib/forms/no-js-ac
 import { clearThreadDraft, draftSurvives, readThreadKey, readThreadReply, saveThreadDraft, subscribeThreadDraft } from "@/lib/negotiation/draft";
 import { DEFAULT_TIER } from "@/lib/rates/tier";
 import { nextResume } from "@/lib/analysis/resume";
-import { nextReveal, prefersReducedMotion, reveal, THREAD_PENDING_ID, type ThreadSnapshot } from "@/lib/ui/reveal";
+import { auMoins, nextReveal, prefersReducedMotion, reveal, THREAD_PENDING_ID, type ThreadSnapshot } from "@/lib/ui/reveal";
 
 // Mission #080 — « La marque t'a répondu ? » : le fil de l'échange, sous le
 // message à envoyer. Chaque réponse collée s'ajoute à CETTE analyse (B1), les
@@ -202,8 +202,9 @@ export function NegotiationThread({
     // Gardée avec le brouillon : un rechargement en plein traitement la
     // retrouve, et le second envoi est reconnu comme le même tour.
     saveThreadDraft(analysisId, { reply, key: keyRef.current });
+    const departAttente = Date.now();
     setAwaited(nextTurn);
-    setAttempt({ startedAt: Date.now(), lastCheckAt: null });
+    setAttempt({ startedAt: departAttente, lastCheckAt: null });
     setSending("turn");
     setError(null);
     try {
@@ -213,6 +214,10 @@ export function NegotiationThread({
         body: JSON.stringify({ reply, tier, idempotencyKey: keyRef.current, ...(correction ? { sentMessage: correction } : {}) }),
       });
       const body = (await response.json().catch(() => ({}))) as { error?: string };
+      // Mission #200 — un rejeu répond en quelques dizaines de millisecondes :
+      // sans ce plancher, l'indicateur clignoterait. Le résultat attend avec
+      // lui, pour qu'ils ne se chevauchent jamais.
+      await auMoins(departAttente);
       if (response.ok) {
         keyRef.current = null;
         setEdited(null);
@@ -274,7 +279,7 @@ export function NegotiationThread({
 
       {/* L'attente est ici, à la place qu'occupera le tour : pas seulement sur
           le bouton, tout en bas. */}
-      {waiting === "turn" ? <ThreadPending turnNumber={nextTurn} /> : null}
+      {waiting === "turn" ? <ThreadPending turnNumber={nextTurn} startedAt={attempt?.startedAt} /> : null}
       {/* L'échec s'affiche au même endroit que l'attente : là où on regardait. */}
       {error ?? (server.status === "error" ? server.message : null) ? (
         <ThreadError message={error ?? (server.status === "error" ? server.message : "")} />
@@ -346,8 +351,17 @@ export function NegotiationThread({
               <p className="font-semibold text-encre">C&apos;est le dernier tour de suivi possible pour cette analyse.</p>
             ) : null}
           </div>
-          <Button type="submit" size="lg" aria-busy={sending === "turn"} aria-disabled={waiting !== null} className="h-12 w-full text-base sm:w-fit">
-            {sending === "turn" ? "Lecture de la réponse… (jusqu'à une minute)" : "Analyser sa réponse"}
+          {/* Mission #200 — désactivé pour de bon pendant le traitement. Le
+              garde de sendTurn reste : il couvre l'envoi au clavier et le cas
+              où le bouton n'a pas encore été rendu dans son nouvel état. */}
+          <Button
+            type="submit"
+            size="lg"
+            disabled={waiting !== null}
+            aria-busy={sending === "turn"}
+            className="h-12 w-full text-base sm:w-fit"
+          >
+            {sending === "turn" ? "Lecture de la réponse…" : "Analyser sa réponse"}
           </Button>
         </form>
       ) : (
@@ -371,7 +385,7 @@ export function NegotiationThread({
             Tu décides d&apos;accepter les termes tels qu&apos;ils sont aujourd&apos;hui ? L&apos;outil prépare le récapitulatif
             de ce qui a été convenu et un message qui demande une confirmation écrite.
           </p>
-          <Button type="button" variant="outline" size="lg" onClick={conclude} aria-busy={waiting === "conclusion"} aria-disabled={waiting !== null} className="w-full sm:w-fit">
+          <Button type="button" variant="outline" size="lg" onClick={conclude} aria-busy={waiting === "conclusion"} disabled={waiting !== null} className="w-full sm:w-fit">
             {waiting === "conclusion" ? "Préparation…" : "J'accepte ces termes"}
           </Button>
         </div>

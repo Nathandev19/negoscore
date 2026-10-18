@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CheckIcon, LoaderCircleIcon } from "lucide-react";
 import { WORK_SURVIVES_BACKGROUND } from "@/lib/content/vocabulaire";
 import { cn } from "@/lib/utils";
@@ -53,23 +53,64 @@ export function formatElapsed(ms: number): string {
   return seconds < 60 ? `${seconds} s` : `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, "0")} s`;
 }
 
-type WaitingScreenProps = {
-  kind: WaitingKind;
-  // Moment où la réponse du serveur est arrivée (Date.now()), null avant.
-  respondedAt: number | null;
-  // Prévisualisation de développement seulement : écran vu à 35 s, 65 s…
-  startedAgoMs?: number;
-};
-
-export function WaitingScreen({ kind, respondedAt, startedAgoMs = 0 }: WaitingScreenProps) {
+// Le temps écoulé, remis à jour dix fois par seconde. Partagé par les deux
+// appelants : c'est le seul chiffre vrai que le navigateur possède pendant
+// l'attente.
+export function useElapsed(startedAgoMs = 0): { now: number; startedAt: number } {
   const [now, setNow] = useState(() => Date.now());
   const [startedAt] = useState(() => Date.now() - startedAgoMs);
-  const screenRef = useRef<HTMLElement>(null);
-
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 100);
     return () => window.clearInterval(timer);
   }, []);
+  return { now, startedAt };
+}
+
+export type WaitingPanelProps = {
+  // Ce que l'écran annonce. Il doit être vrai : voir le commentaire en tête
+  // de ce fichier sur ce que le navigateur sait réellement.
+  title: string;
+  label: string;
+  steps: readonly string[];
+  // Nombre d'étapes cochées, lecture comprise.
+  checked: number;
+  // L'étape 0 est-elle en cours ? Les suivantes sont instantanées et passent
+  // directement de l'attente à cochée.
+  running: boolean;
+  elapsedMs: number;
+  note?: string | null;
+  footer?: ReactNode;
+  id?: string;
+  className?: string;
+  // « status » : le panneau s'annonce tout seul, sans attendre le focus. La
+  // première analyse n'en a pas besoin — elle remplace le formulaire et prend
+  // le focus. Un tour s'insère dans la page, et la personne peut regarder
+  // ailleurs.
+  role?: "status";
+  // Mission #172 — le repère que la barre mobile lit pour s'effacer pendant
+  // une analyse. Posé par la PREMIÈRE analyse seulement : un tour de
+  // négociation ne remplace pas l'écran, il s'insère dans la page.
+  marksAnalysisRunning?: boolean;
+};
+
+// LA COQUILLE, employée par la première analyse comme par un tour de
+// négociation. Elle ne décide de rien : ce qui est coché, ce qui tourne et ce
+// qui est écrit lui est donné.
+export function WaitingPanel({
+  title,
+  label,
+  steps,
+  checked,
+  running,
+  elapsedMs,
+  note = null,
+  footer = null,
+  id,
+  className,
+  role,
+  marksAnalysisRunning = false,
+}: WaitingPanelProps) {
+  const screenRef = useRef<HTMLElement>(null);
 
   // Cet écran remplace le formulaire : sans cela le focus retombe sur <body>
   // et la personne au clavier repart du haut de la page (mission #062, A6).
@@ -77,30 +118,27 @@ export function WaitingScreen({ kind, respondedAt, startedAgoMs = 0 }: WaitingSc
     screenRef.current?.focus();
   }, []);
 
-  const elapsed = (respondedAt ?? now) - startedAt;
-  const checked = checkedSteps(respondedAt === null ? null : Math.max(0, now - respondedAt));
-  const labels = [READING_LABEL[kind], ...AFTER_READING_STEPS];
-  const note = respondedAt !== null ? null : elapsed >= VERY_SLOW_AFTER_MS ? VERY_SLOW_MESSAGE : elapsed >= SLOW_AFTER_MS ? SLOW_MESSAGE : null;
+  const labels = [label, ...steps];
 
   return (
     <section
       ref={screenRef}
+      id={id}
       tabIndex={-1}
-      aria-label="Analyse en cours"
-      aria-busy={respondedAt === null}
-      // Mission #172 — LE REPÈRE QUE LA BARRE MOBILE LIT. Même procédé que
-      // `data-score-block` : un attribut sur l'élément, pas un état partagé
-      // entre deux composants client qui ne se connaissent pas.
-      data-analysis-running
-      className="flex flex-col gap-6 rounded-control border-2 border-encre p-5 sm:p-6"
+      role={role}
+      aria-live={role === "status" ? "polite" : undefined}
+      aria-label={title}
+      aria-busy={running}
+      {...(marksAnalysisRunning ? { "data-analysis-running": true } : {})}
+      className={cn("flex flex-col gap-6 rounded-control border-2 border-encre p-5 sm:p-6", className)}
     >
-      <p className="headline text-h2 text-encre">On analyse ton offre</p>
+      <p className="headline text-h2 text-encre">{title}</p>
       <ol className="flex flex-col gap-4" aria-live="polite">
         {labels.map((label, index) => {
           const done = index < checked;
           // Seule la lecture peut être « en cours » : les étapes suivantes sont
           // instantanées et passent directement de l'attente à cochée.
-          const current = index === 0 && respondedAt === null;
+          const current = index === 0 && running;
           return (
             <li key={label} className="flex items-center gap-3">
               <span
@@ -125,7 +163,7 @@ export function WaitingScreen({ kind, respondedAt, startedAgoMs = 0 }: WaitingSc
                 {index === 0 ? (
                   // Décompte visuel seulement : annoncé à chaque seconde, il noierait le lecteur d'écran.
                   <span aria-hidden className="text-small font-semibold text-encre-douce tabular-nums">
-                    {formatElapsed(elapsed)}
+                    {formatElapsed(elapsedMs)}
                   </span>
                 ) : null}
               </span>
@@ -133,16 +171,49 @@ export function WaitingScreen({ kind, respondedAt, startedAgoMs = 0 }: WaitingSc
           );
         })}
       </ol>
-      {/* Mission #102, partie A — 100 % du trafic est mobile, et sortir de
-          l'application pendant l'attente est le geste normal. La phrase est
-          vraie : le travail n'est pas rattaché à cette connexion, et au retour
-          l'écran va rechercher l'état réel (lib/analysis/resume.ts). */}
-      {respondedAt === null ? <p className="text-small text-attenue">{WORK_SURVIVES_BACKGROUND}</p> : null}
+      {footer}
       {note ? (
         <p role="status" className="border-l-4 border-encre pl-3 text-small font-semibold text-encre">
           {note}
         </p>
       ) : null}
     </section>
+  );
+}
+
+type WaitingScreenProps = {
+  kind: WaitingKind;
+  // Moment où la réponse du serveur est arrivée (Date.now()), null avant.
+  respondedAt: number | null;
+  // Prévisualisation de développement seulement : écran vu à 35 s, 65 s…
+  startedAgoMs?: number;
+};
+
+// LA PREMIÈRE ANALYSE. Inchangée : mêmes étapes, même compteur, même repère
+// pour la barre mobile. Seule la coquille a été sortie au-dessus.
+export function WaitingScreen({ kind, respondedAt, startedAgoMs = 0 }: WaitingScreenProps) {
+  const { now, startedAt } = useElapsed(startedAgoMs);
+  const elapsed = (respondedAt ?? now) - startedAt;
+  const checked = checkedSteps(respondedAt === null ? null : Math.max(0, now - respondedAt));
+  const note = respondedAt !== null ? null : elapsed >= VERY_SLOW_AFTER_MS ? VERY_SLOW_MESSAGE : elapsed >= SLOW_AFTER_MS ? SLOW_MESSAGE : null;
+
+  return (
+    <WaitingPanel
+      title="On analyse ton offre"
+      label={READING_LABEL[kind]}
+      steps={AFTER_READING_STEPS}
+      checked={checked}
+      running={respondedAt === null}
+      elapsedMs={elapsed}
+      note={note}
+      marksAnalysisRunning
+      footer={
+        /* Mission #102, partie A — 100 % du trafic est mobile, et sortir de
+           l'application pendant l'attente est le geste normal. La phrase est
+           vraie : le travail n'est pas rattaché à cette connexion, et au
+           retour l'écran va rechercher l'état réel (lib/analysis/resume.ts). */
+        respondedAt === null ? <p className="text-small text-attenue">{WORK_SURVIVES_BACKGROUND}</p> : null
+      }
+    />
   );
 }

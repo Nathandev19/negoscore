@@ -10,6 +10,25 @@
 
 export const THREAD_ERROR_ID = "echange-erreur";
 export const THREAD_PENDING_ID = "echange-lecture";
+
+// Mission #200 — UN TOUR EST RAPIDE, ET L'INDICATEUR NE DOIT PAS CLIGNOTER.
+//
+// L'appel au modèle d'un tour prend en général quelques secondes, mais un
+// rejeu par clé d'idempotence répond en quelques dizaines de millisecondes :
+// le panneau apparaîtrait et disparaîtrait dans le même souffle, ce qui se lit
+// comme un défaut d'affichage et non comme un travail fait.
+//
+// L'attente est donc tenue 900 ms AU MOINS. Le délai porte sur l'arrivée du
+// RÉSULTAT, pas sur le panneau seul : on retarde le rafraîchissement, de sorte
+// que le panneau s'efface exactement quand le tour apparaît. Les montrer tous
+// les deux — « lecture en cours » au-dessus du tour déjà là — serait un
+// mensonge de plus, en sens inverse.
+export const MIN_ATTENTE_MS = 900;
+
+export async function auMoins(startedAt: number, ms: number = MIN_ATTENTE_MS): Promise<void> {
+  const reste = ms - (Date.now() - startedAt);
+  if (reste > 0) await new Promise((resolve) => setTimeout(resolve, reste));
+}
 export const CONCLUSION_ANCHOR = "conclusion-echange";
 
 // Le titre d'un tour porte déjà cet identifiant (components/result/negotiation/

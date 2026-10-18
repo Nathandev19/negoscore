@@ -195,6 +195,23 @@ describe("tour de négociation — gardes", () => {
     expect(state.rows).toHaveLength(1);
   });
 
+  it("DOUBLE CLIC — deux envois SIMULTANÉS de la même clé ne produisent qu'un seul tour", async () => {
+    // Le rejeu séquentiel ci-dessus retrouve le tour par sa clé. Ici, aucune
+    // des deux requêtes ne voit celui de l'autre au moment de lire : c'est
+    // l'index unique de la base qui tranche, et la seconde est refusée.
+    const reply = use("acceptation-partielle");
+    const [a, b] = await Promise.all([
+      send({ reply, idempotencyKey: "cle-de-test-0000000003" }),
+      send({ reply, idempotencyKey: "cle-de-test-0000000003" }),
+    ]);
+    const statuts = [a.status, b.status].sort();
+    expect(statuts).toEqual([200, 409]);
+    // UN SEUL TOUR ENREGISTRÉ, c'est tout ce qui compte pour la personne.
+    expect(state.rows).toHaveLength(1);
+    const refus = a.status === 409 ? a : b;
+    expect(await refus.json()).toMatchObject({ reason: "duplicate" });
+  });
+
   it("B3 — texte hors sujet : on le dit, rien n'est enregistré", async () => {
     const r = await send({ reply: use("hors-sujet") });
     expect(r.status).toBe(422);
