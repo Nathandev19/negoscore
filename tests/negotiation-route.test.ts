@@ -27,6 +27,9 @@ const state = vi.hoisted(() => ({
   // Tables lues ou écrites : aucune table de crédits ou de quota ne doit y figurer.
   tables: [] as string[],
   modelCalls: 0,
+  // Mission #203 : ce que l'appel au modèle rapporte sur lui-même.
+  attempts: 1,
+  schemaValidFirstTry: true,
   reading: null as unknown,
   modelError: null as Error | null,
   rows: [] as Array<Record<string, unknown>>,
@@ -55,7 +58,13 @@ vi.mock("@/lib/llm/turn", () => ({
     state.modelCalls += 1;
     state.lastMessages.push(input.lastMessage);
     if (state.modelError) throw state.modelError;
-    return { reading: state.reading, usage: { model: "test", costEur: 0.001, latencyMs: 5 } };
+    // Mission #203 — l'usage réel porte le nombre d'essais compris dans
+    // latency_ms et si le premier a passé le schéma. Pilotables par le test :
+    // c'est le seul moyen de reproduire un tour qui a coûté deux appels.
+    return {
+      reading: state.reading,
+      usage: { model: "test", costEur: 0.001, latencyMs: 5, attempts: state.attempts, schemaValidFirstTry: state.schemaValidFirstTry },
+    };
   },
 }));
 vi.mock("@/lib/security/usage-guard", () => ({
@@ -129,6 +138,8 @@ beforeEach(() => {
   state.guardHits = 0;
   state.sent = [];
   state.lastMessages = [];
+  state.attempts = 1;
+  state.schemaValidFirstTry = true;
   vi.spyOn(console, "log").mockImplementation(() => undefined);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -155,6 +166,38 @@ describe("tour de négociation — gardes", () => {
     expect(state.rows).toHaveLength(1);
     expect(state.rows[0]).toMatchObject({ analysis_id: ANALYSIS_ID, user_id: USER.id, kind: "reply", turn_number: 2, brand_reply: reply });
     expect(touchedBilling()).toEqual([]);
+  });
+
+  it("#203 — CE QUE latency_ms CONTIENT PART AVEC LUI : un seul essai", async () => {
+    // Sans ces deux colonnes, une ligne à 36 s et une ligne à 18 s sont
+    // indiscernables après coup : latency_ms enferme jusqu'à deux appels
+    // complets au modèle (lib/llm/extract.ts, lignes 159 et 205).
+    const r = await send({ reply: use("acceptation-partielle"), idempotencyKey: "cle-de-test-0000000203" });
+    expect(r.status).toBe(200);
+    expect(state.rows[0]).toMatchObject({ latency_ms: 5, attempts: 1, schema_valid_first_try: true });
+  });
+
+  it("#203 — UN PREMIER ESSAI QUI RATE LE SCHÉMA s'écrit attempts=2, schema_valid_first_try=false", async () => {
+    // C'est la ligne qu'on cherche quand on explique une queue de latence :
+    // le modèle a été appelé deux fois DANS le même latency_ms.
+    state.attempts = 2;
+    state.schemaValidFirstTry = false;
+    const r = await send({ reply: use("acceptation-partielle"), idempotencyKey: "cle-de-test-0000000204" });
+    expect(r.status).toBe(200);
+    expect(state.rows[0]).toMatchObject({ attempts: 2, schema_valid_first_try: false });
+  });
+
+  it("#203 — les deux colonnes ne sont JAMAIS devinées : ce que l'appel rapporte, rien d'autre", async () => {
+    // Un tour d'avant la #202 reste à NULL en base (migration 41) ; la route,
+    // elle, n'écrit que ce que readBrandReply lui a rendu. Si l'usage ne porte
+    // pas la valeur, la colonne part indéfinie plutôt qu'à une valeur inventée.
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("app/api/analyses/[id]/tours/route.ts", "utf8");
+    expect(source).toContain("attempts: read.usage.attempts");
+    expect(source).toContain("schema_valid_first_try: read.usage.schemaValidFirstTry");
+    // Aucune valeur de repli : « ?? 1 » ou « ?? true » serait une supposition.
+    expect(source).not.toMatch(/attempts: read\.usage\.attempts \?\?/);
+    expect(source).not.toMatch(/schemaValidFirstTry \?\?/);
   });
 
   it("#102, partie B — un échange passe, même si le filet horaire refusait tout", async () => {

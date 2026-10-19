@@ -19,6 +19,7 @@ import { saveTurnWithoutJs, type TurnWithoutJsState } from "@/lib/forms/no-js-ac
 import { clearThreadDraft, draftSurvives, readThreadKey, readThreadReply, saveThreadDraft, subscribeThreadDraft } from "@/lib/negotiation/draft";
 import { DEFAULT_TIER } from "@/lib/rates/tier";
 import { nextResume } from "@/lib/analysis/resume";
+import { chronoDebut, chronoInstalleLecteur, chronoMarque } from "@/lib/ui/chrono";
 import { auMoins, CONCLUSION_PENDING_ID, nextReveal, prefersReducedMotion, reveal, THREAD_PENDING_ID, type ThreadSnapshot } from "@/lib/ui/reveal";
 
 // Mission #080 — « La marque t'a répondu ? » : le fil de l'échange, sous le
@@ -137,8 +138,25 @@ export function NegotiationThread({
   const arrived = awaited !== null && turns.some((turn) => turn.turnNumber === awaited);
   const waiting: "turn" | "conclusion" | null = sending === "turn" && !arrived ? "turn" : sending === "conclusion" ? "conclusion" : null;
 
+  // Mission #203 — la série en cours, gardée hors du rendu : le quatrième
+  // repère tombe dans un effet, longtemps après que sendTurn soit terminé.
+  const chronoRef = useRef<number | null>(null);
+
+  // Le lecteur de console, posé une fois, et seulement si le drapeau est levé.
+  useEffect(() => {
+    chronoInstalleLecteur();
+  }, []);
+
   useEffect(() => {
     if (!arrived) return;
+    // Mission #203 — QUATRIÈME REPÈRE : le tour est à l'écran. C'est bien
+    // l'affichage et pas la réponse : `arrived` veut dire que le tour attendu
+    // est dans le fil rendu par le SERVEUR, donc que router.refresh() a fait
+    // son aller-retour complet et que React a posé le résultat. Ce dernier
+    // segment porte aussi le plancher d'attente de 900 ms, que le chrono
+    // décompte à l'affichage pour qu'on ne le lise pas comme de la lenteur.
+    chronoMarque(chronoRef.current, "tour_affiche");
+    chronoRef.current = null;
     // Le tour est arrivé : plus rien à rejouer, et le brouillon a fait son temps.
     keyRef.current = null;
     clearThreadDraft(analysisId);
@@ -194,6 +212,12 @@ export function NegotiationThread({
   async function sendTurn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (waiting) return;
+    // Mission #203 — PREMIER REPÈRE : le clic. Posé avant les contrôles de
+    // saisie, parce que c'est le moment que la personne vit comme le départ.
+    // Éteint par défaut : sans le drapeau, chronoDebut rend null et les trois
+    // repères suivants ne font rien.
+    const chrono = chronoDebut();
+    chronoRef.current = chrono;
     if (reply.trim().length < MIN_REPLY_LENGTH) {
       setError(TOO_SHORT_REPLY_MESSAGE);
       return;
@@ -208,11 +232,19 @@ export function NegotiationThread({
     setSending("turn");
     setError(null);
     try {
+      // Deuxième repère : la requête part. Ce qui le sépare du clic, c'est le
+      // travail du navigateur avant l'envoi — contrôles, brouillon, rendu.
+      chronoMarque(chrono, "requete_partie");
       const response = await fetch(`/api/analyses/${analysisId}/tours`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reply, tier, idempotencyKey: keyRef.current, ...(correction ? { sentMessage: correction } : {}) }),
       });
+      // Troisième repère : la réponse est là. Ce segment contient l'aller, le
+      // démarrage à froid éventuel, TOUTE la route — latency_ms compris — et
+      // le retour. C'est lui qu'on compare à latency_ms pour savoir si les
+      // secondes manquantes sont dans le modèle ou autour.
+      chronoMarque(chrono, "reponse_recue");
       const body = (await response.json().catch(() => ({}))) as { error?: string };
       // Mission #200 — un rejeu répond en quelques dizaines de millisecondes :
       // sans ce plancher, l'indicateur clignoterait. Le résultat attend avec

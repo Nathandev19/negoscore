@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 18/10/2026 (mission #202).** Ce fichier se met à jour
+**Dernière mise à jour : 19/10/2026 (mission #203).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -169,6 +169,25 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#203 — la queue de latence devient explicable, le chemin client mesurable.**
+
+- **Migration 41 appliquée par l'éditeur le 19/10**, et les deux colonnes sont
+  désormais écrites à chaque tour : `attempts` et `schema_valid_first_try`.
+  Une ligne à 36 s et une ligne à 18 s ne sont plus indiscernables —
+  `latency_ms` peut contenir DEUX appels complets au modèle. Rien n'est
+  rétro-rempli : les tours d'avant restent à NULL.
+- **Quatre repères temporels côté navigateur** (`lib/ui/chrono.ts`) : clic,
+  requête partie, réponse reçue, tour affiché. Éteints par défaut, levés par
+  `localStorage.setItem("ns_chrono", "1")`, affichés dans la console, jamais
+  dans l'interface. Il n'en sort QUE des durées : un test le vérifie en
+  cherchant l'identifiant d'analyse, le texte collé et les montants dans tout
+  ce que la sonde produit.
+- **UNKNOWN, et c'est le but de la sonde** : la part des onze secondes non
+  attribuées qui revient au client. L'hypothèse de la #202 — 34 s était un
+  échantillon de queue — n'est ni confirmée ni infirmée.
+
+## MISSION PRÉCÉDENTE
+
 **#202 — la latence d'un tour vient du raisonnement, mesuré.**
 
 - **Le réglage de raisonnement d'un tour est désormais à part de celui d'une
@@ -191,7 +210,7 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
   36 s et une ligne à 18 s sont indiscernables, alors que `latency_ms`
   enferme jusqu'à DEUX appels complets.
 
-## MISSION PRÉCÉDENTE
+### Avant
 
 **#201 — où passent les secondes d'un tour, et le projet clique ses boutons.**
 
@@ -216,11 +235,12 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## NEXT MISSION
 
-À définir. Deux chantiers nommés par la #202 et NON faits :
+À définir. Ce qui reste ouvert, et ce qui ne l'est plus :
 
-- **Le chemin client d'un tour, du clic au tour affiché.** `latency_ms`
-  n'encadre que l'appel au modèle ; ce qui l'entoure côté navigateur — aller
-  simple vers Vercel, démarrage à froid, aller-retour RSC complet du
-  `router.refresh()` — n'a jamais été instrumenté. UNKNOWN.
+- **Le chemin client d'un tour est désormais INSTRUMENTÉ, pas mesuré.** La
+  sonde de la #203 existe et est éteinte ; les chiffres viendront d'un usage
+  réel. Le rapport de la #203 donne la commande de console.
+- **La médiane de `latency_ms` après le passage à « none »** n'a pas été
+  relue. UNKNOWN jusqu'à ce que quelques tours soient passés en production.
 - **Une éval large du réglage « none » sur un tour.** Celui retenu l'a été sur
-  UNE fixture et trois passes, le minimum que la mission demandait.
+  UNE fixture et trois passes, le minimum que la mission #202 demandait.

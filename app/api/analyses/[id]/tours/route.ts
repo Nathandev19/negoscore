@@ -177,6 +177,20 @@ export async function POST(request: Request, { params }: RouteContext<"/api/anal
         rate_table_version: (outcome.payload.pricing_after ?? outcome.payload.pricing_before).rate_table_version,
         cost_cents: Number((read.usage.costEur * 100).toFixed(4)),
         latency_ms: read.usage.latencyMs,
+        // Mission #203 — CE QUE latency_ms CONTIENT, ENFIN ENREGISTRÉ.
+        //
+        // latency_ms est ouvert avant la boucle d'essais et fermé au premier
+        // essai dont la sortie passe le schéma (lib/llm/extract.ts, lignes 159
+        // et 205) : il peut donc contenir DEUX appels complets au modèle.
+        // Sans ces deux colonnes, une ligne à 36 s et une ligne à 18 s sont
+        // indiscernables après coup, et c'est ce qui a empêché la #202
+        // d'attribuer la queue de latence.
+        //
+        // Les deux valeurs étaient déjà calculées à chaque tour, et jetées.
+        // Les tours d'avant restent à NULL : on ne devine pas ce qu'on n'a
+        // pas mesuré (migration 41).
+        attempts: read.usage.attempts,
+        schema_valid_first_try: read.usage.schemaValidFirstTry,
         ...(keyToWrite ? { idempotency_key: keyToWrite } : {}),
       });
     } catch (caught) {
