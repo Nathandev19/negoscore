@@ -35,6 +35,10 @@ export type Attribution = {
 function clean(value: unknown, max: number): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase().replace(/[^a-z0-9._~-]+/g, "_").slice(0, max);
+  // Anciennes visites /__proto__ et /constructor : avant la #113, une valeur
+  // héritée de Object.prototype était convertie en texte par URLSearchParams.
+  // Ces deux marqueurs ne sont jamais une attribution, même dans une URL forgée.
+  if (normalized === "_object_object_" || normalized === "function_object_native_code_") return null;
   return normalized || null;
 }
 
@@ -74,7 +78,7 @@ export async function recordProductEvent(input: {
   event: ProductEventName; userId?: string | null; attribution?: Attribution; entityType?: string | null;
   entityId?: string | null; metadata?: Record<string, string | number | boolean | null>; dedupeKey?: string | null;
 }): Promise<void> {
-  const a = input.attribution ?? {};
+  const a = parseAttribution(input.attribution);
   const referrerDomain = a.referrer_host == null ? null : normalizeReferrer(a.referrer_host, "");
   try {
     await withEnvironment((environment) =>

@@ -32,6 +32,15 @@ describe("attribution first-party", () => {
     expect(parsed.utm_source).toHaveLength(100);
   });
 
+  it("écarte les objets et fonctions convertis en faux contenus UTM", () => {
+    for (const value of [Object.prototype, Object, "[object Object]", "function Object() { [native code] }"]) {
+      expect(parseAttribution({ utm_content: value }).utm_content).toBeNull();
+    }
+    expect(parseAttribution({ utm_content: "promotion_tiktok", utm_medium: "paid_social" })).toMatchObject({
+      utm_content: "promotion_tiktok", utm_medium: "paid_social",
+    });
+  });
+
   const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
   it("l'endpoint public n'accepte que les vues prévues depuis la même origine", async () => {
@@ -94,6 +103,33 @@ describe("attribution first-party", () => {
           utm_source: "tiktok", utm_medium: "organic_social", utm_campaign: "lancement", utm_content: "bio_tiktok",
         },
       }),
+    ]);
+  });
+
+  it("/tiktok-promo : une visite payante est comptée à part de la bio", async () => {
+    const { proxy } = await import("@/proxy");
+    const { NextRequest } = await import("next/server");
+    const { POST } = await import("@/app/api/events/route");
+    for (const chemin of ["/tiktok", "/tiktok-promo"]) {
+      const redirect = await proxy(new NextRequest(new URL(chemin, "http://localhost:3000")));
+      expect(redirect.status).toBe(307);
+      const page = new URL(redirect.headers.get("location") as string);
+      expect(page.pathname).toBe("/");
+      const attribution = Object.fromEntries(page.searchParams.entries());
+      const response = await POST(new Request("http://localhost:3000/api/events", {
+        method: "POST",
+        headers: { origin: "http://localhost:3000", "sec-fetch-site": "same-origin", "content-type": "application/json", "user-agent": UA },
+        body: JSON.stringify({ event: "landing_view", attribution: { path: page.pathname, ...attribution } }),
+      }));
+      expect(response.status).toBe(204);
+    }
+    expect(telemetry.calls).toEqual([
+      expect.objectContaining({ event: "landing_view", attribution: expect.objectContaining({
+        utm_source: "tiktok", utm_medium: "organic_social", utm_campaign: "lancement", utm_content: "bio_tiktok",
+      }) }),
+      expect.objectContaining({ event: "landing_view", attribution: expect.objectContaining({
+        utm_source: "tiktok", utm_medium: "paid_social", utm_campaign: "lancement", utm_content: "promotion_tiktok",
+      }) }),
     ]);
   });
 });

@@ -29,10 +29,11 @@ const ATTENDU: Array<[string, string, string]> = [
   ["/niveau", "tiktok", "video_5_niveau"],
   // Mission #145 — la bio TikTok porte enfin ce chemin, et son contenu le dit.
   ["/tiktok", "tiktok", "bio_tiktok"],
+  ["/tiktok-promo", "tiktok", "promotion_tiktok"],
   ["/insta", "instagram", "bio_instagram"],
 ];
 
-// Mission #125 — le neuvième chemin, et le premier à ne pas mener à
+// Mission #125 — le chemin d'exemple, et le premier à ne pas mener à
 // l'accueil. Mission #137 — il n'est plus REDIRIGÉ mais SERVI sur place :
 // il a donc ses propres vérifications, plus bas.
 const EXEMPLE: [string, string, string] = ["/exemple", "instagram", "dm_exemple"];
@@ -42,7 +43,7 @@ const TOUS = [...ATTENDU, EXEMPLE];
 const DESTINATION: Record<string, string> = { "/exemple": "/analyse/demo" };
 const destination = (path: string) => DESTINATION[path] ?? "/";
 
-describe("les huit chemins redirigés portent les UTM posés par le serveur", () => {
+describe("les chemins redirigés portent les UTM posés par le serveur", () => {
   it.each(ATTENDU)("%s → utm_source=%s et utm_content=%s", async (path, source, content) => {
     const response = await call(path);
     expect(response.status).toBe(307);
@@ -51,11 +52,11 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
     const target = new URL(location as string, ORIGIN);
     expect(target.pathname, path).toBe(destination(path));
     // Mission #159 — le mode d'acquisition vient de la ligne : « dm » pour les
-    // deux chemins de message privé, « organic_social » pour tout ce qui passe
-    // par la portée d'une plateforme (vidéos, bios).
+    // deux chemins de message privé, « paid_social » pour la promotion,
+    // « organic_social » pour la portée d'une plateforme (vidéos, bios).
     expect(params(location as string)).toEqual({
       utm_source: source,
-      utm_medium: content.startsWith("dm_") ? "dm" : "organic_social",
+      utm_medium: path === "/tiktok-promo" ? "paid_social" : content.startsWith("dm_") ? "dm" : "organic_social",
       utm_campaign: "lancement",
       utm_content: content,
     });
@@ -114,6 +115,16 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
     expect(servedAttribution({ source: "tiktok", content: "video_x", servi: true })).toBeNull();
     expect(servedAttribution(SHORT_PATHS.exemple)).not.toBeNull();
   });
+
+  it("une attribution de chemin court doit être une chaîne propre", () => {
+    const objet = { source: "tiktok", content: Object.prototype, medium: "paid_social", to: "/", servi: true };
+    const fonction = { source: "tiktok", content: Object, medium: "paid_social", to: "/", servi: true };
+    for (const entry of [objet, fonction]) {
+      expect(servedAttribution(entry as never)).toBeNull();
+    }
+    expect(shortPathTarget("/__proto__")).toBeNull();
+    expect(shortPathTarget("/constructor")).toBeNull();
+  });
   it("/dm continue de mener à l'accueil, et les deux ne se confondent pas", async () => {
     const dm = new URL((await call("/dm")).headers.get("location") as string, ORIGIN);
     const exemple = shortPathAttribution("/exemple") as NonNullable<ReturnType<typeof shortPathAttribution>>;
@@ -130,7 +141,7 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
     expect(table).toContain('to: "/analyse/demo"');
     // Le proxy ne connaît aucune adresse de destination : il lit la table.
     expect(readFileSync("proxy.ts", "utf8")).not.toContain("/analyse/demo");
-    // Et les huit autres chemins n'ont pas de destination : ils gardent
+    // Les autres chemins n'ont pas de destination : ils gardent
     // l'accueil par défaut.
     expect([...table.matchAll(/to: "/g)]).toHaveLength(1);
   });
@@ -159,10 +170,10 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
   // deux façons. C'est `dm` qui gagne : un message privé n'est pas de la
   // portée organique — personne ne l'a vu passer — et c'est déjà la valeur
   // écrite à la main.
-  it("les deux chemins de message privé portent « dm », tout le reste « organic_social »", async () => {
+  it("les DM portent « dm », la promotion « paid_social », le reste « organic_social »", async () => {
     const dms = ["dm", "exemple"];
     for (const [cle, entry] of Object.entries(SHORT_PATHS)) {
-      const attendu = dms.includes(cle) ? "dm" : ACQUISITION_UTM.medium;
+      const attendu = cle === "tiktok-promo" ? "paid_social" : dms.includes(cle) ? "dm" : ACQUISITION_UTM.medium;
       // La ligne de la table, source unique.
       expect(mediumOf(entry), cle).toBe(attendu);
       // Ce que le serveur pose réellement dans l'adresse.
@@ -171,8 +182,7 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
     }
     // Et le contenu servi sur place le porte aussi : /exemple ne redirige pas.
     expect(shortPathAttribution("/exemple")?.utm_medium).toBe("dm");
-    // Deux valeurs en tout, pas trois : le canal n'a pas de troisième nom.
-    expect(new Set(Object.values(SHORT_PATHS).map(mediumOf))).toEqual(new Set(["dm", ACQUISITION_UTM.medium]));
+    expect(new Set(Object.values(SHORT_PATHS).map(mediumOf))).toEqual(new Set(["dm", "paid_social", ACQUISITION_UTM.medium]));
     // Le mode d'acquisition n'est écrit qu'ici, jamais dans une page ni une route.
     expect(DM_MEDIUM).toBe("dm");
   });
@@ -198,11 +208,11 @@ describe("les huit chemins redirigés portent les UTM posés par le serveur", ()
     // Trois chemins Instagram, qui ne disent pas la même chose : la bio, la
     // prospection directe, et le lien qui montre l'exemple chiffré (#125).
     expect(parSource.instagram.sort()).toEqual(["bio_instagram", "dm_exemple", "dm_prospection"]);
-    // Mission #145 — six chemins TikTok : les cinq vidéos, et la bio. Aucun ne
+    // Les cinq vidéos, la bio et la promotion restent distinctes. Aucun ne
     // s'appelle « bio » tout court : les deux bios sont nommées par leur
     // réseau, sinon la colonne « Contenu » du cockpit les confond.
     expect(parSource.tiktok.sort()).toEqual([
-      "bio_tiktok", "video_1_negociation", "video_2_verdicts", "video_3_produits", "video_4_capture", "video_5_niveau",
+      "bio_tiktok", "promotion_tiktok", "video_1_negociation", "video_2_verdicts", "video_3_produits", "video_4_capture", "video_5_niveau",
     ]);
     expect(Object.values(SHORT_PATHS).map((entry) => entry.content)).not.toContain("bio");
   });
@@ -294,7 +304,7 @@ describe("la table est la seule source", () => {
 });
 
 describe("ce ne sont pas des pages", () => {
-  it("aucun des neuf n'est dans le sitemap", () => {
+  it("aucun chemin court n'est dans le sitemap", () => {
     const urls = sitemap().map((entry) => new URL(entry.url).pathname.replace(/\/+$/, ""));
     for (const path of Object.keys(SHORT_PATHS)) expect(urls, path).not.toContain(`/${path}`);
   });

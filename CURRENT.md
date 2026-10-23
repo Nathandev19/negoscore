@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 19/10/2026 (mission #203).** Ce fichier se met à jour
+**Dernière mise à jour : 23/10/2026 (mission #204).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 40 fichiers
-de migration et 160 fichiers de test.
+de migration et 162 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -85,7 +85,9 @@ de la section « Vérifié hors du dépôt ».
 - **Exemple chiffré** : `/analyse/demo`, qui recalcule tout depuis une fixture.
 - **Chemins courts d'acquisition** : table `SHORT_PATHS`
   (`lib/acquisition/chemins.ts`), lue par `proxy.ts` — dont `/tiktok`,
-  `/insta`, `/exemple` et cinq chemins de vidéos.
+  `/tiktok-promo`, `/insta`, `/exemple` et cinq chemins de vidéos. La promotion
+  porte `paid_social` et `promotion_tiktok`, la bio garde `organic_social` et
+  `bio_tiktok` (décision 17).
 
 ### Mesure et administration
 
@@ -166,8 +168,33 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
    `/historique` **ne se construit pas** — décision 16 de `DECISIONS.md`, pas
    une tâche en attente.
 9. **Le gain de la région `dub1` est confirmé à l'usage.**
+10. **CHECK UTM vérifiés par l'éditeur le 23/10/2026.** Ils acceptent null et
+    limitent longueur et casse, sans liste de valeurs. Les lignes distinctes
+    relevées contenaient `bio_tiktok`, `_object_object_` et
+    `function_object_native_code_` ; ces deux dernières correspondent au
+    défaut de recherche de clés corrigé dans `c48907c` (#113).
 
 ## CURRENT MISSION
+
+**#204 — porte distincte pour la promotion TikTok.**
+
+- `/tiktok-promo` emprunte la table `SHORT_PATHS` et mène à l'accueil avec
+  `tiktok · paid_social · lancement · promotion_tiktok`. `/tiktok` et `/dm`
+  gardent leurs quatre UTM d'avant ; le cockpit sépare les contenus.
+- Le vieux défaut `/__proto__` et `/constructor` de la #113 explique exactement
+  les deux contenus UTM corrompus observés : conversion de `Object.prototype`
+  ou du constructeur `Object` en texte par `URLSearchParams`. Validation de
+  forme à la sortie des chemins courts et à l'écriture d'événement. Aucune
+  ligne historique n'est réécrite.
+- **Aucune migration** : les CHECK installés, contrôlés par l'éditeur, ne
+  portent pas de liste fermée de source ou medium.
+- **UNKNOWN — à vérifier par l'éditeur** : l'événement historique avec
+  `utm_campaign=dm` et `utm_medium=null`. Aucun chemin court du code actuel ne
+  produit cette paire. `tests/pages-mesurees.test.tsx` fabrique cette paire
+  dans un test avec écriture simulée, sans contact avec la base de production ;
+  les détails de provenance de la ligne réelle ne sont pas dans le dépôt.
+
+## MISSION PRÉCÉDENTE
 
 **#203 — la queue de latence devient explicable, le chemin client mesurable.**
 
@@ -186,7 +213,7 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
   attribuées qui revient au client. L'hypothèse de la #202 — 34 s était un
   échantillon de queue — n'est ni confirmée ni infirmée.
 
-## MISSION PRÉCÉDENTE
+### Avant
 
 **#202 — la latence d'un tour vient du raisonnement, mesuré.**
 

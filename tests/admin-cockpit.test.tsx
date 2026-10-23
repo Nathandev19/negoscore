@@ -102,8 +102,13 @@ describe("autorisation et mutations du cockpit", () => {
   const expiration = async (expiresAt: string) => {
     state.session = OWNER;
     state.rpcCalls = [];
-    const response = await entitlement({ action: "grant", reason: "Partenariat", requestId: REQUEST_ID, expiresAt });
-    return { status: response.status, envoye: state.rpcCalls[0]?.args.p_expires_at };
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-10-19T12:00:00.000Z") });
+    try {
+      const response = await entitlement({ action: "grant", reason: "Partenariat", requestId: REQUEST_ID, expiresAt });
+      return { status: response.status, envoye: state.rpcCalls[0]?.args.p_expires_at };
+    } finally {
+      vi.useRealTimers();
+    }
   };
 
   it("une échéance saisie avant le 25 octobre part en UTC+2", async () => {

@@ -15,8 +15,8 @@ import { entryFor } from "@/lib/lookup";
 // Ce fichier est la SEULE source. Ajouter un chemin, c'est ajouter une ligne
 // dans la table ci-dessous : ni route, ni fichier, ni condition ailleurs.
 
-// Ce qui est commun à tous les chemins : le même mode d'acquisition, la même
-// campagne. La SOURCE, elle, est portée par chaque ligne — voir plus bas.
+// Ce qui est commun à tous les chemins : la campagne. La SOURCE est portée par
+// chaque ligne, et le medium peut différer de l'organique — voir plus bas.
 export const ACQUISITION_UTM = {
   medium: "organic_social",
   campaign: "lancement",
@@ -50,7 +50,7 @@ export const DM_MEDIUM = "dm";
 // sans déplacer le navigateur ». L'attribution ne change pas : elle vient
 // de cette table, et c'est /api/vue qui la relit (voir shortPathAttribution).
 // `medium` absent = ACQUISITION_UTM.medium. Une ligne ne le porte que si son
-// canal n'est pas de la portée organique — aujourd'hui les deux chemins de DM.
+// canal n'est pas de la portée organique.
 export type ShortPath = { source: string; content: string; to?: string; servi?: boolean; medium?: string };
 
 // Le mode d'acquisition d'une ligne, défaut compris. Une seule lecture, pour
@@ -105,6 +105,9 @@ export const SHORT_PATHS: Readonly<Record<string, ShortPath>> = {
   // `bio` restent sous `bio` — voir le rapport de la #145 pour le SQL qui les
   // renomme, si tu veux une seule ligne au lieu de deux.
   tiktok: { source: "tiktok", content: "bio_tiktok" },
+  // Promotion TikTok vers le même accueil, mais achetée : même réseau et
+  // campagne que la bio, medium payant et contenu distinct pour le cockpit.
+  "tiktok-promo": { source: "tiktok", content: "promotion_tiktok", medium: "paid_social" },
   // Instagram autorise un lien cliquable en bio sans vérification
   // d'entreprise : c'est le seul canal qui ne dépend pas du numéro INSEE.
   // Le chemin reste tapable, pour le cas où il est dicté en story.
@@ -157,11 +160,24 @@ export type ShortPathAttribution = {
   utm_content: string;
 };
 
+// Défense en profondeur après la #113 : une propriété héritée pouvait être
+// un objet ou une fonction, converti en UTM par URLSearchParams. Une ligne
+// invalide ne devient jamais une adresse attribuée, même si la recherche par
+// clé était un jour régressée.
+function cleanShortPath(entry: unknown): entry is ShortPath {
+  if (typeof entry !== "object" || entry === null) return false;
+  const row = entry as Record<string, unknown>;
+  const propre = (value: unknown, max: number) =>
+    typeof value === "string" && value.length <= max && /^[a-z0-9][a-z0-9._~-]*$/.test(value);
+  return propre(row.source, 100) && propre(row.content, 150)
+    && (row.medium === undefined || propre(row.medium, 100));
+}
+
 // Une ligne est servie sur place si elle le dit ET si elle a une destination.
 // Les deux conditions comptent : une destination seule reste une redirection
 // — c'est le cas de tout chemin qu'on ajouterait demain vers une autre page.
 export function servedAttribution(entry: ShortPath | undefined): ShortPathAttribution | null {
-  if (entry === undefined || !entry.servi || !entry.to) return null;
+  if (!cleanShortPath(entry) || !entry.servi || !entry.to) return null;
   return {
     to: entry.to,
     utm_source: entry.source,
@@ -182,7 +198,7 @@ export function shortPathIsServed(pathname: string): boolean {
 
 export function shortPathTarget(pathname: string): string | null {
   const entry = entryFor(SHORT_PATHS, key(pathname));
-  if (entry === undefined) return null;
+  if (!cleanShortPath(entry)) return null;
   const params = new URLSearchParams({
     utm_source: entry.source,
     utm_medium: mediumOf(entry),

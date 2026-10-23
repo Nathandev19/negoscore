@@ -81,6 +81,18 @@ const AVEC_GUIDES: DashboardData = {
 };
 
 describe("le tableau de bord, tel qu'il s'affiche", () => {
+  it("montre séparément les visites TikTok de bio et de promotion", async () => {
+    const page = text(await dashboard({
+      ...APRES_MIGRATION,
+      acquisition: [
+        { source: "tiktok", campaign: "lancement", content: "bio_tiktok", visits: 7, analyses: 1, signups: 0, purchases: 0 },
+        { source: "tiktok", campaign: "lancement", content: "promotion_tiktok", visits: 3, analyses: 0, signups: 0, purchases: 0 },
+      ],
+    }));
+    expect(page).toContain("tiktok lancement · bio_tiktok 7");
+    expect(page).toContain("tiktok lancement · promotion_tiktok 3");
+  });
+
   it("ventile seulement non_attribue par domaine avec les trois compteurs", async () => {
     const html = await dashboard({
       ...APRES_MIGRATION,

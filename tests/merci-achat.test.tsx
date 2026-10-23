@@ -254,6 +254,9 @@ describe("A — la période Pro se prolonge, elle ne s'écrase plus", () => {
 });
 
 describe("A4 — une résiliation ne raccourcit pas une période déjà payée", () => {
+  beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-22T12:00:00.000Z") }));
+  afterEach(() => vi.useRealTimers());
+
   it("un abonnement résilié alors qu'un second avait prolongé : la période la plus lointaine reste", async () => {
     vi.stubEnv("WHOP_PLAN_PRO", "plan_pro_test");
     db.rows.set("profiles", [{ id: USER, email: "nina@exemple.test" }]);
