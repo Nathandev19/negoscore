@@ -1,0 +1,134 @@
+{
+  "language": "fr",
+  "confidence": "low",
+  "input_quality": {
+    "readable": true,
+    "missing_critical": [
+      "Nom de la marque",
+      "Format et durée de la vidéo",
+      "Droits d'utilisation prévus",
+      "Délais et modalités de paiement",
+      "Nombre de révisions"
+    ]
+  },
+  "deal": {
+    "brand": null,
+    "deliverables": [
+      {
+        "type": "video",
+        "platform": null,
+        "quantity": 1,
+        "format": null
+      }
+    ],
+    "publication_required": false,
+    "usage": {
+      "organic": false,
+      "paid_ads": false,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": null,
+      "territory": null,
+      "territory_zones": [],
+      "perpetual": false
+    },
+    "exclusivity": {
+      "present": false,
+      "duration_months": null,
+      "category": null
+    },
+    "raw_footage": false,
+    "ip_transfer": "none",
+    "ai_training_rights": "absent",
+    "revisions": {
+      "count": null,
+      "unlimited": false
+    },
+    "payment": {
+      "amount_eur": 100,
+      "currency": "EUR",
+      "terms_days": null,
+      "schedule": null
+    },
+    "in_kind_value_eur": null,
+    "variable_pay": {
+      "present": false,
+      "rate_percent": null,
+      "base": null,
+      "per_sale_eur": null,
+      "attribution_days": null,
+      "payout": null
+    },
+    "deadlines": [],
+    "kill_fee": null,
+    "termination": null,
+    "governing_law": null
+  },
+  "good_points": [
+    {
+      "label": "Paiement fixe annoncé",
+      "why": "Le montant proposé pour la vidéo est clairement indiqué."
+    },
+    {
+      "label": "Livrable simple",
+      "why": "L'offre demande une seule vidéo."
+    }
+  ],
+  "red_flags": [
+    {
+      "label": "Brief très incomplet",
+      "severity": "high",
+      "why": "Le format, la durée, les attentes et les délais ne sont pas précisés."
+    },
+    {
+      "label": "Droits d'utilisation non définis",
+      "severity": "high",
+      "why": "L'offre ne précise pas où ni combien de temps la marque pourra utiliser la vidéo."
+    }
+  ],
+  "ready_to_send_message": {
+    "tone": "poli et ferme",
+    "text": "Bonjour, merci pour ta proposition. Avant de confirmer, peux-tu me préciser le format et la durée attendus pour la vidéo, les droits d'utilisation prévus, le délai de livraison, les modalités de paiement ainsi que le nombre de révisions incluses ? Mon tarif pour ce projet se situe {{CONTRE_OFFRE}}. Merci de me confirmer ces éléments afin que nous puissions avancer."
+  },
+  "negotiate": [
+    {
+      "label": "Clarifier le périmètre du contenu",
+      "why": "Le format, la durée et les attentes de la vidéo ne sont pas indiqués.",
+      "priority": 1,
+      "topic": "other"
+    },
+    {
+      "label": "Définir les droits d'utilisation",
+      "why": "Il faut préciser les canaux, le territoire et la durée d'utilisation par la marque.",
+      "priority": 2,
+      "topic": "territory"
+    },
+    {
+      "label": "Fixer le tarif",
+      "why": "Le montant proposé doit être confirmé par rapport au périmètre exact du projet.",
+      "priority": 3,
+      "topic": "other"
+    },
+    {
+      "label": "Préciser les révisions",
+      "why": "Le nombre de retours inclus n'est pas indiqué.",
+      "priority": 4,
+      "topic": "revisions"
+    },
+    {
+      "label": "Clarifier le paiement et le calendrier",
+      "why": "Les modalités de paiement et la date de livraison ne sont pas précisées.",
+      "priority": 5,
+      "topic": "payment_terms"
+    }
+  ],
+  "counter_offer": {
+    "changes": [
+      "Préciser le format, la durée et les attentes de la vidéo.",
+      "Définir les canaux, le territoire et la durée des droits d'utilisation.",
+      "Revoir le tarif selon le périmètre confirmé.",
+      "Indiquer le nombre de révisions incluses.",
+      "Confirmer le délai de livraison et les modalités de paiement."
+    ]
+  }
+}

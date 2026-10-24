@@ -317,8 +317,9 @@ describe("la page d'exemple mène à l'analyse", () => {
     const html = await renderDemo();
     const lisible = html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ");
     expect(lisible).toContain(
-      "Exemple, pas une vraie analyse : l'offre est inventée, mais la fourchette, le score et la contre-offre sont calculés par le moteur actuel, comme pour ton offre. Pour chiffrer ton offre, colle-la sur la page Analyser un deal .",
+      "Exemple, pas une vraie analyse : l'offre est inventée, mais la fourchette, le verdict et la contre-offre sont calculés par le moteur actuel, comme pour ton offre. Pour chiffrer ton offre, colle-la sur la page Analyser un deal .",
     );
+    expect(lisible).not.toMatch(/\bscore\b/i);
   });
 
   // Mission #148 — LES TROIS SORTIES DISENT LA MÊME CHOSE.

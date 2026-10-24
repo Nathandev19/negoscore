@@ -66,6 +66,11 @@ export const analysisSchema = z.object({
       category: z.string().nullable(),
     }),
     raw_footage: z.boolean(),
+    // Un refus explicite des rushs est différent d'un silence. Ces champs ne
+    // participent jamais au chiffrage ; ils disent seulement quoi demander.
+    raw_footage_clarified: z.boolean().optional(),
+    script_by: z.enum(["creator", "brand", "shared", "other"]).nullable().optional(),
+    editing_by: z.enum(["creator", "brand", "shared", "other"]).nullable().optional(),
     ip_transfer: z.enum(["none", "license", "full_assignment", "unclear"]),
     ai_training_rights: z.enum(["absent", "present", "unclear"]),
     revisions: z.object({

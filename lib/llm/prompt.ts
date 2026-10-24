@@ -112,6 +112,8 @@ EXTRACTION (objet deal)
 - usage.territory_zones : les ZONES de diffusion demandées, choisies UNIQUEMENT dans cette liste fermée : "france", "europe_francophone" (Belgique, Suisse, Luxembourg), "europe" (le reste de l'Europe), "amerique_nord" (États-Unis, Canada), "reste_du_monde". Tableau vide si l'offre ne dit rien du territoire — n'invente jamais une zone. « France, Belgique et Suisse » donne ["france","europe_francophone"]. « Toute l'Europe » donne ["france","europe_francophone","europe"]. « Monde entier », « international », « tous pays » donnent les cinq. Un pays nommé entre dans sa zone : l'Allemagne et l'Espagne dans "europe", le Canada dans "amerique_nord", le Brésil et le Japon dans "reste_du_monde". N'écris aucun montant ni pourcentage : le prix des zones est calculé ailleurs.
 - exclusivity : present, duration_months (null si non écrite), category (null si non écrite).
 - raw_footage : true si les rushs, fichiers sources ou images non montées doivent être livrés.
+- raw_footage_clarified : true seulement si l'offre dit explicitement si les rushs bruts sont à livrer ou non. false si elle n'en parle pas. Si raw_footage est true, ce champ est true aussi.
+- script_by, editing_by : qui écrit le script et qui fait le montage, uniquement si l'offre le précise : "creator", "brand", "shared" ou "other" ; sinon null. Ne déduis pas ces responsabilités du seul mot « vidéo ».
 - ip_transfer : "full_assignment" si le créateur cède ses droits sur les contenus de façon totale ou exclusive, même formulé de façon anodine (« les vidéos appartiennent à la marque », « la marque en devient propriétaire », « cession de l'ensemble des droits ») ; "license" si la marque obtient un droit d'utilisation limité ; "none" si l'offre ne prévoit aucune utilisation par la marque ; "unclear" si c'est ambigu.
 - ai_training_rights : "present" si la marque peut utiliser les contenus, l'image ou la voix pour entraîner une intelligence artificielle ; "absent" si ce n'est pas mentionné ; "unclear" si c'est ambigu.
 - revisions : count si un nombre est écrit, sinon null ; unlimited true si les révisions sont illimitées ou « jusqu'à validation ».
@@ -138,7 +140,7 @@ ANALYSE (textes destinés au créateur)
 // Version du prompt enregistrée avec chaque analyse. À changer à chaque
 // modification de SYSTEM_PROMPT, IMAGE_USER_MESSAGE, PDF_USER_MESSAGE ou du
 // schéma d'extraction.
-export const PROMPT_VERSION = "2026-09-17.2";
+export const PROMPT_VERSION = "2026-10-24.1";
 
 // Consigne jointe à une image (capture ou photo d'écran). Le prompt système et
 // le schéma restent les mêmes qu'en mode texte.

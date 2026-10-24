@@ -1,0 +1,119 @@
+{
+  "language": "fr",
+  "confidence": "medium",
+  "input_quality": {
+    "readable": true,
+    "missing_critical": [
+      "Nom de la marque"
+    ]
+  },
+  "deal": {
+    "brand": null,
+    "deliverables": [
+      {
+        "type": "video",
+        "platform": "instagram",
+        "quantity": 1,
+        "format": "30 secondes"
+      }
+    ],
+    "publication_required": false,
+    "usage": {
+      "organic": true,
+      "paid_ads": false,
+      "whitelisting": false,
+      "spark_ads": false,
+      "duration_months": 6,
+      "territory": "France",
+      "territory_zones": [
+        "france"
+      ],
+      "perpetual": false
+    },
+    "exclusivity": {
+      "present": false,
+      "duration_months": null,
+      "category": null
+    },
+    "raw_footage": false,
+    "raw_footage_clarified": true,
+    "script_by": "brand",
+    "editing_by": "creator",
+    "ip_transfer": "license",
+    "ai_training_rights": "absent",
+    "revisions": {
+      "count": 2,
+      "unlimited": false
+    },
+    "payment": {
+      "amount_eur": 800,
+      "currency": "EUR",
+      "terms_days": 30,
+      "schedule": null
+    },
+    "in_kind_value_eur": null,
+    "variable_pay": {
+      "present": false,
+      "rate_percent": null,
+      "base": null,
+      "per_sale_eur": null,
+      "attribution_days": null,
+      "payout": null
+    },
+    "deadlines": [
+      "Livraison le 15 novembre"
+    ],
+    "kill_fee": null,
+    "termination": null,
+    "governing_law": null
+  },
+  "good_points": [
+    {
+      "label": "Périmètre d'utilisation défini",
+      "why": "La vidéo sera publiée uniquement en organique sur Instagram, en France, pendant six mois."
+    },
+    {
+      "label": "Rushs non demandés",
+      "why": "Tu livres uniquement la vidéo montée."
+    },
+    {
+      "label": "Révisions encadrées",
+      "why": "Deux allers-retours sont compris."
+    },
+    {
+      "label": "Pas d'exclusivité",
+      "why": "Tu restes libre de travailler avec d'autres marques."
+    }
+  ],
+  "red_flags": [
+    {
+      "label": "Paiement sous 30 jours",
+      "severity": "low",
+      "why": "Le délai de paiement est relativement long après l'émission de la facture."
+    }
+  ],
+  "ready_to_send_message": {
+    "tone": "Poli et ferme",
+    "text": "Bonjour, merci pour ta proposition. Le projet me convient, notamment concernant le script fourni, la livraison de la vidéo montée sans rushs, les deux allers-retours de révision et l'utilisation organique limitée à Instagram en France pendant six mois. Pour ce projet, mon tarif se situe {{CONTRE_OFFRE}}. Je souhaiterais également convenir d'un délai de paiement plus court que 30 jours après facture. Peux-tu me confirmer ces ajustements ainsi que le nom de la marque ?"
+  },
+  "negotiate": [
+    {
+      "label": "Rémunération",
+      "why": "Le montant proposé peut être réévalué au regard du tournage, du montage et des révisions incluses.",
+      "priority": 1,
+      "topic": "other"
+    },
+    {
+      "label": "Délai de paiement",
+      "why": "Tu peux demander un paiement plus rapide que le délai prévu.",
+      "priority": 2,
+      "topic": "payment_terms"
+    }
+  ],
+  "counter_offer": {
+    "changes": [
+      "Revaloriser la rémunération du projet.",
+      "Réduire le délai de paiement prévu après facture."
+    ]
+  }
+}

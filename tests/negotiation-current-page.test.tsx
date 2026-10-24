@@ -93,7 +93,7 @@ describe("A2 — ce que le code déduit des termes est recalculé sur les termes
     expect(html).toContain("À jour des termes du tour 2.");
     for (const row of dealRecapRows(payload.deal_after)) expect(html).toContain(text(row.value).trim());
     expect(html).toContain("12 mois");
-    expect(html).toContain("Score, fourchette et deal sont à jour des termes du tour 2");
+    expect(html).toContain("Verdict, fourchette et deal sont à jour des termes du tour 2");
   });
 
   it("aucun tour : la page reste celle de l'offre analysée", () => {

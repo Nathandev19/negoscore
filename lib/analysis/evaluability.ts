@@ -246,12 +246,46 @@ function requestMessage(language: Analysis["language"], items: string[], intro: 
   return ["Bonjour,", "", intro.fr, ...lines, "", "Avec ces éléments, je vous réponds rapidement.", "", "Belle journée,"].join("\n");
 }
 
+// Une offre courte ne dit pas qui produit quoi. Ces questions ne dépendent que
+// des champs absents, jamais du prix proposé ou du verdict. « raw_footage =
+// false » seul ne prouve pas que la marque a exclu les fichiers bruts : le
+// drapeau historique confondait silence et refus explicite.
+export function missingBriefQuestions(deal: Deal, language: Analysis["language"], includeKnownTermQuestions = true): string[] {
+  const fr = language === "fr";
+  const questions: string[] = [];
+  if (deal.script_by == null) questions.push(fr ? "Qui écrit le script ?" : "Who writes the script?");
+  if (deal.editing_by == null) questions.push(fr ? "Qui fait le montage ?" : "Who edits the video?");
+  if (!deal.raw_footage && deal.raw_footage_clarified !== true) {
+    questions.push(fr ? "Les rushs bruts doivent-ils être fournis, et par qui ?" : "Do you need the raw footage, and who supplies it?");
+  }
+  if (includeKnownTermQuestions && deal.revisions.count === null && !deal.revisions.unlimited) {
+    questions.push(fr ? "Combien de révisions sont prévues ?" : "How many revision rounds are included?");
+  }
+  if (deal.deadlines.length === 0) questions.push(fr ? "Quelle est la date de livraison attendue ?" : "What is the delivery deadline?");
+  if (includeKnownTermQuestions && deal.payment.terms_days === null && deal.payment.schedule === null) {
+    questions.push(fr ? "Quel est le délai de paiement ?" : "What is the payment deadline?");
+  }
+  return questions;
+}
+
+export function addMissingBriefQuestions(message: string, deal: Deal, language: Analysis["language"]): string {
+  const questions = missingBriefQuestions(deal, language);
+  if (questions.length === 0) return message;
+  const informal = /(?<!\p{L})(?:tu|te|ton|ta|tes)(?!\p{L})/iu.test(message);
+  const intro = language === "en"
+    ? "To clarify the scope, could you also tell me:"
+    : informal
+      ? "Pour préciser le périmètre, peux-tu aussi me dire :"
+      : "Pour préciser le périmètre, pourriez-vous aussi me dire :";
+  return `${message.trim()} ${intro} ${questions.join(" ")}`;
+}
+
 // Message pour une offre incomplète : aucun tarif, seulement les questions
 // nécessaires pour pouvoir chiffrer.
 export function incompleteRequestMessage(deal: Deal, language: Analysis["language"]): string {
   return requestMessage(
     language,
-    missingKeys(deal).map((key) => REQUEST_ITEM[language][key]),
+    [...missingKeys(deal).map((key) => REQUEST_ITEM[language][key]), ...missingBriefQuestions(deal, language)],
     {
       fr: "Merci pour votre message, cette collaboration m'intéresse. Avant de vous faire une proposition, pourriez-vous me préciser :",
       en: "Thank you for your message, I would be happy to discuss this collaboration. Before I send you a proposal, could you tell me:",
@@ -264,7 +298,12 @@ export function incompleteRequestMessage(deal: Deal, language: Analysis["languag
 export function termsRequestMessage(deal: Deal, language: Analysis["language"]): string {
   return requestMessage(
     language,
-    missingTermKeys(deal).map((key) => TERM_REQUEST[language][key]),
+    [
+      ...missingTermKeys(deal)
+        .filter((key) => key !== "payment_terms" || deal.payment.schedule === null)
+        .map((key) => TERM_REQUEST[language][key]),
+      ...missingBriefQuestions(deal, language, false),
+    ],
     {
       fr: "Merci pour votre proposition, elle m'intéresse. Avant de confirmer, pourriez-vous me préciser les conditions de la collaboration :",
       en: "Thank you for your offer, I am interested. Before confirming, could you specify the terms of the collaboration:",

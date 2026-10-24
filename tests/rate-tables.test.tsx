@@ -163,8 +163,8 @@ describe("C — une table disparue du code : rien n'est recalculé, et l'écran 
     expect(html).toContain("La table fr-2026.1 n'existe plus dans l'outil. Ces chiffres sont ceux calculés le jour de l'analyse");
     expect(html).toContain("Table de tarifs fr-2026.1");
     expect(html).not.toContain("fr-2026.3");
-    expect(html).toContain("Le score et la fourchette, eux, restent ceux de l'offre d'origine");
-    expect(html).not.toContain("Score, fourchette et deal sont à jour");
+    expect(html).toContain("Le verdict et la fourchette, eux, restent ceux de l'offre d'origine");
+    expect(html).not.toContain("Verdict, fourchette et deal sont à jour");
     expect(html).toContain("12 mois");
   });
 });

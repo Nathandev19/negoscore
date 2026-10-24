@@ -1,6 +1,6 @@
 import { toneLabel } from "@/lib/tone";
 import { engineParts, pricePhrase, topicImpact } from "@/lib/analysis/engine-parts";
-import { evaluability, incompleteRequestMessage, termsRequestMessage } from "@/lib/analysis/evaluability";
+import { addMissingBriefQuestions, evaluability, incompleteRequestMessage, termsRequestMessage } from "@/lib/analysis/evaluability";
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { computeEscalation } from "@/lib/legal/escalate";
 import { computeFrLegal } from "@/lib/legal/fr";
@@ -100,6 +100,7 @@ export function composeAnalysis(extraction: Extraction, options: ComposeOptions 
   // il demande déjà exactement ce qui manque pour pouvoir juger.
   if (state !== "incomplete" && state !== "terms_unknown") {
     analysis.ready_to_send_message.text = completeMessage(analysis, analysis.ready_to_send_message.text);
+    analysis.ready_to_send_message.text = addMissingBriefQuestions(analysis.ready_to_send_message.text, deal, extraction.language);
   }
 
   return analysisSchema.parse(analysis);

@@ -236,13 +236,13 @@ export function AnalysisResult({
         {before}
         {negotiated && !unpriced ? (
           <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small">
-            Score, fourchette et deal sont à jour des termes du tour {negotiated.turn}. Ta contre-offre et ton premier
+            Verdict, fourchette et deal sont à jour des termes du tour {negotiated.turn}. Ta contre-offre et ton premier
             message restent ceux du début de l&apos;échange, calculés sur l&apos;offre d&apos;origine.
           </p>
         ) : null}
         {negotiated && unpriced ? (
           <p role="note" className="border-l-4 border-encre py-1 pl-3 text-small">
-            Le deal est à jour des termes du tour {negotiated.turn}. Le score et la fourchette, eux, restent ceux de
+            Le deal est à jour des termes du tour {negotiated.turn}. Le verdict et la fourchette, eux, restent ceux de
             l&apos;offre d&apos;origine : la table de tarifs {stored.estimate.rate_table_version} de cette analyse
             n&apos;existe plus dans l&apos;outil, ils ne peuvent pas être recalculés sur les termes actuels.
           </p>

@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 24/10/2026 (mission #206).** Ce fichier se met à jour
+**Dernière mise à jour : 24/10/2026 (mission #207).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 40 fichiers
-de migration et 163 fichiers de test.
+de migration et 164 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -180,11 +180,17 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#207 — poser les questions que l'offre courte laisse ouvertes.**
+
+- Les offres pauvres reçoivent dans le message copiable des questions sur le script, le montage, les rushs bruts, les révisions, la livraison et le paiement. Trois champs facultatifs distinguent une responsabilité explicitement écrite d'un silence, sans participer au chiffrage. L'avertissement de l'exemple et les deux notes de résultat utilisent « verdict » au lieu de « score ».
+
+## MISSION PRÉCÉDENTE
+
 **#206 — garder « Negoscore » entier dans l'en-tête mobile.**
 
 - Le nom reste visible jusqu'à 320 px. Sous 430 px, sa typographie et l'espacement avec le signe diminuent ; la pastille affiche sa variante courte et le menu garde son icône avec un libellé accessible. Décision 19.
 
-## MISSION PRÉCÉDENTE
+## MISSION #205
 
 **#205 — rendre la fourchette lisible sur le résultat.**
 

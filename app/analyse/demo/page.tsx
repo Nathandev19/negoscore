@@ -76,7 +76,7 @@ export default function DemoResultPage() {
         }
         before={
           <p key="avertissement" role="note" className="border-l-4 border-encre py-1 pl-3 text-small font-semibold text-encre">
-            Exemple, pas une vraie analyse : l&apos;offre est inventée, mais la fourchette, le score et la contre-offre
+            Exemple, pas une vraie analyse : l&apos;offre est inventée, mais la fourchette, le verdict et la contre-offre
             sont calculés par le moteur actuel, comme pour ton offre. Pour chiffrer ton offre, colle-la sur la page{" "}
             {/* Mission #126 — c'était du TEXTE. La phrase disait où aller sans
                 y mener : les seuls liens vers /analyse étaient ceux de la
