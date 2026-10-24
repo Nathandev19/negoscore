@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 24/10/2026 (mission #205).** Ce fichier se met à jour
+**Dernière mise à jour : 24/10/2026 (mission #206).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -180,6 +180,12 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#206 — garder « Negoscore » entier dans l'en-tête mobile.**
+
+- Le nom reste visible jusqu'à 320 px. Sous 430 px, sa typographie et l'espacement avec le signe diminuent ; la pastille affiche sa variante courte et le menu garde son icône avec un libellé accessible. Décision 19.
+
+## MISSION PRÉCÉDENTE
+
 **#205 — rendre la fourchette lisible sur le résultat.**
 
 - Le bloc « Ce que ça vaut » explique, immédiatement sous la fourchette, que
@@ -187,13 +193,14 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
   montre la plage de création et nomme les suppléments déjà inclus. Aucun
   montant ni calcul du moteur n'est modifié (décision 18).
 
-## MISSION PRÉCÉDENTE
+## MISSION #204
 
 **#204 — porte distincte pour la promotion TikTok.**
 
 - `/tiktok-promo` emprunte la table `SHORT_PATHS` et mène à l'accueil avec
   `tiktok · paid_social · lancement · promotion_tiktok`. `/tiktok` et `/dm`
   gardent leurs quatre UTM d'avant ; le cockpit sépare les contenus.
+
 - Le vieux défaut `/__proto__` et `/constructor` de la #113 explique exactement
   les deux contenus UTM corrompus observés : conversion de `Object.prototype`
   ou du constructeur `Object` en texte par `URLSearchParams`. Validation de

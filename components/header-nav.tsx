@@ -157,7 +157,7 @@ export function HeaderNav({
     <header className={cn("sticky top-0 z-40 h-14", TONE[tone].header)}>
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-2 px-4 sm:px-6 lg:gap-4">
         <Link href="/" aria-label="Accueil">
-          <Logo variant={tone === "marque" ? "creme" : "marque"} className="max-[429px]:[&>span]:hidden" />
+          <Logo variant={tone === "marque" ? "creme" : "marque"} className="max-[429px]:gap-1 max-[429px]:[&>span]:text-base" />
         </Link>
 
         <nav aria-label="Navigation principale" className="hidden h-8 items-center gap-6 text-small lg:flex">
@@ -214,12 +214,13 @@ export function HeaderNav({
           <button
             ref={toggleRef}
             type="button"
+            aria-label={open ? "Fermer" : "Menu"}
             aria-expanded={open}
             aria-controls={panelId}
             onClick={toggle}
             className={cn("inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-control border-2 px-3 text-sm font-semibold", signedIn === true && "max-md:hidden", TONE[tone].toggle)}
           >
-            {open ? "Fermer" : "Menu"}
+            <span className="max-[479px]:sr-only">{open ? "Fermer" : "Menu"}</span>
             <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none">
               {open ? (
                 <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />

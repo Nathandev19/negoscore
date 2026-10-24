@@ -360,7 +360,7 @@ describe("D5 — si la lecture échoue, aucun nombre", () => {
     // La forme la plus large que la pastille puisse prendre, rendue invisible :
     // c'est elle qui dimensionne l'emplacement dans les deux états.
     // Le libellé est rendu en DEUX morceaux : le suffixe disparaît sous
-    // 360 px (max-[359px]:hidden), et c'est ce qui fait que la variante courte
+    // 430 px (max-[429px]:hidden), et c'est ce qui fait que la variante courte
     // réserve d'elle-même sa propre largeur courte.
     const gabarit = soldePastilleGabarit();
     expect(attente).toContain(`>${gabarit.court}<`);
@@ -400,19 +400,18 @@ describe("D5 — si la lecture échoue, aucun nombre", () => {
   });
 
   it("le suffixe porte le point de rupture : la variante courte réserve sa propre largeur", () => {
-    // Sous 360 px, la pastille ne garde que le libellé court. Le suffixe du
+    // Sous 430 px, la pastille ne garde que le libellé court. Le suffixe du
     // GABARIT porte la même classe que celui du contenu — c'est ce qui fait
     // que la largeur réservée rétrécit exactement comme la largeur finale.
     // Le retirer ferait disparaître la variante courte sans bruit.
     const source = readFileSync("components/solde-negociations.tsx", "utf8");
-    expect(source).toContain('<span className="max-[359px]:hidden">{forme.libelle.slice(forme.court.length)}</span>');
+    expect(source).toContain('<span className="max-[429px]:hidden">{forme.libelle.slice(forme.court.length)}</span>');
     // Une seule occurrence : le suffixe est écrit une fois, donc gabarit et
     // contenu ne peuvent pas porter des points de rupture différents.
-    expect(source.split('max-[359px]:hidden">{forme.libelle')).toHaveLength(2);
-    // Mesuré dans le navigateur : en masquant ce suffixe, la pastille passe de
-    // 174,6 px à 109,4 px, dans l'attente comme dans le contenu.
+    expect(source.split('max-[429px]:hidden">{forme.libelle')).toHaveLength(2);
+    // Le gabarit et le contenu utilisent le même point de rupture.
     const attente = renderToStaticMarkup(<SoldeEntete />);
-    expect(attente.split("max-[359px]:hidden")).toHaveLength(2);
+    expect(attente.split("max-[429px]:hidden")).toHaveLength(2);
   });
 
   it("la largeur réservée et la largeur finale sortent de la MÊME fonction", () => {

@@ -1,5 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { navItems, shouldCloseMenuOnBlur } from "@/components/header-nav";
+import { HeaderNav, navItems, shouldCloseMenuOnBlur } from "@/components/header-nav";
 
 // WebKit tactile peut retirer le focus du premier lien sans en donner un autre
 // (relatedTarget === null) avant d'envoyer le click du tap. Si le blur ferme le
@@ -15,6 +17,15 @@ function destinationApresTap(href: string, next: EventTarget | null): string | n
 }
 
 describe("navigation mobile au toucher", () => {
+  it("garde le nom complet de la marque dans l'en-tête, sans classe de masquage", () => {
+    for (const signedIn of [false, true]) {
+      const html = renderToStaticMarkup(createElement(HeaderNav, { signedIn, pathname: "/" }));
+      const marque = html.match(/<a aria-label="Accueil"[^>]*>(.*?)<\/a>/)?.[1];
+      expect(marque).toContain(">Negoscore</span>");
+      const classes = [...(marque ?? "").matchAll(/<span class="([^"]+)"/g)].map((match) => match[1]);
+      expect(classes.join(" ")).not.toMatch(/(?:hidden|sr-only)/);
+    }
+  });
   it("réserve le panneau au secondaire, et la barre connectée à l'action, l'historique et le solde", () => {
     expect(navItems(true, true).menu.map((item) => item.label)).toEqual([
       "Comment ça marche", "Tarifs", "Retours", "Mon compte", "Admin",

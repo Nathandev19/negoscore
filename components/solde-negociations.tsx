@@ -195,15 +195,15 @@ function contenuPastille(forme: { nombre: string; libelle: string; court: string
       </strong>
       <span>
         <span>{forme.court}</span>
-        <span className="max-[359px]:hidden">{forme.libelle.slice(forme.court.length)}</span>
+        <span className="max-[429px]:hidden">{forme.libelle.slice(forme.court.length)}</span>
       </span>
     </>
   );
 }
 
 // L'emplacement : une grille d'une seule cellule. Le gabarit invisible la
-// dimensionne, le contenu réel se superpose dedans. Sous 360 px, le gabarit
-// masque le même suffixe que le contenu (max-[359px]:hidden) : la variante
+// dimensionne, le contenu réel se superpose dedans. Sous 430 px, le gabarit
+// masque le même suffixe que le contenu (max-[429px]:hidden) : la variante
 // courte réserve donc d'elle-même sa propre largeur courte.
 function EmplacementPastille({ children }: { children?: ReactNode }) {
   return (
