@@ -206,35 +206,35 @@ export function missingInformation(analysis: Pick<Analysis, "deal" | "input_qual
 
 const REQUEST_ITEM: Record<Analysis["language"], Record<MissingKey, string>> = {
   fr: {
-    deliverables: "les contenus attendus (nombre, format et plateformes)",
-    quantity: "le nombre de contenus attendus",
-    usage: "l'utilisation prévue des contenus (publication, publicité, durée)",
-    price: "le budget prévu pour cette collaboration",
+    deliverables: "Quels contenus attendez-vous (nombre, format et plateformes) ?",
+    quantity: "Combien de contenus attendez-vous ?",
+    usage: "Comment utiliserez-vous les contenus (publication, publicité, durée) ?",
+    price: "Quel budget prévoyez-vous pour cette collaboration ?",
   },
   en: {
-    deliverables: "the expected content (number, format and platforms)",
-    quantity: "how many pieces of content you expect",
-    usage: "how the content will be used (posting, paid ads, duration)",
-    price: "the budget planned for this collaboration",
+    deliverables: "What content do you expect (number, format and platforms)?",
+    quantity: "How many pieces of content do you expect?",
+    usage: "How will you use the content (posting, paid ads, duration)?",
+    price: "What budget do you have in mind for this collaboration?",
   },
 };
 
 const TERM_REQUEST: Record<Analysis["language"], Record<TermKey, string>> = {
   fr: {
-    duration: "la durée pendant laquelle les contenus seront utilisés",
-    territory: "les pays ou la zone de diffusion",
-    payment_terms: "le délai de paiement",
-    exclusivity: "s'il y a une exclusivité, et sur quelle durée",
-    ip_transfer: "si vous souhaitez une licence d'utilisation ou une cession des droits",
-    revisions: "le nombre de révisions prévues",
+    duration: "Pendant combien de temps utiliserez-vous les contenus ?",
+    territory: "Dans quels pays ou zones diffuserez-vous les contenus ?",
+    payment_terms: "Quel est le délai de paiement ?",
+    exclusivity: "Une exclusivité est-elle prévue, et pour combien de temps ?",
+    ip_transfer: "Souhaitez-vous une licence d'utilisation ou une cession des droits ?",
+    revisions: "Combien de révisions sont prévues ?",
   },
   en: {
-    duration: "how long the content will be used",
-    territory: "the countries or region where it will run",
-    payment_terms: "the payment terms",
-    exclusivity: "whether there is any exclusivity, and for how long",
-    ip_transfer: "whether you need a usage licence or a transfer of rights",
-    revisions: "the number of revision rounds",
+    duration: "How long will you use the content?",
+    territory: "In which countries or regions will you use the content?",
+    payment_terms: "What are the payment terms?",
+    exclusivity: "Is there any exclusivity, and for how long?",
+    ip_transfer: "Do you need a usage licence or a transfer of rights?",
+    revisions: "How many revision rounds are included?",
   },
 };
 

@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 24/10/2026 (mission #207).** Ce fichier se met à jour
+**Dernière mise à jour : 24/10/2026 (mission #208).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -180,11 +180,17 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#208 — uniformiser les demandes du message prêt à envoyer.**
+
+- Pour une offre au périmètre incomplet ou aux conditions inconnues, chaque point demandé dans le message copiable est une question complète, en français comme en anglais. Les montants, le verdict et la contre-offre restent inchangés.
+
+## MISSION PRÉCÉDENTE
+
 **#207 — poser les questions que l'offre courte laisse ouvertes.**
 
 - Les offres pauvres reçoivent dans le message copiable des questions sur le script, le montage, les rushs bruts, les révisions, la livraison et le paiement. Trois champs facultatifs distinguent une responsabilité explicitement écrite d'un silence, sans participer au chiffrage. L'avertissement de l'exemple et les deux notes de résultat utilisent « verdict » au lieu de « score ».
 
-## MISSION PRÉCÉDENTE
+## MISSION #206
 
 **#206 — garder « Negoscore » entier dans l'en-tête mobile.**
 

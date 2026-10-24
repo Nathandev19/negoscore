@@ -97,6 +97,12 @@ function expectNoQualityVerdict(analysis: Analysis) {
   return html;
 }
 
+function expectUniformQuestions(message: string): void {
+  const items = message.split("\n").filter((line) => line.startsWith("- "));
+  expect(items.length).toBeGreaterThan(0);
+  for (const item of items) expect(item).toMatch(/^- \p{Lu}.*\?$/u);
+}
+
 // CASE A — le DM cosmétique mesuré en production : 32/100, « Deal faible ».
 const CASE_A = deal({
   brand: "Aubépine",
@@ -237,9 +243,9 @@ describe("CASE B — message sans contenu, droits ni budget", () => {
 
   it("le message demande les éléments manquants, sans aucun tarif", () => {
     const text = analysis.ready_to_send_message.text;
-    expect(text).toContain("les contenus attendus");
-    expect(text).toContain("l'utilisation prévue des contenus");
-    expect(text).toContain("le budget prévu");
+    expect(text).toContain("Quels contenus attendez-vous");
+    expect(text).toContain("Comment utiliserez-vous les contenus");
+    expect(text).toContain("Quel budget prévoyez-vous");
     expect(text).not.toMatch(/€|\d/);
     expect(text).not.toContain(PRICE_PLACEHOLDER);
   });
@@ -279,8 +285,8 @@ describe("CASE D — prix connu, droits d'usage inconnus", () => {
     expect(analysis.score).toBeNull();
     expect(analysis.estimate.total_low).toBeNull();
     expect(analysis.counter_offer.amount_low).toBeNull();
-    expect(analysis.ready_to_send_message.text).toContain("l'utilisation prévue des contenus");
-    expect(analysis.ready_to_send_message.text).not.toContain("le budget prévu");
+    expect(analysis.ready_to_send_message.text).toContain("Comment utiliserez-vous les contenus");
+    expect(analysis.ready_to_send_message.text).not.toContain("Quel budget prévoyez-vous");
     expect(analysis.ready_to_send_message.text).not.toMatch(/entre .+€/);
     expectNoQualityVerdict(analysis);
     expect(missingInformation(analysis)).toEqual([
@@ -325,8 +331,8 @@ describe("analyses enregistrées avant la version 1.1", () => {
 describe("message d'une offre incomplète en anglais", () => {
   it("pose les mêmes questions, sans tarif", () => {
     const text = incompleteRequestMessage(CASE_B, "en");
-    expect(text).toContain("the budget planned");
-    expect(text).toContain("the expected content");
+    expect(text).toContain("What budget do you have in mind");
+    expect(text).toContain("What content do you expect");
     expect(text).not.toMatch(/€|\d/);
   });
 });
@@ -337,6 +343,27 @@ const CASE_F = deal({
   publication_required: true,
   usage: { ...EMPTY_DEAL.usage, organic: true },
   payment: { amount_eur: 250, currency: "EUR", terms_days: null, schedule: null },
+});
+
+describe("forme des points dans le message prêt à envoyer", () => {
+  it("pose des questions complètes pour plusieurs périmètres incomplets, en français et en anglais", () => {
+    const incompleteDeals = [
+      CASE_B,
+      CASE_D,
+      deal({ ...CASE_D, deliverables: [{ type: "video", platform: "tiktok", quantity: null, format: null }] }),
+    ];
+    for (const candidate of incompleteDeals) {
+      for (const language of ["fr", "en"] as const) {
+        expectUniformQuestions(composeAnalysis(extraction(candidate, { language })).ready_to_send_message.text);
+      }
+    }
+  });
+
+  it("pose aussi des questions complètes lorsque seules les conditions manquent", () => {
+    for (const language of ["fr", "en"] as const) {
+      expectUniformQuestions(composeAnalysis(extraction(CASE_F, { language })).ready_to_send_message.text);
+    }
+  });
 });
 
 describe("conditions connues", () => {
@@ -407,11 +434,11 @@ describe("CASE F — prix connu, conditions inconnues", () => {
   it("le message demande les conditions, sans tarif", () => {
     const text = analysis.ready_to_send_message.text;
     expect(text).toContain("les conditions de la collaboration");
-    expect(text).toContain("le délai de paiement");
-    expect(text).toContain("le nombre de révisions prévues");
+    expect(text).toContain("Quel est le délai de paiement ?");
+    expect(text).toContain("Combien de révisions sont prévues ?");
     expect(text).not.toMatch(/€|\d/);
     expect(text).not.toContain(PRICE_PLACEHOLDER);
-    expect(termsRequestMessage(CASE_F, "en")).toContain("the payment terms");
+    expect(termsRequestMessage(CASE_F, "en")).toContain("What are the payment terms?");
   });
 });
 

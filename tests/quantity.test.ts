@@ -139,6 +139,6 @@ describe("le reste de la chaîne avec une quantité non précisée", () => {
     const analysis = composeAnalysis({ ...unknown, deal: vague, input_quality: { readable: true, missing_critical: [] } });
     expect(analysis.evaluability).toBe("incomplete");
     expect(missingInformation(analysis)).toContain("Le nombre de contenus attendus");
-    expect(analysis.ready_to_send_message.text).toContain("le nombre de contenus attendus");
+    expect(analysis.ready_to_send_message.text).toContain("Combien de contenus attendez-vous ?");
   });
 });
