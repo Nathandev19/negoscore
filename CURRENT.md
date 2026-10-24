@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 23/10/2026 (mission #204).** Ce fichier se met à jour
+**Dernière mise à jour : 24/10/2026 (mission #205).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 40 fichiers
-de migration et 162 fichiers de test.
+de migration et 163 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -173,8 +173,21 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
     relevées contenaient `bio_tiktok`, `_object_object_` et
     `function_object_native_code_` ; ces deux dernières correspondent au
     défaut de recherche de clés corrigé dans `c48907c` (#113).
+11. **Retour d'une créatrice UGC professionnelle rapporté par l'éditeur le
+    24/10/2026.** Elle a demandé à quatre reprises en appel ce qui faisait
+    varier les deux montants d'une fourchette. L'éditeur rapporte qu'elle ne
+    pouvait pas utiliser ce chiffre pour négocier sans en comprendre l'écart.
 
 ## CURRENT MISSION
+
+**#205 — rendre la fourchette lisible sur le résultat.**
+
+- Le bloc « Ce que ça vaut » explique, immédiatement sous la fourchette, que
+  les bornes basse et haute portent sur les mêmes contenus et conditions. Il
+  montre la plage de création et nomme les suppléments déjà inclus. Aucun
+  montant ni calcul du moteur n'est modifié (décision 18).
+
+## MISSION PRÉCÉDENTE
 
 **#204 — porte distincte pour la promotion TikTok.**
 
@@ -194,7 +207,7 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
   dans un test avec écriture simulée, sans contact avec la base de production ;
   les détails de provenance de la ligne réelle ne sont pas dans le dépôt.
 
-## MISSION PRÉCÉDENTE
+### Avant
 
 **#203 — la queue de latence devient explicable, le chemin client mesurable.**
 

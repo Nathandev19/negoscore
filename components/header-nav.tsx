@@ -157,7 +157,7 @@ export function HeaderNav({
     <header className={cn("sticky top-0 z-40 h-14", TONE[tone].header)}>
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-2 px-4 sm:px-6 lg:gap-4">
         <Link href="/" aria-label="Accueil">
-          <Logo variant={tone === "marque" ? "creme" : "marque"} className="max-[359px]:[&>span]:hidden" />
+          <Logo variant={tone === "marque" ? "creme" : "marque"} className="max-[429px]:[&>span]:hidden" />
         </Link>
 
         <nav aria-label="Navigation principale" className="hidden h-8 items-center gap-6 text-small lg:flex">

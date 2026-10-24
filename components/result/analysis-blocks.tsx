@@ -242,6 +242,23 @@ export function Estimate({
           </div>
         ) : null}
 
+        {total && base ? (
+          <div className="flex flex-col gap-2 border-l-2 border-marque pl-3 text-small" aria-label="Comment lire la fourchette">
+            <p className="font-semibold text-encre">Pourquoi cet écart ?</p>
+            <p>
+              <strong className="text-encre">En bas</strong>, la création et les suppléments sont chiffrés au bas de leurs repères.
+              {" "}<strong className="text-encre">En haut</strong>, ce sont les mêmes contenus et conditions, chiffrés au haut de ces repères.
+            </p>
+            <p>
+              La création va déjà de <strong className="text-encre tabular-nums">{base}</strong>.
+              {estimate.lines.length > 0
+                ? ` Sont aussi compris dans les deux montants : ${estimate.lines.map((line) => line.label).join(", ")}.`
+                : " Aucun supplément n'est chiffré dans cette offre."}
+            </p>
+            <p className="text-attenue">L&apos;outil ne choisit pas un montant précis entre les deux : aucun critère caché ne fait basculer d&apos;une borne à l&apos;autre. Tu peux défendre le haut pour ce même périmètre.</p>
+          </div>
+        ) : null}
+
         <dl className="flex flex-col divide-y divide-filet border-y border-filet text-small">
           {base ? (
             <div {...ligne("flex justify-between gap-4 py-2", devoile?.creation)}>
