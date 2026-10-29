@@ -142,7 +142,24 @@ describe("la migration 42", () => {
     for (const valeur of INPUT_TOUCHED) expect(check, valeur).toContain(`'${valeur}'`);
     // Exactement cinq clés : une clé de plus serait une catégorie que le
     // cockpit n'agrège pas, donc invisible.
-    expect(check).toContain("array['dwell', 'first_action', 'input', 'scroll', 'scrolled']");
+    //
+    // Mission #209 bis — l'écriture a changé. La première comparait un
+    // `array_agg` des clés, ce que Postgres REFUSE dans un CHECK (sous-requête
+    // interdite) : la migration ne s'exécutait pas du tout. L'objet est
+    // maintenant reconstruit clé par clé puis comparé à lui-même.
+    //
+    // Cette garde-ci ne lit que du TEXTE, et c'est précisément ce qui n'a pas
+    // suffi : la garantie elle-même est éprouvée sur un vrai moteur, cas par
+    // cas, dans tests/migrations-moteur.test.ts.
+    // Trois opérateurs, tous IMMUTABLE : le type, la présence des cinq clés,
+    // et le fait qu'il n'en reste aucune autre après les avoir retirées.
+    expect(check).toContain("jsonb_typeof(metadata) = 'object'");
+    expect(check).toContain("metadata ?& array['dwell', 'first_action', 'input', 'scroll', 'scrolled']");
+    expect(check).toContain("(metadata - array['dwell', 'first_action', 'input', 'scroll', 'scrolled']) = '{}'::jsonb");
+    // Aucune sous-requête ne doit revenir ici. La garde générale porte sur les
+    // quarante-deux migrations (tests/migrations-check.test.ts) ; celle-ci
+    // nomme le fichier où la faute s'est produite.
+    expect(check.slice(0, check.indexOf("create or replace"))).not.toMatch(/\bselect\b/i);
     // Et la contrainte ne s'applique qu'à cet événement : les autres gardent
     // un metadata libre.
     expect(check).toContain("event_name <> 'page_engagement'");

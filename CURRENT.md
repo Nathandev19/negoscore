@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 29/10/2026 (mission #209).** Ce fichier se met à jour
+**Dernière mise à jour : 29/10/2026 (mission #209 bis).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 42 fichiers
-de migration et 168 fichiers de test.
+de migration et 170 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -206,7 +206,14 @@ n'appelle aucune action.
 - **/tiktok-promo n'est pas une page** : c'est un chemin court qui redirige
   vers l'accueil en y ajoutant ses UTM. Une seule instrumentation couvre les
   deux, et le payant se lit sur la ligne `paid_social`.
-- **Migration 42 écrite, NON appliquée.**
+- **Migration 42 écrite, NON appliquée.** Première écriture REFUSÉE par
+  Postgres : `0A000 cannot use subquery in check constraint`. Corrigée en
+  #209 bis sans affaiblir la garantie — `jsonb_typeof` + `?&` + `-`, trois
+  opérateurs IMMUTABLE, mesurés équivalents sur dix cas.
+- **Le SQL s'exécute maintenant EN TEST, sur un vrai moteur** : PGlite
+  (PostgreSQL en WebAssembly, devDependency) fait tourner la migration 42
+  entière, appelle `admin_dashboard_metrics()` et compte de vraies lignes.
+  C'est ce qui manquait : les tests d'avant lisaient le TEXTE du fichier.
 - **UNKNOWN jusqu'à ce que du trafic passe** : laquelle des deux hypothèses
   est la bonne. L'instrument existe, il n'a encore rien mesuré.
 
@@ -329,9 +336,14 @@ n'appelle aucune action.
 À définir. Ce qui reste ouvert, et ce qui ne l'est plus :
 
 - **Le comportement en page est INSTRUMENTÉ, pas encore mesuré** (#209). Il
-  faut du trafic — payant de préférence, pour comparer — puis relire /admin.
-  Tant qu'aucune ligne n'est enregistrée, laquelle des deux hypothèses est la
-  bonne reste UNKNOWN.
+  faut appliquer la migration 42 corrigée, du trafic — payant de préférence,
+  pour comparer — puis relire /admin. Tant qu'aucune ligne n'est enregistrée,
+  laquelle des deux hypothèses est la bonne reste UNKNOWN.
+- **La version de PostgreSQL de Supabase est UNKNOWN depuis le dépôt.** Le
+  test moteur tourne sur PostgreSQL 18.6 (PGlite 0.5.13) ; Supabase sert du 15
+  ou du 17 selon le projet. Tout ce dont la migration 42 dépend existe depuis
+  PostgreSQL 12, donc l'écart est faible — mais si l'éditeur donne sa version,
+  PGlite peut être épinglé pour coller (0.4.0 → PG 17.5, 0.2.17 → PG 16.4).
 - **Une phrase sur le comportement en page dans /confidentialite.** La page
   promet déjà « statistiques d'usage anonymes », sans cookie ni stockage
   local, et la #209 tient tout ça. Mais elle ne mentionne ni la profondeur de

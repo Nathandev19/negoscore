@@ -66,6 +66,15 @@ export type DashboardData = {
   engagement_scroll: Array<{ medium: string; bucket: string; total: number }>;
 };
 
+// Mission #209 bis — les clés que le cockpit LIT, exportées pour que le test
+// qui exécute la migration sur un vrai moteur puisse les comparer à ce que la
+// fonction rend. `create or replace` remplace la fonction entière : une clé
+// oubliée efface un bloc de l'écran sans rien casser ailleurs.
+export const EMPTY_DASHBOARD_KEYS = [
+  "counts", "excluded", "internal", "paid_pro", "granted_pro", "feedback", "purchases",
+  "timeseries", "acquisition", "guides", "example", "tier_changes", "engagement", "engagement_scroll",
+] as const;
+
 const EMPTY_DASHBOARD: DashboardData = {
   counts: {}, excluded: 0, internal: 0, paid_pro: 0, granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },

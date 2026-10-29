@@ -55,10 +55,47 @@ alter table public.product_events drop constraint if exists product_events_engag
 alter table public.product_events add constraint product_events_engagement_metadata_check
   check (
     event_name <> 'page_engagement'
-    or (
-      -- Exactement ces cinq clés, ni plus ni moins.
-      (select array_agg(k order by k) from jsonb_object_keys(metadata) as k)
-        = array['dwell', 'first_action', 'input', 'scroll', 'scrolled']
+    -- `coalesce(…, false)` ENVELOPPE TOUT, et ce n'est pas une précaution de
+    -- style : dans PostgreSQL, une contrainte CHECK est SATISFAITE quand son
+    -- expression vaut NULL. Sans cette enveloppe, un relevé portant une
+    -- valeur JSON `null` donnait `metadata->>'scroll'` à NULL, donc
+    -- `NULL in (…)` à NULL, donc toute la conjonction à NULL — et la ligne
+    -- passait. Vérifié sur le moteur : tests/migrations-moteur.test.ts.
+    or coalesce(
+      -- EXACTEMENT CES CINQ CLÉS, NI PLUS NI MOINS, en trois opérateurs.
+      --
+      -- PREMIÈRE ÉCRITURE, REFUSÉE À L'EXÉCUTION : `(select array_agg(k) from
+      -- jsonb_object_keys(metadata) as k) = array[…]`. Postgres a répondu
+      -- « ERROR: 0A000: cannot use subquery in check constraint », et la
+      -- migration n'est pas passée du tout. Un CHECK « cannot contain
+      -- subqueries nor refer to variables other than columns of the current
+      -- row » (doc, CREATE TABLE), parce que le moteur ne vérifie une
+      -- contrainte qu'à l'écriture de la ligne : une condition qui regarde
+      -- ailleurs ne peut pas être garantie, et casserait une restauration.
+      --
+      -- DEUX INTERDITS, PAS UN. Retirer le `select` ne suffit pas :
+      -- `jsonb_object_keys` seul donne « set-returning functions are not
+      -- allowed in check constraints ». Les deux sont surveillés par
+      -- tests/migrations-check.test.ts, sur les quarante-deux migrations.
+      --
+      -- CE QUI EST ÉCRIT ICI, et pourquoi cette forme plutôt qu'une autre :
+      --   jsonb_typeof(metadata) = 'object'  un scalaire ou un tableau n'est
+      --                                      pas un relevé ;
+      --   metadata ?& array[…]               les cinq clés sont présentes ;
+      --   (metadata - array[…]) = '{}'       et il n'en reste aucune autre.
+      --
+      -- Une variante donne exactement la même garantie — `metadata =
+      -- jsonb_build_object('scroll', metadata->'scroll', …)`, mesurée sur les
+      -- dix mêmes cas, tous identiques. Elle n'a pas été retenue pour une
+      -- seule raison : `jsonb_build_object` est STABLE, pendant que `?&`, `-`
+      -- et `jsonb_typeof` sont IMMUTABLE. Or la doc écrit que « PostgreSQL
+      -- assumes that CHECK constraints' conditions are immutable », et nomme
+      -- ce qu'une hypothèse fausse coûterait : un dump qui ne se restaure
+      -- plus. Le moteur ne vérifie rien de tout ça — il accepte même
+      -- `check (n > random())` —, donc c'est à nous de tenir l'hypothèse.
+      jsonb_typeof(metadata) = 'object'
+      and metadata ?& array['dwell', 'first_action', 'input', 'scroll', 'scrolled']
+      and (metadata - array['dwell', 'first_action', 'input', 'scroll', 'scrolled']) = '{}'::jsonb
       -- Les bornes, et d'où elles viennent, sont écrites une seule fois :
       -- lib/analytics/engagement.ts. 90 % est la borne publiée de GA4 pour
       -- « a atteint le bas de la page » ; 5 s le seul seuil que Microsoft
@@ -70,7 +107,8 @@ alter table public.product_events add constraint product_events_engagement_metad
       and jsonb_typeof(metadata->'scrolled') = 'boolean'
       -- Un défilement EST un geste : « a défilé » avec « premier geste :
       -- aucun » décrirait une mesure cassée.
-      and (metadata->>'scrolled' = 'false' or metadata->>'first_action' <> 'aucun')
+      and (metadata->>'scrolled' = 'false' or metadata->>'first_action' <> 'aucun'),
+      false
     )
   );
 
