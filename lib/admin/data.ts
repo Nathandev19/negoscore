@@ -44,6 +44,26 @@ export type DashboardData = {
   // combien de fois chacun. Le niveau enregistré sur une analyse, lui, reste
   // celui du calcul : c'est la colonne « Niveau initial » de /admin/analyses.
   tier_changes: Array<{ tier: string; changes: number }>;
+  // Mission #209 — LE COMPORTEMENT À L'INTÉRIEUR D'UNE PAGE, par page et par
+  // canal d'acquisition (utm_medium, « direct » quand il n'y en a pas).
+  //
+  // Les quatre premiers compteurs sont strictement emboîtés — un défilement
+  // est un geste, donc `scrolled` est inclus dans `interacted`. Les trois
+  // autres sont des mesures à part, lues sur le total.
+  engagement: Array<{
+    path: string;
+    medium: string;
+    total: number;
+    interacted: number;
+    scrolled: number;
+    read_to_end: number;
+    input_touched: number;
+    under_5s: number;
+    idle_no_action: number;
+  }>;
+  // La distribution de la profondeur atteinte : une seule mesure — des pages
+  // vues — répartie en tranches.
+  engagement_scroll: Array<{ medium: string; bucket: string; total: number }>;
 };
 
 const EMPTY_DASHBOARD: DashboardData = {
@@ -51,6 +71,7 @@ const EMPTY_DASHBOARD: DashboardData = {
   feedback: { total: 0, fair: 0, not_fair: 0 },
   purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
   timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 }, tier_changes: [],
+  engagement: [], engagement_scroll: [],
 };
 
 // Mission #133 — le temps passé est mesuré ici, à la source.
@@ -220,6 +241,77 @@ export function tierChangesNotice(data: DashboardData): string {
     .map((row) => `${TIER_LABEL[row.tier as Tier]?.short ?? row.tier} : ${count(row.changes)}`)
     .join(" · ");
   return `${count(total)} changement(s) de niveau sur la période — ${detail}. Le niveau enregistré sur l'analyse, lui, reste celui de son calcul.`;
+}
+
+// ─── Mission #209 — ce que le cockpit dit du comportement en page ──────────
+//
+// Le funnel agrégé mesure les ÉTAPES et s'arrête à la porte des pages. Quand
+// 400 visites payantes ne produisent aucune analyse, il ne peut pas dire si le
+// trafic n'était pas réel ou si la page n'appelle aucune action. Ces lignes-ci
+// répondent, canal par canal.
+
+export type EngagementRow = DashboardData["engagement"][number];
+
+// LES ÉTAPES SONT STRICTEMENT EMBOÎTÉES, et c'est vérifié : un défilement est
+// un geste, donc « a défilé » est inclus dans « a fait un geste ». L'ordre
+// inverse — plus intuitif — produirait un entonnoir qui remonte, et le
+// graphique le masquerait en bornant le taux à 100 %.
+export function engagementSteps(row: EngagementRow): Array<{ label: string; value: number }> {
+  return [
+    { label: "Pages vues mesurées", value: row.total },
+    { label: "Un geste, au moins un", value: row.interacted },
+    { label: "Ont défilé", value: row.scrolled },
+    // 90 % est la borne publiée de GA4 pour « a atteint le bas de la page ».
+    { label: "Lue jusqu’au bout (90 %)", value: row.read_to_end },
+  ];
+}
+
+// Les trois mesures qui ne sont PAS dans l'entonnoir, parce qu'elles n'y sont
+// pas emboîtées. Chacune se lit sur le total de la ligne.
+export function engagementApart(row: EngagementRow): Array<{ label: string; value: number; part: string | null; sens: string }> {
+  return [
+    {
+      label: "Ont touché le champ de collage",
+      value: row.input_touched,
+      part: share(row.input_touched, row.total),
+      // Le nombre qui tranche : on peut toucher le champ sans avoir défilé,
+      // donc il n'est pas inclus dans « ont défilé ».
+      sens: "Le geste qui mène à une analyse. Zéro ici avec du défilement au-dessus : la page est lue et n’appelle rien.",
+    },
+    {
+      label: "Fermées en moins de 5 s",
+      value: row.under_5s,
+      part: share(row.under_5s, row.total),
+      sens: "Sous cinq secondes, personne n’a rien lu. C’est le seuil de « faible intention » publié par Microsoft Clarity.",
+    },
+    {
+      label: "Restées ouvertes sans un geste",
+      value: row.idle_no_action,
+      part: share(row.idle_no_action, row.total),
+      sens: "L’autre branche de la même faible intention : la page est restée affichée et personne n’a rien touché.",
+    },
+  ];
+}
+
+// Ce que la ligne raconte, en une phrase, SANS trancher à la place de
+// l'éditeur. Elle ne dit « faux trafic » que si les deux signaux qui le
+// désignent sont là ensemble, et elle dit « on ne sait pas encore » quand le
+// volume est trop faible pour conclure — ce qui est le cas le plus fréquent
+// au début, et le pire moment pour afficher une certitude.
+export const ENGAGEMENT_MIN_LISIBLE = 20;
+
+export function engagementVerdict(row: EngagementRow): string {
+  if (row.total < ENGAGEMENT_MIN_LISIBLE) {
+    return `Trop peu de pages vues mesurées (${count(row.total)}) pour conclure : il en faut au moins ${ENGAGEMENT_MIN_LISIBLE}.`;
+  }
+  const muettes = row.under_5s + row.idle_no_action;
+  if (muettes * 2 > row.total) {
+    return "La majorité de ces pages vues n’a produit aucune lecture : fermeture immédiate ou page restée ouverte sans un geste. Regarde d’abord d’où vient ce trafic.";
+  }
+  if (row.scrolled * 2 > row.total && row.input_touched === 0) {
+    return "Ces pages vues défilent et personne ne touche le champ : le trafic regarde la page, et la page n’appelle pas l’action.";
+  }
+  return "Rien de tranché : ni fermetures massives, ni lecture sans action. À relire avec plus de volume.";
 }
 
 // Mission #112, A4 — les paiements que le produit n'a pas su rattacher à un

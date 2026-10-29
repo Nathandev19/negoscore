@@ -607,6 +607,7 @@ describe("le cockpit", () => {
       feedback: { total: 0, fair: 0, not_fair: 0 },
       purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
       timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 }, tier_changes: [],
+      engagement: [], engagement_scroll: [],
     };
     expect(excludedNotice(data)).toContain("218 événement(s) hors production");
     expect(internalNotice(data)).toContain("37 événement(s)");
@@ -628,6 +629,7 @@ describe("le cockpit", () => {
       feedback: { total: 0, fair: 0, not_fair: 0 },
       purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
       timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 }, tier_changes: [],
+      engagement: [], engagement_scroll: [],
     })).toBeTruthy();
   });
 });

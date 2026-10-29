@@ -37,6 +37,8 @@ const base: DashboardData = {
   purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
   timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 },
   tier_changes: [],
+  engagement: [],
+  engagement_scroll: [],
 };
 
 const complet: DashboardData = {

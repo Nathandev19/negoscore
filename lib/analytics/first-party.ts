@@ -24,6 +24,12 @@ export const PRODUCT_EVENTS = [
   // circule », pas « qui a partagé quoi ».
   "carte_partagee",
   "carte_telechargee",
+  // Mission #209 — le comportement À L'INTÉRIEUR d'une page, une ligne par
+  // page vue, émise au départ. Le funnel mesure les étapes ; celui-ci mesure
+  // ce qui se passe entre deux étapes, et c'est ce qui manquait pour savoir
+  // si 400 visites payantes sans analyse étaient du faux trafic ou une page
+  // qui n'appelle rien. Les valeurs sont des TRANCHES, dans `metadata`.
+  "page_engagement",
 ] as const;
 export type ProductEventName = (typeof PRODUCT_EVENTS)[number];
 

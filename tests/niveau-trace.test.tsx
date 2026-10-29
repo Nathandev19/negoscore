@@ -146,7 +146,8 @@ describe("le niveau consulté devient un événement", () => {
     // drapeaux de carte (#165) : chacun est admis par la migration qui l'a
     // introduit, et tous sont vérifiés plus bas contre la DERNIÈRE contrainte
     // en date, celle qui vaut réellement en base.
-    const apres = ["analysis_page_view", "carte_partagee", "carte_telechargee"];
+    // Mission #209 — et le comportement en page, admis par la migration 42.
+    const apres = ["analysis_page_view", "carte_partagee", "carte_telechargee", "page_engagement"];
     for (const event of PRODUCT_EVENTS.filter((name) => !apres.includes(name))) expect(autorises, event).toContain(event);
     // L'agrégat lit `filtered` : production et trafic non interne déjà écartés.
     const agregat = sql.slice(sql.indexOf("), tier_changes as ("), sql.indexOf("), feedback as ("));
@@ -163,6 +164,7 @@ describe("ce que le cockpit affiche", () => {
     purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
     timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 },
     tier_changes,
+    engagement: [], engagement_scroll: [],
   });
 
   it("aucun changement : la ligne le dit, et rappelle ce que le niveau signifie", () => {

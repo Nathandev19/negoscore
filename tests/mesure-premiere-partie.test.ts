@@ -84,6 +84,10 @@ describe("la mesure première partie survit au retrait de PostHog", () => {
       // ou par un téléchargement. Deux drapeaux, aucune donnée.
       "carte_partagee",
       "carte_telechargee",
+      // Mission #209 — le comportement À L'INTÉRIEUR d'une page. Première
+      // ligne du produit à porter des métadonnées, et elles sont des
+      // TRANCHES : jamais une durée exacte, jamais un contenu.
+      "page_engagement",
     ]);
   });
 
@@ -123,10 +127,15 @@ describe("la mesure première partie survit au retrait de PostHog", () => {
   });
 
   it("les deux vues du navigateur partent toujours, et seules elles", () => {
+    // Mission #209 — la garde lisait la ligne MOT POUR MOT, mise en forme
+    // comprise : ajouter un événement la cassait pour une raison qui n'est pas
+    // celle qu'elle surveille. Ce qu'elle doit dire est « ces noms-là, et
+    // aucun autre » — en particulier aucun événement destiné à un tiers.
     const route = lire("app/api/events/route.ts");
-    expect(route).toContain(
-      'const PUBLIC_EVENTS = ["landing_view", "pricing_view", "tier_changed", "carte_partagee", "carte_telechargee"]',
-    );
+    const declaration = route.slice(route.indexOf("const PUBLIC_EVENTS"), route.indexOf("] as const", route.indexOf("const PUBLIC_EVENTS")));
+    expect([...declaration.matchAll(/"([a-z_]+)"/g)].map((m) => m[1])).toEqual([
+      "landing_view", "pricing_view", "tier_changed", "carte_partagee", "carte_telechargee", "page_engagement",
+    ]);
     // L'accueil et les tarifs les émettent toujours.
     expect(lire("app/page.tsx")).toContain('<FirstPartyView event="landing_view" />');
     expect(lire("app/tarifs/page.tsx")).toContain('<FirstPartyView event="pricing_view" />');

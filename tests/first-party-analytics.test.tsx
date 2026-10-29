@@ -148,6 +148,8 @@ describe("fixture synthétique du dashboard", () => {
     guides: [],
     example: { total: 0, direct: 0 },
     tier_changes: [],
+    engagement: [],
+    engagement_scroll: [],
     paid_pro: 1,
     granted_pro: 1,
     feedback: { total: 5, fair: 3, not_fair: 2 },

@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 24/10/2026 (mission #208).** Ce fichier se met à jour
+**Dernière mise à jour : 29/10/2026 (mission #209).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -14,8 +14,8 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
-prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 40 fichiers
-de migration et 164 fichiers de test.
+prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 42 fichiers
+de migration et 168 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -180,11 +180,43 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#209 — mesurer le comportement À L'INTÉRIEUR d'une page.**
+
+Constat : 400 visites payantes, zéro analyse. Le cockpit mesure les ÉTAPES du
+funnel et rien de ce qui se passe entre deux étapes, donc deux explications
+restaient ouvertes sans pouvoir être séparées — trafic non réel, ou page qui
+n'appelle aucune action.
+
+- **Un seul événement nouveau, `page_engagement`**, émis une fois par page vue,
+  au départ de la page. Cinq tranches : profondeur vue, temps visible, délai du
+  premier geste, onglet du formulaire touché, et si la page a bougé. Aucun
+  identifiant, aucun contenu, aucune durée exacte, aucun stockage sur
+  l'appareil, aucune dépendance tierce.
+- **Les bornes sont sourcées quand une source existe** : 90 % pour « lue
+  jusqu'au bout » (GA4), 5 s pour la faible intention (Microsoft Clarity),
+  10 s pour une session engagée (GA4). Celles qui ne le sont pas le disent
+  en commentaire — notamment la borne à 1 s, qui est le discriminant choisi
+  pour cette mission.
+- **Aucun changement visible** : le composant rend `null`, et un test le
+  vérifie sur le balisage produit.
+- **Le cockpit lit par CANAL** (`utm_medium`, « direct » sans attribution) :
+  un entonnoir en page avec les taux écrits, trois mesures à part, et la
+  distribution de la profondeur. Le verdict refuse de conclure sous 20 pages
+  vues.
+- **/tiktok-promo n'est pas une page** : c'est un chemin court qui redirige
+  vers l'accueil en y ajoutant ses UTM. Une seule instrumentation couvre les
+  deux, et le payant se lit sur la ligne `paid_social`.
+- **Migration 42 écrite, NON appliquée.**
+- **UNKNOWN jusqu'à ce que du trafic passe** : laquelle des deux hypothèses
+  est la bonne. L'instrument existe, il n'a encore rien mesuré.
+
+## MISSION #208
+
 **#208 — uniformiser les demandes du message prêt à envoyer.**
 
 - Pour une offre au périmètre incomplet ou aux conditions inconnues, chaque point demandé dans le message copiable est une question complète, en français comme en anglais. Les montants, le verdict et la contre-offre restent inchangés.
 
-## MISSION PRÉCÉDENTE
+## MISSION #207
 
 **#207 — poser les questions que l'offre courte laisse ouvertes.**
 
@@ -296,6 +328,15 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 À définir. Ce qui reste ouvert, et ce qui ne l'est plus :
 
+- **Le comportement en page est INSTRUMENTÉ, pas encore mesuré** (#209). Il
+  faut du trafic — payant de préférence, pour comparer — puis relire /admin.
+  Tant qu'aucune ligne n'est enregistrée, laquelle des deux hypothèses est la
+  bonne reste UNKNOWN.
+- **Une phrase sur le comportement en page dans /confidentialite.** La page
+  promet déjà « statistiques d'usage anonymes », sans cookie ni stockage
+  local, et la #209 tient tout ça. Mais elle ne mentionne ni la profondeur de
+  lecture ni le temps visible. La mission interdisait de toucher au texte des
+  pages ; c'est donc à trancher, pas un oubli.
 - **Le chemin client d'un tour est désormais INSTRUMENTÉ, pas mesuré.** La
   sonde de la #203 existe et est éteinte ; les chiffres viendront d'un usage
   réel. Le rapport de la #203 donne la commande de console.

@@ -9,6 +9,7 @@ import { REVEAL_TOTAL_MS, WaitingScreen } from "@/components/loading-steps";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { signalerChamp } from "@/lib/analytics/engagement";
 import { ANALYSIS_PAUSED_MESSAGE } from "@/lib/analysis/pause";
 import { currentAttribution } from "@/components/analytics/first-party-view";
 import { hasSessionHint } from "@/lib/auth/session-hint";
@@ -252,9 +253,20 @@ export function DealInput({ note }: { note?: string } = {}) {
       : mode === "text" ? `${MIN_TEXT_LENGTH} caractères minimum` : mode === "photo" ? "Ajoute une photo" : "Ajoute un PDF";
 
   // Émis une seule fois par mode, au premier geste réel de l'utilisateur.
+  //
+  // Mission #209 — CE CROCHET NE MENAIT NULLE PART. `startedRef` était écrit
+  // et relu par personne : un reste de l'outil de mesure tiers retiré depuis
+  // (dernière trace dans 97325a9). Le premier contact avec le champ était donc
+  // le signal le plus utile du diagnostic, et il était déjà capté sans être
+  // enregistré.
+  //
+  // `signalerChamp` est inerte si aucun relevé n'est en cours : sur /analyse,
+  // où ce formulaire vit aussi, l'appel ne fait rien. On ne transmet que
+  // l'ONGLET — un emplacement —, jamais ce qui est écrit dedans.
   function markInputStarted(current: Mode) {
     if (startedRef.current[current]) return;
     startedRef.current[current] = true;
+    signalerChamp(current);
   }
 
   function selectFile(kind: FileKind, file: File) {

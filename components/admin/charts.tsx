@@ -1,4 +1,4 @@
-import { visitCount, type DashboardData } from "@/lib/admin/data";
+import { engagementSteps, visitCount, type DashboardData, type EngagementRow } from "@/lib/admin/data";
 import { seriesColor, SERIES_LABEL, type Series } from "@/lib/admin/series";
 
 // Mission #132 — RENDRE LE COCKPIT LISIBLE.
@@ -311,6 +311,56 @@ export function Funnel({ data }: { data: DashboardData }) {
     </div>
   );
 }
+// Mission #209 — L'ENTONNOIR À L'INTÉRIEUR D'UNE PAGE.
+//
+// Même forme que le funnel agrégé, et pour la même raison : une seule mesure
+// — des pages vues —, donc une seule teinte, et le taux de passage ÉCRIT.
+//
+// LES ÉTAPES SONT STRICTEMENT EMBOÎTÉES et l'ordre vient du code de mesure,
+// pas de l'intuition : l'écouteur de défilement appelle noterGeste, donc
+// « a défilé » est inclus dans « un geste ». L'ordre inverse aurait produit un
+// entonnoir qui remonte, et stepRate l'aurait masqué en bornant le taux à
+// 100 % (Math.min). Une garde le vérifie (tests/engagement-cockpit.test.tsx).
+//
+// Ce qui n'est PAS emboîté — toucher le champ sans avoir défilé — est rendu à
+// part, par le cockpit, et jamais comme une étape de cet entonnoir.
+export function InPageFunnel({ row }: { row: EngagementRow }) {
+  const steps = engagementSteps(row);
+  const max = Math.max(1, ...steps.map((step) => step.value));
+  const bleu = seriesColor("visites");
+  const NOM: Nom = ["page vue", "pages vues"];
+  return (
+    <div className="flex flex-col">
+      {steps.map((step, index) => {
+        const suivant = steps[index + 1];
+        const taux = suivant ? stepRate(step.value, suivant.value, NOM, NOM) : null;
+        return (
+          <div key={step.label} className="flex flex-col">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className={`text-small font-medium ${step.value === 0 ? "text-attenue" : "text-encre"}`}>{step.label}</span>
+              <strong className={`figures text-xl ${step.value === 0 ? "text-attenue" : "text-encre"}`}>
+                {NUMBER.format(step.value)}
+              </strong>
+            </div>
+            <div className="mt-1.5 h-5 rounded-[4px] bg-filet">
+              <div
+                className="cockpit-bar h-full rounded-[4px]"
+                style={{ width: `${largeur(step.value, max)}%`, background: bleu }}
+                title={`${step.label} : ${NUMBER.format(step.value)}`}
+              />
+            </div>
+            {taux ? (
+              <p className="my-1.5 ml-2.5 border-l border-filet py-2 pl-3 text-xs text-attenue">{taux}</p>
+            ) : (
+              <div className="h-5" />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // La barre derrière le chiffre, dans les tableaux. Une ligne à 12 doit se voir
 // immédiatement à côté d'une ligne à 1 ; une ligne à zéro reste une ligne, pas
 // une absence — c'est l'erreur de lecture du 01/10.

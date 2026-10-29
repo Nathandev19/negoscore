@@ -28,6 +28,8 @@ const VIDE: DashboardData = {
   guides: [],
   example: { total: 0, direct: 0 },
   tier_changes: [],
+  engagement: [],
+  engagement_scroll: [],
 };
 
 function jours(nombre: number, valeurs: (index: number) => { page_views: number; analyses: number }): DashboardData["timeseries"] {
@@ -77,6 +79,8 @@ const LANCEMENT: DashboardData = {
   ],
   example: { total: 2, direct: 2 },
   tier_changes: [],
+  engagement: [],
+  engagement_scroll: [],
 };
 
 // Un seul jour : le cas où un graphique à barres a le plus de chances d'avoir

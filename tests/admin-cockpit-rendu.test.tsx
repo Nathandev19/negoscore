@@ -53,6 +53,8 @@ const APRES_MIGRATION: DashboardData = {
   guides: [],
   example: { total: 0, direct: 0 },
   tier_changes: [],
+  engagement: [],
+  engagement_scroll: [],
   paid_pro: 0,
   granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { FirstPartyView } from "@/components/analytics/first-party-view";
+import { PageEngagement } from "@/components/analytics/page-engagement";
 import { DealInput } from "@/components/deal-input";
 import { ScoreBand } from "@/components/result/score-band";
 import { SiteFooter } from "@/components/site-footer";
@@ -38,6 +39,11 @@ export default function HomePage() {
       <JsonLd data={faqJsonLd()} />
       <SiteHeader />
       <FirstPartyView event="landing_view" />
+      {/* Mission #209 — le comportement en page. Ne rend rien : aucun élément
+          ajouté, aucun style, aucun texte touché. /tiktok-promo arrive ICI,
+          par une redirection du proxy qui ajoute ses UTM : une seule mesure
+          couvre les deux, et le payant se distingue par utm_medium. */}
+      <PageEngagement />
       <main id="contenu" className="flex-1">
         {/* C1 — le champ reste au-dessus de la ligne de flottaison sur mobile. */}
         <section

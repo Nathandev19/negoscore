@@ -1,10 +1,12 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { BarCell, Funnel, TimeSeries } from "@/components/admin/charts";
+import { BarCell, Funnel, InPageFunnel, TimeSeries } from "@/components/admin/charts";
 import {
   ADMIN_PERIODS,
   dashboardTiles,
+  engagementApart,
+  engagementVerdict,
   exampleNotice,
   excludedNotice,
   internalNotice,
@@ -229,6 +231,7 @@ function Chiffres({ data }: { data: DashboardData }) {
   const secondaires = tiles.filter((tile) => !tile.series);
   const maxVisites = Math.max(0, ...data.acquisition.map((row) => row.visits));
   const maxVues = Math.max(0, ...data.guides.map((row) => row.views));
+  const maxProfondeur = Math.max(0, ...data.engagement_scroll.map((row) => row.total));
 
   return (
     <>
@@ -381,6 +384,85 @@ function Chiffres({ data }: { data: DashboardData }) {
             </tbody>
           </table>
           <p className="mt-3 text-small text-attenue">{exampleNotice(data)}</p>
+        </section>
+      ) : null}
+
+      {/* Mission #209 — LE COMPORTEMENT À L'INTÉRIEUR D'UNE PAGE.
+          Le funnel ci-dessus s'arrête à la porte des pages. Ce bloc-ci dit ce
+          qui se passe entre deux étapes, canal par canal — c'est ce qui
+          manquait pour savoir si 400 visites payantes sans analyse étaient du
+          faux trafic ou une page qui n'appelle rien.
+          Il ne s'affiche que s'il y a quelque chose à montrer. */}
+      {data.engagement.length > 0 ? (
+        <section aria-label="Comportement en page" className="min-w-0">
+          <div className="h-[3px] rounded-[2px]" style={{ background: seriesColor("visites") }} />
+          <h2 className="text-h2 mt-4">Comportement en page</h2>
+          <p className="mb-5 text-small text-attenue">
+            Une mesure — des pages vues — qui se réduit étape par étape, et le taux de passage écrit. Un canal par
+            colonne : « direct » est une arrivée sans attribution. Les relevés sont des tranches, jamais des durées
+            exactes.
+          </p>
+          <div className="grid gap-10 lg:grid-cols-2">
+            {data.engagement.map((row) => (
+              <div key={`${row.path}/${row.medium}`} className="min-w-0">
+                <h3 className="text-h3">
+                  {row.medium} <span className="font-mono text-xs text-attenue">{row.path}</span>
+                </h3>
+                <p className="mt-1 mb-4 text-small text-attenue">{engagementVerdict(row)}</p>
+                <InPageFunnel row={row} />
+                <dl className="mt-4 flex flex-col gap-3 border-t border-filet pt-4">
+                  {engagementApart(row).map((mesure) => (
+                    <div key={mesure.label} className="flex flex-col">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className={`text-small font-medium ${mesure.value === 0 ? "text-attenue" : "text-encre"}`}>
+                          {mesure.label}
+                        </dt>
+                        <dd className={`figures text-xl ${mesure.value === 0 ? "text-attenue" : "text-encre"}`}>
+                          {mesure.value}
+                          {mesure.part ? <span className="ml-2 text-xs text-attenue">{mesure.part}</span> : null}
+                        </dd>
+                      </div>
+                      <p className="text-xs text-attenue">{mesure.sens}</p>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+          </div>
+          {data.engagement_scroll.length > 0 ? (
+            <div className="mt-10">
+              <h3 className="text-h3 mb-1">Profondeur atteinte</h3>
+              <p className="mb-4 text-small text-attenue">
+                Où la lecture s&apos;arrête. Même mesure que ci-dessus, répartie en tranches : « 0 » veut dire que la
+                page n&apos;a pas bougé d&apos;un pixel.
+              </p>
+              <table className="w-full text-left text-small">
+                <thead>
+                  <tr className="text-xs tracking-wide text-attenue uppercase">
+                    <th className="pb-2.5 pr-3 font-normal">Canal</th>
+                    <th className="pb-2.5 pr-3 font-normal">Tranche</th>
+                    <th className="pb-2.5 pr-3 font-normal">Pages vues</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.engagement_scroll.map((row) => (
+                    <tr key={`${row.medium}/${row.bucket}`} className="border-t border-filet">
+                      <td className="py-3 pr-3">{row.medium}</td>
+                      <td className="py-3 pr-3 font-mono text-xs">{row.bucket}{row.bucket === "0" ? "" : " %"}</td>
+                      <td className="w-[55%] py-3 pr-3">
+                        <BarCell value={row.total} max={maxProfondeur} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+          <p className="mt-4 text-xs text-attenue">
+            Un relevé par page vue, envoyé au départ de la page : aucun identifiant, rien qui relie deux pages vues,
+            et jamais le contenu de ce qui est collé. /tiktok-promo arrive sur l&apos;accueil par une redirection :
+            c&apos;est la même page, et le payant se lit sur la ligne « paid_social ».
+          </p>
         </section>
       ) : null}
 
