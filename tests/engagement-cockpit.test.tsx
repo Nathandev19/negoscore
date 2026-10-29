@@ -314,7 +314,15 @@ describe("ce que la page de confidentialité annonce", () => {
     for (const absent of ["mouvements de la souris", "endroit des clics", "touches frappées", "nombre de gestes"]) {
       expect(TEXTE, absent).toContain(absent);
     }
-    expect(TEXTE).toContain("Aucun identifiant n&apos;accompagne ces relevés");
+    // Mission #209 quinquies — CETTE GARDE ÉPINGLAIT UNE PHRASE FAUSSE.
+    //
+    // Elle exigeait « Aucun identifiant n'accompagne ces relevés », et elle
+    // tenait parfaitement : le texte était bien là. Il était seulement faux —
+    // une ligne page_engagement porte l'empreinte technique du jour, comme
+    // toute autre ligne de statistique. Une garde sur du texte ne vaut que ce
+    // que vaut le texte ; c'est tests/engagement-empreinte.test.ts qui
+    // interroge maintenant la LIGNE réellement écrite.
+    expect(TEXTE).toContain("ni ton compte, ni un identifiant qui durerait");
     expect(TEXTE).toContain("ni cookie, ni stockage local");
   });
 

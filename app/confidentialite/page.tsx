@@ -174,9 +174,12 @@ export default function PrivacyPage() {
           Ce qui n&apos;est jamais relevé : le texte que tu colles dans le champ, ni même sa longueur. Savoir que le
           champ a été touché ne dit rien de ce qui a été écrit dedans. Ne sont enregistrés ni les mouvements de la
           souris, ni l&apos;endroit des clics, ni les touches frappées, ni le nombre de gestes — seulement le délai
-          avant le premier, quel qu&apos;il soit. Aucun identifiant n&apos;accompagne ces relevés : rien ne
-          rapproche deux pages entre elles, ni deux visites. Et rien n&apos;est déposé sur ton appareil pour les
-          obtenir : ni cookie, ni stockage local.
+          avant le premier, quel qu&apos;il soit. Comme toute autre ligne de statistique, ces relevés portent la
+          même empreinte technique du jour que celle décrite plus haut : elle permet de rapprocher deux pages vues
+          du même appareil dans la même journée — c&apos;est à ça qu&apos;elle sert —, elle ne permet pas de te
+          reconnaître d&apos;un jour à l&apos;autre, et elle est effacée au bout de 7 jours. Rien d&apos;autre ne
+          les accompagne : ni ton compte, ni un identifiant qui durerait. Et rien n&apos;est déposé sur ton appareil
+          pour les obtenir : ni cookie, ni stockage local.
         </p>
         <p>
           Les statistiques d&apos;usage ne contiennent ni le texte des offres, ni les noms de marques, ni les montants

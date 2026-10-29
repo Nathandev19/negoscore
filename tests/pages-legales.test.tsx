@@ -41,7 +41,7 @@ const PAGES = [
     chemin: "@/app/confidentialite/page",
     titre: "Politique de confidentialité",
     date: "30 octobre 2026",
-    empreinte: "386057a4c6360f69",
+    empreinte: "681511406199a88e",
   },
   {
     chemin: "@/app/cgv/page",

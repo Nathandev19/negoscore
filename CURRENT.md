@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 30/10/2026 (mission #209 quater).** Ce fichier se met à jour
+**Dernière mise à jour : 30/10/2026 (mission #209 quinquies).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 42 fichiers
-de migration et 172 fichiers de test.
+de migration et 173 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -348,6 +348,16 @@ n'appelle aucune action.
   signaux nommés un par un, les tranches avec un exemple chiffré, et ce qui
   n'est JAMAIS relevé — le texte collé en premier. Un test lie le texte de la
   page aux champs du relevé : un sixième signal fera tomber la garde.
+- **UNE CONTRADICTION DE LA #209 TER EST CORRIGÉE** (#209 quinquies). La page
+  affirmait « Aucun identifiant n'accompagne ces relevés », alors que
+  `product_events` porte une colonne `visitor` — empreinte technique du jour,
+  écrite sur CHAQUE événement du produit parce que `recordProductEvent` passe
+  `diagnostic: true` sans condition. La phrase disait vrai de `metadata` et
+  faux de la ligne. Elle dit maintenant ce qui est : l'empreinte accompagne le
+  relevé, elle rapproche deux pages vues du même appareil le même jour, elle
+  ne relie pas deux jours, et elle est effacée au bout de 7 jours.
+  `tests/engagement-empreinte.test.ts` interroge la LIGNE réellement écrite,
+  et fige la liste de ses 17 colonnes.
 - **La date d'une page légale ne peut plus mentir en silence** (#209 quater).
   Elle reste écrite à la main — la dériver d'un horodatage de fichier ou d'un
   commit donnerait une date FAUSSE à chaque déploiement — mais
