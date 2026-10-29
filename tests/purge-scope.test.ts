@@ -54,8 +54,18 @@ beforeEach(() => {
 describe("portée de la purge", () => {
   it("sans portée : toute la base, comportement de production", async () => {
     await runPurge(NOW);
-    expect(db.selects).toHaveLength(1);
-    expect(db.selects[0]).not.toContain("id=in.");
+    // Deux lectures sans portée : les documents échus, puis les relevés
+    // d'audience de plus de 13 mois (mission #209 quater). Aucune des deux ne
+    // se restreint à des identifiants : sans portée, la purge voit toute la
+    // base, et c'est bien le comportement de production.
+    expect(db.selects).toHaveLength(2);
+    for (const select of db.selects) expect(select, select).not.toContain("id=in.");
+    expect(db.selects[0]).toContain("deal_documents?");
+    // La lecture des relevés porte TOUJOURS la limite de date et une taille de
+    // lot : c'est elle qui décide ce qui sera supprimé juste après.
+    expect(db.selects[1]).toContain("product_events?");
+    expect(db.selects[1]).toContain("occurred_at=lt.");
+    expect(db.selects[1]).toContain("limit=");
     // login_claims : réclamations de connexion expirées (mission #067).
     // telemetry_salts : le sel d'avant-hier (mission #131). Une fois détruit,
     // les empreintes de ce jour-là ne peuvent plus être reliées à rien.
@@ -67,6 +77,12 @@ describe("portée de la purge", () => {
       "login_claims",
       "telemetry_salts",
     ]);
+    // Aucun de ces DELETE ne vise des identifiants explicites : ils portent
+    // leur propre condition de date, et c'est ce qui les rend sûrs sans
+    // portée. Les relevés d'audience font exception EXPRÈS — ils ne figurent
+    // pas dans la liste ci-dessus parce que leur suppression ne part que si la
+    // lecture a rendu des lignes, et qu'ici elle rend une liste vide. Leur
+    // garde-fou est inverse et plus fort : voir tests/purge-audience.test.ts.
     for (const { filter } of db.deletes) expect(filter).not.toMatch(/(^|&)(id|event_id)=in\./);
     // Texte des offres, réponses de marque collées (mission #080), puis les
     // trois colonnes de diagnostic de plus d'une semaine (mission #131).

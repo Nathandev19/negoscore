@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 30/10/2026 (mission #209 ter).** Ce fichier se met à jour
+**Dernière mise à jour : 30/10/2026 (mission #209 quater).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 42 fichiers
-de migration et 170 fichiers de test.
+de migration et 172 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -348,10 +348,18 @@ n'appelle aucune action.
   signaux nommés un par un, les tranches avec un exemple chiffré, et ce qui
   n'est JAMAIS relevé — le texte collé en premier. Un test lie le texte de la
   page aux champs du relevé : un sixième signal fera tomber la garde.
-- **La date « dernière mise à jour » de /confidentialite reste au
-  17 septembre** alors que son contenu a changé le 30 octobre. Elle est
-  épinglée par `tests/purge.test.tsx` au titre des textes fournis par
-  l'éditeur : à trancher par lui, pas par la mission.
+- **La date d'une page légale ne peut plus mentir en silence** (#209 quater).
+  Elle reste écrite à la main — la dériver d'un horodatage de fichier ou d'un
+  commit donnerait une date FAUSSE à chaque déploiement — mais
+  `tests/pages-legales.test.tsx` fige une EMPREINTE du contenu rendu de chacune
+  des trois pages légales, à côté de sa date. Changer un mot sans changer la
+  date fait échouer le test, qui dit quoi faire.
+- **Les relevés d'audience sont supprimés au bout de 13 MOIS** (#209 quater).
+  Avant, aucune ligne de `product_events` ne l'était jamais. La purge
+  quotidienne les prend par lots de 200, sous plafond de 4 000 par passage, en
+  ne supprimant QUE des identifiants lus avec la limite de date. Aucune
+  migration : l'index `product_events_time_idx (occurred_at desc)` existe
+  depuis la migration 30, vérifié sur le moteur par un plan de requête.
 - **Le chemin client d'un tour est désormais INSTRUMENTÉ, pas mesuré.** La
   sonde de la #203 existe et est éteinte ; les chiffres viendront d'un usage
   réel. Le rapport de la #203 donne la commande de console.

@@ -72,6 +72,7 @@ create table public.product_events (
   internal boolean not null default false,
   occurred_at timestamptz not null default now()
 );
+create index product_events_time_idx on public.product_events (occurred_at desc);
 create table public.analysis_feedback (rating text, environment text default 'production', internal boolean default false, updated_at timestamptz default now());
 create table public.purchases (amount numeric, currency text, environment text default 'production', internal boolean default false, paid_at timestamptz default now());
 create table public.credits (plan text, period_end timestamptz);
@@ -389,5 +390,36 @@ describe("le moteur de test colle à celui de la production", () => {
     };
     const epingle = paquet.devDependencies["@electric-sql/pglite"];
     expect(epingle, "PGlite doit être épinglé à l'exact").toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+
+describe("la purge des relevés d'audience n'a pas besoin de migration", () => {
+  it("L'INDEX QUI LA SERT EXISTE DÉJÀ, depuis la migration 30", async () => {
+    // Affirmer « aucune migration nécessaire » sans le vérifier serait
+    // exactement le genre de supposition qui a coûté la #209 bis. On le
+    // demande donc au planificateur.
+    //
+    // `product_events_time_idx on (occurred_at desc)` est créé par la
+    // migration 30. Les autres index de la table portent occurred_at en
+    // SECONDE ou TROISIÈME colonne (après event_name, environment, internal) :
+    // aucun d'eux ne sert un filtre qui ne porte que sur la date.
+    const trente = readFileSync(`${DOSSIER}/20260923000030_admin_cockpit.sql`, "utf8");
+    expect(trente).toContain("create index if not exists product_events_time_idx");
+    expect(trente).toContain("on public.product_events (occurred_at desc)");
+
+    // Sur une table de quelques lignes, le planificateur préfère toujours un
+    // parcours séquentiel : il a raison, et ça ne dit rien de l'index. On lui
+    // retire donc cette option, et on regarde s'il SAIT se servir de l'index
+    // pour ce filtre-là. C'est la question qui compte.
+    await db.exec("set enable_seqscan = off");
+    try {
+      const plan = await db.query<{ "QUERY PLAN": string }>(
+        "explain select id from public.product_events where occurred_at < now() - interval '13 months' order by occurred_at asc limit 200",
+      );
+      const texte = plan.rows.map((r) => r["QUERY PLAN"]).join(" ");
+      expect(texte, texte).toContain("product_events_time_idx");
+    } finally {
+      await db.exec("set enable_seqscan = on");
+    }
   });
 });

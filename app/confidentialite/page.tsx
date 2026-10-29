@@ -9,16 +9,21 @@ export const metadata: Metadata = publicPageMetadata("/confidentialite");
 
 // Textes fournis par l'éditeur, repris mot pour mot.
 export default function PrivacyPage() {
-  // Mission #209 ter — LA DATE N'A PAS ÉTÉ TOUCHÉE, et c'est un choix.
+  // Mission #209 quater — LA DATE SUIT LE CONTENU, et une garde le fait tenir.
   //
-  // Elle annonce le 17 septembre alors que la section « Mesure d'audience »
-  // vient de décrire le comportement en page : un lecteur qui se fie à la date
-  // croira avoir déjà tout lu. Mais cette date est épinglée par
-  // tests/purge.test.tsx au titre des « textes fournis par l'éditeur, repris
-  // mot pour mot » — c'est une décision éditoriale, pas technique. Elle est
-  // donc signalée dans le rapport de la mission plutôt que changée ici.
+  // Elle annonçait le 17 septembre alors que la section « Mesure d'audience »
+  // décrivait depuis la #209 ter le comportement en page : un lecteur qui se
+  // fie à la date croit avoir déjà tout lu.
+  //
+  // Elle reste écrite à la main, et c'est un choix mesuré : la dériver d'un
+  // horodatage de fichier ou d'un commit donnerait une date FAUSSE à chaque
+  // déploiement, parce qu'un clone neuf ne conserve ni les dates de
+  // modification ni l'historique par fichier. Ce qui empêche le défaut de
+  // revenir est ailleurs : tests/pages-legales.test.tsx fige une empreinte du
+  // contenu rendu de chaque page légale à côté de sa date. Changer un mot sans
+  // changer la date fait échouer le test, et il dit quoi faire.
   return (
-    <LegalPage title="Politique de confidentialité" updated="17 septembre 2026">
+    <LegalPage title="Politique de confidentialité" updated="30 octobre 2026">
       <LegalSection title="Responsable du traitement">
         <p>
           {SELLER.name}, {SELLER.address.replace(", France", "")}.
@@ -59,6 +64,7 @@ export default function PrivacyPage() {
             "Adresses IP hachées : 30 jours au maximum.",
             "Empreinte technique d'appareil : 7 jours. La valeur aléatoire qui permet de la calculer est détruite au bout de 2 jours : passé ce délai, deux journées ne peuvent plus être rapprochées.",
             "Demande de lien de connexion : effacée dès que le lien sert. Sinon, elle ne sert plus au bout de 2 heures, et la purge quotidienne l'efface au plus tard le lendemain.",
+            "Statistiques d'usage, y compris les relevés de comportement sur la page d'accueil : 13 mois, puis les lignes sont supprimées. C'est la plus courte des deux durées que la CNIL cite pour la mesure d'audience sans consentement. Rien ne nous y oblige, puisque cette mesure ne dépose rien sur ton appareil : on la retient quand même, parce qu'une donnée qu'on ne garde pas est une donnée qu'on ne peut pas perdre.",
             "Données de facturation détenues par Whop : selon ses propres durées.",
           ]}
         />

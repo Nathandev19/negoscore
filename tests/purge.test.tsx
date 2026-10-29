@@ -170,7 +170,10 @@ describe("politique de confidentialité", () => {
       // Mission #099 (audit B7) : la réserve du Pro actif est écrite, et elle dit vrai — la suppression est possible dès la résiliation.
       "Tu peux supprimer ton compte depuis la page Mon compte, sans justification. Une seule réserve : un abonnement Pro encore actif et non résilié doit d'abord être résilié, parce que supprimer le compte ne l'arrêterait pas et qu'il continuerait à être prélevé. La résiliation est gratuite et en ligne ; dès qu'elle est enregistrée, la suppression est possible, sans attendre la fin de la période déjà payée. Sont supprimés immédiatement : ton identifiant de connexion, ton adresse email, les offres que tu as déposées, les documents téléversés et les analyses produites. Sont conservés : le journal des paiements et les preuves de consentement liées à tes achats, pendant 5 ans, afin de pouvoir justifier d'une transaction en cas de litige. Les négociations non utilisées sont perdues et ne sont pas remboursées.",
       "Avec ou sans compte, tu peux aussi supprimer une analyse depuis sa page de résultat, avec le navigateur ou le compte qui l'a lancée : l'analyse, le texte de l'offre et le fichier déposé sont supprimés immédiatement.",
-      "17 septembre 2026",
+      // Mission #209 quater — la date suit le contenu : la section « Mesure
+      // d'audience » décrit le comportement en page depuis la #209 ter, et
+      // « Durées de conservation » annonce désormais les 13 mois.
+      "30 octobre 2026",
       // Mission #047 : cookies et brouillon local.
       "Cookies et stockage dans ton navigateur",
       // Mission #049 : mesure d'audience sans stockage, donc sans bannière.
