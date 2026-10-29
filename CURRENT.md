@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 29/10/2026 (mission #209 bis).** Ce fichier se met à jour
+**Dernière mise à jour : 30/10/2026 (mission #209 ter).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -339,16 +339,19 @@ n'appelle aucune action.
   faut appliquer la migration 42 corrigée, du trafic — payant de préférence,
   pour comparer — puis relire /admin. Tant qu'aucune ligne n'est enregistrée,
   laquelle des deux hypothèses est la bonne reste UNKNOWN.
-- **La version de PostgreSQL de Supabase est UNKNOWN depuis le dépôt.** Le
-  test moteur tourne sur PostgreSQL 18.6 (PGlite 0.5.13) ; Supabase sert du 15
-  ou du 17 selon le projet. Tout ce dont la migration 42 dépend existe depuis
-  PostgreSQL 12, donc l'écart est faible — mais si l'éditeur donne sa version,
-  PGlite peut être épinglé pour coller (0.4.0 → PG 17.5, 0.2.17 → PG 16.4).
-- **Une phrase sur le comportement en page dans /confidentialite.** La page
-  promet déjà « statistiques d'usage anonymes », sans cookie ni stockage
-  local, et la #209 tient tout ça. Mais elle ne mentionne ni la profondeur de
-  lecture ni le temps visible. La mission interdisait de toucher au texte des
-  pages ; c'est donc à trancher, pas un oubli.
+- **La version de PostgreSQL de production est 17.6**, mesurée par l'éditeur
+  sur Supabase le 30/10/2026. PGlite est épinglé à l'exact sur 0.4.6, qui
+  embarque PostgreSQL 17.5 : même majeure, une version corrective d'écart.
+  Aucune version de PGlite ne descend à 17.6 — mesuré sur les séries 0.3.x,
+  0.4.x et 0.5.x — et c'est écrit dans le test.
+- **/confidentialite décrit la mesure, depuis la #209 ter** : les quatre
+  signaux nommés un par un, les tranches avec un exemple chiffré, et ce qui
+  n'est JAMAIS relevé — le texte collé en premier. Un test lie le texte de la
+  page aux champs du relevé : un sixième signal fera tomber la garde.
+- **La date « dernière mise à jour » de /confidentialite reste au
+  17 septembre** alors que son contenu a changé le 30 octobre. Elle est
+  épinglée par `tests/purge.test.tsx` au titre des textes fournis par
+  l'éditeur : à trancher par lui, pas par la mission.
 - **Le chemin client d'un tour est désormais INSTRUMENTÉ, pas mesuré.** La
   sonde de la #203 existe et est éteinte ; les chiffres viendront d'un usage
   réel. Le rapport de la #203 donne la commande de console.

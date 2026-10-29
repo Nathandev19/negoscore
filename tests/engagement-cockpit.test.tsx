@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PRODUCT_EVENTS } from "@/lib/analytics/first-party";
 import {
+  mesure,
+  nouvelEtat,
   DWELL_LABELS,
   FIRST_ACTION_VALUES,
   INPUT_TOUCHED,
@@ -276,5 +278,61 @@ describe("le coût au chargement, tenu par construction", () => {
     expect(form).toContain("signalerChamp(current)");
     // L'onglet, jamais le texte : aucune des variables de contenu ne passe.
     expect(form).not.toMatch(/signalerChamp\((text|reply|value|event)/);
+  });
+});
+
+describe("ce que la page de confidentialité annonce", () => {
+  const PAGE = readFileSync("app/confidentialite/page.tsx", "utf8");
+  // Le JSX coupe ses phrases en fin de ligne : une garde qui chercherait une
+  // phrase d'un seul tenant tomberait au prochain reformatage, pour une raison
+  // qui n'est pas celle qu'elle surveille. Les espaces sont donc normalisés.
+  const TEXTE = PAGE.replace(/\s+/g, " ");
+
+  it("CHACUN DES CINQ SIGNAUX EST DÉCRIT, et pas sous le mot « statistiques »", () => {
+    // La page disait « statistiques d'usage anonymes » : vrai, mais personne
+    // n'en déduit qu'on relève une profondeur de lecture. Si un sixième signal
+    // s'ajoute un jour au relevé, cette garde doit tomber.
+    expect(Object.keys(mesure(nouvelEtat(0), 0)).sort()).toEqual(
+      ["dwell", "first_action", "input", "scroll", "scrolled"],
+    );
+    // Un morceau de phrase par signal, dans l'ordre du relevé.
+    expect(TEXTE).toContain("jusqu&apos;où tu as fait défiler la page");
+    expect(TEXTE).toContain("combien de temps elle est restée affichée");
+    expect(TEXTE).toContain("avant ton premier geste");
+    expect(TEXTE).toContain("quel onglet du formulaire a été touché en premier");
+    // Les tranches sont dites, avec un exemple chiffré : « en tranches » seul
+    // ne se comprend pas.
+    expect(TEXTE).toContain("arrondies en tranches");
+    expect(TEXTE).toContain("entre 5 et 10 secondes");
+  });
+
+  it("CE QUI N'EST PAS RELEVÉ EST DIT AUSSI, à commencer par le texte collé", () => {
+    // La promesse qui compte le plus pour quelqu'un qui colle le message d'une
+    // marque dans un champ.
+    expect(TEXTE).toContain("le texte que tu colles dans le champ, ni même sa longueur");
+    expect(TEXTE).toContain("ne dit rien de ce qui a été écrit dedans");
+    for (const absent of ["mouvements de la souris", "endroit des clics", "touches frappées", "nombre de gestes"]) {
+      expect(TEXTE, absent).toContain(absent);
+    }
+    expect(TEXTE).toContain("Aucun identifiant n&apos;accompagne ces relevés");
+    expect(TEXTE).toContain("ni cookie, ni stockage local");
+  });
+
+  it("le tableau des données traitées ne reste pas plus vague que le texte", () => {
+    // Les deux sont sur la même page : l'un ne doit pas promettre moins que
+    // l'autre.
+    const tableau = TEXTE.slice(TEXTE.indexOf("Données traitées et finalités"), TEXTE.indexOf("Durées de conservation"));
+    expect(tableau).toContain("Comportement sur la page d'accueil");
+    expect(tableau).toContain("sans jamais le contenu de ce qui est collé dans le champ");
+  });
+
+  it("et la page ne promet rien que le code ne tienne", () => {
+    // Trois promesses, chacune vérifiable dans la sonde : pas de stockage, un
+    // seul envoi par page vue, rien vers un tiers.
+    const sonde = readFileSync("components/analytics/page-engagement.tsx", "utf8").replace(/^\s*\/\/.*$/gm, "");
+    for (const interdit of ["localStorage", "sessionStorage", "document.cookie"]) {
+      expect(sonde, interdit).not.toContain(interdit);
+    }
+    expect(sonde.split("fetch(")).toHaveLength(2);
   });
 });

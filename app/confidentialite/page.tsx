@@ -9,6 +9,14 @@ export const metadata: Metadata = publicPageMetadata("/confidentialite");
 
 // Textes fournis par l'éditeur, repris mot pour mot.
 export default function PrivacyPage() {
+  // Mission #209 ter — LA DATE N'A PAS ÉTÉ TOUCHÉE, et c'est un choix.
+  //
+  // Elle annonce le 17 septembre alors que la section « Mesure d'audience »
+  // vient de décrire le comportement en page : un lecteur qui se fie à la date
+  // croira avoir déjà tout lu. Mais cette date est épinglée par
+  // tests/purge.test.tsx au titre des « textes fournis par l'éditeur, repris
+  // mot pour mot » — c'est une décision éditoriale, pas technique. Elle est
+  // donc signalée dans le rapport de la mission plutôt que changée ici.
   return (
     <LegalPage title="Politique de confidentialité" updated="17 septembre 2026">
       <LegalSection title="Responsable du traitement">
@@ -33,6 +41,7 @@ export default function PrivacyPage() {
             "Email de l'acheteur, montant et formule achetée — preuve de la transaction et suivi des paiements — obligation légale et intérêt légitime.",
             `Coordonnées bancaires — traitées exclusivement par Whop, jamais reçues ni conservées par ${BRAND.name}.`,
             "Mesure d'audience — statistiques d'usage anonymes, calculées et conservées par le site lui-même, sans aucun outil tiers — intérêt légitime.",
+            "Comportement sur la page d'accueil : jusqu'où la page a été défilée, combien de temps elle est restée affichée, le délai avant le premier geste et l'onglet du formulaire touché en premier — comprendre si la page est lue, et où la lecture s'arrête — intérêt légitime — relevé en tranches, sans identifiant et sans jamais le contenu de ce qui est collé dans le champ.",
           ]}
         />
       </LegalSection>
@@ -145,6 +154,23 @@ export default function PrivacyPage() {
         <p>
           Les pages publiques contiennent une image d&apos;un pixel, transparente, qui sert uniquement à compter la
           page affichée. Elle ne dépose rien et ne permet pas de te reconnaître d&apos;un jour à l&apos;autre.
+        </p>
+        <p>
+          Sur la page d&apos;accueil, quatre repères sont relevés pour comprendre ce que les visiteurs font de la
+          page : jusqu&apos;où tu as fait défiler la page, combien de temps elle est restée affichée, combien de
+          temps s&apos;est écoulé avant ton premier geste, et quel onglet du formulaire a été touché en premier
+          («&nbsp;coller le message&nbsp;», «&nbsp;photo&nbsp;» ou «&nbsp;PDF&nbsp;»). Les durées et la profondeur
+          sont arrondies en tranches, jamais gardées au détail : «&nbsp;entre 5 et 10 secondes&nbsp;», pas
+          «&nbsp;7,4 secondes&nbsp;». Un seul relevé part par page affichée, au moment où tu la quittes, et il ne
+          contient rien d&apos;autre que ces quatre tranches.
+        </p>
+        <p>
+          Ce qui n&apos;est jamais relevé : le texte que tu colles dans le champ, ni même sa longueur. Savoir que le
+          champ a été touché ne dit rien de ce qui a été écrit dedans. Ne sont enregistrés ni les mouvements de la
+          souris, ni l&apos;endroit des clics, ni les touches frappées, ni le nombre de gestes — seulement le délai
+          avant le premier, quel qu&apos;il soit. Aucun identifiant n&apos;accompagne ces relevés : rien ne
+          rapproche deux pages entre elles, ni deux visites. Et rien n&apos;est déposé sur ton appareil pour les
+          obtenir : ni cookie, ni stockage local.
         </p>
         <p>
           Les statistiques d&apos;usage ne contiennent ni le texte des offres, ni les noms de marques, ni les montants

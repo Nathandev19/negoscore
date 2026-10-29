@@ -18,17 +18,36 @@ import { EMPTY_DASHBOARD_KEYS } from "@/lib/admin/data";
 // sous-requête avec LE MÊME code d'erreur que le moteur de Supabase — vérifié
 // avant d'écrire ce test, et c'est la raison pour laquelle il est ici.
 //
-// CE QU'IL NE COUVRE PAS, et il faut le savoir : PGlite 0.5.13 embarque
-// PostgreSQL 18, pendant que Supabase sert du 15 ou du 17 selon le projet. Il
-// attrape donc ce qui est refusé partout — et la règle sur les sous-requêtes
-// dans un CHECK est l'une des plus anciennes du moteur — mais il ne prouve
-// pas qu'une construction récente passera sur la version de Supabase. Il ne
-// couvre pas non plus ce qui est propre à Supabase : schéma `auth`, rôles
-// `authenticated` et `anon`, politiques RLS, extensions.
+// ─── LA VERSION, ET L'ÉCART QUI RESTE ──────────────────────────────────────
 //
-// C'est pour ça que les DEUX gardes de ce fichier sont nécessaires : celle qui
-// exécute, limitée à ce qu'on peut monter sans Supabase, et celle qui relit
-// toutes les migrations à la recherche de la même faute.
+// La production tourne sur PostgreSQL 17.6, mesuré par `select version()` sur
+// Supabase le 30/10/2026 :
+//   PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC)
+//   15.2.0, 64-bit
+//
+// PGlite est donc épinglé sur 0.4.6, À L'EXACT et non en `^0.4.6` : tout
+// l'intérêt de cette ligne est d'aligner une version, et un accent circonflexe
+// laisserait une mise à jour mineure changer le moteur sous nos pieds.
+//
+// Ce que chaque série de PGlite embarque, MESURÉ par `select version()` et non
+// lu quelque part — aucune des deux pages de documentation du projet ne nomme
+// la version de PostgreSQL :
+//   0.3.16, 0.4.5, 0.4.6  →  PostgreSQL 17.5
+//   0.5.10 à 0.5.13       →  PostgreSQL 18.6
+//
+// IL RESTE DONC UN ÉCART D'UNE VERSION CORRECTIVE : 17.5 ici, 17.6 en
+// production. Aucune version de PGlite ne descend à 17.6, et c'est écrit ici
+// plutôt que passé sous silence. Ce que ça veut dire, ni plus ni moins : les
+// versions correctives de PostgreSQL portent des corrections de défauts et de
+// sécurité, pas de changement de syntaxe ni de sémantique SQL — l'écart est
+// donc petit, mais il n'est pas nul, et un défaut corrigé entre 17.5 et 17.6
+// se comporterait ici comme avant sa correction.
+//
+// CE QU'IL NE COUVRE PAS NON PLUS : ce qui est propre à Supabase — schéma
+// `auth`, rôles `authenticated` et `anon`, politiques RLS, extensions. C'est
+// pour ça que les DEUX gardes sont nécessaires : celle qui exécute, limitée à
+// ce qu'on peut monter sans Supabase, et celle qui relit toutes les migrations
+// à la recherche de la même faute (tests/migrations-check.test.ts).
 
 const DOSSIER = "supabase/migrations";
 const MIGRATION_42 = `${DOSSIER}/20261029000042_comportement_en_page.sql`;
@@ -329,5 +348,46 @@ describe("la contrainte repose sur un NOT NULL, et il est là", () => {
       refuse = true;
     }
     expect(refuse).toBe(true);
+  });
+});
+
+describe("le moteur de test colle à celui de la production", () => {
+  // Mesuré sur Supabase le 30/10/2026 : PostgreSQL 17.6.
+  const PRODUCTION = "17.6";
+  // Ce que PGlite 0.4.6 embarque, mesuré par `select version()`.
+  const TEST = "17.5";
+
+  it("LE MOTEUR DU TEST EST CELUI QU'ON A CHOISI, à la corrective près", async () => {
+    // Sans cette garde, l'épinglage ne vaut rien : une mise à jour de PGlite
+    // changerait le moteur sans que personne ne le voie, et ce fichier
+    // éprouverait du SQL sur une version qui n'est pas la nôtre.
+    //
+    // La version attendue est ÉCRITE EN ENTIER, pas tolérée dans une fenêtre.
+    // Première écriture : majeure exacte, puis `Math.abs(corrective - 6) <= 1`
+    // — une fenêtre qui laissait passer 18.6 sans broncher, donc exactement la
+    // dérive qu'elle prétendait surveiller.
+    const r = await db.query<{ version: string }>("select version() as version");
+    const lu = r.rows[0].version.match(/PostgreSQL (\d+\.\d+)/);
+    expect(lu, r.rows[0].version).not.toBeNull();
+    // TOUTES LES ASSERTIONS PARTENT DE LA VERSION LUE DANS LE MOTEUR.
+    // Première écriture : deux d'entre elles comparaient TEST à PRODUCTION,
+    // c'est-à-dire deux constantes de ce fichier — elles passaient sans jamais
+    // interroger le moteur. La batterie de mutation l'a montré en retirant la
+    // seule qui l'interrogeait : le test restait vert.
+    const version = lu![1];
+    expect(version, `moteur de test : ${r.rows[0].version}`).toBe(TEST);
+    // Même version majeure que la production, lue du moteur et non d'ici.
+    expect(version.split(".")[0], `moteur de test : ${version}`).toBe(PRODUCTION.split(".")[0]);
+    // Et l'écart qui reste est nommé plutôt que laissé à deviner : une version
+    // corrective, parce qu'aucune version de PGlite ne descend à 17.6.
+    expect(version, "si PGlite atteint 17.6 un jour, cet écart doit disparaître").not.toBe(PRODUCTION);
+  });
+
+  it("la version de PGlite est épinglée À L'EXACT, sans accent circonflexe", () => {
+    const paquet = JSON.parse(readFileSync("package.json", "utf8")) as {
+      devDependencies: Record<string, string>;
+    };
+    const epingle = paquet.devDependencies["@electric-sql/pglite"];
+    expect(epingle, "PGlite doit être épinglé à l'exact").toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
