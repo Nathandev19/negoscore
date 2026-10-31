@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 30/10/2026 (mission #209 quinquies).** Ce fichier se met à jour
+**Dernière mise à jour : 31/10/2026 (mission #210).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 42 fichiers
-de migration et 173 fichiers de test.
+de migration et 176 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -179,6 +179,34 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
     pouvait pas utiliser ce chiffre pour négocier sans en comprendre l'écart.
 
 ## CURRENT MISSION
+
+**#210 — du texte non latin ne peut plus atteindre l'écran.**
+
+Constaté en production le 31/10 : un mot hébreu, בלבד, dans une phrase
+française des risques affichés. L'offre était du gifting en français, sans un
+caractère non latin — la fuite venait de la génération.
+
+- **La règle est RELATIVE À L'ENTRÉE** (`lib/llm/langue.ts`) : une écriture qui
+  apparaît en sortie sans être dans l'offre est une fuite. Interdire le non
+  latin en bloc aurait cassé un nom de marque japonais ou une offre en hébreu.
+- **Deux familles de champs** : la prose que le modèle rédige est contrôlée ;
+  ce qui recopie l'offre — nom de marque, territoire, modalités, et le message
+  prêt à envoyer, que le prompt veut dans la langue de l'offre — ne l'est pas.
+  Un test vérifie que les 23 champs texte du schéma sont tous classés.
+- **Reprise puis réparation, jamais d'échec** : au premier essai la fuite se
+  traite comme une sortie invalide et on redemande ; au dernier, on retire le
+  point fautif et on garde tout le reste. Ni page cassée, ni analyse vide.
+- **Détection de script Unicode, pas détection de langue** : le mot fautif
+  fait quatre lettres, le régime où le LID est documenté comme peu fiable.
+  `Script_Extensions` et non `Script`, suivant UTS #24 §5.3 — sans quoi
+  l'apostrophe-lettre U+02BC ferait refuser « lʼoffre » en français.
+- **Le délai par défaut des tests passe de 5 s à 20 s** : plusieurs tests qui
+  rendent toutes les pages publiques frôlaient la limite, et trois fichiers de
+  plus ont suffi à rendre la suite instable.
+- **UNKNOWN** : la fréquence réelle de la fuite en production, et l'effet d'une
+  consigne de langue isolée en tête de prompt — mesurable, non mesuré ici.
+
+## MISSION PRÉCÉDENTE
 
 **#209 — mesurer le comportement À L'INTÉRIEUR d'une page.**
 

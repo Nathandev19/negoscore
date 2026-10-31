@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { MODEL, type ReasoningEffort, type TextVerbosity } from "@/lib/llm/model";
+import { extractionSansFuites, journalDeFuite, scriptsAutorises, type ScriptNomme } from "@/lib/llm/langue";
 import {
   buildUserMessage,
   extractionJsonSchema,
@@ -56,7 +57,25 @@ export type ExtractResult = {
   attempts: number;
 };
 
-function problemWith(outputText: string): { extraction: Extraction } | { problem: string } {
+// Mission #210 — LA FUITE DE LANGUE, TRAITÉE COMME UNE SORTIE INVALIDE,
+// PUIS RÉPARÉE.
+//
+// Constaté en production : un mot hébreu dans une phrase française rendue à
+// l'écran (lib/llm/langue.ts raconte le cas). La consigne du prompt ne suffit
+// pas, donc on contrôle.
+//
+// L'ENCHAÎNEMENT, et c'est lui qui tient les deux exigences de la mission :
+//   premier essai  une fuite se traite comme un JSON illisible — on redemande
+//                  au modèle. Une fuite sporadique disparaît là, sans que
+//                  personne ne perde une ligne d'analyse ;
+//   dernier essai  on ne jette RIEN. On retire les points fautifs, on garde
+//                  tout le reste, et on le journalise. Jamais d'exception,
+//                  donc jamais de page cassée ni d'analyse vide.
+function problemWith(
+  outputText: string,
+  essai: { numero: number; derniere: boolean },
+  autorises: ReadonlySet<ScriptNomme>,
+): { extraction: Extraction } | { problem: string } {
   let json: unknown;
   try {
     json = JSON.parse(outputText);
@@ -74,13 +93,26 @@ function problemWith(outputText: string): { extraction: Extraction } | { problem
     ...d,
     quantity: checks[index].kind === "unknown" ? null : d.quantity,
   }));
-  return { extraction: { ...parsed.data, deal: { ...parsed.data.deal, deliverables } } };
+  const extraction: Extraction = { ...parsed.data, deal: { ...parsed.data.deal, deliverables } };
+
+  const { extraction: propre, fuites } = extractionSansFuites(extraction, autorises);
+  if (fuites.length === 0) return { extraction };
+  if (!essai.derniere) {
+    // Une reprise coûte un appel ; une phrase en hébreu à l'écran coûte la
+    // confiance. On reprend.
+    console.warn(JSON.stringify({ event: "langue_fuite_reprise", essai: essai.numero, ...journalDeFuite(fuites) }));
+    return { problem: `langue étrangère dans ${fuites.map((fuite) => fuite.champ).join(", ")}` };
+  }
+  console.warn(JSON.stringify({ event: "langue_fuite_reparee", essai: essai.numero, ...journalDeFuite(fuites) }));
+  return { extraction: propre };
 }
 
 export type ImageInput = { base64: string; mimeType: string };
 
 export function extractDeal(offerText: string, options: ExtractOptions = {}): Promise<ExtractResult> {
-  return run(buildUserMessage(offerText), options);
+  // Le texte de l'offre sert de RÉFÉRENCE de langue : un script qui apparaît
+  // en sortie sans être dans l'offre est une fuite (lib/llm/langue.ts).
+  return run(buildUserMessage(offerText), options, offerText);
 }
 
 // Même modèle, même prompt système, même schéma : seule l'entrée change.
@@ -119,13 +151,20 @@ export function extractDealFromPdf(pdf: PdfInput): Promise<ExtractResult> {
   ]);
 }
 
-async function run(input: OpenAI.Responses.ResponseCreateParams["input"], options: ExtractOptions = {}): Promise<ExtractResult> {
+// `offre` : le texte de l'offre, ou null quand il n'existe pas de notre côté
+// — une photo ou un PDF n'a jamais traversé notre code sous forme de texte.
+async function run(
+  input: OpenAI.Responses.ResponseCreateParams["input"],
+  options: ExtractOptions = {},
+  offre: string | null = null,
+): Promise<ExtractResult> {
+  const autorises = scriptsAutorises(offre);
   const result = await callStructured({
     instructions: SYSTEM_PROMPT,
     input,
     schemaName: "deal_analysis",
     schema: extractionJsonSchema(),
-    parse: problemWith,
+    parse: (outputText, essai) => problemWith(outputText, essai, autorises),
     options,
   });
   return { ...result.usage, extraction: result.value.extraction };
@@ -148,7 +187,11 @@ export async function callStructured<T>({
   input: OpenAI.Responses.ResponseCreateParams["input"];
   schemaName: string;
   schema: { [key: string]: unknown };
-  parse: (outputText: string) => T | { problem: string };
+  // Mission #210 — `parse` reçoit le NUMÉRO D'ESSAI, et c'est ce qui permet à
+  // une fuite de langue de déclencher une reprise sans jamais faire échouer
+  // l'analyse : au premier essai elle demande une reprise, au dernier elle
+  // répare et accepte. `derniere` est vrai quand plus aucune reprise ne suit.
+  parse: (outputText: string, essai: { numero: number; derniere: boolean }) => T | { problem: string };
   options?: ExtractOptions;
 }): Promise<{ value: T; usage: StructuredUsage }> {
   const apiKey = process.env[MODEL.envKey];
@@ -185,7 +228,7 @@ export async function callStructured<T>({
     outputTokens += response.usage?.output_tokens ?? 0;
     reasoningTokens += response.usage?.output_tokens_details?.reasoning_tokens ?? 0;
 
-    const result = parse(response.output_text);
+    const result = parse(response.output_text, { numero: attempt, derniere: attempt === MAX_ATTEMPTS });
     if (!(typeof result === "object" && result !== null && "problem" in result)) {
       if (attempt === 1) schemaValidFirstTry = true;
       const { input: inputPrice, cachedInput, output } = MODEL.pricingUsdPerMillion;
