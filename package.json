@@ -18,6 +18,7 @@
     "eval:rescore": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/rescore.ts",
     "eval:evaluability": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/evaluability.ts",
     "eval:effort": "node --env-file-if-exists=.env.local --import ./evals/register-alias.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/effort.ts",
+    "eval:langue": "node --env-file-if-exists=.env.local --import ./evals/register-alias.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/langue.ts",
     "eval:verbosity": "node --env-file-if-exists=.env.local --import ./evals/register-alias.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/effort.ts --experiment=verbosity",
     "negociation:enregistrer": "node --env-file-if-exists=.env.local --import ./evals/register-alias.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON evals/negotiation-record.ts",
     "email:templates": "node --import ./evals/register-alias.mjs --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/write-auth-templates.ts"

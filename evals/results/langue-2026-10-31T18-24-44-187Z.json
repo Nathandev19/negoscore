@@ -1,0 +1,336 @@
+{
+ "modele": "gpt-5.6-luna",
+ "temperature": "non envoyée",
+ "promptVersionActuel": 7709,
+ "promptVersionTete": 7708,
+ "passes": 1,
+ "corpus": [
+  {
+   "id": "gifting-pur",
+   "role": "gifting pur, aucun montant — la classe de la fuite du 31/10",
+   "attendu": []
+  },
+  {
+   "id": "gifting-affiliation",
+   "role": "gifting plus commission, aucun fixe — pas un seul montant à recopier",
+   "attendu": []
+  },
+  {
+   "id": "gifting-concours",
+   "role": "gifting déguisé en sélection — flou volontaire, rien de chiffré",
+   "attendu": []
+  },
+  {
+   "id": "fr-montant-clair",
+   "role": "français pur avec un montant écrit — le cas simple, pour le taux de base",
+   "attendu": []
+  },
+  {
+   "id": "fr-contrat-dense",
+   "role": "français pur, langue de contrat — beaucoup de prose à produire en sortie",
+   "attendu": []
+  },
+  {
+   "id": "fr-marque-japonaise",
+   "role": "offre française avec un nom de marque japonais légitime — ne doit pas casser",
+   "attendu": [
+    "Han",
+    "Katakana"
+   ]
+  },
+  {
+   "id": "fr-marque-latine-rare",
+   "role": "nom de marque en latin inhabituel — ne doit déclencher aucun contrôle",
+   "attendu": []
+  },
+  {
+   "id": "he-offre-hebraique",
+   "role": "offre entièrement en hébreu — l'hébreu devient légitime en sortie",
+   "attendu": [
+    "Hebrew"
+   ]
+  },
+  {
+   "id": "en-offre-anglaise",
+   "role": "offre en anglais — autre langue, écriture latine, la sortie reste française",
+   "attendu": []
+  }
+ ],
+ "coutEstimeEur": 0.0391304347826087,
+ "coutReelEur": 0.032358988957902,
+ "resume": {
+  "actuel": {
+   "s": 0,
+   "n": 9,
+   "taux": 0,
+   "bas": 0,
+   "haut": 0.299145051727044
+  },
+  "tete": {
+   "s": 0,
+   "n": 9,
+   "taux": 0,
+   "bas": 0,
+   "haut": 0.299145051727044
+  },
+  "ecart": {
+   "diff": 0,
+   "bas": -0.299145051727044,
+   "haut": 0.299145051727044
+  }
+ },
+ "echantillons": [
+  {
+   "offre": "gifting-pur",
+   "condition": "actuel",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2888,
+   "outputTokens": 1098,
+   "costEur": 0.0016349206349206347,
+   "latencyMs": 13183,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "gifting-pur",
+   "condition": "tete",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2887,
+   "outputTokens": 1299,
+   "costEur": 0.0018428226363008972,
+   "latencyMs": 15882,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "gifting-affiliation",
+   "condition": "actuel",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2884,
+   "outputTokens": 1446,
+   "costEur": 0.00199447895100069,
+   "latencyMs": 16384,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "gifting-affiliation",
+   "condition": "tete",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2883,
+   "outputTokens": 1860,
+   "costEur": 0.0024228778467908904,
+   "latencyMs": 21967,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "gifting-concours",
+   "condition": "actuel",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2866,
+   "outputTokens": 1656,
+   "costEur": 0.0017846963423050377,
+   "latencyMs": 15964,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "fr-montant-clair",
+   "condition": "actuel",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2870,
+   "outputTokens": 1593,
+   "costEur": 0.0017201690821256038,
+   "latencyMs": 15192,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "gifting-concours",
+   "condition": "tete",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2865,
+   "outputTokens": 1878,
+   "costEur": 0.0020144927536231883,
+   "latencyMs": 19282,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "fr-montant-clair",
+   "condition": "tete",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2869,
+   "outputTokens": 1767,
+   "costEur": 0.0019002760524499654,
+   "latencyMs": 18105,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "fr-contrat-dense",
+   "condition": "actuel",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2976,
+   "outputTokens": 1905,
+   "costEur": 0.002061438923395445,
+   "latencyMs": 19261,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "fr-contrat-dense",
+   "condition": "tete",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2975,
+   "outputTokens": 1763,
+   "costEur": 0.0019144237405106968,
+   "latencyMs": 16847,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "fr-marque-japonaise",
+   "condition": "actuel",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2858,
+   "outputTokens": 1573,
+   "costEur": 0.0016973947550034505,
+   "latencyMs": 16329,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "fr-marque-japonaise",
+   "condition": "tete",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2857,
+   "outputTokens": 1435,
+   "costEur": 0.001554520358868185,
+   "latencyMs": 14692,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "fr-marque-latine-rare",
+   "condition": "tete",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2854,
+   "outputTokens": 1303,
+   "costEur": 0.0014173567977915802,
+   "latencyMs": 13914,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "fr-marque-latine-rare",
+   "condition": "actuel",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2855,
+   "outputTokens": 1406,
+   "costEur": 0.0015239993098688752,
+   "latencyMs": 14984,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "he-offre-hebraique",
+   "condition": "actuel",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2867,
+   "outputTokens": 1300,
+   "costEur": 0.0014163388543823327,
+   "latencyMs": 12429,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "he-offre-hebraique",
+   "condition": "tete",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2866,
+   "outputTokens": 1309,
+   "costEur": 0.001425638371290545,
+   "latencyMs": 12927,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "en-offre-anglaise",
+   "condition": "actuel",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2875,
+   "outputTokens": 1834,
+   "costEur": 0.0019705141476880606,
+   "latencyMs": 17449,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  },
+  {
+   "offre": "en-offre-anglaise",
+   "condition": "tete",
+   "passe": 1,
+   "fuites": [],
+   "nonLatinPresent": [],
+   "inputTokens": 2874,
+   "outputTokens": 1923,
+   "costEur": 0.002062629399585921,
+   "latencyMs": 19378,
+   "attempts": 1,
+   "schemaValidFirstTry": true,
+   "erreur": null
+  }
+ ]
+}

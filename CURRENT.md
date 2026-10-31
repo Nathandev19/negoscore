@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 31/10/2026 (mission #210).** Ce fichier se met à jour
+**Dernière mise à jour : 31/10/2026 (mission #211).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 42 fichiers
-de migration et 176 fichiers de test.
+de migration et 177 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -180,6 +180,51 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#211 — la fuite de langue, mesurée sur de vrais appels.**
+
+900 appels au modèle, 9 offres écrites pour l'éval, 50 passes par offre et par
+condition (`evals/langue.ts`, corpus dans `evals/langue-corpus.ts`, résultats
+dans `evals/results/langue-2026-10-31T19-05-39-717Z.json`). Coût réel
+**1,5413 €**, plafond de la mission 5 €.
+
+- **LA FUITE N'EST PLUS UNKNOWN : 1 sur 450 appels, soit 0,22 %, IC 95 %
+  [0,04 % ; 1,25 %]** avec le prompt actuel. Elle a été reproduite : deux
+  caractères chinois, 明确, dans `good_points[0].label`, sur une offre de
+  contrat en français pur sans un caractère non latin. Même mécanisme que le
+  בלבד du 31/10 : un mot étranger substitué à un mot français courant.
+- **La position de la consigne N'EST PAS TRANCHÉE.** Consigne en tête : 0 fuite
+  sur 450, IC 95 % [0 % ; 0,85 %]. Écart 0,22 %, IC 95 % [−0,64 % ; 1,25 %] :
+  l'intervalle contient zéro, l'éval ne distingue pas les deux conditions. À ce
+  taux il faudrait des dizaines de milliers d'appels pour les séparer. **Le
+  prompt de production n'a pas été modifié** — la décision revient à l'éditeur.
+- **L'offre qui a fui est la plus DENSE en prose à produire**, pas celle qui a
+  le moins de montants : les trois offres de gifting sans rémunération ont
+  donné 0 fuite sur 150. L'hypothèse « le gifting fait fuir » n'est pas
+  confirmée ; elle n'est pas écartée non plus, 150 appels ne distinguent rien
+  à 0,2 %.
+- **LA LISTE DES ÉCRITURES AUTORISÉES NE PROTÈGE RIEN DE MESURABLE.** Sur 900
+  appels, un seul a mis une écriture non latine dans un champ contrôlé — celui
+  qui a fui. L'offre entièrement en hébreu et l'offre à marque japonaise ont
+  rendu une prose exclusivement latine, 100 appels chacune. Les cas légitimes
+  vivent dans les champs EXEMPTÉS (`brand`, message prêt à envoyer). Le
+  caractère relatif à l'entrée coûte peu, mais il n'a aucun effet observé.
+- **L'éval n'appelle PAS `extractDeal`** : celui-ci reprend sur une fuite, ce
+  qui mesurerait la fréquence d'un échec après reprise et doublerait le coût.
+  Un échantillon vaut un appel, le contrôle est appliqué après, sur la sortie
+  brute.
+- **Aucune température n'est envoyée**, ni ici ni en production : la valeur par
+  défaut du fournisseur s'applique, elle n'est pas à zéro, et la répétition a
+  donc un sens.
+- **900/900 appels réussis, schéma valide du premier coup 900/900**, latence
+  p50 15 780 ms, p95 21 668 ms, 2 882 jetons d'entrée et 1 606 de sortie en
+  moyenne.
+- **Intervalles de Wilson, écart par la méthode de Newcombe**
+  (`evals/langue-mesure.ts`, gardé par `tests/eval-langue.test.ts`) :
+  l'intervalle normal rendrait « 0 % [0 % ; 0 %] » à zéro succès et ferait
+  conclure à l'absence de fuite.
+
+## MISSION PRÉCÉDENTE
+
 **#210 — du texte non latin ne peut plus atteindre l'écran.**
 
 Constaté en production le 31/10 : un mot hébreu, בלבד, dans une phrase
@@ -203,10 +248,12 @@ caractère non latin — la fuite venait de la génération.
 - **Le délai par défaut des tests passe de 5 s à 20 s** : plusieurs tests qui
   rendent toutes les pages publiques frôlaient la limite, et trois fichiers de
   plus ont suffi à rendre la suite instable.
-- **UNKNOWN** : la fréquence réelle de la fuite en production, et l'effet d'une
-  consigne de langue isolée en tête de prompt — mesurable, non mesuré ici.
+- **La fréquence de la fuite, UNKNOWN à la fin de la #210, est MESURÉE par la
+  #211** : 0,22 % par appel sur l'éval. Ce que la #210 laissait ouvert sur la
+  position de la consigne reste ouvert, mais pour une autre raison : l'éval a
+  tourné et ne départage pas.
 
-## MISSION PRÉCÉDENTE
+## AVANT-DERNIÈRE MISSION
 
 **#209 — mesurer le comportement À L'INTÉRIEUR d'une page.**
 
@@ -405,3 +452,9 @@ n'appelle aucune action.
   relue. UNKNOWN jusqu'à ce que quelques tours soient passés en production.
 - **Une éval large du réglage « none » sur un tour.** Celui retenu l'a été sur
   UNE fixture et trois passes, le minimum que la mission #202 demandait.
+- **LA FUITE DE LANGUE EST MESURÉE, SA CAUSE NON** (#211). 0,22 % par appel,
+  IC 95 % [0,04 % ; 1,25 %], une occurrence reproduite sur 450 appels. La
+  position de la consigne de langue dans le prompt reste à trancher : l'éval
+  a tourné et son intervalle d'écart contient zéro, donc elle ne départage
+  pas, et à ce taux aucun budget raisonnable ne le ferait. Le prompt de
+  production est INCHANGÉ.
