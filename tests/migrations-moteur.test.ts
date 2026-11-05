@@ -149,6 +149,48 @@ describe("la migration 42 s'exécute sur un vrai moteur", () => {
     );
     expect(Object.keys(r.rows[0].m).length).toBeGreaterThan(8);
   });
+
+  // Mission #212 — L'ADMIN SÉPARE-T-IL VRAIMENT LES DEUX RÉSEAUX ?
+  //
+  // La mission demande de le VÉRIFIER, pas de l'affirmer. Les gardes de
+  // tests/dm-par-reseau.test.ts montrent que la table pose deux attributions
+  // distinctes ; elles ne disent rien de ce que la fonction du cockpit en
+  // fait. C'est elle qui groupe, et c'est elle qui décide s'il y a une ligne
+  // ou deux à l'écran.
+  //
+  // Ce qu'on apprend ici, et qui dispensait d'écrire une migration : le
+  // regroupement est `group by utm_source, utm_campaign, utm_medium exclu,
+  // utm_content` — la source en fait partie. Deux réseaux donnent donc deux
+  // lignes SANS toucher au SQL. Vérifié sur le moteur, pas déduit du texte.
+  it("DEUX RÉSEAUX, DEUX LIGNES D'ACQUISITION, et aucune migration pour ça", async () => {
+    type Ligne = { source: string; campaign: string; content: string; visits: number; analyses: number };
+    const poser = (source: string, content: string, event: string) =>
+      db.query(
+        `insert into public.product_events (event_name, path, utm_source, utm_medium, utm_campaign, utm_content)
+         values ($1, '/', $2, 'dm', 'lancement', $3)`,
+        [event, source, content],
+      );
+    // Deux visites Instagram et une analyse ; une visite TikTok, aucune
+    // analyse. Des nombres différents de part et d'autre : si la fonction
+    // confondait les deux, une seule ligne porterait 3 visites.
+    await poser("instagram", "dm_prospection", "landing_view");
+    await poser("instagram", "dm_prospection", "landing_view");
+    await poser("instagram", "dm_prospection", "analysis_started");
+    await poser("tiktok", "dm_prospection_tiktok", "landing_view");
+
+    const r = await db.query<{ m: { acquisition: Ligne[] } }>("select public.admin_dashboard_metrics() as m");
+    const dm = r.rows[0].m.acquisition.filter((l) => l.content.startsWith("dm_"));
+    expect(dm).toHaveLength(2);
+    expect(dm.find((l) => l.source === "instagram")).toMatchObject({
+      source: "instagram", campaign: "lancement", content: "dm_prospection", visits: 2, analyses: 1,
+    });
+    expect(dm.find((l) => l.source === "tiktok")).toMatchObject({
+      source: "tiktok", campaign: "lancement", content: "dm_prospection_tiktok", visits: 1, analyses: 0,
+    });
+    // Et les visites TikTok ne sont PAS additionnées à celles d'Instagram :
+    // c'est exactement le défaut qu'on répare.
+    expect(dm.every((l) => l.visits < 3)).toBe(true);
+  });
 });
 
 describe("la contrainte garde la MÊME garantie, sans sous-requête", () => {

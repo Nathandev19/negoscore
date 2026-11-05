@@ -84,6 +84,41 @@ export const SHORT_PATHS: Readonly<Record<string, ShortPath>> = {
   // vidéos se terminent sur « negoscore.fr » seul. Trois visites réelles de
   // créatrices Instagram étaient donc déjà rangées sous TikTok.
   dm: { source: "instagram", content: "dm_prospection", medium: DM_MEDIUM },
+  // Mission #212 — /dm MENTAIT SUR LE RÉSEAU, PARCE QU'IL N'EN NOMMAIT AUCUN.
+  //
+  // Le lien était collé en message privé sur DEUX réseaux, Instagram et
+  // TikTok, et forçait `utm_source=instagram` dans les deux cas. Toute visite
+  // venue d'un DM TikTok était donc comptée en Instagram. Ce n'est pas une
+  // imprécision : c'est le compteur de l'admin, montré PLUS FIABLE que celui
+  // de TikTok Ads (47 contre 39, puis 353 contre 236), qui perdait l'acquis
+  // qui le rendait autoritaire.
+  //
+  // UN CHEMIN PAR RÉSEAU, et non un paramètre à ajouter à la main. Deux
+  // raisons, dans cet ordre :
+  //   — c'est déjà la forme du dépôt : /insta et /tiktok séparent les deux
+  //     bios exactement comme ça, avec `bio_instagram` et `bio_tiktok`. Un
+  //     mécanisme de plus pour les DM rendrait deux canaux comparables
+  //     illisibles côte à côte ;
+  //   — la littérature d'attribution dit la même chose : `utm_source` nomme
+  //     la PLATEFORME, `utm_medium` le TYPE DE CANAL. Le réseau n'a donc
+  //     rien à faire dans le medium ni dans la campagne, qui restent `dm` et
+  //     `lancement`, et un paramètre qu'on ajoute à la main est précisément
+  //     ce qui a produit le défaut.
+  //
+  // `/dm` NE BOUGE PAS D'UN OCTET : les liens déjà envoyés continuent de
+  // compter sous `instagram · lancement · dm_prospection`, même source, même
+  // contenu, même medium. C'est pour ça que la symétrie est imparfaite —
+  // Instagram garde `dm_prospection`, TikTok reçoit `dm_prospection_tiktok`.
+  // Renommer l'un pour faire joli réécrirait l'historique d'un compteur.
+  //
+  // `/dm-instagram` EST UN ALIAS EXACT de `/dm`, pas une troisième ligne :
+  // même source, même contenu. C'est lui qui empêche le défaut de revenir —
+  // tant qu'un chemin ne nomme pas son réseau, il y a un réseau par défaut à
+  // oublier. Lui donner un contenu distinct aurait coupé le DM Instagram en
+  // deux lignes pour toujours, et cassé la seule comparaison qui intéresse
+  // le projet : réseau contre réseau.
+  "dm-instagram": { source: "instagram", content: "dm_prospection", medium: DM_MEDIUM },
+  "dm-tiktok": { source: "tiktok", content: "dm_prospection_tiktok", medium: DM_MEDIUM },
   // La vidéo 1 récupère un chemin à elle, que `dm` lui tenait lieu. Les quatre
   // autres avaient déjà le leur.
   negociation: { source: "tiktok", content: "video_1_negociation" },
@@ -132,6 +167,15 @@ export const SHORT_PATHS: Readonly<Record<string, ShortPath>> = {
   // /exemple dans le navigateur, le contenu est celui de /analyse/demo, et
   // il n'y a plus de redirection sur le chemin.
   exemple: { source: "instagram", content: "dm_exemple", to: "/analyse/demo", servi: true, medium: DM_MEDIUM },
+  // Mission #212 — /exemple PORTAIT LE MÊME DÉFAUT, et la mission ne le
+  // nommait pas. Il porte `medium: dm` : c'est l'AUTRE lien de message privé,
+  // celui qui montre l'exemple chiffré au lieu de demander de coller une
+  // offre. Réparer /dm seul aurait laissé la moitié des DM falsifiée, et la
+  // comparaison des deux façons d'entrer dans le produit (#125) fausse d'un
+  // côté. Mêmes règles : /exemple ne bouge pas, l'alias est exact, et seul
+  // TikTok reçoit un contenu nouveau.
+  "exemple-instagram": { source: "instagram", content: "dm_exemple", to: "/analyse/demo", servi: true, medium: DM_MEDIUM },
+  "exemple-tiktok": { source: "tiktok", content: "dm_exemple_tiktok", to: "/analyse/demo", servi: true, medium: DM_MEDIUM },
 };
 
 // Un chemin tapé à la main ne respecte ni la casse ni la barre oblique finale :

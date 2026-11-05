@@ -31,16 +31,32 @@ const ATTENDU: Array<[string, string, string]> = [
   ["/tiktok", "tiktok", "bio_tiktok"],
   ["/tiktok-promo", "tiktok", "promotion_tiktok"],
   ["/insta", "instagram", "bio_instagram"],
+  // Mission #212 — un chemin de DM PAR RÉSEAU. /dm-instagram est l'alias
+  // exact de /dm (même source, même contenu) ; /dm-tiktok est la ligne qui
+  // manquait et sans laquelle tout DM TikTok comptait en Instagram.
+  ["/dm-instagram", "instagram", "dm_prospection"],
+  ["/dm-tiktok", "tiktok", "dm_prospection_tiktok"],
 ];
 
 // Mission #125 — le chemin d'exemple, et le premier à ne pas mener à
 // l'accueil. Mission #137 — il n'est plus REDIRIGÉ mais SERVI sur place :
 // il a donc ses propres vérifications, plus bas.
 const EXEMPLE: [string, string, string] = ["/exemple", "instagram", "dm_exemple"];
-const TOUS = [...ATTENDU, EXEMPLE];
+// Mission #212 — /exemple est l'AUTRE lien de message privé, et il portait le
+// même défaut : collé sur deux réseaux, attribué à un seul. Trois chemins
+// servis sur place désormais, mêmes règles que pour /dm.
+const SERVIS: Array<[string, string, string]> = [
+  EXEMPLE,
+  ["/exemple-instagram", "instagram", "dm_exemple"],
+  ["/exemple-tiktok", "tiktok", "dm_exemple_tiktok"],
+];
+const TOUS = [...ATTENDU, ...SERVIS];
 
-// La destination attendue de chaque chemin. Tous l'accueil, sauf /exemple.
-const DESTINATION: Record<string, string> = { "/exemple": "/analyse/demo" };
+// La destination attendue de chaque chemin. Tous l'accueil, sauf ceux qui
+// montrent l'exemple chiffré.
+const DESTINATION: Record<string, string> = Object.fromEntries(
+  SERVIS.map(([chemin]) => [chemin, "/analyse/demo"]),
+);
 const destination = (path: string) => DESTINATION[path] ?? "/";
 
 describe("les chemins redirigés portent les UTM posés par le serveur", () => {
@@ -100,8 +116,12 @@ describe("les chemins redirigés portent les UTM posés par le serveur", () => {
       utm_campaign: "lancement",
       utm_content: "dm_exemple",
     });
-    // Et c'est le SEUL chemin servi sur place : les autres redirigent.
-    expect(TOUS.filter(([chemin]) => shortPathIsServed(chemin)).map(([chemin]) => chemin)).toEqual(["/exemple"]);
+    // Et SEULS les chemins d'exemple sont servis sur place : les autres
+    // redirigent. Mission #212 : ils sont trois, un par réseau plus l'adresse
+    // d'origine, et pas un de plus.
+    expect(TOUS.filter(([chemin]) => shortPathIsServed(chemin)).map(([chemin]) => chemin)).toEqual(
+      SERVIS.map(([chemin]) => chemin),
+    );
   });
 
   it("une destination seule ne suffit pas : il faut le dire", () => {
@@ -142,8 +162,9 @@ describe("les chemins redirigés portent les UTM posés par le serveur", () => {
     // Le proxy ne connaît aucune adresse de destination : il lit la table.
     expect(readFileSync("proxy.ts", "utf8")).not.toContain("/analyse/demo");
     // Les autres chemins n'ont pas de destination : ils gardent
-    // l'accueil par défaut.
-    expect([...table.matchAll(/to: "/g)]).toHaveLength(1);
+    // l'accueil par défaut. Trois lignes la portent depuis la #212, une par
+    // réseau plus l'adresse d'origine.
+    expect([...table.matchAll(/to: "/g)]).toHaveLength(SERVIS.length);
   });
 
   // Mission #124 — LE DÉFAUT QUI EST ARRIVÉ. /dm a été créé en #106 comme
@@ -171,7 +192,10 @@ describe("les chemins redirigés portent les UTM posés par le serveur", () => {
   // portée organique — personne ne l'a vu passer — et c'est déjà la valeur
   // écrite à la main.
   it("les DM portent « dm », la promotion « paid_social », le reste « organic_social »", async () => {
-    const dms = ["dm", "exemple"];
+    // Mission #212 — six chemins de message privé : /dm et /exemple, plus un
+    // par réseau pour chacun. Le medium ne bouge pas d'un pouce — le réseau
+    // est dans la SOURCE, pas dans le canal.
+    const dms = ["dm", "dm-instagram", "dm-tiktok", "exemple", "exemple-instagram", "exemple-tiktok"];
     for (const [cle, entry] of Object.entries(SHORT_PATHS)) {
       const attendu = cle === "tiktok-promo" ? "paid_social" : dms.includes(cle) ? "dm" : ACQUISITION_UTM.medium;
       // La ligne de la table, source unique.
@@ -207,12 +231,21 @@ describe("les chemins redirigés portent les UTM posés par le serveur", () => {
     expect(Object.keys(parSource).sort()).toEqual(["instagram", "tiktok"]);
     // Trois chemins Instagram, qui ne disent pas la même chose : la bio, la
     // prospection directe, et le lien qui montre l'exemple chiffré (#125).
-    expect(parSource.instagram.sort()).toEqual(["bio_instagram", "dm_exemple", "dm_prospection"]);
+    // Mission #212 — `dm_exemple` et `dm_prospection` apparaissent DEUX fois :
+    // /dm et /dm-instagram portent le même contenu, /exemple et
+    // /exemple-instagram aussi. C'est voulu. Leur donner un contenu distinct
+    // couperait le DM Instagram en deux lignes du cockpit pour toujours, et
+    // casserait la seule comparaison qui intéresse le projet : réseau contre
+    // réseau.
+    expect(parSource.instagram.sort()).toEqual([
+      "bio_instagram", "dm_exemple", "dm_exemple", "dm_prospection", "dm_prospection",
+    ]);
     // Les cinq vidéos, la bio et la promotion restent distinctes. Aucun ne
     // s'appelle « bio » tout court : les deux bios sont nommées par leur
     // réseau, sinon la colonne « Contenu » du cockpit les confond.
     expect(parSource.tiktok.sort()).toEqual([
-      "bio_tiktok", "promotion_tiktok", "video_1_negociation", "video_2_verdicts", "video_3_produits", "video_4_capture", "video_5_niveau",
+      "bio_tiktok", "dm_exemple_tiktok", "dm_prospection_tiktok", "promotion_tiktok",
+      "video_1_negociation", "video_2_verdicts", "video_3_produits", "video_4_capture", "video_5_niveau",
     ]);
     expect(Object.values(SHORT_PATHS).map((entry) => entry.content)).not.toContain("bio");
   });

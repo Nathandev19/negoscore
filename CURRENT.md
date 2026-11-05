@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 31/10/2026 (mission #211).** Ce fichier se met à jour
+**Dernière mise à jour : 05/11/2026 (mission #212).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 42 fichiers
-de migration et 177 fichiers de test.
+de migration et 178 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -180,6 +180,51 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#212 — un lien de message privé ne peut plus mentir sur son réseau.**
+
+`/dm` forçait `utm_source=instagram`, et le lien était collé en message privé
+sur DEUX réseaux. Toute visite venue d'un DM TikTok comptait en Instagram —
+donc le compteur de l'admin, montré plus fiable que celui de TikTok Ads
+(47 contre 39, puis 353 contre 236), perdait l'acquis qui le rendait
+autoritaire.
+
+- **UN CHEMIN PAR RÉSEAU** (`lib/acquisition/chemins.ts`), et pas un paramètre
+  à ajouter à la main : c'est déjà la forme du dépôt (`/insta` et `/tiktok`
+  séparent les deux bios avec `bio_instagram` et `bio_tiktok`), et c'est ce que
+  dit la littérature d'attribution — `utm_source` nomme la plateforme,
+  `utm_medium` le type de canal. Quatre lignes de table, aucun mécanisme neuf.
+- **`/dm` ET `/exemple` NE BOUGENT PAS D'UN OCTET.** Les liens déjà envoyés
+  comptent sous les mêmes source, medium, campagne et contenu. D'où une
+  symétrie imparfaite assumée : Instagram garde `dm_prospection` et
+  `dm_exemple`, TikTok reçoit `dm_prospection_tiktok` et `dm_exemple_tiktok`.
+- **`/dm-instagram` et `/exemple-instagram` sont des ALIAS EXACTS**, mêmes
+  source et contenu que les adresses d'origine. Leur donner un contenu distinct
+  aurait coupé le DM Instagram en deux lignes du cockpit pour toujours, et cassé
+  la seule comparaison qui intéresse le projet : réseau contre réseau.
+- **`/exemple` PORTAIT LE MÊME DÉFAUT, et la mission ne le nommait pas.** Il
+  porte `medium: dm` : c'est l'autre lien de message privé (#125). Réparer
+  `/dm` seul aurait laissé la moitié des DM falsifiée.
+- **AUCUNE MIGRATION.** `admin_dashboard_metrics` groupe par
+  `utm_source, utm_campaign, utm_content` : deux réseaux donnent deux lignes
+  sans toucher au SQL. **Vérifié sur le moteur**, pas déduit du texte —
+  `tests/migrations-moteur.test.ts` pose 3 événements Instagram et 1 TikTok sur
+  PGlite, appelle la fonction, et lit deux lignes séparées (2 visites / 1
+  analyse d'un côté, 1 / 0 de l'autre).
+- **LA GARDE QUI EMPÊCHE LE DÉFAUT DE REVENIR** (`tests/dm-par-reseau.test.ts`,
+  13 tests) : tout chemin de medium `dm` doit nommer son réseau dans son
+  chemin, et les deux seules exceptions tolérées sont les adresses historiques
+  `dm` et `exemple`, nommées une par une. Un chemin de DM ajouté demain sans
+  réseau fait tomber la garde.
+- **UNKNOWN : les occurrences de `langue_fuite_reprise` et
+  `langue_fuite_reparee` depuis le 31/10.** Ces événements ne sont écrits NULLE
+  PART ailleurs qu'en `console.warn` (`lib/llm/extract.ts:103` et `:106`,
+  `lib/llm/turn.ts:35` et `:38`) : ils ne vivent que dans les journaux de
+  l'hébergeur, qui ne se lisent pas depuis le dépôt. Le volume d'analyses sur
+  la même période se lit en base ; le SELECT est dans le rapport de la mission,
+  il n'a pas été exécuté ici.
+
+## MISSION PRÉCÉDENTE
+
 **#211 — la fuite de langue, mesurée sur de vrais appels.**
 
 900 appels au modèle, 9 offres écrites pour l'éval, 50 passes par offre et par
@@ -223,7 +268,7 @@ dans `evals/results/langue-2026-10-31T19-05-39-717Z.json`). Coût réel
   l'intervalle normal rendrait « 0 % [0 % ; 0 %] » à zéro succès et ferait
   conclure à l'absence de fuite.
 
-## MISSION PRÉCÉDENTE
+## AVANT-DERNIÈRE MISSION
 
 **#210 — du texte non latin ne peut plus atteindre l'écran.**
 
@@ -253,7 +298,7 @@ caractère non latin — la fuite venait de la génération.
   position de la consigne reste ouvert, mais pour une autre raison : l'éval a
   tourné et ne départage pas.
 
-## AVANT-DERNIÈRE MISSION
+## MISSIONS ANTÉRIEURES
 
 **#209 — mesurer le comportement À L'INTÉRIEUR d'une page.**
 
@@ -452,6 +497,15 @@ n'appelle aucune action.
   relue. UNKNOWN jusqu'à ce que quelques tours soient passés en production.
 - **Une éval large du réglage « none » sur un tour.** Celui retenu l'a été sur
   UNE fixture et trois passes, le minimum que la mission #202 demandait.
+- **L'ATTRIBUTION DES DM EST SÉPARÉE PAR RÉSEAU** (#212), et il reste à
+  COLLER les nouvelles adresses : `/dm-tiktok` et `/exemple-tiktok` dans les
+  messages privés TikTok, `/dm-instagram` et `/exemple-instagram` dans ceux
+  d'Instagram. Tant qu'aucun DM ne porte la nouvelle adresse, l'écran continue
+  d'afficher une seule ligne de DM, et c'est normal.
+- **LES OCCURRENCES DE FUITE DE LANGUE NE SONT PAS INTERROGEABLES** (#212).
+  Elles ne vivent qu'en `console.warn`, donc dans les journaux de l'hébergeur.
+  Les faire passer par `recordProductEvent` demanderait une migration : non
+  fait, non décidé.
 - **LA FUITE DE LANGUE EST MESURÉE, SA CAUSE NON** (#211). 0,22 % par appel,
   IC 95 % [0,04 % ; 1,25 %], une occurrence reproduite sur 450 appels. La
   position de la consigne de langue dans le prompt reste à trancher : l'éval
