@@ -59,7 +59,32 @@ describe("normalizeDeal", () => {
   it("ne déduit aucun autre drapeau, ni durée, ni territoire", () => {
     const deal = normalizeDeal(POSTS_ON_OWN_ACCOUNT);
     expect(deal.usage).toEqual({ ...NO_USAGE, organic: true });
-    expect({ ...deal, usage: NO_USAGE }).toEqual(POSTS_ON_OWN_ACCOUNT);
+    // Mission #215 — `diffusion` est le SECOND champ que la normalisation
+    // complète, et le seul autre : tout le reste est recopié tel quel.
+    expect({ ...deal, usage: NO_USAGE, diffusion: POSTS_ON_OWN_ACCOUNT.diffusion }).toEqual(POSTS_ON_OWN_ACCOUNT);
+  });
+
+  // Mission #215 — UNE SEULE DIRECTION.
+  //
+  // Le cas vient d'un tour de négociation : `publication_required` peut passer
+  // à true (groupe « publication ») alors que `diffusion` n'est pas dans le
+  // schéma du tour et resterait celle de l'offre d'origine. L'écran dirait
+  // alors « Publication sur tes comptes : Oui » et, deux blocs plus bas, que la
+  // marque diffuse seule.
+  it("une publication demandée ne peut pas coexister avec « la marque diffuse seule »", () => {
+    expect(POSTS_ON_OWN_ACCOUNT.diffusion).toBe("unspecified");
+    expect(normalizeDeal(POSTS_ON_OWN_ACCOUNT).diffusion).toBe("creator");
+    const contradictoire = { ...POSTS_ON_OWN_ACCOUNT, diffusion: "brand_only" as const };
+    expect(normalizeDeal(contradictoire).diffusion).toBe("creator");
+  });
+
+  it("et JAMAIS l'inverse : un false ne fabrique pas « la marque diffuse seule »", () => {
+    // `publication_required === false` confond « l'offre dit non » et « l'offre
+    // n'en parle pas » : c'est l'ambiguïté que la #215 est venue lever, elle ne
+    // va pas la refabriquer ici.
+    const sans = { ...POSTS_ON_OWN_ACCOUNT, publication_required: false };
+    expect(normalizeDeal(sans).diffusion).toBe("unspecified");
+    expect(normalizeDeal({ ...sans, diffusion: "creator" as const }).diffusion).toBe("creator");
   });
 
   it("sans publication sur le compte, rien ne change", () => {
@@ -78,7 +103,9 @@ describe("normalizeDeal", () => {
     };
     expect(normalizeDeal(rich)).toEqual(rich);
     const published = { ...rich, publication_required: true };
-    expect(normalizeDeal(published)).toEqual(published);
+    // Mission #215 — un seul champ change, et c'est `diffusion` : voir le test
+    // de la cohérence à sens unique ci-dessus.
+    expect(normalizeDeal(published)).toEqual({ ...published, diffusion: "creator" });
   });
 });
 

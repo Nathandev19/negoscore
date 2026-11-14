@@ -157,11 +157,15 @@ const lisible = (html: string) => html.replaceAll("&#x27;", "'").replaceAll("&#x
 
 describe("A2 — le nombre annoncé et les puces affichées sont toujours égaux", () => {
   it("cas 1 : quatre mentions annoncées, quatre puces qui portent leur libellé", () => {
-    // Mission #214 — publication sur le compte du créateur : c'est la branche
-    // où les mentions du contrat écrit existent, et c'est leur comptage que ce
-    // test surveille. Hors du champ de la loi, la liste est vide par
-    // construction, et il n'y a plus rien à compter.
-    const frLegal = computeFrLegal({ ...ECHANTILLON[0].deal, publication_required: true });
+    // Mission #214, resserrée par la #215 — les mentions du contrat écrit
+    // n'existent que dans le champ de la loi ET au-delà du seuil. C'est leur
+    // comptage que ce test surveille : il se place donc dans ce cas-là, avec un
+    // montant qui franchit le seuil (le deal de l'échantillon est à 250 €).
+    const frLegal = computeFrLegal({
+      ...ECHANTILLON[0].deal,
+      diffusion: "creator",
+      payment: { ...ECHANTILLON[0].deal.payment, amount_eur: 2400 },
+    });
     expect(frLegal.missing_mandatory_clauses).toHaveLength(4);
     const html = renderToStaticMarkup(<LegalNotice legal={frLegal} />);
     expect(puces(html)).toHaveLength(4);

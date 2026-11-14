@@ -33,6 +33,9 @@ const EMPTY_DEAL: Deal = {
   // Mission #116 — aucune commission : valeur par défaut, comportement inchangé.
   variable_pay: { present: false, rate_percent: null, base: null, per_sale_eur: null, attribution_days: null, payout: null },
   brand: null,
+  // Mission #215 — une offre vide ne dit pas qui diffuse : c'est un constat,
+  // pas un échec d'extraction.
+  diffusion: "unspecified",
   deliverables: [],
   publication_required: false,
   usage: {

@@ -29,6 +29,10 @@ function makeDeal(overrides: Partial<Deal> = {}): Deal {
     brand: "Marque Test",
     deliverables: [{ type: "video", platform: "tiktok", quantity: 1, format: null }],
     publication_required: false,
+    // Mission #215 — ce deal neutre est de l'UGC pur, et il le DIT maintenant
+    // au lieu de le laisser déduire d'un drapeau d'usage : la marque diffuse
+    // elle-même. C'est la branche hors champ de la loi du 9 juin 2023.
+    diffusion: "brand_only",
     usage: {
       organic: true,
       paid_ads: false,
@@ -389,7 +393,7 @@ describe("computeFrLegal", () => {
   it("seuil franchi dans le champ de la loi : l'obligation est affirmée", () => {
     const legal = computeFrLegal(
       makeDeal({
-        publication_required: true,
+        diffusion: "creator",
         payment: { amount_eur: 800, currency: "EUR", terms_days: 30, schedule: null },
         in_kind_value_eur: 250,
       }),
@@ -399,13 +403,24 @@ describe("computeFrLegal", () => {
     expect(legal.written_contract_required).toBe(true);
   });
 
-  it("threshold no sous 1 000 €", () => {
-    const legal = computeFrLegal(makeDeal({ publication_required: true }));
+  // Mission #215, point 3 — LES SEPT MENTIONS SE CONDITIONNENT AU SEUIL.
+  // Elles sont le contenu imposé au contrat écrit, et le contrat écrit n'est
+  // obligatoire qu'à partir de 1 000 € HT : sous le seuil, les annoncer serait
+  // le défaut de la #214 déplacé d'un cran.
+  it("threshold no sous 1 000 € : aucune mention annoncée, même dans le champ", () => {
+    const legal = computeFrLegal(makeDeal({ diffusion: "creator" }));
     expect(legal.threshold_1000_reached).toBe("no");
     expect(legal.written_contract_required).toBe(false);
+    expect(legal.missing_mandatory_clauses).toEqual([]);
+    expect(legal.note).toContain("pas un conseil juridique");
+  });
+
+  it("seuil atteint dans le champ : les mentions absentes sont annoncées", () => {
+    const legal = computeFrLegal(
+      makeDeal({ diffusion: "creator", payment: { amount_eur: 2400, currency: "EUR", terms_days: null, schedule: null } }),
+    );
     expect(legal.missing_mandatory_clauses).toContain("Modalités de paiement");
     expect(legal.missing_mandatory_clauses).toContain("Soumission au droit français");
-    expect(legal.note).toContain("pas un conseil juridique");
   });
 
   it("threshold unknown sans montant, non applicable sous un droit étranger", () => {
@@ -422,7 +437,13 @@ describe("computeFrLegal", () => {
     expect(foreign.applicable).toBe(false);
     expect(foreign.written_contract_required).toBe(false);
     expect(
-      computeFrLegal(makeDeal({ governing_law: "Droit français", publication_required: true })).missing_mandatory_clauses,
+      computeFrLegal(
+        makeDeal({
+          governing_law: "Droit français",
+          diffusion: "creator",
+          payment: { amount_eur: 2400, currency: "EUR", terms_days: null, schedule: null },
+        }),
+      ).missing_mandatory_clauses,
     ).not.toContain("Soumission au droit français");
   });
 });

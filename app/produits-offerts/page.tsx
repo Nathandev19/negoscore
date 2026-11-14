@@ -3,7 +3,7 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { WRITTEN_CONTRACT_THRESHOLD_EUR } from "@/lib/legal/fr";
+import { SEUIL_ASSIETTE, SEUIL_CE_QUE_LE_PRODUIT_COMPTE, WRITTEN_CONTRACT_THRESHOLD_EUR } from "@/lib/legal/fr";
 import { formatEur } from "@/lib/money";
 import { ViewPixel } from "@/components/analytics/view-pixel";
 import { exampleHrefFrom, internalHrefFrom } from "@/lib/analytics/views";
@@ -47,9 +47,19 @@ export default function GiftedProductsPage() {
             plus un cadeau. C&apos;est un paiement en nature, dans une relation commerciale. La loi du 9 juin 2023 sur
             l&apos;influence commerciale encadre ces partenariats quand tu mobilises ta notoriété auprès de ton
             audience — c&apos;est le cas dès qu&apos;on te demande une vidéo, une story ou une mention sur ton compte.
-            Dans ce cadre, elle impose un contrat écrit dès que la collaboration dépasse{" "}
-            {formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)}&nbsp;HT, seuil fixé par le décret n°&nbsp;2025-1137. En
-            dessous, l&apos;écrit n&apos;est pas obligatoire — mais rien ne t&apos;empêche de le demander.
+            Dans ce cadre, elle impose un contrat écrit à partir de{" "}
+            {formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)}&nbsp;HT, seuil fixé par le décret n°&nbsp;2025-1137 du
+            28&nbsp;novembre 2025. En dessous, l&apos;écrit n&apos;est pas obligatoire — mais rien ne t&apos;empêche de
+            le demander.
+          </p>
+          {/* Mission #215 — CES DEUX PHRASES SONT CELLES DE L'ANALYSE, littéralement :
+              elles viennent de lib/legal/fr.ts, le seul fichier autorisé à porter un
+              énoncé juridique. Le guide et l'analyse ne peuvent donc plus énoncer deux
+              règles différentes, et ce n'est plus une garde de chaînes recopiées —
+              c'est la même constante. La #062 (C1) les avait alignées à la main ; en
+              #214 les deux étaient fausses de la même façon. */}
+          <p>
+            {SEUIL_ASSIETTE} {SEUIL_CE_QUE_LE_PRODUIT_COMPTE}
           </p>
           <p>
             Si au contraire la marque garde les vidéos pour ses propres canaux, publicité comprise, et que tu ne publies

@@ -36,6 +36,26 @@ export const analysisSchema = z.object({
       }),
     ),
     publication_required: z.boolean(),
+    // Mission #215 — QUI DIFFUSE, EN TROIS VALEURS EXPLICITES.
+    //
+    // `publication_required` est un booléen dont le `false` confond « l'offre
+    // dit non » et « l'offre n'en parle pas » (constaté en #214). Un booléen
+    // ambigu ne peut pas porter une condition juridique : le champ de la loi
+    // du 9 juin 2023 se lit ICI, et seulement ici.
+    //
+    // « unspecified » n'est PAS un échec d'extraction : c'est un constat sur
+    // l'offre, et c'est la valeur que le modèle doit rendre quand l'offre est
+    // muette. La valeur par défaut ne tranche donc rien — elle ne sert qu'à
+    // relire les analyses enregistrées avant cette mission, qui n'ont pas le
+    // champ. Le schéma envoyé au modèle, lui, le rend OBLIGATOIRE
+    // (`strictify` dans lib/llm/prompt.ts met toutes les propriétés dans
+    // `required`) : le modèle ne peut pas l'omettre et laisser le défaut
+    // décider à sa place.
+    //
+    // Le booléen reste : il sert au chiffrage (lib/rates/engine.ts), au
+    // récapitulatif, aux termes suivis d'un tour et à la garde
+    // « notre compte » de lib/negotiation/written.ts.
+    diffusion: z.enum(["creator", "brand_only", "unspecified"]).default("unspecified"),
     usage: z.object({
       organic: z.boolean(),
       paid_ads: z.boolean(),

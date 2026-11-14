@@ -1,10 +1,11 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import GiftedProductsPage from "@/app/produits-offerts/page";
 import sitemap from "@/app/sitemap";
 import { FOOTER_COLUMNS } from "@/components/site-footer";
+import { SEUIL_ASSIETTE, SEUIL_CE_QUE_LE_PRODUIT_COMPTE } from "@/lib/legal/fr";
 import { CANONICAL_ORIGIN, PUBLIC_PAGES, publicPageMetadata } from "@/lib/seo";
 
 // Mission #055 — page /produits-offerts. Texte fourni par l'éditeur : ce test
@@ -79,7 +80,7 @@ describe("page /produits-offerts", () => {
   it("la condition d'entrée de la loi du 9 juin 2023, le décret, et le renvoi au comptable", () => {
     for (const phrase of [
       "La loi du 9 juin 2023 sur l'influence commerciale encadre ces partenariats quand tu mobilises ta notoriété auprès de ton audience",
-      "Dans ce cadre, elle impose un contrat écrit dès que la collaboration dépasse 1 000 € HT, seuil fixé par le décret n° 2025-1137.",
+      "Dans ce cadre, elle impose un contrat écrit à partir de 1 000 € HT, seuil fixé par le décret n° 2025-1137 du 28 novembre 2025.",
       "cette loi-là ne s'applique pas : tu n'as pas mobilisé ton audience",
       "l'article L131-3 du Code de la propriété intellectuelle, dès qu'il y a cession de droits",
     ]) {
@@ -87,6 +88,21 @@ describe("page /produits-offerts", () => {
     }
     expect(texte).not.toContain("cumulés sur l'année civile");
     expect(texte).toContain("parles-en à un comptable");
+  });
+
+  // Mission #215 — L'ALIGNEMENT N'EST PLUS UNE GARDE DE CHAÎNES RECOPIÉES.
+  //
+  // La #062 (C1) avait aligné le guide et l'analyse à la main, et en #214 les
+  // deux se sont révélés faux de la même façon. Le guide REND maintenant les
+  // constantes de lib/legal/fr.ts : ils ne peuvent plus énoncer deux règles
+  // différentes, parce que c'est la même phrase.
+  it("l'assiette du seuil est littéralement celle de l'analyse", () => {
+    expect(texte).toContain(SEUIL_ASSIETTE);
+    expect(texte).toContain(SEUIL_CE_QUE_LE_PRODUIT_COMPTE);
+    // Et la page les prend là-bas, elle ne les recopie pas.
+    const source = readFileSync("app/produits-offerts/page.tsx", "utf8");
+    expect(source).toContain("{SEUIL_ASSIETTE} {SEUIL_CE_QUE_LE_PRODUIT_COMPTE}");
+    expect(source).not.toContain("au cours de la même année");
   });
 
   // Mission #158 — les quatre guides se citent dans leur texte, et chaque lien

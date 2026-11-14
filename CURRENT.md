@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 14/11/2026 (mission #214).** Ce fichier se met à jour
+**Dernière mise à jour : 14/11/2026 (mission #215).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -41,15 +41,19 @@ de la section « Vérifié hors du dépôt ».
   ne produit jamais un prix : chiffrage, verdict, couche légale et contre-offre
   sortent de `lib/rates/`, `lib/legal/` et `lib/analysis/compose.ts`, depuis une
   table de tarifs versionnée — la courante est `fr-2026.4.json`.
-- **La couche légale est CONDITIONNELLE au mode de diffusion** (#214).
+- **La couche légale est CONDITIONNELLE au mode de diffusion** (#214, #215).
   `lib/legal/fr.ts` est le seul fichier autorisé à porter un énoncé juridique,
-  et il porte trois branches, pas une : publication demandée sur le compte du
-  créateur (le champ de la loi du 9 juin 2023 est réuni, le contrat écrit
-  au-delà de 1 000 € HT est affirmé), diffusion par la marque seule (hors du
-  champ, l'obligation n'est pas affirmée), et doute (rien n'est affirmé de
-  ferme). Le volet **L131-3** du Code de la propriété intellectuelle est
-  présent dans les trois dès qu'il y a cession de droits : il n'a ni seuil de
-  montant ni condition de notoriété.
+  et il porte trois branches, pas une. Le champ de la loi du 9 juin 2023 se lit
+  sur **`deal.diffusion`**, un champ d'extraction à trois valeurs
+  (`creator` / `brand_only` / `unspecified`), et sur lui seul : publication sur
+  le compte du créateur (champ réuni, contrat écrit affirmé **à partir de**
+  1 000 € HT), diffusion par la marque seule (hors du champ), offre muette
+  (rien n'est affirmé de ferme). Les sept **mentions du contrat écrit** ne
+  s'annoncent que lorsque les DEUX conditions sont réunies : champ réuni ET
+  seuil atteint. Le volet **L131-3** du Code de la propriété intellectuelle est
+  présent dans les trois branches dès qu'il y a cession de droits, et sous le
+  seuil il porte seul le message : il n'a ni seuil de montant ni condition de
+  notoriété.
 - **Le verdict ne s'affiche plus en note sur 100** (missions #174 à #178). La
   bande (`bad`/`weak`/`fair`/`good`/`excellent`) est enregistrée dans le
   payload et **projetée** à la lecture, jamais recalculée depuis le nombre.
@@ -189,6 +193,67 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#215 — les trois points laissés ouverts par la #214, tranchés.**
+
+L'éditeur a fourni le texte du décret n° 2025-1137 du 28 novembre 2025 (JORF
+n° 0280 du 29 novembre 2025), que la #214 n'avait pas, et tranché les trois
+questions.
+
+- **POINT 1 — L'ASSIETTE A UNE BASE, et elle est rétablie.** Les quatre
+  éléments de l'article 1er du décret, et il faut les quatre : la SOMME des
+  rémunérations versées ET de la valeur des avantages en nature ; entre UN
+  influenceur et UN annonceur ; au cours de la MÊME ANNÉE ; en contrepartie de
+  prestations poursuivant UN MÊME OBJECTIF PROMOTIONNEL.
+- **« année civile » reste INTERDITE dans tout le produit**, et une garde la
+  cherche dans `app/`, `components/` et `lib/` — pas seulement à l'écran
+  (précédent de la #122 : une formulation abandonnée qui reste lisible dans la
+  source se fait relire comme la bonne). Le décret dit « au cours de la même
+  année » sans dire laquelle.
+- **L'assiette n'est pas le total annuel marque × créateur, c'est le total PAR
+  OBJECTIF PROMOTIONNEL**, et le produit ne voit qu'une offre. Il n'affirme
+  donc aucun total : il dit ce qu'il compare, et il dit que d'autres
+  prestations de la même campagne s'ajouteraient à ce total sans qu'il les
+  connaisse.
+- **L'ALIGNEMENT GUIDE / ANALYSE N'EST PLUS UNE GARDE DE CHAÎNES RECOPIÉES.**
+  `SEUIL_ASSIETTE` et `SEUIL_CE_QUE_LE_PRODUIT_COMPTE` sont exportées par
+  `lib/legal/fr.ts` et RENDUES par `/produits-offerts`. La #062 (C1) les avait
+  alignées à la main ; en #214 les deux se sont révélées fausses de la même
+  façon.
+- **« À PARTIR DE » ET NON « AU-DELÀ DE »**, et c'est le II de l'article 8 qui
+  le dit : il exonère « lorsque la rémunération […] est INFÉRIEURE à un montant
+  défini par décret ». À 1 000 € pile, elle n'est pas inférieure. Le calcul
+  utilisait déjà `>=` ; c'est la phrase qui disait le contraire.
+- **POINT 2 — `deal.diffusion`, TROIS VALEURS EXTRAITES.** `creator`,
+  `brand_only`, `unspecified`. La troisième n'est pas un échec d'extraction,
+  c'est un constat sur l'offre. Le champ est OBLIGATOIRE dans le schéma envoyé
+  au modèle (`strictify`) ; la valeur par défaut ne sert qu'à relire les
+  analyses d'avant la #215, et c'est `unspecified`, qui ne tranche rien.
+- **`publication_required` NE PORTE PLUS LA CONDITION JURIDIQUE.** Le booléen
+  reste pour le chiffrage, le récapitulatif, les termes d'un tour et la garde
+  « notre compte » de `lib/negotiation/written.ts`.
+- **UN DRAPEAU D'USAGE NE FABRIQUE PLUS UN « HORS CHAMP »** que l'offre
+  n'écrit pas. C'était le dernier endroit où le produit tranchait sur une base
+  incertaine — dans l'autre sens que la #214, mais de la même façon.
+- **L'OFFRE D'EXEMPLE CHANGE DE BRANCHE**, et la #214 s'était trompée sur
+  elle : « 300 € pour 2 vidéos TikTok, avec droits pub 6 mois » ne dit pas qui
+  publie. Elle tombe dans le DOUTE, pas dans le hors-champ. Vu sur
+  `/dev/resultat?etat=debloque`.
+- **COHÉRENCE À SENS UNIQUE dans `normalizeDeal`** : `publication_required`
+  à true force `diffusion` à `creator`, jamais l'inverse. Le cas vient d'un
+  tour de négociation, où le groupe « publication » peut faire passer le
+  booléen à true alors que `diffusion` n'est pas dans le schéma du tour :
+  l'écran aurait dit « Publication sur tes comptes : Oui » et, deux blocs plus
+  bas, que la marque diffuse seule.
+- **POINT 3 — LES SEPT MENTIONS SE CONDITIONNENT AU SEUIL.** Elles sont le
+  contenu imposé au contrat écrit, qui n'est obligatoire qu'à partir de
+  1 000 € HT. Un seuil INCONNU n'est pas un seuil atteint : il ne les ouvre pas
+  non plus. Le drapeau enregistré et la liste affichée sortent désormais du
+  MÊME booléen — ils ne peuvent plus diverger.
+- **Aucune migration** : `deal` et `fr_legal` vivent dans le payload JSON de
+  l'analyse. Aucune analyse passée n'est réécrite.
+
+## MISSION PRÉCÉDENTE
+
 **#214 — le produit affirmait une obligation légale sans sa condition
 d'application.**
 
@@ -237,7 +302,7 @@ audience » : une prestation d'UGC pur en sort, et l'obligation de son article 8
   l'invariant des missions #104 et #115 (le nombre annoncé égale le nombre de
   puces) tient maintenant sur leur SOMME, et il a sa garde.
 
-## MISSION PRÉCÉDENTE
+## AVANT CELLE-LÀ
 
 **#213 — le compteur comptait des robots qui ne disent pas leur nom.**
 
@@ -290,7 +355,7 @@ trois doigts.
 - **MIGRATION 43 À APPLIQUER À LA MAIN** (`20261114000043_robots_separes.sql`).
   Elle s'exécute sur un vrai moteur dans `tests/robots-moteur.test.ts`.
 
-## AVANT CELLE-LÀ
+## ET AVANT
 
 **#212 — un lien de message privé ne peut plus mentir sur son réseau.**
 
@@ -607,21 +672,16 @@ n'appelle aucune action.
   relue. UNKNOWN jusqu'à ce que quelques tours soient passés en production.
 - **Une éval large du réglage « none » sur un tour.** Celui retenu l'a été sur
   UNE fixture et trois passes, le minimum que la mission #202 demandait.
-- **LE MODE DE DIFFUSION N'EST PAS EXTRAIT À TROIS VALEURS** (#214). Le
-  prompt ne demande qu'un booléen `publication_required`, dont le `false`
-  confond « l'offre dit non » et « l'offre n'en parle pas ». Le produit s'en
-  sort en exigeant que la diffusion par la marque soit écrite, mais un champ
-  d'extraction à trois valeurs trancherait vraiment. Non fait, non décidé :
-  il faudrait toucher au prompt et au schéma d'extraction.
-- **DEUX FORMULATIONS DU PRODUIT RESTENT SANS BASE FOURNIE** (#214), et elles
-  ne sont donc plus écrites : le cumul sur l'année civile entre une même
-  marque et un même créateur, et l'inclusion des avantages en nature dans le
-  seuil. L'addition, elle, est restée dans le calcul. UNKNOWN jusqu'à ce que
-  l'éditeur donne la base, ou décide de retirer l'addition.
-- **LES SEPT MENTIONS NE SONT PAS CONDITIONNÉES AU SEUIL** (#214) : elles
-  s'affichent dès que le champ de la loi est réuni, même sous 1 000 € HT.
-  C'était déjà le cas avant la mission (#100, #104, #115) ; la #214 n'a touché
-  qu'au champ. À trancher à part.
+- **LE MODÈLE N'A JAMAIS ÉTÉ APPELÉ AVEC LE NOUVEAU PROMPT** (#215). Le champ
+  `deal.diffusion` est obligatoire dans le schéma et le prompt dit comment le
+  remplir, mais AUCUN appel réel n'a été passé : la qualité de l'extraction de
+  ce champ est UNKNOWN, en particulier le taux de `unspecified` sur des offres
+  qui disent en fait qui publie. Ça se lira sur les premières analyses, ou sur
+  une éval.
+- **LE SEUIL EST COMPARÉ À UNE SEULE OFFRE** (#215), alors que l'assiette du
+  décret porte sur l'ensemble des prestations d'un même objectif promotionnel
+  au cours de la même année. Le produit le DIT, il ne le cache pas ; mais il
+  ne pourra jamais le calculer sans une donnée qu'il n'a pas.
 - **LA MIGRATION 43 N'EST PAS ENCORE APPLIQUÉE** (#213), à la date de ce
   fichier. Tant qu'elle ne l'est pas, les lignes s'écrivent sans classement
   (repli en deux temps dans `lib/analytics/first-party.ts`) et le cockpit

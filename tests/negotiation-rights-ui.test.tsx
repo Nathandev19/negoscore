@@ -169,14 +169,20 @@ describe("C — la conclusion", () => {
     ]);
     expect(conclusion.unclear).toContain("Le territoire où les contenus seront diffusés.");
     expect(conclusion.message).toMatch(/confirmer ces points par écrit/);
-    // Mission #214 — l'offre d'exemple est de l'UGC pur : elle ne demande
-    // aucune publication à la créatrice et la marque diffuse de son côté. La
-    // note ne peut donc PLUS affirmer le contrat écrit de la loi du 9 juin
-    // 2023 ; elle dit le champ, dit qu'on en est dehors, et s'appuie sur
-    // L131-3, qui vaut sans seuil ni condition d'audience.
-    expect(conclusion.legal_note).toContain("sort donc du champ de cette loi");
+    // Mission #214, corrigée par la #215 — L'OFFRE D'EXEMPLE NE DIT PAS QUI
+    // DIFFUSE, et c'est exactement ce que la note dit maintenant.
+    //
+    // « 300 € pour 2 vidéos TikTok, avec droits pub 6 mois » ne dit pas qui
+    // publie. La #214 en déduisait « la marque diffuse seule », parce qu'elle
+    // lisait des drapeaux d'usage faute d'un champ explicite : c'était une
+    // affirmation ferme sur une base incertaine, dans l'autre sens. Le champ à
+    // trois valeurs la fait tomber dans la branche du doute, où rien n'est
+    // affirmé, et où L131-3 porte seul le message.
+    expect(conclusion.legal_note).toContain("L'offre ne dit pas qui diffuse");
+    expect(conclusion.legal_note).toContain("un contrat écrit peut être obligatoire");
     expect(conclusion.legal_note).toContain("article L131-3 du Code de la propriété intellectuelle");
     expect(conclusion.legal_note).not.toContain("demande un contrat écrit avant de commencer");
+    expect(conclusion.legal_note).not.toContain("sort donc du champ");
     expect(conclusion.legal_note).toContain("pas un conseil juridique");
   });
 
@@ -197,9 +203,11 @@ describe("C — la conclusion", () => {
 // montre que c'est bien la condition d'entrée qui fait la différence.
 describe("C4 — le seuil du contrat écrit quand la marque accepte une fourchette", () => {
   const DEAL = analysisSchema.shape.deal.parse((sampleExtraction as { deal: unknown }).deal);
-  const note = (publication: boolean) =>
+  // Mission #215 — le champ se lit sur `deal.diffusion` : « creator » dedans,
+  // « brand_only » dehors. `publication_required` ne le porte plus.
+  const note = (diffusion: "creator" | "brand_only") =>
     buildConclusion({
-      deal: { ...DEAL, publication_required: publication, payment: { ...DEAL.payment, amount_eur: null } },
+      deal: { ...DEAL, diffusion, payment: { ...DEAL.payment, amount_eur: null } },
       asks: [],
       language: "fr",
       source: "brand_accepted",
@@ -207,13 +215,13 @@ describe("C4 — le seuil du contrat écrit quand la marque accepte une fourchet
     }).legal_note;
 
   it("toute la fourchette acceptée dépasse 1 000 € HT : la note dit que le seuil est atteint", () => {
-    expect(note(true)).toContain("atteint ce seuil : demande un contrat écrit");
-    expect(note(true)).not.toContain("Le montant n'est pas connu");
+    expect(note("creator")).toContain("atteint ce seuil : demande un contrat écrit");
+    expect(note("creator")).not.toContain("Le montant n'est pas connu");
   });
 
   it("la même fourchette, hors du champ de la loi : aucun seuil n'est opposé", () => {
-    expect(note(false)).toContain("sort donc du champ de cette loi");
-    expect(note(false)).not.toContain("atteint ce seuil");
+    expect(note("brand_only")).toContain("sort donc du champ de cette loi");
+    expect(note("brand_only")).not.toContain("atteint ce seuil");
   });
 });
 

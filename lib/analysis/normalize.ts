@@ -58,6 +58,21 @@ export function normalizeDeal(deal: Deal): Deal {
   const amount = isForeignCurrency(payment.currency) ? null : stated(payment.amount_eur);
   return {
     ...deal,
+    // Mission #215 — UNE SEULE DIRECTION, ET JAMAIS L'INVERSE.
+    //
+    // Une publication demandée sur le compte du créateur ne peut pas coexister
+    // avec « la marque diffuse seule ». Le cas n'est pas théorique : un tour de
+    // négociation peut faire passer `publication_required` à true (groupe
+    // « publication », lib/negotiation/terms.ts), et `diffusion` n'est pas dans
+    // le schéma du tour — elle resterait celle de l'offre d'origine. L'écran
+    // afficherait alors « Publication sur tes comptes : Oui » et, deux blocs
+    // plus bas, « cette collaboration sort du champ de cette loi ».
+    //
+    // L'INVERSE NE SE FAIT PAS : `publication_required === false` ne veut pas
+    // dire que le créateur ne publie pas, c'est précisément l'ambiguïté que la
+    // #215 est venue lever. Un false ne peut donc jamais produire
+    // « brand_only ».
+    diffusion: deal.publication_required ? "creator" : deal.diffusion,
     deliverables: deal.deliverables.map((deliverable) => ({ ...deliverable, quantity: stated(deliverable.quantity) })),
     usage: {
       ...usage,

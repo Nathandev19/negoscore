@@ -105,17 +105,14 @@ describe("note juridique", () => {
     // porte donc aucun montant — la garde se poserait sur une chaîne vide.
     const extrait = baseExtraction().deal;
     const notes = [
-      // Champ réuni : publication demandée sur le compte du créateur.
-      computeFrLegal({ ...extrait, publication_required: true }).note,
-      // Doute : rien ne dit qui diffuse.
-      computeFrLegal({
-        ...extrait,
-        publication_required: false,
-        usage: { ...extrait.usage, organic: false, paid_ads: false, whitelisting: false, spark_ads: false },
-      }).note,
+      // Mission #215 — le champ se lit sur `deal.diffusion`, et sur lui seul.
+      // Champ réuni : l'offre demande une publication sur le compte du créateur.
+      computeFrLegal({ ...extrait, diffusion: "creator" }).note,
+      // Doute : l'offre ne dit pas qui diffuse.
+      computeFrLegal({ ...extrait, diffusion: "unspecified" }).note,
     ];
     for (const note of notes) {
-      const amount = note.match(/au-delà de (.+?) \(/)?.[1] ?? "";
+      const amount = note.match(/à partir de (.+?) \(/)?.[1] ?? "";
       expect(amount.replace(/[\u202f\u00a0]/g, "_")).toBe("1_000_€_HT");
     }
   });

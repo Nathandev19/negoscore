@@ -25,9 +25,15 @@ const DISCLAIMER = "C'est une information générale, pas un conseil juridique."
 //     une formalité de préambule, c'est une CONDITION D'ENTRÉE : elle
 //     restreint tout le champ de la loi ;
 //   — l'article 8 de cette même loi impose un contrat écrit au-delà d'un
-//     seuil fixé par décret ;
-//   — le décret n° 2025-1137 fixe ce seuil à 1 000 € HT, en vigueur depuis le
-//     1er janvier 2026.
+//     seuil fixé par décret. Son II exonère « lorsque la rémunération de
+//     l'activité d'influence commerciale par voie électronique concernée ou la
+//     valeur totale cumulée de l'avantage en nature concédé en échange de
+//     celle-ci est INFÉRIEURE à un montant défini par décret en Conseil
+//     d'Etat » — d'où « à partir de » et non « au-delà de » dans les textes
+//     ci-dessous, et d'où le `>=` du calcul : à 1 000 € pile, la rémunération
+//     n'est pas inférieure au seuil, donc l'exonération ne joue pas ;
+//   — le décret n° 2025-1137 du 28 novembre 2025 fixe ce seuil à 1 000 € HT et
+//     entre en vigueur le 1er janvier 2026 (son article 2).
 //
 // Conséquence, et c'est elle qui manquait à l'écran : une prestation d'UGC
 // pur — le créateur livre des vidéos à la marque, la marque les diffuse sur
@@ -47,14 +53,45 @@ const CHAMP =
 // « 1 000 € HT » ne se coupe jamais en fin de ligne. Même raison pour le
 // numéro du décret et pour « 1er janvier ».
 const SEUIL = `${formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)}\u00a0HT`;
-const SEUIL_SOURCE = "seuil fixé par le décret n°\u00a02025-1137, en vigueur depuis le 1er\u00a0janvier 2026";
+const SEUIL_SOURCE =
+  "seuil fixé par le décret n°\u00a02025-1137 du 28\u00a0novembre 2025, en vigueur depuis le 1er\u00a0janvier 2026";
 
-// Ce que le produit COMPARE au seuil. C'est une phrase sur le produit, pas sur
-// le texte de loi : additionner le montant et la valeur des produits offerts
-// est une décision du dépôt (mission #057), elle ne se présente donc pas comme
-// une citation.
-const CE_QUI_EST_COMPTE =
-  "Ce que le produit compare à ce seuil : le montant proposé, plus la valeur des produits offerts quand l'offre la chiffre.";
+// Mission #215 — L'ASSIETTE DU SEUIL A UNE BASE, ET ELLE EST DANS LE DÉCRET.
+//
+// La #214 avait retiré la formulation du cumul annuel, faute de base. La base
+// existe — l'article 1er du décret —, et cette formulation était fausse sur
+// deux points : elle datait le cumul sur une année précise, que le décret ne
+// nomme pas (il dit « au cours de la MÊME ANNÉE », sans dire laquelle, et on ne
+// l'invente pas), et surtout elle OMETTAIT la restriction décisive.
+//
+// La formulation retirée n'est écrite nulle part, pas même ici en commentaire :
+// précédent de la #122, où une qualification abandonnée restait lisible dans la
+// source et pouvait se faire relire comme la bonne. La garde de
+// tests/champ-loi-influence.test.tsx vise donc l'écran ET le fichier.
+//
+// Les quatre éléments de l'article 1er du décret, et il faut les quatre : la
+// SOMME des rémunérations versées ET de la valeur des avantages en nature ;
+// entre UN influenceur et UN annonceur ; au cours de la MÊME ANNÉE ; en
+// contrepartie de prestations poursuivant UN MÊME OBJECTIF PROMOTIONNEL.
+//
+// Le quatrième n'est pas décoratif : l'assiette n'est pas le total annuel
+// entre la marque et le créateur, c'est le total PAR OBJECTIF PROMOTIONNEL.
+// Et le produit ne connaît qu'une offre : il ne sait pas ce que le créateur a
+// déjà facturé à cette marque cette année, ni pour quelle campagne. Il
+// n'affirme donc pas un total — il dit ce qu'il compare, et il dit que les
+// autres prestations de la même campagne s'y ajouteraient.
+//
+// LES DEUX PHRASES SONT EXPORTÉES, et /produits-offerts les RENDENT telles
+// quelles : l'alignement entre le guide et l'analyse n'est plus une garde de
+// chaînes recopiées (mission #062, C1, où les deux étaient fausses de la même
+// façon), c'est la même constante.
+export const SEUIL_ASSIETTE =
+  "Le seuil porte sur la somme des rémunérations versées et de la valeur des avantages en nature accordés à un influenceur par un annonceur au cours de la même année, en contrepartie d'une prestation ou d'un ensemble de prestations d'influence commerciale par voie électronique poursuivant un même objectif promotionnel.";
+
+export const SEUIL_CE_QUE_LE_PRODUIT_COMPTE =
+  "Le produit n'additionne que cette offre : le montant proposé et la valeur des produits offerts quand l'offre la chiffre. D'autres prestations de la même campagne s'ajouteraient à ce total, et le produit ne les connaît pas.";
+
+const CE_QUI_EST_COMPTE = `${SEUIL_ASSIETTE} ${SEUIL_CE_QUE_LE_PRODUIT_COMPTE}`;
 
 // L131-3, repris sur ses propres termes — ceux de l'article, pas une
 // paraphrase de mémoire : « chacun des droits cédés fasse l'objet d'une
@@ -166,34 +203,37 @@ function isFrenchLaw(governingLaw: string | null): boolean {
 //   — « createur » : l'offre demande une publication sur le compte du
 //     créateur. La notoriété est mobilisée auprès de son audience, le champ de
 //     la loi 2023-451 est réuni ;
-//   — « marque » : aucune publication demandée au créateur, et l'offre dit
-//     positivement que la marque diffuse de son côté (ses comptes, ou la
-//     publicité payante). C'est l'UGC pur, hors du champ ;
-//   — « inconnu » : tout le reste.
+//   — « marque » : l'offre dit que la marque diffuse elle-même, sans
+//     publication du créateur. C'est l'UGC pur, hors du champ ;
+//   — « inconnu » : l'offre ne le dit pas, ou elle décrit un cas que les
+//     références ne tranchent pas.
 //
-// DEUX PIÈGES, et ils vont en sens inverse.
+// Mission #215 — LA CONDITION JURIDIQUE LIT `deal.diffusion`, ET LUI SEUL.
 //
-// 1. `publication_required === false` ne veut PAS dire « le créateur ne publie
-//    pas ». Le prompt dit « true seulement si le créateur doit publier sur son
-//    propre compte » : false confond donc « l'offre dit non » et « l'offre
-//    n'en parle pas ». On ne peut pas en déduire seul la sortie du champ —
-//    il faut que la diffusion par la marque soit, elle, positivement écrite.
+// La #214 la déduisait de `publication_required` et des drapeaux d'usage,
+// faute de mieux. Ce booléen confond « l'offre dit non » et « l'offre n'en
+// parle pas » : il ne peut pas porter une condition juridique. Le modèle rend
+// maintenant trois valeurs explicites, « unspecified » comprise, et c'est
+// elle qui décide. Un drapeau d'usage ne fabrique donc plus un « marque » que
+// l'offre n'écrit pas — c'était le dernier endroit où le produit tranchait sur
+// une base incertaine.
 //
-// 2. Le marquage blanc (`whitelisting`) et les Spark Ads ne sont PAS des
-//    canaux de la marque : la publicité part du compte du créateur, ou elle
-//    pousse une publication du créateur. Ce n'est donc ni « exclusivement sur
-//    les canaux de la marque », ni une publication du créateur établie. Les
-//    classer d'un côté ou de l'autre serait trancher une question que les
-//    références ci-dessus ne tranchent pas : ils vont dans « inconnu ».
+// CE QUI NE CHANGE PAS : le marquage blanc (`whitelisting`) et les Spark Ads
+// ne sont pas des canaux de la marque — la publicité part du compte du
+// créateur, ou elle pousse une publication du créateur. Ce n'est ni
+// « exclusivement sur les canaux de la marque », ni une publication du
+// créateur établie. Les classer d'un côté serait trancher une question que les
+// références ne tranchent pas : ils restent dans « inconnu ». Une publication
+// explicitement demandée l'emporte quand même, et elle est donc lue d'abord.
 //
-// `normalizeDeal` recopie `publication_required` dans `usage.organic` ; c'est
-// sans effet ici, parce que `publication_required` est lu AVANT.
+// `normalizeDeal` garantit par ailleurs qu'un `publication_required` à true
+// ne peut pas coexister avec « brand_only » : voir son commentaire.
 export type Diffusion = FrLegal["diffusion"];
 
 export function diffusionDe(deal: Deal): Diffusion {
-  if (deal.publication_required) return "createur";
+  if (deal.diffusion === "creator") return "createur";
   if (deal.usage.whitelisting || deal.usage.spark_ads) return "inconnu";
-  if (deal.usage.organic || deal.usage.paid_ads) return "marque";
+  if (deal.diffusion === "brand_only") return "marque";
   return "inconnu";
 }
 
@@ -242,14 +282,17 @@ export function computeFrLegal(deal: Deal): FrLegal {
 
   const diffusion = diffusionDe(deal);
   const rightsTransfer = hasRightsTransfer(deal);
-  // Mission #214, point 4 — LA GRAVITÉ SUIT LA BASE.
+  // Mission #214, point 4, resserré par la #215 — LA GRAVITÉ SUIT LA BASE.
   //
-  // Ces sept mentions sont celles du contrat écrit de la loi 2023-451 : elles
-  // n'ont de caractère obligatoire que dans le champ de cette loi. Hors de ce
-  // champ — et tant qu'on ne sait pas si on y est —, les annoncer comme
-  // « absentes » serait exactement l'affirmation sans sa condition que cette
-  // mission corrige. Le volet L131-3 prend alors le relais, et lui ne dépend
-  // ni du montant ni du mode de diffusion.
+  // Ces sept mentions sont le CONTENU IMPOSÉ AU CONTRAT ÉCRIT de la loi
+  // 2023-451. Elles n'ont donc de caractère obligatoire que là où ce contrat
+  // écrit l'est : dans le champ de la loi ET au-delà du seuil. La #214 n'avait
+  // posé que la première condition ; les annoncer sous le seuil, c'était le
+  // même défaut déplacé d'un cran. Un seuil inconnu n'est pas un seuil
+  // atteint : il ne les ouvre pas non plus.
+  //
+  // Sous le seuil, champ réuni ou non, le volet L131-3 reste et porte seul le
+  // message — lui ne dépend ni du montant ni de la notoriété.
   const clauses: Array<[string, boolean]> = [
     ["Identification des parties", deal.brand === null],
     ["Description des prestations", deal.deliverables.length === 0],
@@ -259,7 +302,9 @@ export function computeFrLegal(deal: Deal): FrLegal {
     ["Droits et obligations, dont la propriété intellectuelle", deal.ip_transfer === "unclear"],
     ["Soumission au droit français", !isFrenchLaw(deal.governing_law)],
   ];
-  const mandatory = applicable && diffusion === "createur";
+  // UNE SEULE EXPRESSION pour l'obligation : le drapeau enregistré et la liste
+  // affichée ne peuvent plus diverger — ils sortent du même booléen.
+  const obligation = applicable && diffusion === "createur" && threshold === "yes";
 
   const status =
     threshold === "yes"
@@ -273,10 +318,10 @@ export function computeFrLegal(deal: Deal): FrLegal {
   // dès qu'il y a cession.
   const scope =
     diffusion === "createur"
-      ? `${CHAMP} C'est le cas ici : l'offre demande une publication sur ton compte. Dans ce cadre, un contrat écrit est obligatoire au-delà de ${SEUIL} (${SEUIL_SOURCE}). ${status} ${CE_QUI_EST_COMPTE}`
+      ? `${CHAMP} C'est le cas ici : l'offre demande une publication sur ton compte. Dans ce cadre, un contrat écrit est obligatoire à partir de ${SEUIL} (${SEUIL_SOURCE}). ${status} ${CE_QUI_EST_COMPTE}`
       : diffusion === "marque"
-        ? `${CHAMP} Ici, l'offre ne te demande aucune publication : la marque diffuse les contenus sur ses propres canaux, publicité comprise. Cette collaboration sort donc du champ de cette loi, et son obligation de contrat écrit au-delà de ${SEUIL} ne s'y applique pas.`
-        : `${CHAMP} L'offre ne dit pas assez clairement qui diffuse : selon la façon dont les vidéos seront diffusées, un contrat écrit peut être obligatoire au-delà de ${SEUIL} (${SEUIL_SOURCE}), ou pas du tout exigé.`;
+        ? `${CHAMP} Ici, l'offre dit que la marque diffuse elle-même les contenus, publicité comprise, sans publication de ta part. Cette collaboration sort donc du champ de cette loi, et son obligation de contrat écrit à partir de ${SEUIL} ne s'y applique pas.`
+        : `${CHAMP} L'offre ne dit pas qui diffuse : selon la façon dont les vidéos seront diffusées, un contrat écrit peut être obligatoire à partir de ${SEUIL} (${SEUIL_SOURCE}), ou pas du tout exigé. ${CE_QUI_EST_COMPTE}`;
 
   const note = applicable
     ? [scope, rightsTransfer ? RIGHTS_NOTE : null, DISCLAIMER].filter((part) => part !== null).join(" ")
@@ -286,12 +331,12 @@ export function computeFrLegal(deal: Deal): FrLegal {
     applicable,
     diffusion,
     threshold_1000_reached: threshold,
-    written_contract_required: applicable && mandatory && threshold === "yes",
+    written_contract_required: obligation,
     rights_transfer: applicable && rightsTransfer,
     // Mission #100, point 3 — un libellé vide ne compte pas comme une mention.
     // Le calcul n'en produit pas (ce sont des littéraux), mais une analyse
     // enregistrée peut en porter : on ne les laisse pas repartir d'ici.
-    missing_mandatory_clauses: mandatory ? readableClauses(clauses.filter(([, missing]) => missing).map(([label]) => label)) : [],
+    missing_mandatory_clauses: obligation ? readableClauses(clauses.filter(([, missing]) => missing).map(([label]) => label)) : [],
     missing_rights_clauses:
       applicable && rightsTransfer ? readableClauses(rightsClauses(deal).filter(([, missing]) => missing).map(([label]) => label)) : [],
     note,

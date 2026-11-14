@@ -56,13 +56,19 @@ function randomDeal(rng: ReturnType<typeof lcg>): Deal {
     quantity: rng.int(1, 6),
     format: rng.chance(0.1) ? "30 s, 2 hooks" : null,
   }));
+  const publication = rng.chance(0.4);
   const deal: Deal = {
     // Mission #116 — aucune commission dans l'échantillon : le périmètre est
     // une branche, pas le produit.
     variable_pay: { present: false, rate_percent: null, base: null, per_sale_eur: null, attribution_days: null, payout: null },
     brand: rng.chance(0.8) ? "Marque" : null,
     deliverables,
-    publication_required: rng.chance(0.4),
+    publication_required: publication,
+    // Mission #215 — l'échantillon reste COHÉRENT : une publication demandée
+    // implique « creator ». Tirer les deux indépendamment produirait des deals
+    // que ni le modèle ni `normalizeDeal` ne peuvent fabriquer, et les
+    // invariants se vérifieraient sur des cas impossibles.
+    diffusion: publication ? "creator" : rng.pick(["brand_only", "unspecified"] as const),
     usage: {
       organic: rng.chance(0.5),
       paid_ads: rng.chance(0.4),

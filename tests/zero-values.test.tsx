@@ -7,7 +7,7 @@ import { evaluability, knownTerms, priceKnown } from "@/lib/analysis/evaluabilit
 import { normalizeDeal } from "@/lib/analysis/normalize";
 import { verdictForm, verdictSentence } from "@/lib/analysis/verdict";
 import { dealRecapRows } from "@/lib/display";
-import { computeFrLegal } from "@/lib/legal/fr";
+import { computeFrLegal, SEUIL_ASSIETTE, SEUIL_CE_QUE_LE_PRODUIT_COMPTE } from "@/lib/legal/fr";
 import { computeEstimate, countFilledFields, FOREIGN_CURRENCY_ASSUMPTION } from "@/lib/rates/engine";
 import { appliedPriceCap, computeScore, hasUnknownQuantity, priceRatio, UNKNOWN_QUANTITY_SCORE_CAP } from "@/lib/rates/score";
 import { verdictCardTexts } from "@/lib/share-card/verdict-card";
@@ -112,8 +112,18 @@ describe("A — seuil légal des 1 000 €, avantages en nature inclus", () => {
   // produit, et non comme une citation.
   it("ce que le produit compare au seuil est dit, sans se présenter comme le texte de loi", () => {
     const note = computeFrLegal(deal({ payment: paiement(1200) })).note;
-    expect(note).toContain("Ce que le produit compare à ce seuil : le montant proposé, plus la valeur des produits offerts");
-    expect(note).not.toContain("avantages en nature inclus");
+    // Mission #215 — l'assiette a retrouvé sa base : c'est l'article 1er du
+    // décret, repris sur ses termes, suivi de ce que le produit compare
+    // vraiment. L'ancienne formulation reste interdite : le décret dit « au
+    // cours de la même année », pas « année civile », et elle omettait
+    // l'objectif promotionnel.
+    expect(note).toContain(SEUIL_ASSIETTE);
+    expect(note).toContain(SEUIL_CE_QUE_LE_PRODUIT_COMPTE);
+    expect(note).toContain("de la valeur des avantages en nature accordés à un influenceur");
+    expect(note).toContain("au cours de la même année");
+    expect(note).toContain("un même objectif promotionnel");
+    expect(note).not.toContain("cumulés sur l'année civile");
+    expect(note).not.toContain("avantages en nature inclus.");
   });
 });
 
@@ -153,7 +163,13 @@ describe("B — un 0 vaut une absence, partout où le champ est lu", () => {
   it("seuil légal : un 0 ne rend pas le seuil calculable", () => {
     expect(computeFrLegal(deal(zeroProduits)).threshold_1000_reached).toBe("unknown");
     expect(computeFrLegal(deal(zeroArgent)).threshold_1000_reached).toBe("unknown");
-    expect(computeFrLegal(deal(zeroProduits)).missing_mandatory_clauses).toContain("Valeur des avantages en nature");
+    // Mission #215 — les sept mentions ne s'annoncent plus que lorsque le seuil
+    // est ATTEINT : un seuil inconnu ne les ouvre pas. Le 0 reste lu comme une
+    // absence — c'est ce que ce test surveille —, et la mention se vérifie donc
+    // sur une offre dont le seuil, lui, est franchi.
+    const franchi = computeFrLegal(deal({ payment: paiement(1200), in_kind_value_eur: 0 }));
+    expect(franchi.threshold_1000_reached).toBe("yes");
+    expect(franchi.missing_mandatory_clauses).toContain("Valeur des avantages en nature");
   });
 
   it("phrase de verdict : aucune offre à 0 € n'est annoncée", () => {
