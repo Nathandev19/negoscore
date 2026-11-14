@@ -40,8 +40,13 @@ const PAGES = [
   {
     chemin: "@/app/confidentialite/page",
     titre: "Politique de confidentialité",
-    date: "30 octobre 2026",
-    empreinte: "681511406199a88e",
+    // Mission #213 — la date et l'empreinte changent ENSEMBLE, et c'est le
+    // test qui l'a imposé. La page affirmait « Rien d'autre ne les
+    // accompagne » alors que les relevés portent désormais la forme du
+    // navigateur : la phrase devenait fausse, elle a été corrigée, et la
+    // forme est nommée dans le tableau des données traitées.
+    date: "14 novembre 2026",
+    empreinte: "5f0fb43627115fdc",
   },
   {
     chemin: "@/app/cgv/page",

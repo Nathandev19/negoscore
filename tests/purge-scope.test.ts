@@ -93,12 +93,24 @@ describe("portée de la purge", () => {
   it("mission #131 : le diagnostic des événements s'efface au bout d'une semaine", async () => {
     await runPurge(NOW);
     const diagnostic = db.updates.find((u) => u.table === "product_events");
-    // Les trois colonnes partent ensemble : une empreinte sans sa famille de
+    // Les QUATRE colonnes partent ensemble : une empreinte sans sa famille de
     // navigateur ne répond plus à la question qu'on lui posait.
-    expect(diagnostic?.patch).toEqual({ visitor: null, internal_reason: null, agent_family: null });
+    //
+    // Mission #213 — `agent_signature` les rejoint : c'est une version plus
+    // fine de `agent_family`, et la page de confidentialité annonce 7 jours
+    // pour ce qui décrit l'appareil. En revanche `robot` et `robot_reason`
+    // n'y entrent PAS : ils tiennent les compteurs, et mettre la raison à
+    // null ferait échouer la contrainte de la migration 43 — donc toute la
+    // purge du diagnostic (éprouvé sur le moteur dans
+    // tests/robots-moteur.test.ts).
+    expect(diagnostic?.patch).toEqual({
+      visitor: null, internal_reason: null, agent_family: null, agent_signature: null,
+    });
+    expect(Object.keys(diagnostic?.patch ?? {})).not.toContain("robot");
+    expect(Object.keys(diagnostic?.patch ?? {})).not.toContain("robot_reason");
     expect(diagnostic?.filter).toContain("visitor=not.is.null");
     expect(decodeURIComponent(diagnostic?.filter ?? "")).toContain("occurred_at=lt.2026-09-10T03:00:00.000Z");
-    // La LIGNE reste : les compteurs du cockpit ne lisent aucune de ces trois
+    // La LIGNE reste : les compteurs du cockpit ne lisent aucune de ces quatre
     // colonnes, et effacer l'événement changerait les chiffres.
     expect(db.deletes.map((d) => d.table)).not.toContain("product_events");
     // Le sel, lui, est supprimé, pas vidé.

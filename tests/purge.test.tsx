@@ -173,7 +173,7 @@ describe("politique de confidentialité", () => {
       // Mission #209 quater — la date suit le contenu : la section « Mesure
       // d'audience » décrit le comportement en page depuis la #209 ter, et
       // « Durées de conservation » annonce désormais les 13 mois.
-      "30 octobre 2026",
+      "14 novembre 2026",
       // Mission #047 : cookies et brouillon local.
       "Cookies et stockage dans ton navigateur",
       // Mission #049 : mesure d'audience sans stockage, donc sans bannière.

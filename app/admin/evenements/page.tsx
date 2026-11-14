@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { loadRecentEvents, RECENT_EVENTS_LIMIT, type AdminEventRow } from "@/lib/admin/data";
 import { heureParis, MENTION_FUSEAU } from "@/lib/admin/heure";
 import { AGENT_LABEL, type AgentFamily } from "@/lib/telemetry/visiteur";
+import { ROBOT_LABEL, type RobotReason } from "@/lib/analytics/robot-visite";
 
 export const metadata: Metadata = { title: "Événements — cockpit", robots: { index: false, follow: false } };
 
@@ -102,6 +103,10 @@ export default async function AdminEvents() {
                     <th className="pb-2.5 pr-4 font-normal">Référent</th>
                     <th className="pb-2.5 pr-4 font-normal">Origine du clic</th>
                     <th className="pb-2.5 pr-4 font-normal">Interne</th>
+                    {/* Mission #213 — le verdict, à côté de « Interne » : ce
+                        sont deux raisons d'écarter une ligne, et l'écran doit
+                        permettre de vérifier la seconde ligne par ligne. */}
+                    <th className="pb-2.5 pr-4 font-normal">Robot</th>
                     <th className="pb-2.5 font-normal">Navigateur</th>
                   </tr>
                 </thead>
@@ -121,8 +126,22 @@ export default async function AdminEvents() {
                         {interne(row)}
                         {row.environment && row.environment !== "production" ? ` · ${row.environment}` : ""}
                       </td>
+                      <td className="py-3 pr-4 whitespace-nowrap text-xs">
+                        {row.robot
+                          ? (ROBOT_LABEL[row.robot_reason as RobotReason] ?? row.robot_reason ?? "robot")
+                          : "—"}
+                      </td>
+                      {/* La forme d'agent sous la famille : c'est elle qui
+                          trahit un client unique derrière des empreintes
+                          toutes différentes. */}
                       <td className="py-3 whitespace-nowrap">
                         {row.agent_family ? (AGENT_LABEL[row.agent_family as AgentFamily] ?? row.agent_family) : "—"}
+                        {row.agent_signature ? (
+                          <>
+                            <br />
+                            <span className="font-mono text-xs text-attenue">{row.agent_signature}</span>
+                          </>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

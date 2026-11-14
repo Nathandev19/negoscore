@@ -150,6 +150,7 @@ describe("fixture synthétique du dashboard", () => {
     tier_changes: [],
     engagement: [],
     engagement_scroll: [],
+    robots: { visits: 0, reasons: [] }, agents: [],
     paid_pro: 1,
     granted_pro: 1,
     feedback: { total: 5, fair: 3, not_fair: 2 },

@@ -1,5 +1,7 @@
+import { headers } from "next/headers";
 import { insertIfAbsent, isMissingColumn } from "@/lib/supabase/server";
 import { normalizeReferrer } from "@/lib/analytics/referrer";
+import { classerVisite, type VerdictVisite } from "@/lib/analytics/robot-visite";
 import { withEnvironment } from "@/lib/telemetry/tagged";
 
 export const PRODUCT_EVENTS = [
@@ -80,16 +82,60 @@ export function hasAttribution(value: Attribution | null | undefined): boolean {
   return value != null && Object.values(value).some((champ) => champ != null && champ !== "");
 }
 
+// Mission #213 — QUELS ÉVÉNEMENTS SONT CLASSÉS, ET POURQUOI PAS TOUS.
+//
+// Seules les ARRIVÉES mesurées depuis un navigateur. Deux raisons, et la
+// seconde est la plus importante :
+//
+//   — c'est là qu'est le défaut. Le constat porte sur landing_view et sur le
+//     page_engagement qui le suit ;
+//   — se tromper n'y coûte pas la même chose qu'ailleurs. `recordProductEvent`
+//     est aussi appelé par le webhook Whop, qui écrit `purchase_completed`
+//     depuis une requête de Whop : elle porte un User-Agent de serveur, que
+//     l'expression de la #120 peut très bien reconnaître comme un robot. Un
+//     achat réel classé robot disparaîtrait du revenu affiché. Une liste
+//     fermée rend ce cas impossible par construction, au lieu de le rendre
+//     improbable.
+//
+// Ce que ça laisse passer, dit franchement : un robot qui lancerait une
+// analyse resterait compté dans `analysis_started`. Il se verrait — un funnel
+// avec zéro visite et une analyse n'a pas de lecture innocente — et le jour
+// où ça arrive, c'est une valeur de plus dans cette liste.
+export const ROBOT_CLASSIFIED_EVENTS = [
+  "landing_view", "pricing_view", "guide_view", "example_view", "analysis_page_view", "page_engagement",
+] as const satisfies ReadonlyArray<ProductEventName>;
+
+const CLASSIFIES = new Set<string>(ROBOT_CLASSIFIED_EVENTS);
+
+const NON_CLASSE: VerdictVisite = { robot: false, reason: null, agent_signature: null };
+
+async function verdictPour(event: ProductEventName): Promise<VerdictVisite> {
+  if (!CLASSIFIES.has(event)) return NON_CLASSE;
+  try {
+    return classerVisite(await headers());
+  } catch {
+    // Hors contexte de requête (tâche planifiée, rattrapage) : aucun
+    // navigateur, donc rien à classer. Jamais robot par défaut.
+    return NON_CLASSE;
+  }
+}
+
 export async function recordProductEvent(input: {
   event: ProductEventName; userId?: string | null; attribution?: Attribution; entityType?: string | null;
   entityId?: string | null; metadata?: Record<string, string | number | boolean | null>; dedupeKey?: string | null;
 }): Promise<void> {
   const a = parseAttribution(input.attribution);
   const referrerDomain = a.referrer_host == null ? null : normalizeReferrer(a.referrer_host, "");
+  const verdict = await verdictPour(input.event);
   try {
     await withEnvironment((environment) =>
       insertEvent({
         ...environment,
+        // Mission #213 — SÉPARER, PAS SUPPRIMER. La ligne est écrite comme
+        // les autres ; c'est l'agrégation qui l'écarte des compteurs, et
+        // l'écran qui la montre écartée. Réviser le classement ne demande
+        // donc aucune donnée qu'on n'aurait plus.
+        robot: verdict.robot, robot_reason: verdict.reason, agent_signature: verdict.agent_signature,
         event_name: input.event, user_id: input.userId ?? null, path: a.path ?? null, referrer_host: referrerDomain,
         ...(referrerDomain ? { referrer_domain: referrerDomain } : {}),
         utm_source: a.utm_source ?? null, utm_medium: a.utm_medium ?? null, utm_campaign: a.utm_campaign ?? null,
@@ -115,9 +161,26 @@ async function insertEvent(row: Record<string, unknown>): Promise<void> {
     await insertIfAbsent("product_events", row);
   } catch (error) {
     // Le code peut être déployé avant que Nathan applique la migration à la
-    // main. Les événements continuent alors d'être écrits, sans ce champ.
+    // main. Les événements continuent alors d'être écrits, sans ces champs.
+    //
+    // Mission #213 — le repli se fait en DEUX temps, du plus récent au plus
+    // ancien, parce que les deux migrations peuvent manquer indépendamment :
+    // on retire d'abord les trois colonnes de la 43, puis `referrer_domain`
+    // (la 38). Tout retirer d'un coup ferait perdre `referrer_domain` sur une
+    // base où il existe, et c'est une mesure qu'on a déjà payée.
     if (!isMissingColumn(error)) throw error;
-    const previousSchema = { ...row };
+    const sansRobot = { ...row };
+    delete sansRobot.robot;
+    delete sansRobot.robot_reason;
+    delete sansRobot.agent_signature;
+    try {
+      await insertIfAbsent("product_events", sansRobot);
+      console.warn(JSON.stringify({ event: "telemetry_colonne_absente", champ: "robot" }));
+      return;
+    } catch (encore) {
+      if (!isMissingColumn(encore)) throw encore;
+    }
+    const previousSchema = { ...sansRobot };
     delete previousSchema.referrer_domain;
     await insertIfAbsent("product_events", previousSchema);
   }

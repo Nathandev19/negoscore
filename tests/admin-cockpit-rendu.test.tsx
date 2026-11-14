@@ -55,6 +55,7 @@ const APRES_MIGRATION: DashboardData = {
   tier_changes: [],
   engagement: [],
   engagement_scroll: [],
+  robots: { visits: 0, reasons: [] }, agents: [],
   paid_pro: 0,
   granted_pro: 0,
   feedback: { total: 0, fair: 0, not_fair: 0 },
@@ -115,7 +116,7 @@ describe("le tableau de bord, tel qu'il s'affiche", () => {
     const page = text(await dashboard(APRES_MIGRATION));
 
     expect(page).toContain("Production uniquement. 234 événement(s) hors production exclus sur la période");
-    expect(page).toContain("Visites mesurées");
+    expect(page).toContain("Visites humaines");
     // Aucun utilisateur réel : c'est le résultat attendu, pas une panne.
     expect(page).toContain("Cockpit");
     expect(page).not.toContain("NaN");
@@ -214,14 +215,14 @@ describe("mission #129 — un seul nombre pour « Visites »", () => {
 
   it.each(CAS)("%s : la tuile et le funnel affichent le même nombre", async (_nom, counts, attendu) => {
     const html = await dashboard({ ...APRES_MIGRATION, counts });
-    expect(tuile(html, "Visites mesurées")).toBe(etape(html, "Visites"));
-    expect(tuile(html, "Visites mesurées")).toBe(attendu);
+    expect(tuile(html, "Visites humaines")).toBe(etape(html, "Visites"));
+    expect(tuile(html, "Visites humaines")).toBe(attendu);
   });
 
   it.each(CAS.slice(0, 2))("%s : 37 arrivées sur l'analyse ne changent pas les visites", async (_nom, counts, attendu) => {
     const avant = await dashboard({ ...APRES_MIGRATION, counts });
     const apres = await dashboard({ ...APRES_MIGRATION, counts: { ...counts, analysis_page_view: 37 } });
-    expect([tuile(avant, "Visites mesurées"), tuile(apres, "Visites mesurées")]).toEqual([attendu, attendu]);
+    expect([tuile(avant, "Visites humaines"), tuile(apres, "Visites humaines")]).toEqual([attendu, attendu]);
     expect([etape(avant, "Visites"), etape(apres, "Visites")]).toEqual([attendu, attendu]);
     expect(etape(apres, "Arrivées sur la page d’analyse")).toBe(37);
   });

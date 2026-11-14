@@ -123,6 +123,10 @@ describe("le client n'a aucune autorité sur l'environnement", () => {
         // Mission #131 — trois colonnes de DIAGNOSTIC, décidées par le
         // serveur comme l'environnement : le corps ne peut en poser aucune.
         "visitor", "internal_reason", "agent_family",
+        // Mission #213 — le verdict de robot, sa raison, et la forme de
+        // l'agent. Comme les trois précédentes : calculées côté serveur, et
+        // le client n'en décide aucune.
+        "robot", "robot_reason", "agent_signature",
       ].sort(),
     );
     // Et le client ne décide d'aucune des trois, même en les annonçant.

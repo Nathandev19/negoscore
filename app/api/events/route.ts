@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { entryFor } from "@/lib/lookup";
 import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
-import { isRobot, refusesTracking } from "@/lib/analytics/robots";
+import { refusesTracking } from "@/lib/analytics/robots";
 import { TIERS } from "@/lib/rates/tier";
 import { DWELL_LABELS, FIRST_ACTION_VALUES, INPUT_TOUCHED, SCROLL_LABELS } from "@/lib/analytics/engagement";
 
@@ -105,15 +105,27 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json({ error: "invalid event" }, { status: 400 });
   }
-  // Mission #120 — le moteur de rendu de Google exécute le JavaScript de la
-  // page : sans ce filtre, chaque exploration comptait comme une visite sur
-  // l'accueil et sur /tarifs. Écarté ici comme sur /api/vue, et la réponse ne
-  // change pas d'un octet : le client n'apprend rien de ce qui a été fait.
+  // Mission #213 — UN ROBOT N'EST PLUS JETÉ À LA PORTE, IL EST MARQUÉ.
   //
-  // Le refus de suivi est lu côté SERVEUR en plus du navigateur : le composant
-  // client vérifie navigator.doNotTrack, ce qui ne couvre que les visiteurs qui
-  // ont JavaScript. La page de confidentialité promet mieux que ça.
-  if (isRobot(request.headers.get("user-agent")) || refusesTracking(request.headers)) {
+  // La #120 écartait ici le moteur de rendu de Google, qui exécute le
+  // JavaScript de la page : sans ce filtre, chaque exploration comptait comme
+  // une visite. Le filtre était juste, mais il ne laissait AUCUNE TRACE —
+  // donc rien à l'écran ne permettait de voir ce qu'il écartait, ni de
+  // s'apercevoir qu'il manquait tout un trafic qui annonce Chrome.
+  //
+  // La ligne est maintenant écrite avec `robot = true` et sa raison
+  // (lib/analytics/robot-visite.ts). C'est l'agrégation qui l'écarte des
+  // compteurs, et le cockpit qui affiche les deux nombres. La réponse ne
+  // change toujours pas d'un octet : le client n'apprend rien de ce qui a
+  // été fait de sa requête.
+  //
+  // LE REFUS DE SUIVI, LUI, CONTINUE DE NE RIEN ÉCRIRE. Ce n'est pas un
+  // filtre de qualité de mesure mais une promesse de la page de
+  // confidentialité, et « on enregistre mais on ne compte pas » ne la
+  // tiendrait pas. Il est lu côté SERVEUR en plus du navigateur : le
+  // composant client vérifie navigator.doNotTrack, ce qui ne couvre que les
+  // visiteurs qui ont JavaScript.
+  if (refusesTracking(request.headers)) {
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   }
   const attribution = parseAttribution(parsed.data.attribution);

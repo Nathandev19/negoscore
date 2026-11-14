@@ -1,5 +1,5 @@
 import { parseAttribution, recordProductEvent } from "@/lib/analytics/first-party";
-import { isRobot, refusesTracking } from "@/lib/analytics/robots";
+import { refusesTracking } from "@/lib/analytics/robots";
 import { shortPathAttribution } from "@/lib/acquisition/chemins";
 import { normalizeReferrer } from "@/lib/analytics/referrer";
 import { analysisOriginFor, eventForPage, INTERNAL_ORIGIN_PARAM, originPathFor } from "@/lib/analytics/views";
@@ -65,8 +65,12 @@ export async function GET(request: Request) {
   const site = request.headers.get("sec-fetch-site");
   if ((dest && dest !== "image") || (site && site !== "same-origin")) return image();
 
+  // Le refus de suivi n'écrit rien : c'est une promesse, pas un filtre de
+  // qualité (voir app/api/events/route.ts).
   if (refusesTracking(request.headers)) return image();
-  if (isRobot(request.headers.get("user-agent"))) return image();
+  // Mission #213 — le robot n'est plus écarté ICI. Sa ligne est écrite et
+  // marquée, puis exclue des compteurs par l'agrégation : un filtre qui ne
+  // laisse pas de trace ne peut pas être relu, ni corrigé.
 
   // Mission #136 — UNE VUE N'EST ENREGISTRÉE QUE SI LA PAGE EST AFFICHÉE.
   //

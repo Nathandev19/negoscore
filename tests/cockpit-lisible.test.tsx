@@ -39,6 +39,7 @@ const base: DashboardData = {
   tier_changes: [],
   engagement: [],
   engagement_scroll: [],
+  robots: { visits: 0, reasons: [] }, agents: [],
 };
 
 const complet: DashboardData = {
@@ -317,7 +318,7 @@ describe("changer de période lit la mémoire, pas le réseau", () => {
       expect(memoire, period).toBe(seule);
       // Et le chiffre affiché est bien celui de CETTE période.
       expect(espaces(lisible(memoire)), period).toContain(
-        espaces(dashboardTiles(parPeriode[period]).find((tile) => tile.label === "Visites mesurées")!.value),
+        espaces(dashboardTiles(parPeriode[period]).find((tile) => tile.label === "Visites humaines")!.value),
       );
     }
   });
@@ -341,7 +342,7 @@ describe("le rafraîchissement d'arrière-plan", () => {
     expect(apres["7d"]).toBe(complet);
     // Et le nouveau chiffre arrive bien à l'écran.
     expect(espaces(lisible(renderToStaticMarkup(<Cockpit initial={apres} period="24h" />)))).toContain(
-      espaces(dashboardTiles(change).find((tile) => tile.label === "Visites mesurées")!.value),
+      espaces(dashboardTiles(change).find((tile) => tile.label === "Visites humaines")!.value),
     );
   });
 

@@ -165,6 +165,7 @@ describe("ce que le cockpit affiche", () => {
     timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 },
     tier_changes,
     engagement: [], engagement_scroll: [],
+    robots: { visits: 0, reasons: [] }, agents: [],
   });
 
   it("aucun changement : la ligne le dit, et rappelle ce que le niveau signifie", () => {

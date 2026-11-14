@@ -23,7 +23,7 @@ export default function PrivacyPage() {
   // contenu rendu de chaque page légale à côté de sa date. Changer un mot sans
   // changer la date fait échouer le test, et il dit quoi faire.
   return (
-    <LegalPage title="Politique de confidentialité" updated="30 octobre 2026">
+    <LegalPage title="Politique de confidentialité" updated="14 novembre 2026">
       <LegalSection title="Responsable du traitement">
         <p>
           {SELLER.name}, {SELLER.address.replace(", France", "")}.
@@ -41,6 +41,7 @@ export default function PrivacyPage() {
             "Niveau choisi pour le calcul des tarifs (je débute, déjà des collabs payées, c'est mon métier) — préférence de calcul, gardée dans un cookie du navigateur et, avec un compte, sur le compte — exécution du contrat — jusqu'à ce que tu en changes, ou à la suppression du compte (cookie : 12 mois).",
             "Adresse IP sous forme hachée — limitation des abus et de l'usage gratuit — intérêt légitime — conservée 30 jours au maximum.",
             "Empreinte technique d'un appareil, calculée à partir de l'adresse IP et du navigateur avec une valeur aléatoire renouvelée chaque jour — distinguer deux visites d'une même journée dans les statistiques — intérêt légitime — l'adresse IP n'est jamais conservée, et l'empreinte cesse d'avoir un sens dès le lendemain.",
+            "Forme du navigateur, décrite sans détail : sa famille, son numéro de version principal, le système et s'il est sur téléphone — distinguer une visite automatique d'une visite de personne dans les statistiques — intérêt légitime — la chaîne complète envoyée par le navigateur n'est jamais conservée, et cette forme est effacée au bout de 7 jours.",
             "Domaine du site qui t'a envoyé ici — comprendre d'où viennent les visites sans indication de campagne — intérêt légitime — ni l'URL complète ni ses paramètres ne sont conservés.",
             "Demande de lien de connexion faite depuis un navigateur qui a lancé une analyse sans compte : l'adresse demandée, le jeton anonyme de ce navigateur et l'empreinte d'un code glissé dans le lien (le code lui-même n'est pas gardé) — rattacher cette analyse à ton compte, même si tu ouvres le lien dans un autre navigateur — exécution du contrat.",
             "Email de l'acheteur, montant et formule achetée — preuve de la transaction et suivi des paiements — obligation légale et intérêt légitime.",
@@ -177,9 +178,13 @@ export default function PrivacyPage() {
           avant le premier, quel qu&apos;il soit. Comme toute autre ligne de statistique, ces relevés portent la
           même empreinte technique du jour que celle décrite plus haut : elle permet de rapprocher deux pages vues
           du même appareil dans la même journée — c&apos;est à ça qu&apos;elle sert —, elle ne permet pas de te
-          reconnaître d&apos;un jour à l&apos;autre, et elle est effacée au bout de 7 jours. Rien d&apos;autre ne
-          les accompagne : ni ton compte, ni un identifiant qui durerait. Et rien n&apos;est déposé sur ton appareil
-          pour les obtenir : ni cookie, ni stockage local.
+          reconnaître d&apos;un jour à l&apos;autre, et elle est effacée au bout de 7 jours. Ils portent aussi la
+          forme de ton navigateur, décrite sans détail — sa famille, son numéro de version principal, le système, et
+          s&apos;il est sur téléphone : «&nbsp;Chrome 141, Windows, ordinateur&nbsp;», jamais la ligne complète que
+          ton navigateur envoie. Elle sert à écarter des statistiques les visites automatiques, qui annoncent souvent
+          un navigateur ordinaire ; elle est partagée par des millions d&apos;appareils, et elle est effacée au bout
+          de 7 jours comme l&apos;empreinte. Rien d&apos;autre ne les accompagne : ni ton compte, ni un identifiant
+          qui durerait. Et rien n&apos;est déposé sur ton appareil pour les obtenir : ni cookie, ni stockage local.
         </p>
         <p>
           Les statistiques d&apos;usage ne contiennent ni le texte des offres, ni les noms de marques, ni les montants

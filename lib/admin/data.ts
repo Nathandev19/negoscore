@@ -2,6 +2,7 @@ import { isUuid } from "@/lib/security/request";
 import { countRows, isMissingColumn, rpc, selectRows } from "@/lib/supabase/server";
 import { TIER_LABEL, type Tier } from "@/lib/rates/tier";
 import type { Series } from "@/lib/admin/series";
+import { ROBOT_LABEL, type RobotReason } from "@/lib/analytics/robot-visite";
 
 export const ADMIN_PAGE_SIZE = 25;
 export const ADMIN_PERIODS = ["24h", "7d", "30d", "all"] as const;
@@ -64,6 +65,20 @@ export type DashboardData = {
   // La distribution de la profondeur atteinte : une seule mesure — des pages
   // vues — répartie en tranches.
   engagement_scroll: Array<{ medium: string; bucket: string; total: number }>;
+  // Mission #213 — LES VISITES ÉCARTÉES PARCE QUE CE N'EST PERSONNE.
+  //
+  // Troisième compteur d'exclusion, à côté de `excluded` (hors production) et
+  // `internal` (le propriétaire), et il ne recouvre ni l'un ni l'autre. Il
+  // compte des VISITES, avec la même définition que `visitCount` — sinon il
+  // ne serait pas comparable au nombre affiché juste à côté.
+  //
+  // `reasons` est ce qui rend le filtre révisable : un classement qu'on ne
+  // peut pas relire raison par raison ne peut pas être corrigé.
+  robots: { visits: number; reasons: Array<{ reason: string; visits: number }> };
+  // Les formes d'agent les plus vues sur la période, humaines ET robots.
+  // C'est ce qui tranche quand l'empreinte `visitor` change à chaque visite :
+  // elle suit l'adresse, la forme d'agent non.
+  agents: Array<{ signature: string; robot: boolean; visits: number }>;
 };
 
 // Mission #209 bis — les clés que le cockpit LIT, exportées pour que le test
@@ -73,6 +88,8 @@ export type DashboardData = {
 export const EMPTY_DASHBOARD_KEYS = [
   "counts", "excluded", "internal", "paid_pro", "granted_pro", "feedback", "purchases",
   "timeseries", "acquisition", "guides", "example", "tier_changes", "engagement", "engagement_scroll",
+  // Mission #213
+  "robots", "agents",
 ] as const;
 
 const EMPTY_DASHBOARD: DashboardData = {
@@ -81,6 +98,7 @@ const EMPTY_DASHBOARD: DashboardData = {
   purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
   timeseries: [], acquisition: [], guides: [], example: { total: 0, direct: 0 }, tier_changes: [],
   engagement: [], engagement_scroll: [],
+  robots: { visits: 0, reasons: [] }, agents: [],
 };
 
 // Mission #133 — le temps passé est mesuré ici, à la source.
@@ -199,7 +217,12 @@ export function dashboardTiles(data: DashboardData): DashboardTile[] {
   const revenue = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(data.purchases.revenue_eur);
   const completed = data.counts.analysis_completed ?? 0;
   return [
-    { label: "Visites mesurées", value: count(visits), series: "visites", hint: "accueil · tarifs · guides · exemple" },
+    // Mission #213 — LE LIBELLÉ DIT CE QUE LE NOMBRE EST DEVENU. Il comptait
+    // des robots jusqu'ici, et l'indice ne le disait pas. « humaines » n'est
+    // pas une promesse d'exactitude : c'est le nom de ce qui reste après le
+    // filtre, et la tuile suivante dit combien il en a écarté.
+    { label: "Visites humaines", value: count(visits), series: "visites", hint: "accueil · tarifs · guides · exemple — robots exclus" },
+    { label: "Robots écartés", value: count(data.robots.visits), hint: robotHint(data) },
     // Deux compteurs bruts, côte à côte, sans ratio entre eux : voir plus haut.
     { label: "Analyses lancées", value: count(data.counts.analysis_started), series: "analyses", hint: `${count(completed)} terminée${completed > 1 ? "s" : ""}` },
     { label: "Analyses terminées", value: count(data.counts.analysis_completed) },
@@ -211,6 +234,27 @@ export function dashboardTiles(data: DashboardData): DashboardTile[] {
     { label: "Pro payants", value: count(data.paid_pro) },
     { label: "Pro offerts", value: count(data.granted_pro) },
   ];
+}
+
+// Mission #213 — l'indice sous la tuile « Robots écartés ». Il nomme les
+// raisons, parce qu'un total seul ne permet pas de voir si le filtre se
+// trompe : « 26 sans indices client » et « 26 robots qui se nomment » ne
+// demandent pas la même vérification.
+export function robotHint(data: DashboardData): string {
+  if (data.robots.reasons.length === 0) return "aucune visite écartée sur la période";
+  return data.robots.reasons
+    .map(({ reason, visits }) => `${count(visits)} ${ROBOT_LABEL[reason as RobotReason] ?? reason}`)
+    .join(" · ");
+}
+
+// La part de robots dans ce qui s'est présenté. Elle se lit sur le TOTAL
+// présenté — humains plus robots — et non sur les visites humaines : sinon un
+// jour sans humain et avec dix robots afficherait un pourcentage infini.
+export function robotNotice(data: DashboardData): string {
+  const humaines = visitCount(data);
+  const presentees = humaines + data.robots.visits;
+  const part = share(data.robots.visits, presentees);
+  return `Robots : ${count(data.robots.visits)} visite(s) écartée(s) sur ${count(presentees)} présentée(s)${part ? ` (${part})` : ""}. Les lignes restent en base avec leur raison — le classement se révise sans rien avoir perdu.`;
 }
 
 // La preuve visible que le filtre travaille, en une ligne.
@@ -497,13 +541,18 @@ export type AdminEventRow = {
   visitor?: string | null;
   internal_reason?: string | null;
   agent_family?: string | null;
+  // Mission #213 — les trois colonnes de la migration 20261114000043. Mêmes
+  // règles : absentes tant qu'elle n'est pas appliquée, et la vue le dit.
+  robot?: boolean | null;
+  robot_reason?: string | null;
+  agent_signature?: string | null;
 };
 
 export type AdminEvents = { rows: AdminEventRow[]; detail: boolean };
 
 const EVENT_COLUMNS =
   "id,occurred_at,event_name,path,utm_source,utm_campaign,utm_content,environment,internal,entity_type,entity_id";
-const DETAIL_COLUMNS = `${EVENT_COLUMNS},visitor,internal_reason,agent_family`;
+const DETAIL_COLUMNS = `${EVENT_COLUMNS},visitor,internal_reason,agent_family,robot,robot_reason,agent_signature`;
 const REFERRER_BASIC_COLUMNS = `${EVENT_COLUMNS},referrer_domain`;
 const REFERRER_COLUMNS = `${DETAIL_COLUMNS},referrer_domain`;
 

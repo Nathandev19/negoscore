@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { classerVisite } from "@/lib/analytics/robot-visite";
 
 // Mission #209 — CE QUE LA ROUTE ACCEPTE, ET CE QU'ELLE REFUSE EN SILENCE.
 //
@@ -131,10 +132,19 @@ describe("ce qui est refusé", () => {
     expect(state.ecrits).toHaveLength(1);
   });
 
-  it("un robot qui se nomme n'écrit rien", async () => {
+  // Mission #213 — le relevé d'un robot est ÉCRIT et MARQUÉ, plus jeté. Il
+  // sort des compteurs à l'agrégation (tests/robots-moteur.test.ts le vérifie
+  // sur un vrai moteur), et c'est ce qui permet de voir ce que le filtre
+  // écarte : un relevé de robot non marqué faisait dire au bloc
+  // « comportement en page » qu'une page sans défilement était en cause.
+  it("le relevé d'un robot qui se nomme est écrit, et classé robot", async () => {
     const r = await envoyer(corps(), { "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" });
     expect(r.status).toBe(204);
-    expect(state.ecrits).toEqual([]);
+    expect(state.ecrits).toHaveLength(1);
+    expect(classerVisite(new Headers({ "sec-fetch-dest": "empty", "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1)" }))).toMatchObject({
+      robot: true,
+      reason: "declare",
+    });
   });
 
   it("le refus de suivi est respecté, côté serveur", async () => {

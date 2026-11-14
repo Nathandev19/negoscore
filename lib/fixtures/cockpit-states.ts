@@ -30,6 +30,7 @@ const VIDE: DashboardData = {
   tier_changes: [],
   engagement: [],
   engagement_scroll: [],
+  robots: { visits: 0, reasons: [] }, agents: [],
 };
 
 function jours(nombre: number, valeurs: (index: number) => { page_views: number; analyses: number }): DashboardData["timeseries"] {
@@ -81,6 +82,27 @@ const LANCEMENT: DashboardData = {
   tier_changes: [],
   engagement: [],
   engagement_scroll: [],
+  // Mission #213 — LE CONSTAT DU 11 AU 14/11, À L'ÉCHELLE DE CETTE FIXTURE.
+  //
+  // Ces états servent à REGARDER le cockpit sans base (/dev/cockpit). Celui-ci
+  // devait montrer le cas qui a motivé la mission : beaucoup de robots pour
+  // peu de monde, et une seule forme d'agent derrière presque tout.
+  robots: {
+    visits: 26,
+    reasons: [
+      { reason: "sans_indices", visits: 22 },
+      { reason: "declare", visits: 3 },
+      { reason: "prefetch", visits: 1 },
+    ],
+  },
+  agents: [
+    { signature: "chrome-141|windows|bureau", robot: true, visits: 22 },
+    { signature: "safari-17|ios|mobile", robot: false, visits: 14 },
+    { signature: "instagram-139|android|mobile", robot: false, visits: 6 },
+    { signature: "robot-x|linux|bureau", robot: true, visits: 3 },
+    { signature: "chrome-140|android|mobile", robot: false, visits: 4 },
+    { signature: "chrome-141|windows|bureau", robot: false, visits: 1 },
+  ],
 };
 
 // Un seul jour : le cas où un graphique à barres a le plus de chances d'avoir

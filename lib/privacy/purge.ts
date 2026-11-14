@@ -36,11 +36,26 @@ export const PAYMENT_RECORD_RETENTION_YEARS = 5;
 // l'empreinte acceptable sans bandeau de consentement.
 export const SALT_RETENTION_DAYS = 2;
 
-// L'empreinte, la raison d'exclusion et la famille de navigateur ne servent
-// qu'au diagnostic RÉCENT : « ce +1 d'hier, c'est qui ». Passé une semaine, la
-// question ne se pose plus, et le sel qui donnait un sens à l'empreinte
-// n'existe de toute façon plus. Les compteurs du cockpit, eux, ne lisent
-// aucune de ces trois colonnes : les effacer ne change pas un chiffre.
+// L'empreinte, la raison d'exclusion, la famille de navigateur et la forme
+// d'agent ne servent qu'au diagnostic RÉCENT : « ce +1 d'hier, c'est qui ».
+// Passé une semaine, la question ne se pose plus, et le sel qui donnait un
+// sens à l'empreinte n'existe de toute façon plus. Les compteurs du cockpit,
+// eux, ne lisent aucune de ces quatre colonnes : les effacer ne change pas un
+// chiffre.
+//
+// Mission #213 — `agent_signature` rejoint la liste, et ce n'est pas un choix
+// nouveau : `agent_family` y est depuis la #131, et la forme d'agent n'est
+// qu'une version plus fine de la même chose. La page de confidentialité
+// annonce déjà 7 jours pour ce qui décrit l'appareil ; une colonne de plus qui
+// resterait, elle, rendrait la phrase fausse.
+//
+// CE QUI N'Y ENTRE PAS, ET IL FAUT LE SAVOIR AVANT D'AJOUTER UNE LIGNE :
+// `robot` et `robot_reason` NE SONT PAS effaçables. Ce sont eux qui tiennent
+// les compteurs — les effacer ferait réapparaître neuf robots dans les
+// visites — et la contrainte de la migration 43 exige une raison dès que
+// `robot` vaut true : mettre `robot_reason` à null ici ferait ÉCHOUER la mise
+// à jour, donc toute la purge du diagnostic. Vérifié sur le moteur
+// (tests/robots-moteur.test.ts).
 export const EVENT_DIAGNOSTIC_RETENTION_DAYS = 7;
 // Analyses lancées sans compte (mission #061) : le navigateur qui les a lancées
 // n'y a accès que 30 jours (durée du cookie deal_anon_token). Passé ce délai,
@@ -376,7 +391,7 @@ export async function runPurge(now: Date = new Date(), scope?: PurgeScope): Prom
       : await updateRows<{ id: string }>(
           "product_events",
           `visitor=not.is.null&occurred_at=lt.${encodeURIComponent(cutoffs.eventDiagnostic)}&select=id`,
-          { visitor: null, internal_reason: null, agent_family: null },
+          { visitor: null, internal_reason: null, agent_family: null, agent_signature: null },
         ).catch(() => []);
 
   // Les relevés d'audience échus. En DERNIER : les colonnes de diagnostic

@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 05/11/2026 (mission #212).** Ce fichier se met à jour
+**Dernière mise à jour : 14/11/2026 (mission #213).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -14,8 +14,8 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
-prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 42 fichiers
-de migration et 178 fichiers de test.
+prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 43 fichiers
+de migration et 180 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -180,6 +180,59 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#213 — le compteur comptait des robots qui ne disent pas leur nom.**
+
+Constat du 11 au 14/11 : 5 à 8 `landing_view` par jour sur l'accueil, toutes
+« direct », sans référent, empreinte différente à chaque fois, User-Agent
+Chrome. Sur 26 pages vues, 0 défilement, 0 geste, 0 contact avec le champ, et
+un `page_engagement` 2 à 4 s après. Le trafic humain réel se comptait sur
+trois doigts.
+
+- **LE FILTRE DE LA #120 N'ÉTAIT PAS CASSÉ, IL ÉTAIT HORS SUJET.** Il écarte
+  « les robots qui DISENT qui ils sont », c'est écrit dans son fichier depuis
+  le premier jour. Ceux-là annoncent Chrome.
+- **Trois colonnes** (`lib/analytics/robot-visite.ts`, migration 43) :
+  `robot` le verdict, `robot_reason` pourquoi — vocabulaire fermé de cinq
+  valeurs —, `agent_signature` la forme grossière de l'agent.
+- **LA RÈGLE QUI ATTRAPE LE CONSTAT : une sous-requête qui annonce Chromium
+  sans envoyer `Sec-CH-UA`.** Les indices client sont produits
+  indépendamment de la chaîne User-Agent : les omettre trahit une
+  contrefaçon négligente. **MESURÉE AVANT D'ÊTRE ÉCRITE**, sur un Chromium
+  156 (route jetable `/dev/entetes`, supprimée) : sur une NAVIGATION,
+  `sec-ch-ua` est ABSENT ; sur un fetch, un sendBeacon et une image, il est
+  présent. La version naïve de la règle aurait donc classé robot chaque
+  chargement de page. Elle est limitée aux sous-requêtes — et les deux
+  chemins qui écrivent une visite en sont.
+- **LES NAVIGATEURS INTÉGRÉS SONT HORS DE LA RÈGLE.** Celui d'Instagram sur
+  Android annonce « Chrome/139 » ; je n'ai PAS pu mesurer s'il envoie les
+  indices, et s'il ne les envoie pas la règle effaçait le trafic des DM. On
+  n'écarte pas ce qu'on n'a pas mesuré. Trouvé par un test, pas par relecture.
+- **SÉPARER, PAS SUPPRIMER** : un robot n'est plus jeté à la porte par les
+  routes, sa ligne est écrite et marquée. Le refus de suivi (DNT, GPC),
+  lui, continue de n'écrire RIEN : c'est une promesse, pas un filtre.
+- **Les comptages par liste fermée** : seules les arrivées mesurées sont
+  classées (`ROBOT_CLASSIFIED_EVENTS`). Un achat écrit par le webhook Whop
+  ne peut pas être classé robot par construction.
+- **L'admin affiche les deux nombres** : tuile « Visites humaines » (indice
+  « robots exclus »), tuile « Robots écartés » juste en dessous avec le
+  détail par raison, une troisième ligne de preuve à côté de `excluded` et
+  `internal`, un tableau « Formes d'agent » sous l'acquisition, et une
+  colonne « Robot » dans /admin/evenements.
+- **La forme d'agent tranche là où `visitor` ne peut pas** : `visitor` hache
+  sel + IP + agent, donc il change à chaque visite d'un client qui tourne ses
+  adresses. 26 empreintes distinctes et UNE forme d'agent, ce n'est pas 26
+  personnes.
+- **/confidentialite a été corrigée**, et c'est une garde qui l'a imposé : la
+  phrase « Rien d'autre ne les accompagne » devenait fausse. La page nomme la
+  forme d'agent, dit qu'elle est effacée au bout de 7 jours, et la purge
+  l'efface vraiment. Date au 14 novembre 2026, empreinte réémise.
+- **AUCUNE LIGNE PASSÉE N'EST RÉÉCRITE** : la fenêtre du 11 au 14/11 restera
+  surestimée à l'écran. Le filtre ne vaut que pour ce qui arrive après.
+- **MIGRATION 43 À APPLIQUER À LA MAIN** (`20261114000043_robots_separes.sql`).
+  Elle s'exécute sur un vrai moteur dans `tests/robots-moteur.test.ts`.
+
+## MISSION PRÉCÉDENTE
+
 **#212 — un lien de message privé ne peut plus mentir sur son réseau.**
 
 `/dm` forçait `utm_source=instagram`, et le lien était collé en message privé
@@ -223,7 +276,7 @@ autoritaire.
   la même période se lit en base ; le SELECT est dans le rapport de la mission,
   il n'a pas été exécuté ici.
 
-## MISSION PRÉCÉDENTE
+## AVANT-DERNIÈRE MISSION
 
 **#211 — la fuite de langue, mesurée sur de vrais appels.**
 
@@ -268,7 +321,7 @@ dans `evals/results/langue-2026-10-31T19-05-39-717Z.json`). Coût réel
   l'intervalle normal rendrait « 0 % [0 % ; 0 %] » à zéro succès et ferait
   conclure à l'absence de fuite.
 
-## AVANT-DERNIÈRE MISSION
+## MISSIONS ANTÉRIEURES
 
 **#210 — du texte non latin ne peut plus atteindre l'écran.**
 
@@ -297,8 +350,6 @@ caractère non latin — la fuite venait de la génération.
   #211** : 0,22 % par appel sur l'éval. Ce que la #210 laissait ouvert sur la
   position de la consigne reste ouvert, mais pour une autre raison : l'éval a
   tourné et ne départage pas.
-
-## MISSIONS ANTÉRIEURES
 
 **#209 — mesurer le comportement À L'INTÉRIEUR d'une page.**
 
@@ -497,6 +548,15 @@ n'appelle aucune action.
   relue. UNKNOWN jusqu'à ce que quelques tours soient passés en production.
 - **Une éval large du réglage « none » sur un tour.** Celui retenu l'a été sur
   UNE fixture et trois passes, le minimum que la mission #202 demandait.
+- **LA MIGRATION 43 N'EST PAS ENCORE APPLIQUÉE** (#213), à la date de ce
+  fichier. Tant qu'elle ne l'est pas, les lignes s'écrivent sans classement
+  (repli en deux temps dans `lib/analytics/first-party.ts`) et le cockpit
+  affiche 0 robot écarté.
+- **LE TAUX RÉEL DE ROBOTS EN PRODUCTION EST UNKNOWN** (#213) : il se lira
+  dans la tuile « Robots écartés » une fois la migration appliquée et
+  quelques jours passés. Les dénominateurs qui ont servi à fermer trois
+  canaux, eux, restent ceux d'avant : ils ne sont pas corrigés
+  rétroactivement, et ne peuvent pas l'être.
 - **L'ATTRIBUTION DES DM EST SÉPARÉE PAR RÉSEAU** (#212), et il reste à
   COLLER les nouvelles adresses : `/dm-tiktok` et `/exemple-tiktok` dans les
   messages privés TikTok, `/dm-instagram` et `/exemple-instagram` dans ceux

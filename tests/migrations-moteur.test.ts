@@ -51,6 +51,9 @@ import { EMPTY_DASHBOARD_KEYS } from "@/lib/admin/data";
 
 const DOSSIER = "supabase/migrations";
 const MIGRATION_42 = `${DOSSIER}/20261029000042_comportement_en_page.sql`;
+// Mission #213 — la 43 ajoute les trois colonnes de classement et reemet la
+// fonction du cockpit. Elle s'execute APRES la 42, dans l'ordre reel.
+const MIGRATION_43 = `${DOSSIER}/20261114000043_robots_separes.sql`;
 
 // Les tables que la migration 42 touche, ou que sa fonction lit. Minimales :
 // seulement les colonnes citées par le SQL exécuté. Ce n'est pas le schéma de
@@ -89,6 +92,7 @@ beforeAll(async () => {
   // C'EST ICI QUE LE DÉFAUT AURAIT ÉTÉ ATTRAPÉ : cet appel levait
   // « cannot use subquery in check constraint ».
   await db.exec(readFileSync(MIGRATION_42, "utf8"));
+  await db.exec(readFileSync(MIGRATION_43, "utf8"));
 }, 60_000);
 
 afterAll(async () => {

@@ -10,6 +10,7 @@ import {
   exampleNotice,
   excludedNotice,
   internalNotice,
+  robotNotice,
   share,
   tierChangesNotice,
   type AdminPeriod,
@@ -259,6 +260,10 @@ function Chiffres({ data }: { data: DashboardData }) {
           <div key={tile.label} className="bg-creme p-4">
             <p className="text-small text-attenue">{tile.label}</p>
             <p className="cockpit-valeur figures mt-1.5 text-2xl text-encre">{tile.value}</p>
+            {/* Mission #213 — ce bloc ignorait les indices. « Robots écartés :
+                26 » sans ses raisons ne permet pas de voir si le filtre se
+                trompe, et c'est tout l'objet de la tuile. */}
+            {tile.hint ? <p className="cockpit-valeur mt-1 text-xs text-attenue">{tile.hint}</p> : null}
           </div>
         ))}
       </section>
@@ -333,6 +338,42 @@ function Chiffres({ data }: { data: DashboardData }) {
           <p className="mt-3 text-xs text-attenue">
             Les visites antérieures à cette mesure n’ont pas de référent enregistré et apparaissent comme inconnues.
           </p>
+          {/* Mission #213 — LES FORMES D'AGENT, ET CE QU'ELLES TRANCHENT.
+              L'empreinte `visitor` suit l'adresse IP : elle change à chaque
+              visite d'un client qui tourne ses adresses, ce qui fait
+              ressembler un seul robot à vingt-six personnes. La forme
+              d'agent, elle, ne bouge pas. Une seule ligne qui porte presque
+              toutes les visites est la signature d'un client unique. */}
+          {data.agents.length > 0 ? (
+            <div className="mt-8">
+              <h3 className="text-h3 mb-1">Formes d&apos;agent</h3>
+              <p className="mb-3 text-xs text-attenue">
+                Famille · version majeure · plateforme · mobile ou non. Jamais le User-Agent complet. Une seule forme
+                qui porte presque toutes les visites, c&apos;est un client unique, pas une audience.
+              </p>
+              <table className="w-full text-left text-small">
+                <thead>
+                  <tr className="text-xs tracking-wide text-attenue uppercase">
+                    <th className="pb-2.5 pr-3 font-normal">Forme</th>
+                    <th className="pb-2.5 pr-3 font-normal">Classée</th>
+                    <th className="pb-2.5 pl-4 text-right font-normal">Visites</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.agents.map((row) => (
+                    <tr key={`${row.signature}/${row.robot}`} className="border-t border-filet">
+                      <td className="figures py-3 pr-3 text-encre">{row.signature}</td>
+                      <td className={`py-3 pr-3 text-xs ${row.robot ? "text-encre" : "text-attenue"}`}>
+                        {row.robot ? "robot" : "humaine"}
+                      </td>
+                      <td className="figures py-3 pl-4 text-right">{row.visits}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
         </div>
         <div className="min-w-0">
           <div className="h-[3px] rounded-[2px] bg-encre" />
@@ -472,6 +513,11 @@ function Chiffres({ data }: { data: DashboardData }) {
         <p className="text-small text-attenue">{tierChangesNotice(data)}</p>
         <p className="text-small text-attenue">{excludedNotice(data)}</p>
         <p className="text-small text-attenue">{internalNotice(data)}</p>
+        {/* Mission #213 — la troisième ligne de preuve que le filtre
+            travaille. Une par nature d'exclusion : « hors production »,
+            « interne » et « robot » ne disent pas la même chose, et
+            additionner leurs nombres rendrait les trois illisibles. */}
+        <p className="text-small text-attenue">{robotNotice(data)}</p>
         <p className="text-xs text-attenue">
           « Analyses lancées » et « Analyses terminées » sont deux compteurs bruts : aucun taux n’est calculé entre eux,
           faute d’un identifiant commun permettant de suivre une même analyse du lancement à sa fin.

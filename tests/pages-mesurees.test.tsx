@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { shortPathAttribution } from "@/lib/acquisition/chemins";
 import { isRobot, refusesTracking } from "@/lib/analytics/robots";
+import { classerVisite } from "@/lib/analytics/robot-visite";
 import {
   ANALYSIS_ORIGINS,
   EXAMPLE_ORIGIN_PARAM,
@@ -441,10 +442,31 @@ describe("les robots et le refus de suivi", () => {
     }
   });
 
-  it("le passage d'un robot ne compte pas comme une visite", async () => {
+  // Mission #213 — LE ROBOT N'EST PLUS JETÉ À LA PORTE, IL EST MARQUÉ.
+  //
+  // Jusqu'ici la route n'écrivait rien pour un robot nommé. C'était juste, et
+  // ça ne laissait AUCUNE TRACE : rien à l'écran ne disait ce que le filtre
+  // écartait, donc rien ne pouvait révéler qu'il manquait tout un trafic qui
+  // annonce Chrome — ce qui est précisément arrivé entre le 11 et le 14/11.
+  //
+  // La ligne est maintenant écrite avec son verdict, et c'est l'AGRÉGATION
+  // qui l'écarte des compteurs. Où se tient quoi, pour ne pas chercher :
+  //   le verdict           tests/robot-visite.test.ts
+  //   l'exclusion réelle   tests/robots-moteur.test.ts, sur un vrai moteur
+  //   la route             ici
+  it("le passage d'un robot est ENREGISTRÉ, et classé robot", async () => {
     for (const ua of ROBOTS) await ask({ ua });
     await ask({ ua: null });
-    expect(telemetry.calls).toEqual([]);
+    // Onze passages, onze lignes : aucune n'est perdue.
+    expect(telemetry.calls).toHaveLength(ROBOTS.length + 1);
+    // Et chacune de ces requêtes est bien classée robot. La route délègue le
+    // verdict à l'écrivain : on vérifie donc le verdict sur les mêmes
+    // en-têtes, plutôt que de se croire sur parole.
+    const entetes = (ua: string | null) =>
+      new Headers({ "sec-fetch-dest": "image", ...(ua === null ? {} : { "user-agent": ua }) });
+    for (const ua of [...ROBOTS, null]) {
+      expect(classerVisite(entetes(ua)).robot, String(ua)).toBe(true);
+    }
   });
 
   it("Do Not Track et Global Privacy Control : rien n'est enregistré", async () => {
@@ -476,14 +498,27 @@ describe("les robots et le refus de suivi", () => {
       );
     expect((await send(UA)).status).toBe(204);
     expect(telemetry.calls).toHaveLength(1);
-    // Le moteur de rendu de Google exécute le JavaScript de la page : sans ce
-    // filtre, chaque exploration comptait une visite sur l'accueil.
+    // Mission #213 — le robot écrit une ligne, le refus de suivi n'en écrit
+    // aucune. Ce ne sont pas deux degrés du même filtre : l'un est une
+    // question de qualité de mesure, l'autre une promesse de la page de
+    // confidentialité, et « on enregistre mais on ne compte pas » ne
+    // tiendrait pas la seconde.
     const robot = await send(ROBOTS[1]);
+    expect(robot.status).toBe(204);
+    expect(telemetry.calls).toHaveLength(2);
     const dnt = await send(UA, { dnt: "1" });
     // Réponse identique : le client n'apprend rien de ce qui a été fait.
-    expect(robot.status).toBe(204);
     expect(dnt.status).toBe(204);
-    expect(telemetry.calls).toHaveLength(1);
+    expect(telemetry.calls).toHaveLength(2);
+  });
+
+  it("LE REFUS DE SUIVI N'ÉCRIT RIEN, ni sur le pixel ni sur la route", async () => {
+    // La garde que la réécriture ci-dessus pourrait faire perdre : le jour
+    // où quelqu'un décide de « marquer plutôt que jeter » partout, DNT et GPC
+    // ne doivent pas suivre.
+    await ask({ headers: { dnt: "1" } });
+    await ask({ headers: { "sec-gpc": "1" } });
+    expect(telemetry.calls).toEqual([]);
   });
 });
 
@@ -730,8 +765,9 @@ describe("le chemin complet de /exemple", () => {
       feedback: { total: 0, fair: 0, not_fair: 0 },
       purchases: { purchases: 0, revenue_eur: 0, revenue_covered: 0 },
       timeseries: [], acquisition: [], guides: [], example: { total: 4, direct: 4 }, tier_changes: [], engagement: [], engagement_scroll: [],
+      robots: { visits: 0, reasons: [] }, agents: [],
     });
-    expect(tuiles.find((t) => t.label === "Visites mesurées")?.value).toBe("10");
+    expect(tuiles.find((t) => t.label === "Visites humaines")?.value).toBe("10");
   });
 
   it("la RPC compte exactement les mêmes événements que le cockpit", async () => {
@@ -757,6 +793,7 @@ describe("ce que le cockpit montre", () => {
       { path: "/produits-offerts", views: 12, to_example: 1 },
     ],
     example: { total: 9, direct: 2 }, tier_changes: [], engagement: [], engagement_scroll: [],
+    robots: { visits: 0, reasons: [] }, agents: [],
   };
 
   it("la ligne sous le tableau dit le total, l'attribué et le direct", async () => {

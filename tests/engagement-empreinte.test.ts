@@ -141,6 +141,21 @@ describe("le jour où quelqu'un ajoutera une colonne", () => {
   // change ce que la page promet.
   const ATTENDUES = [
     "agent_family",
+    // Mission #213 — TROIS COLONNES DE PLUS, et la question que ce test pose
+    // a bien eu une réponse : oui, ça change ce que la page promet.
+    //
+    // `agent_signature` est une donnée de plus sur l'appareil, et la phrase
+    // « Rien d'autre ne les accompagne » de /confidentialite devenait FAUSSE
+    // — exactement l'erreur de la #209 quinquies, écrite en regardant
+    // `metadata` et en oubliant les autres colonnes. La page a donc été
+    // corrigée, elle nomme la forme d'agent et dit qu'elle est effacée au
+    // bout de 7 jours comme l'empreinte, et la purge l'efface vraiment
+    // (lib/privacy/purge.ts, éprouvé sur le moteur).
+    //
+    // `robot` et `robot_reason` ne décrivent PAS le visiteur : ils disent ce
+    // que le site a fait de la ligne. Ils ne sont pas effacés, parce que ce
+    // sont eux qui tiennent les compteurs.
+    "agent_signature",
     "dedupe_key",
     "entity_id",
     "entity_type",
@@ -154,6 +169,8 @@ describe("le jour où quelqu'un ajoutera une colonne", () => {
     // (lib/analytics/first-party.ts) : une arrivée directe ne porte pas la
     // clé du tout. Elle n'est donc pas dans cette liste.
     "referrer_host",
+    "robot",
+    "robot_reason",
     "user_id",
     "utm_campaign",
     "utm_content",
