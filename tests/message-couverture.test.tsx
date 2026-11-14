@@ -198,7 +198,21 @@ describe("B — les mentions obligatoires absentes", () => {
   // schéma, exactement comme lib/analysis/load.ts le fait, et non construit à
   // la main dans le test. C'est ce qui manquait à la mission #104.
   const fromDatabase = (clauses: string[]): Analysis => {
-    const stored = { ...composeAnalysis(base()), fr_legal: { ...composeAnalysis(base()).fr_legal, missing_mandatory_clauses: clauses } };
+    // Mission #214 — ce bloc teste les puces des MENTIONS DU CONTRAT ÉCRIT : on
+    // le place donc dans la branche où elles existent (publication sur le compte
+    // du créateur) et on vide le volet L131-3, dont les puces viendraient
+    // s'ajouter à celles qu'on compte ici. Que le résumé reste égal à la SOMME
+    // des deux listes a sa propre garde, dans tests/champ-loi-influence.test.tsx.
+    const stored = {
+      ...composeAnalysis(base()),
+      fr_legal: {
+        ...composeAnalysis(base()).fr_legal,
+        diffusion: "createur" as const,
+        missing_mandatory_clauses: clauses,
+        rights_transfer: false,
+        missing_rights_clauses: [],
+      },
+    };
     const parsed = analysisSchema.safeParse(JSON.parse(JSON.stringify(stored)));
     if (!parsed.success) throw new Error("payload refusé par le schéma");
     return parsed.data;

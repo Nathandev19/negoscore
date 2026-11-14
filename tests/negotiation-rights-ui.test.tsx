@@ -2,7 +2,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadScenarios, runScenario, scenarioContext, readingOf } from "@/lib/negotiation/scenarios";
 import { processTurn } from "@/lib/negotiation/turn";
-import { unclearPoints } from "@/lib/negotiation/conclusion";
+import { buildConclusion, unclearPoints } from "@/lib/negotiation/conclusion";
+import sampleExtraction from "@/lib/fixtures/sample-extraction.json";
+import { analysisSchema } from "@/lib/schema";
 import { TurnCard } from "@/components/result/negotiation/turn-card";
 import type { TurnPayload } from "@/lib/negotiation/types";
 
@@ -167,7 +169,14 @@ describe("C — la conclusion", () => {
     ]);
     expect(conclusion.unclear).toContain("Le territoire où les contenus seront diffusés.");
     expect(conclusion.message).toMatch(/confirmer ces points par écrit/);
-    expect(conclusion.legal_note).toContain("contrat écrit est obligatoire");
+    // Mission #214 — l'offre d'exemple est de l'UGC pur : elle ne demande
+    // aucune publication à la créatrice et la marque diffuse de son côté. La
+    // note ne peut donc PLUS affirmer le contrat écrit de la loi du 9 juin
+    // 2023 ; elle dit le champ, dit qu'on en est dehors, et s'appuie sur
+    // L131-3, qui vaut sans seuil ni condition d'audience.
+    expect(conclusion.legal_note).toContain("sort donc du champ de cette loi");
+    expect(conclusion.legal_note).toContain("article L131-3 du Code de la propriété intellectuelle");
+    expect(conclusion.legal_note).not.toContain("demande un contrat écrit avant de commencer");
     expect(conclusion.legal_note).toContain("pas un conseil juridique");
   });
 
@@ -181,11 +190,30 @@ describe("C — la conclusion", () => {
   });
 });
 
+// Mission #214 — C4 se jouait sur le scénario d'exemple, qui est de l'UGC pur
+// et dont la note ne porte plus aucun seuil : la règle de la fourchette y
+// serait devenue invérifiable. Elle est donc éprouvée là où elle s'applique,
+// sur une offre qui DEMANDE une publication — et le même appel, hors champ,
+// montre que c'est bien la condition d'entrée qui fait la différence.
 describe("C4 — le seuil du contrat écrit quand la marque accepte une fourchette", () => {
+  const DEAL = analysisSchema.shape.deal.parse((sampleExtraction as { deal: unknown }).deal);
+  const note = (publication: boolean) =>
+    buildConclusion({
+      deal: { ...DEAL, publication_required: publication, payment: { ...DEAL.payment, amount_eur: null } },
+      asks: [],
+      language: "fr",
+      source: "brand_accepted",
+      counterAccepted: { low: 1200, high: 1800 },
+    }).legal_note;
+
   it("toute la fourchette acceptée dépasse 1 000 € HT : la note dit que le seuil est atteint", () => {
-    const conclusion = turnFrom("acceptation-franche").conclusion!;
-    expect(conclusion.legal_note).toContain("atteint ce seuil : demande un contrat écrit");
-    expect(conclusion.legal_note).not.toContain("Le montant n'est pas connu");
+    expect(note(true)).toContain("atteint ce seuil : demande un contrat écrit");
+    expect(note(true)).not.toContain("Le montant n'est pas connu");
+  });
+
+  it("la même fourchette, hors du champ de la loi : aucun seuil n'est opposé", () => {
+    expect(note(false)).toContain("sort donc du champ de cette loi");
+    expect(note(false)).not.toContain("atteint ce seuil");
   });
 });
 

@@ -7,7 +7,7 @@ import {
   SEVERITY_LABEL,
   sortByPriority,
 } from "@/lib/display";
-import { missingClausesView } from "@/lib/legal/fr";
+import { legalNoticeView } from "@/lib/legal/fr";
 import { rateTable } from "@/lib/rates/tables";
 import type { Analysis } from "@/lib/schema";
 import { DEVOILE_CLASSE, devoileDelai, type PlanDevoile } from "@/lib/ui/devoile";
@@ -183,7 +183,12 @@ export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
   // fonction que le calcul (lib/legal/fr.ts).
   // Mission #115, B1 — un seul objet : la liste rendue EST celle qui a été
   // comptée. Le composant ne recompte rien et ne refiltre rien.
-  const { clauses, hint } = missingClausesView(legal);
+  // Mission #214 — DEUX LISTES, UN SEUL RÉSUMÉ. Les mentions du contrat écrit
+  // ne s'affichent que dans le champ de la loi du 9 juin 2023 ; le volet
+  // L131-3, lui, s'affiche dès qu'il y a cession de droits. Le composant ne
+  // décide ni l'un ni l'autre : les deux listes et le résumé sortent du même
+  // objet, comme la #115 l'exige.
+  const { clauses, rights, rightsTransfer, hint } = legalNoticeView(legal);
   return (
     <CollapsibleSection title="Bon à savoir côté loi française" hint={hint}>
       <div className="flex flex-col gap-2 text-small">
@@ -193,6 +198,16 @@ export function LegalNotice({ legal }: { legal: Analysis["fr_legal"] }) {
             <p className="font-semibold text-encre">Mentions absentes de l&apos;offre :</p>
             <ul className="list-disc pl-5">
               {clauses.map((clause) => (
+                <li key={clause}>{clause}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {rightsTransfer && rights.length > 0 ? (
+          <div>
+            <p className="font-semibold text-encre">Cession de droits — ce que l&apos;offre ne délimite pas :</p>
+            <ul className="list-disc pl-5">
+              {rights.map((clause) => (
                 <li key={clause}>{clause}</li>
               ))}
             </ul>

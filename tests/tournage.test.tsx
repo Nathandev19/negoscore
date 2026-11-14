@@ -275,11 +275,16 @@ describe("point 2 — un point réglé par l'offre porte la phrase de l'offre", 
 // ─── Point 3 — une liste annoncée n'est jamais vide ─────────────────────────
 
 function legalWith(clauses: string[]): Analysis["fr_legal"] {
+  // Mission #214 — diffusion « createur » : c'est le cas où les mentions du
+  // contrat écrit s'affichent, et c'est bien leur comptage qu'on teste ici.
   return {
     applicable: true,
+    diffusion: "createur",
     threshold_1000_reached: "no",
     written_contract_required: false,
     missing_mandatory_clauses: clauses,
+    rights_transfer: false,
+    missing_rights_clauses: [],
     note: "En France, un contrat écrit est obligatoire au-delà d'un seuil.",
   };
 }

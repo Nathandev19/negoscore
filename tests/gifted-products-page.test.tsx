@@ -66,13 +66,26 @@ describe("page /produits-offerts", () => {
     }
   });
 
-  it("la mention de la loi du 9 juin 2023 et le renvoi au comptable sont conservés", () => {
-    expect(texte).toContain(
-      // Énoncé aligné sur lib/legal/fr.ts (mission #062, C1) : « HT », « année
-      // civile », « avantages en nature inclus ». Le guide et l'analyse ne
-      // peuvent pas énoncer deux règles différentes.
-      "La loi du 9 juin 2023 sur l'influence commerciale encadre ces partenariats, et impose un contrat écrit dès que la collaboration dépasse 1 000 € HT cumulés sur l'année civile entre une même marque et un même créateur, avantages en nature inclus.",
-    );
+  // Mission #214 — LA CONDITION D'ENTRÉE, SUR LE GUIDE AUSSI.
+  //
+  // L'énoncé restait aligné sur lib/legal/fr.ts (mission #062, C1), mais les
+  // deux étaient faux de la même façon : ils imposaient le contrat écrit sans
+  // la condition qui ouvre le champ de la loi du 9 juin 2023. Le guide dit
+  // maintenant la condition, nomme le décret qui fixe le seuil, et dit ce qui
+  // s'applique quand la condition n'est pas réunie.
+  //
+  // « cumulés sur l'année civile […] avantages en nature inclus » a disparu des
+  // deux endroits : cette formulation demande une base qui n'a pas été fournie.
+  it("la condition d'entrée de la loi du 9 juin 2023, le décret, et le renvoi au comptable", () => {
+    for (const phrase of [
+      "La loi du 9 juin 2023 sur l'influence commerciale encadre ces partenariats quand tu mobilises ta notoriété auprès de ton audience",
+      "Dans ce cadre, elle impose un contrat écrit dès que la collaboration dépasse 1 000 € HT, seuil fixé par le décret n° 2025-1137.",
+      "cette loi-là ne s'applique pas : tu n'as pas mobilisé ton audience",
+      "l'article L131-3 du Code de la propriété intellectuelle, dès qu'il y a cession de droits",
+    ]) {
+      expect(texte, phrase).toContain(phrase);
+    }
+    expect(texte).not.toContain("cumulés sur l'année civile");
     expect(texte).toContain("parles-en à un comptable");
   });
 

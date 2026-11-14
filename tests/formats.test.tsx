@@ -99,8 +99,24 @@ describe("note juridique", () => {
   it("« 1 000 € HT » ne peut pas se couper : aucune espace ordinaire dans le montant", async () => {
     const { computeFrLegal } = await import("@/lib/legal/fr");
     const { baseExtraction } = await import("@/lib/fixtures/preview-states");
-    const note = computeFrLegal(baseExtraction().deal).note;
-    const amount = note.match(/dépasse (.+?) cumulés/)?.[1] ?? "";
-    expect(amount.replace(/[\u202f\u00a0]/g, "_")).toBe("1_000_€_HT");
+    // Mission #214 — le seuil ne s'écrit plus que dans les branches qui le
+    // mentionnent : celle du champ réuni, et celle du doute. La fixture
+    // d'exemple, elle, est hors champ (la marque diffuse seule) et sa note ne
+    // porte donc aucun montant — la garde se poserait sur une chaîne vide.
+    const extrait = baseExtraction().deal;
+    const notes = [
+      // Champ réuni : publication demandée sur le compte du créateur.
+      computeFrLegal({ ...extrait, publication_required: true }).note,
+      // Doute : rien ne dit qui diffuse.
+      computeFrLegal({
+        ...extrait,
+        publication_required: false,
+        usage: { ...extrait.usage, organic: false, paid_ads: false, whitelisting: false, spark_ads: false },
+      }).note,
+    ];
+    for (const note of notes) {
+      const amount = note.match(/au-delà de (.+?) \(/)?.[1] ?? "";
+      expect(amount.replace(/[\u202f\u00a0]/g, "_")).toBe("1_000_€_HT");
+    }
   });
 });

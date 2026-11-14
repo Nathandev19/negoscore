@@ -371,17 +371,36 @@ describe("computeScore", () => {
 });
 
 describe("computeFrLegal", () => {
-  it("threshold yes au-delà de 1 000 € avec les avantages en nature", () => {
+  // Mission #214 — makeDeal ne demande AUCUNE publication au créateur et la
+  // marque diffuse de son côté (usage.organic) : c'est de l'UGC pur, hors du
+  // champ de la loi du 9 juin 2023. Le seuil reste un fait sur le montant ;
+  // l'obligation, elle, n'est plus affirmée. Les deux cas sont donc testés
+  // côte à côte, parce que c'est leur DIFFÉRENCE qui est la correction.
+  it("seuil franchi hors du champ de la loi : aucune obligation affirmée", () => {
     const legal = computeFrLegal(
       makeDeal({ payment: { amount_eur: 800, currency: "EUR", terms_days: 30, schedule: null }, in_kind_value_eur: 250 }),
     );
     expect(legal.threshold_1000_reached).toBe("yes");
-    expect(legal.written_contract_required).toBe(true);
+    expect(legal.diffusion).toBe("marque");
+    expect(legal.written_contract_required).toBe(false);
     expect(legal.applicable).toBe(true);
   });
 
+  it("seuil franchi dans le champ de la loi : l'obligation est affirmée", () => {
+    const legal = computeFrLegal(
+      makeDeal({
+        publication_required: true,
+        payment: { amount_eur: 800, currency: "EUR", terms_days: 30, schedule: null },
+        in_kind_value_eur: 250,
+      }),
+    );
+    expect(legal.diffusion).toBe("createur");
+    expect(legal.threshold_1000_reached).toBe("yes");
+    expect(legal.written_contract_required).toBe(true);
+  });
+
   it("threshold no sous 1 000 €", () => {
-    const legal = computeFrLegal(makeDeal());
+    const legal = computeFrLegal(makeDeal({ publication_required: true }));
     expect(legal.threshold_1000_reached).toBe("no");
     expect(legal.written_contract_required).toBe(false);
     expect(legal.missing_mandatory_clauses).toContain("Modalités de paiement");
@@ -402,9 +421,9 @@ describe("computeFrLegal", () => {
     );
     expect(foreign.applicable).toBe(false);
     expect(foreign.written_contract_required).toBe(false);
-    expect(computeFrLegal(makeDeal({ governing_law: "Droit français" })).missing_mandatory_clauses).not.toContain(
-      "Soumission au droit français",
-    );
+    expect(
+      computeFrLegal(makeDeal({ governing_law: "Droit français", publication_required: true })).missing_mandatory_clauses,
+    ).not.toContain("Soumission au droit français");
   });
 });
 

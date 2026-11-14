@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 14/11/2026 (mission #213).** Ce fichier se met à jour
+**Dernière mise à jour : 14/11/2026 (mission #214).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -15,7 +15,7 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
 Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 43 fichiers
-de migration et 180 fichiers de test.
+de migration et 181 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -41,6 +41,15 @@ de la section « Vérifié hors du dépôt ».
   ne produit jamais un prix : chiffrage, verdict, couche légale et contre-offre
   sortent de `lib/rates/`, `lib/legal/` et `lib/analysis/compose.ts`, depuis une
   table de tarifs versionnée — la courante est `fr-2026.4.json`.
+- **La couche légale est CONDITIONNELLE au mode de diffusion** (#214).
+  `lib/legal/fr.ts` est le seul fichier autorisé à porter un énoncé juridique,
+  et il porte trois branches, pas une : publication demandée sur le compte du
+  créateur (le champ de la loi du 9 juin 2023 est réuni, le contrat écrit
+  au-delà de 1 000 € HT est affirmé), diffusion par la marque seule (hors du
+  champ, l'obligation n'est pas affirmée), et doute (rien n'est affirmé de
+  ferme). Le volet **L131-3** du Code de la propriété intellectuelle est
+  présent dans les trois dès qu'il y a cession de droits : il n'a ni seuil de
+  montant ni condition de notoriété.
 - **Le verdict ne s'affiche plus en note sur 100** (missions #174 à #178). La
   bande (`bad`/`weak`/`fair`/`good`/`excellent`) est enregistrée dans le
   payload et **projetée** à la lecture, jamais recalculée depuis le nombre.
@@ -180,6 +189,56 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#214 — le produit affirmait une obligation légale sans sa condition
+d'application.**
+
+Le produit imposait un contrat écrit au-delà de 1 000 € HT pour TOUS les deals,
+sans condition. L'article 1er de la loi n° 2023-451 du 9 juin 2023 n'ouvre son
+champ qu'aux personnes qui « mobilisent leur notoriété auprès de leur
+audience » : une prestation d'UGC pur en sort, et l'obligation de son article 8
+— seuil fixé à 1 000 € HT par le décret n° 2025-1137 — ne s'y applique pas.
+
+- **TROIS BRANCHES, dont une qui n'affirme rien** (`diffusionDe`) :
+  `createur` (publication demandée sur le compte du créateur), `marque`
+  (aucune publication demandée ET diffusion par la marque écrite
+  positivement), `inconnu` (tout le reste).
+- **`publication_required: false` NE VEUT PAS DIRE « le créateur ne publie
+  pas ».** Le prompt dit « true seulement si le créateur doit publier sur son
+  propre compte » : false confond « l'offre dit non » et « l'offre n'en parle
+  pas ». La sortie du champ demande donc que la diffusion par la marque soit,
+  elle, écrite — sinon c'est `inconnu`.
+- **MARQUAGE BLANC ET SPARK ADS VONT DANS « INCONNU ».** La publicité part du
+  compte du créateur, ou pousse une publication du créateur : ce ne sont ni
+  « exclusivement les canaux de la marque », ni une publication établie. Les
+  ranger d'un côté demanderait une base que la mission n'a pas donnée.
+- **L'OFFRE D'EXEMPLE EST HORS CHAMP**, et c'est visible sur
+  `/dev/resultat?etat=debloque` : la note dit le champ, dit qu'on en est
+  dehors, et s'appuie sur L131-3. Avant la #214, elle affirmait l'obligation.
+- **LE VOLET L131-3 N'EXISTAIT PAS** : il a été AJOUTÉ (point 3 de la
+  mission). Quatre points, ceux que l'article nomme — mention distincte de
+  chacun des droits cédés, étendue et destination, lieu, durée —, affichés
+  sous leur propre titre dès qu'il y a cession (`ip_transfer !== "none"`,
+  « unclear » compris).
+- **LA GRAVITÉ SUIT LA BASE** (point 4) : les sept « mentions obligatoires »
+  sont celles du contrat écrit de la loi de 2023 ; elles ne s'annoncent plus
+  que dans la branche `createur`. Les annoncer ailleurs refabriquerait
+  l'affirmation sans sa condition, un cran plus bas.
+- **« cumulés sur l'année civile entre une même marque et un même créateur,
+  avantages en nature inclus » A DISPARU des deux endroits qui l'écrivaient.**
+  Cette formulation demande une base qui n'a pas été fournie. L'ADDITION, elle,
+  ne change pas : le total compare montant + produits offerts, et la note le
+  dit désormais comme une règle DU PRODUIT, pas comme une citation.
+- **Trois champs de plus dans `fr_legal`** (`diffusion`, `rights_transfer`,
+  `missing_rights_clauses`), avec des défauts neutres : une analyse
+  enregistrée avant la #214 se relit en `diffusion: "inconnu"` et n'affiche
+  pas de volet qu'elle n'a pas relevé. **Aucune migration** — `fr_legal` vit
+  dans le payload JSON de l'analyse.
+- **Le résumé du bloc annonce les DEUX listes**, parce qu'il en rend deux :
+  l'invariant des missions #104 et #115 (le nombre annoncé égale le nombre de
+  puces) tient maintenant sur leur SOMME, et il a sa garde.
+
+## MISSION PRÉCÉDENTE
+
 **#213 — le compteur comptait des robots qui ne disent pas leur nom.**
 
 Constat du 11 au 14/11 : 5 à 8 `landing_view` par jour sur l'accueil, toutes
@@ -231,7 +290,7 @@ trois doigts.
 - **MIGRATION 43 À APPLIQUER À LA MAIN** (`20261114000043_robots_separes.sql`).
   Elle s'exécute sur un vrai moteur dans `tests/robots-moteur.test.ts`.
 
-## MISSION PRÉCÉDENTE
+## AVANT CELLE-LÀ
 
 **#212 — un lien de message privé ne peut plus mentir sur son réseau.**
 
@@ -548,6 +607,21 @@ n'appelle aucune action.
   relue. UNKNOWN jusqu'à ce que quelques tours soient passés en production.
 - **Une éval large du réglage « none » sur un tour.** Celui retenu l'a été sur
   UNE fixture et trois passes, le minimum que la mission #202 demandait.
+- **LE MODE DE DIFFUSION N'EST PAS EXTRAIT À TROIS VALEURS** (#214). Le
+  prompt ne demande qu'un booléen `publication_required`, dont le `false`
+  confond « l'offre dit non » et « l'offre n'en parle pas ». Le produit s'en
+  sort en exigeant que la diffusion par la marque soit écrite, mais un champ
+  d'extraction à trois valeurs trancherait vraiment. Non fait, non décidé :
+  il faudrait toucher au prompt et au schéma d'extraction.
+- **DEUX FORMULATIONS DU PRODUIT RESTENT SANS BASE FOURNIE** (#214), et elles
+  ne sont donc plus écrites : le cumul sur l'année civile entre une même
+  marque et un même créateur, et l'inclusion des avantages en nature dans le
+  seuil. L'addition, elle, est restée dans le calcul. UNKNOWN jusqu'à ce que
+  l'éditeur donne la base, ou décide de retirer l'addition.
+- **LES SEPT MENTIONS NE SONT PAS CONDITIONNÉES AU SEUIL** (#214) : elles
+  s'affichent dès que le champ de la loi est réuni, même sous 1 000 € HT.
+  C'était déjà le cas avant la mission (#100, #104, #115) ; la #214 n'a touché
+  qu'au champ. À trancher à part.
 - **LA MIGRATION 43 N'EST PAS ENCORE APPLIQUÉE** (#213), à la date de ce
   fichier. Tant qu'elle ne l'est pas, les lignes s'écrivent sans classement
   (repli en deux temps dans `lib/analytics/first-party.ts`) et le cockpit

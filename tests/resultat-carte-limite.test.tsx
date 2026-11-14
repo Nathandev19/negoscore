@@ -137,11 +137,18 @@ describe("A1 — le total affiché est la somme des lignes affichées", () => {
 
 // ─── A2 — aucune puce vide, jamais ──────────────────────────────────────────
 
+// Mission #214 — ces trois champs portent le mode de diffusion et le volet
+// L131-3. Ici on teste les puces des mentions du contrat écrit : diffusion
+// « createur », donc ces mentions s'affichent, et aucune cession de droits,
+// donc le volet L131-3 ne vient pas brouiller le compte des puces.
 const legal = (clauses: string[]): Analysis["fr_legal"] => ({
   applicable: true,
+  diffusion: "createur",
   threshold_1000_reached: "no",
   written_contract_required: false,
   missing_mandatory_clauses: clauses,
+  rights_transfer: false,
+  missing_rights_clauses: [],
   note: "Information générale.",
 });
 
@@ -150,7 +157,11 @@ const lisible = (html: string) => html.replaceAll("&#x27;", "'").replaceAll("&#x
 
 describe("A2 — le nombre annoncé et les puces affichées sont toujours égaux", () => {
   it("cas 1 : quatre mentions annoncées, quatre puces qui portent leur libellé", () => {
-    const frLegal = computeFrLegal(ECHANTILLON[0].deal);
+    // Mission #214 — publication sur le compte du créateur : c'est la branche
+    // où les mentions du contrat écrit existent, et c'est leur comptage que ce
+    // test surveille. Hors du champ de la loi, la liste est vide par
+    // construction, et il n'y a plus rien à compter.
+    const frLegal = computeFrLegal({ ...ECHANTILLON[0].deal, publication_required: true });
     expect(frLegal.missing_mandatory_clauses).toHaveLength(4);
     const html = renderToStaticMarkup(<LegalNotice legal={frLegal} />);
     expect(puces(html)).toHaveLength(4);
@@ -181,7 +192,9 @@ describe("A2 — le nombre annoncé et les puces affichées sont toujours égaux
   it("le compte et les puces sortent du MÊME objet, pas de deux appels", () => {
     expect(readableClauses(["a", "", "​", " b "])).toEqual(["a", "b"]);
     const rendu = readFileSync("components/result/analysis-blocks.tsx", "utf8");
-    expect(rendu).toContain("missingClausesView(legal)");
+    // Mission #214 — un seul objet, toujours, mais il porte maintenant les DEUX
+    // listes du bloc et le résumé qui les décrit toutes les deux.
+    expect(rendu).toContain("legalNoticeView(legal)");
     expect(rendu).not.toContain("readableClauses(");
     const calcul = readFileSync("lib/legal/fr.ts", "utf8");
     expect(calcul).toContain("readableClauses(");

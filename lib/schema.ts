@@ -163,9 +163,27 @@ export const analysisSchema = z.object({
   }),
   fr_legal: z.object({
     applicable: z.boolean(),
+    // Mission #214 — LE MODE DE DIFFUSION, qui conditionne le champ de la loi
+    // du 9 juin 2023 (voir lib/legal/fr.ts, seul endroit du projet où un
+    // énoncé juridique est écrit).
+    //
+    // Défaut « inconnu » pour les analyses enregistrées avant cette mission :
+    // elles n'ont pas relevé la diffusion, donc on ne la connaît pas, et
+    // « inconnu » est la seule valeur qui ne fasse pas dire au produit plus
+    // qu'il ne sait. Leur `note`, elle, est le texte enregistré au moment de
+    // l'analyse ; recomputeForDeal le réécrit dès qu'un niveau change.
+    diffusion: z.enum(["createur", "marque", "inconnu"]).default("inconnu"),
+    // Le seuil reste un fait sur le MONTANT, lu indépendamment du champ de la
+    // loi : c'est `written_contract_required` qui croise les deux.
     threshold_1000_reached: z.enum(["yes", "no", "unknown"]),
     written_contract_required: z.boolean(),
     missing_mandatory_clauses: z.array(z.string()),
+    // Volet L131-3 du Code de la propriété intellectuelle : il vaut dès qu'il
+    // y a cession de droits, sans condition de notoriété ni seuil de montant.
+    // Défauts neutres : une analyse antérieure n'affiche simplement pas ce
+    // volet, elle ne prétend pas que rien n'y manque.
+    rights_transfer: z.boolean().default(false),
+    missing_rights_clauses: z.array(z.string()).default([]),
     note: z.string(),
   }),
   escalate_to_professional: z.object({

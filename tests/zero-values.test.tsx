@@ -103,8 +103,17 @@ describe("A — seuil légal des 1 000 €, avantages en nature inclus", () => {
     expect(legal.note).toContain("Le montant n'est pas connu");
   });
 
-  it("le texte affiché n'a pas changé : les avantages en nature y sont toujours annoncés", () => {
-    expect(computeFrLegal(deal({ payment: paiement(1200) })).note).toContain("avantages en nature inclus");
+  // Mission #214 — « cumulés sur l'année civile entre une même marque et un
+  // même créateur, avantages en nature inclus » a quitté la note : cette
+  // formulation demande une base que les références de la mission ne donnent
+  // pas, et ce fichier n'a pas le droit d'écrire un énoncé juridique sans
+  // base. L'ADDITION, elle, ne change pas (tests ci-dessus) : ce que le
+  // produit compare au seuil est désormais annoncé comme une règle du
+  // produit, et non comme une citation.
+  it("ce que le produit compare au seuil est dit, sans se présenter comme le texte de loi", () => {
+    const note = computeFrLegal(deal({ payment: paiement(1200) })).note;
+    expect(note).toContain("Ce que le produit compare à ce seuil : le montant proposé, plus la valeur des produits offerts");
+    expect(note).not.toContain("avantages en nature inclus");
   });
 });
 

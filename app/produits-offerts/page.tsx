@@ -45,10 +45,17 @@ export default function GiftedProductsPage() {
           <p>
             Dès qu&apos;il y a une contrepartie attendue — une vidéo, une story, une mention — le produit n&apos;est
             plus un cadeau. C&apos;est un paiement en nature, dans une relation commerciale. La loi du 9 juin 2023 sur
-            l&apos;influence commerciale encadre ces partenariats, et impose un contrat écrit dès que la collaboration
-            dépasse {formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)}&nbsp;HT cumulés sur l&apos;année civile entre une même
-            marque et un même créateur, avantages en nature inclus. En dessous, l&apos;écrit n&apos;est pas obligatoire — mais rien ne t&apos;empêche de le
-            demander.
+            l&apos;influence commerciale encadre ces partenariats quand tu mobilises ta notoriété auprès de ton
+            audience — c&apos;est le cas dès qu&apos;on te demande une vidéo, une story ou une mention sur ton compte.
+            Dans ce cadre, elle impose un contrat écrit dès que la collaboration dépasse{" "}
+            {formatEur(WRITTEN_CONTRACT_THRESHOLD_EUR)}&nbsp;HT, seuil fixé par le décret n°&nbsp;2025-1137. En
+            dessous, l&apos;écrit n&apos;est pas obligatoire — mais rien ne t&apos;empêche de le demander.
+          </p>
+          <p>
+            Si au contraire la marque garde les vidéos pour ses propres canaux, publicité comprise, et que tu ne publies
+            rien de ton côté, cette loi-là ne s&apos;applique pas : tu n&apos;as pas mobilisé ton audience. Ce qui
+            s&apos;applique quand même, sans seuil de montant et sans condition de notoriété, c&apos;est
+            l&apos;article&nbsp;L131-3 du Code de la propriété intellectuelle, dès qu&apos;il y a cession de droits.
           </p>
           <p>Ça a deux conséquences.</p>
           <p>
