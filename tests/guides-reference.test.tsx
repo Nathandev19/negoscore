@@ -47,13 +47,21 @@ const GUIDE_FILES: Record<string, string> = {
   "/droits-utilisation": "app/droits-utilisation/page.tsx",
   "/droits-pub-6-mois": "app/droits-pub-6-mois/page.tsx",
   "/exclusivite-ugc": "app/exclusivite-ugc/page.tsx",
+  // Mission #216 — les deux satellites du cluster des droits.
+  "/contrat-ugc": "app/contrat-ugc/page.tsx",
+  "/cession-droits-ugc": "app/cession-droits-ugc/page.tsx",
 };
+
+// Mission #216 — LE PILIER DU CLUSTER. Tout guide le cite, et il cite tout
+// guide : c'est la forme du maillage, et c'est ce qui remplace la clique
+// de la #158.
+const PILIER = "/droits-utilisation";
 
 const source = (file: string) => readFileSync(path.join(ROOT, file), "utf8");
 
 // ───────────────────────────────────────────────────────────────────────────
 describe("titres et descriptions des guides", () => {
-  it("les cinq guides sont connus, mesurés, et dans le plan du site", () => {
+  it("les sept guides sont connus, mesurés, et dans le plan du site", () => {
     expect([...GUIDE_PATHS].sort()).toEqual(Object.keys(GUIDE_FILES).sort());
     const urls = sitemap().map((entry) => entry.url);
     for (const chemin of GUIDE_PATHS) expect(urls, chemin).toContain(`${CANONICAL_ORIGIN}${chemin}`);
@@ -119,14 +127,41 @@ describe("maillage interne des guides", () => {
   // Ce qui est vérifié ici est le BALISAGE DES LIENS, écrit en clair dans la
   // source de chaque guide : le rendu complet des quatre pages n'apprendrait
   // rien de plus, et le pied de page commun est testé ailleurs.
-  it("chaque guide cite les quatre autres, avec son origine et sans aucun utm", () => {
+  // Mission #216 — DE LA CLIQUE AU CLUSTER.
+  //
+  // La #158 exigeait que chaque guide cite TOUS les autres. À cinq pages ça
+  // faisait vingt liens ; à sept ça en ferait quarante-deux, et à chaque page
+  // ajoutée il faudrait retoucher toutes les précédentes. Ce n'est pas un
+  // maillage, c'est une clique — et une clique dilue : quand une page pointe
+  // partout, elle ne désigne rien.
+  //
+  // La forme exigée est donc celle d'un cluster : tout guide cite le PILIER,
+  // le pilier cite tout guide, et les liens latéraux restent libres. Ce que
+  // ça garantit reste le point important : aucune page orpheline, et aucune
+  // page à plus de deux clics (garde du graphe dans
+  // tests/cluster-droits.test.tsx).
+  //
+  // Les cinq guides d'avant la #216 gardent leurs liens croisés : ils sont
+  // écrits, ils sont utiles, on ne les retire pas.
+  const ANCIENS = ["/combien-facturer", "/produits-offerts", "/droits-utilisation", "/droits-pub-6-mois", "/exclusivite-ugc"];
+
+  it("chaque guide cite le pilier, le pilier cite chaque guide, et aucun utm", () => {
     for (const [chemin, file] of Object.entries(GUIDE_FILES)) {
       const texte = source(file);
       const origine = chemin.slice(1);
       expect(texte, file).toContain(`const ORIGINE = "${origine}"`);
-      for (const autre of Object.keys(GUIDE_FILES).filter((entry) => entry !== chemin)) {
+      const cibles =
+        chemin === PILIER
+          ? Object.keys(GUIDE_FILES).filter((entry) => entry !== PILIER)
+          : ANCIENS.includes(chemin)
+            ? ANCIENS.filter((entry) => entry !== chemin)
+            : [PILIER];
+      for (const autre of cibles) {
         expect(texte, `${file} → ${autre}`).toContain(`internalHrefFrom("${autre}", ORIGINE)`);
-        // Jamais l'adresse nue : un lien sans origine n'est pas mesurable.
+      }
+      // Jamais l'adresse nue, vers aucun guide : un lien sans origine n'est
+      // pas mesurable.
+      for (const autre of Object.keys(GUIDE_FILES)) {
         expect(texte, `${file} → ${autre} sans origine`).not.toContain(`href="${autre}"`);
       }
       expect(texte, `${file} utm`).not.toContain("utm_");

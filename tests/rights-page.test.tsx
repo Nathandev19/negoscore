@@ -61,9 +61,14 @@ describe("page /droits-utilisation", () => {
   it("titre et description sont ceux décidés", () => {
     const meta = publicPageMetadata("/droits-utilisation");
     // Mission #158 — titre réécrit pour la requête tapée, avec l'année.
-    expect(meta.title).toBe("Droits d'utilisation UGC 2026 : le vrai prix");
+    // Mission #216 — et réécrit encore, sur la requête qui rend VRAIMENT :
+    // « achat de droits ugc », 24 impressions sur trois mois au 22/11/2026,
+    // première requête du site. Le titre portait « droits d'utilisation »,
+    // le terme du métier, pas les mots tapés ; le terme du métier reste dans
+    // la description, pour ne pas perdre la famille qui l'emploie.
+    expect(meta.title).toBe("Achat de droits UGC 2026 : le vrai prix");
     expect(meta.description).toBe(
-      "Ta vidéo passe en pub : ce n'est plus de la création, c'est une licence. Durée, supports, territoire, et ce que chaque ligne vaut en négociation.",
+      "Achat de droits d'utilisation UGC : ce que la marque achète vraiment, ce que chaque ligne vaut en euros, et quoi répondre pour ouvrir la négociation.",
     );
   });
 

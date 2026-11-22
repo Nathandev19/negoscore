@@ -37,6 +37,11 @@ export const FOOTER_COLUMNS: Array<{ title: string; links: FooterLink[] }> = [
       { href: internalHrefFrom("/droits-pub-6-mois", "pied-de-page"), label: "Droits pub 6 mois" },
       // Mission #171 — cinquième guide.
       { href: internalHrefFrom("/exclusivite-ugc", "pied-de-page"), label: "Exclusivité" },
+      // Mission #216 — les deux satellites du cluster des droits. Le pied de
+      // page est sur TOUTES les pages : c'est lui qui garantit qu'aucun guide
+      // n'est à plus d'un clic de l'accueil, et qu'aucun n'est orphelin.
+      { href: internalHrefFrom("/contrat-ugc", "pied-de-page"), label: "Contrat UGC" },
+      { href: internalHrefFrom("/cession-droits-ugc", "pied-de-page"), label: "Cession de droits" },
       // Mission #152 — l'exemple chiffré, à côté des guides : c'est la même
       // chose qu'eux, une page qui montre avant de demander. Le pied de page
       // est sur toutes les pages, donc ce lien est le seul chemin vers

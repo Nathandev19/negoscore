@@ -139,14 +139,18 @@ describe("page /produits-offerts", () => {
       "/droits-pub-6-mois?de=pied-de-page",
       // Mission #171 — cinquième guide.
       "/exclusivite-ugc?de=pied-de-page",
+      // Mission #216 — les deux satellites du cluster des droits.
+      "/contrat-ugc?de=pied-de-page",
+      "/cession-droits-ugc?de=pied-de-page",
       "/analyse/demo?de=pied-de-page",
     ]);
   });
 
-  it("les douze pages publiques gardent des titres et des descriptions uniques", () => {
-    expect(PUBLIC_PAGES).toHaveLength(12);
-    expect(new Set(PUBLIC_PAGES.map((page) => page.title)).size).toBe(12);
-    expect(new Set(PUBLIC_PAGES.map((page) => page.description)).size).toBe(12);
+  // Mission #216 — deux satellites de plus dans le cluster des droits.
+  it("les quatorze pages publiques gardent des titres et des descriptions uniques", () => {
+    expect(PUBLIC_PAGES).toHaveLength(14);
+    expect(new Set(PUBLIC_PAGES.map((page) => page.title)).size).toBe(14);
+    expect(new Set(PUBLIC_PAGES.map((page) => page.description)).size).toBe(14);
   });
 
   it("l'accueil vise une autre intention que le guide des tarifs", () => {

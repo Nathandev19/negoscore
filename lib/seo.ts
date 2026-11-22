@@ -72,10 +72,40 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
       "Un paiement en produits offerts : ce que la contrepartie vaut, quand c'est acceptable, quand ça ne l'est jamais, et par quoi ouvrir la négociation.",
   },
   {
+    // Mission #216 — LE TITRE REPREND LA REQUÊTE QUI REND, pas celle qu'on
+    // avait supposée.
+    //
+    // Search Console, trois mois au 22/11/2026 : « achat de droits ugc » fait
+    // 24 impressions, et c'est de loin la première. Le titre portait
+    // « droits d'utilisation », qui est le terme du métier ; il ne portait pas
+    // les mots tapés. La page est en position moyenne 33,6, donc page 3 ou 4 :
+    // il n'y a pas de classement acquis à protéger.
+    //
+    // « droits d'utilisation » reste dans la description, pour ne pas perdre
+    // la famille de requêtes qui l'emploie.
     path: "/droits-utilisation",
-    title: "Droits d'utilisation UGC 2026 : le vrai prix",
+    title: "Achat de droits UGC 2026 : le vrai prix",
     description:
-      "Ta vidéo passe en pub : ce n'est plus de la création, c'est une licence. Durée, supports, territoire, et ce que chaque ligne vaut en négociation.",
+      "Achat de droits d'utilisation UGC : ce que la marque achète vraiment, ce que chaque ligne vaut en euros, et quoi répondre pour ouvrir la négociation.",
+  },
+  {
+    // Mission #216 — « contrat ugc », 3 impressions sur trois mois, et AUCUNE
+    // page du dépôt ne couvrait l'écrit lui-même. Les cinq guides parlaient de
+    // prix, de durées et de clauses.
+    path: "/contrat-ugc",
+    title: "Contrat UGC 2026 : ce qui doit y être écrit",
+    description:
+      "Ce qu'un contrat UGC doit écrire : quels droits, quel usage, où, combien de temps. Quand l'écrit est obligatoire, et comment l'obtenir en négociation.",
+  },
+  {
+    // Mission #216 — la forme extrême de « achat de droits ugc » : la marque
+    // n'achète pas un usage, elle achète les vidéos. Clause distincte dans le
+    // schéma (`ip_transfer: "full_assignment"`), ligne distincte dans la table
+    // (+100 à +200 %), et la plus chère de toutes.
+    path: "/cession-droits-ugc",
+    title: "Cession de droits UGC 2026 : le prix",
+    description:
+      "« Les vidéos nous appartiennent » : ce que la marque achète, ce que la cession vaut en euros par niveau, et quoi proposer en négociation à la place.",
   },
   {
     // Mission #158 — première page de la série « une clause d'offre, une

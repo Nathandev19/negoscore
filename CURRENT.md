@@ -1,6 +1,6 @@
 # CURRENT
 
-**Dernière mise à jour : 14/11/2026 (mission #215).** Ce fichier se met à jour
+**Dernière mise à jour : 22/11/2026 (mission #216).** Ce fichier se met à jour
 **à chaque mission**. S'il décrit un état que le dépôt a dépassé, il nuit plus
 qu'il ne sert : deux versions avant celle-ci, il annonçait la mission #008
 alors que le journal git était à la #19x.
@@ -13,9 +13,9 @@ prestataire de paiement ou dans la base, et qui est daté et attribué comme tel
 ## CURRENT STATUS
 
 Negoscore, application Next.js déployée sur Vercel, base Supabase, paiement
-Whop, emails Resend. Le dépôt contient 32 pages `page.tsx`, 10 pages de
+Whop, emails Resend. Le dépôt contient 34 pages `page.tsx`, 10 pages de
 prévisualisation `.dev.tsx`, 25 routes sous `/api`, 3 sous `/auth`, 43 fichiers
-de migration et 181 fichiers de test.
+de migration et 182 fichiers de test.
 
 **Deux environnements de test depuis la #201** (`vitest.config.mts`, projets
 `node` et `dom`) : les fichiers `*.dom.test.tsx` tournent sous jsdom avec
@@ -193,6 +193,55 @@ neuf à rester ouvert, et il est passé en blocage de lancement ci-dessus.
 
 ## CURRENT MISSION
 
+**#216 — le cluster des droits, construit sur les requêtes relevées.**
+
+Search Console, 28 jours au 22/11/2026 : site indexé, 45 impressions, position
+moyenne 33,6, **UN clic**. Sur trois mois, les seules requêtes qui rendent
+quelque chose : « achat de droits ugc » (24 impressions), « négos » et
+« negos » (6, de la navigation), « contrat ugc » (3). Et `/combien-facturer`,
+la page la plus travaillée du dépôt, fait **ZÉRO impression**.
+
+- **LE PARI « LES CRÉATRICES CHERCHENT COMBIEN FACTURER » EST INVISIBLE.** Ce
+  qu'elles cherchent, ce sont les DROITS. Les trois pages du cluster sont
+  choisies sur ces quatre lignes-là, pas sur une intuition.
+- **DEUX SATELLITES, PAS DIX** : `/contrat-ugc` (requête relevée, aucune
+  couverture dans le dépôt — les cinq guides parlaient de prix, de durées et de
+  clauses, jamais de l'écrit) et `/cession-droits-ugc` (la forme extrême de
+  « achat de droits », clause distincte dans le schéma, ligne distincte dans la
+  table, la plus chère de toutes).
+- **`/droits-utilisation` DEVIENT LE PILIER**, complété et non réécrit : deux
+  sections ajoutées, signalées #216 dans le balisage, et aucun mot du texte
+  d'origine touché. Son titre porte enfin les mots tapés — « Achat de droits
+  UGC 2026 : le vrai prix » — et le terme du métier reste dans la description.
+- **LE MAILLAGE EST UN GRAPHE VÉRIFIÉ, pas une intention.**
+  `tests/cluster-droits.test.tsx` construit le graphe des liens depuis les
+  sources et le pied de page, puis fait un parcours en largeur depuis
+  l'accueil : aucune page du cluster n'est orpheline, aucune à plus de deux
+  clics. Le pied de page est sur toutes les pages, donc chaque guide est à UN
+  clic.
+- **DE LA CLIQUE AU CLUSTER.** La #158 exigeait que chaque guide cite tous les
+  autres : vingt liens à cinq pages, quarante-deux à sept. La garde exige
+  maintenant la forme du cluster — tout guide cite le pilier, le pilier cite
+  tout guide — et les cinq guides d'avant gardent leurs liens croisés.
+- **AUCUN CHIFFRE QUI NE SOIT RECALCULÉ** depuis `fr-2026.4` et le moteur :
+  les trois niveaux de la cession, les trois vidéos, le cumul avec la pub, le
+  plafond « heavy » atteint, et les dix lignes du sommaire du pilier.
+- **LA CONDITION DE CHAMP DE LA #215 S'APPLIQUE AU CONTENU.** Une garde refuse
+  qu'une page écrive « contrat écrit » sans dire à qui l'obligation s'applique,
+  ni ce qui vaut quand elle ne s'applique pas. `/contrat-ugc` rend les
+  constantes d'assiette de `lib/legal/fr.ts` : le contenu et l'analyse ne
+  peuvent pas énoncer deux règles différentes.
+- **UNE GARDE MESURE LES RÉPÉTITIONS** : aucune suite de huit mots commune à
+  deux pages du cluster. Trois exclusions nommées, et aucune n'est éditoriale —
+  l'assiette du seuil, les termes de L131-3 (qu'on n'a pas le droit de
+  reformuler) et le geste final, identique partout par exigence de la mission.
+  Elle a trouvé quatre passages recopiés du pilier et un tableau de prix en
+  double : tous réécrits ou retirés.
+- **CHAQUE PAGE FINIT SUR LE MÊME GESTE**, et c'est le DERNIER de la page :
+  coller une offre. Aucun formulaire, aucun email demandé, aucun PDF.
+
+## MISSION PRÉCÉDENTE
+
 **#215 — les trois points laissés ouverts par la #214, tranchés.**
 
 L'éditeur a fourni le texte du décret n° 2025-1137 du 28 novembre 2025 (JORF
@@ -252,7 +301,7 @@ questions.
 - **Aucune migration** : `deal` et `fr_legal` vivent dans le payload JSON de
   l'analyse. Aucune analyse passée n'est réécrite.
 
-## MISSION PRÉCÉDENTE
+## AVANT CELLE-LÀ
 
 **#214 — le produit affirmait une obligation légale sans sa condition
 d'application.**
@@ -302,7 +351,7 @@ audience » : une prestation d'UGC pur en sort, et l'obligation de son article 8
   l'invariant des missions #104 et #115 (le nombre annoncé égale le nombre de
   puces) tient maintenant sur leur SOMME, et il a sa garde.
 
-## AVANT CELLE-LÀ
+## ET AVANT
 
 **#213 — le compteur comptait des robots qui ne disent pas leur nom.**
 
@@ -355,7 +404,7 @@ trois doigts.
 - **MIGRATION 43 À APPLIQUER À LA MAIN** (`20261114000043_robots_separes.sql`).
   Elle s'exécute sur un vrai moteur dans `tests/robots-moteur.test.ts`.
 
-## ET AVANT
+## PLUS TÔT
 
 **#212 — un lien de message privé ne peut plus mentir sur son réseau.**
 
@@ -672,6 +721,19 @@ n'appelle aucune action.
   relue. UNKNOWN jusqu'à ce que quelques tours soient passés en production.
 - **Une éval large du réglage « none » sur un tour.** Celui retenu l'a été sur
   UNE fixture et trois passes, le minimum que la mission #202 demandait.
+- **LE CLUSTER N'A ENCORE AUCUNE MESURE** (#216). Les deux satellites sont en
+  ligne et mesurés (`guide_view`), mais leur effet sur les impressions est
+  UNKNOWN : il faut que Google les indexe, ce qui prend des jours ou des
+  semaines, et aucun chiffre ne se lira avant. Le relevé à refaire est celui de
+  Search Console sur « achat de droits ugc » et « contrat ugc ».
+- **LE CHANGEMENT DE TITRE DU PILIER EST UN PARI, ET IL EST RÉVERSIBLE** (#216).
+  « Droits d'utilisation UGC 2026 » est devenu « Achat de droits UGC 2026 »,
+  parce que c'est la requête qui rend. La page était en position 33,6, donc il
+  n'y avait pas de classement acquis à perdre — mais c'est une décision de
+  l'éditeur, pas une vérité. Une ligne de `lib/seo.ts` et un test la rendent.
+- **`/combien-facturer` FAIT TOUJOURS ZÉRO IMPRESSION** (#216), et la #216 n'y
+  a pas touché. Son sort reste à trancher : la réécrire sur une autre requête,
+  ou l'accepter comme page de conversion plutôt que page d'entrée.
 - **LE MODÈLE N'A JAMAIS ÉTÉ APPELÉ AVEC LE NOUVEAU PROMPT** (#215). Le champ
   `deal.diffusion` est obligatoire dans le schéma et le prompt dit comment le
   remplir, mais AUCUN appel réel n'a été passé : la qualité de l'extraction de

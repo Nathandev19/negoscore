@@ -47,7 +47,12 @@ describe("robots.txt et sitemap.xml", () => {
       // Mission #055 : troisième guide.
       "https://www.negoscore.fr/produits-offerts",
       // Mission #052 : page publique ajoutée au sitemap.
+      // Mission #216 : et pilier du cluster des droits. Les deux satellites
+      // le suivent immédiatement, parce que le cluster est groupé dans
+      // PUBLIC_PAGES : la liste se lit comme le maillage.
       "https://www.negoscore.fr/droits-utilisation",
+      "https://www.negoscore.fr/contrat-ugc",
+      "https://www.negoscore.fr/cession-droits-ugc",
       // Mission #158 : quatrième guide, première page de la série
       // « une clause d'offre, une page ».
       "https://www.negoscore.fr/droits-pub-6-mois",

@@ -122,6 +122,9 @@ describe("la mesure première partie survit au retrait de PostHog", () => {
         "/produits-offerts",
         "/droits-pub-6-mois",
         "/exclusivite-ugc",
+        // Mission #216 — les deux satellites du cluster des droits.
+        "/contrat-ugc",
+        "/cession-droits-ugc",
       ].sort(),
     );
   });

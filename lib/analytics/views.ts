@@ -31,6 +31,10 @@ export const MEASURED_PAGES: Readonly<Record<string, ProductEventName>> = {
   "/droits-pub-6-mois": "guide_view",
   // Mission #171 — cinquième guide.
   "/exclusivite-ugc": "guide_view",
+  // Mission #216 — les deux satellites du cluster des droits. Même événement
+  // que les cinq autres : `path` est enregistré et les distingue.
+  "/contrat-ugc": "guide_view",
+  "/cession-droits-ugc": "guide_view",
   "/analyse/demo": "example_view",
   "/analyse": "analysis_page_view",
 };
@@ -43,6 +47,10 @@ export const GUIDE_PATHS = [
   "/droits-utilisation",
   "/droits-pub-6-mois",
   "/exclusivite-ugc",
+  // Mission #216 — cluster des droits : /droits-utilisation est le pilier,
+  // ces deux-là en sont les satellites.
+  "/contrat-ugc",
+  "/cession-droits-ugc",
 ] as const;
 
 export function eventForPage(page: string | null | undefined): ProductEventName | undefined {
@@ -74,6 +82,11 @@ export const EXAMPLE_ORIGINS: Readonly<Record<string, string>> = {
   "droits-pub-6-mois": "/droits-pub-6-mois",
   // Mission #171 — cinquième guide.
   "exclusivite-ugc": "/exclusivite-ugc",
+  // Mission #216 — les deux satellites du cluster des droits. Sans cette
+  // entrée, un clic depuis l'une d'elles arrive SANS origine : la table est
+  // fermée, et `viewPixelUrl` jette ce qu'elle ne connaît pas.
+  "contrat-ugc": "/contrat-ugc",
+  "cession-droits-ugc": "/cession-droits-ugc",
   // Mission #152 — le pied de page, présent sur toutes les pages. Ce n'est pas
   // une page d'origine mais un EMPLACEMENT : on ne peut pas savoir depuis
   // laquelle on a cliqué, et prétendre le contraire serait inventer une
